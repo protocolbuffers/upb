@@ -3,9 +3,13 @@
  *
  * Copyright (c) 2009 Joshua Haberman.  See LICENSE for details.
  *
- * This file defines very fast int->struct (inttable) and string->struct
- * (strtable) hash tables.  The struct can be of any size, and it is stored
- * in the table itself, for cache-friendly performance.
+ * This file defines two hash tables (keyed by integer and string) that are
+ * templated on the type of value being stored.  This value must be no bigger
+ * than a pointer.  The tables are optimized for:
+ *  1. fast lookup
+ *  2. small code size (template instantiations do not generate extra code).
+ *
+ * In particular, we are willing to trade insert performance for both of these.
  *
  * The table uses internal chaining with Brent's variation (inspired by the
  * Lua implementation of hash tables).  The hash function for strings is
@@ -16,120 +20,140 @@
 #define UPB_TABLE_H_
 
 #include <assert.h>
-#include "upb.h"
+#include "upb_misc.h"
 #include "upb_string.h"
 
-#ifdef __cplusplus
-extern "C" {
+namespace upb {
+
+// The base class.  Cannot be used directly, but implemented as a base so we
+// can share code for insertion instead of duplicating between the two table types.
+class Table {
+ public:
+  uint32_t count() const { return count_; }
+  uint32_t size() const { return 1 << size_lg2_; }
+
+ protected:
+  typedef uint32_t HashValue;
+  Table(uint32_t expected_num_entries);
+  virtual ~Table();
+
+  struct Entry {
+    Entry() : is_empty(true), end_of_chain(true) {}
+    Entry(void* k, void* v) : is_empty(false), key(k), value(v) {}
+    int next_bucket:30;  // Internal chaining.
+    int end_of_chain:1;     // Always set true if is_empty.
+    int is_empty:1;
+    void* key;  // Integer or ptr to string, depending on table type.
+    void* value; // User-defined.
+    // Copy and assign explicitly allowed.
+  };
+
+  // User-intended functions that derived classes wrapped type-safely.
+  void InsertBase(const Entry& entry);
+  Entry* BeginBase();
+  Entry* NextBase(Entry *entry);
+  uint32_t GetBucket(const Entry& entry) { return Hash(entry) & mask_; }
+
+  // Having access to these as virtual methods lets us write a generic Insert
+  // routine.
+  virtual HashValue Hash(const Entry& entry) = 0;
+
+  // Overridden in derived classes; for assertion-checking only.
+  virtual Entry* Lookup(const Entry& e1) { return NULL; }
+
+  Entry* buckets() { return buckets_.get(); }
+  uint32_t mask() { return mask_; }
+
+ private:
+  uint32_t count_;       /* How many elements are currently in the table? */
+  const uint8_t size_lg2_;     /* The table is 2^size_lg2 in size. */
+  const uint32_t mask_;
+  scoped_array<Entry> buckets_;
+  DISALLOW_COPY_AND_ASSIGN(Table);
+};
+
+// A generic hash lookup function that is templated on the hash function and
+// equality comparison.  We expect this to be inlined, and it must be very fast.
+template<class E>
+E* Lookup(E::Key key, E* buckets, uint32_t mask) {
+  uint32_t bucket = E::Hash(key) & mask_;
+  while (1) {
+    E* e = buckets[bucket];
+    // For an empty entry the key will be kInvalidKey, so this will always
+    // return false.
+    if(e->KeyEquals(key)) return entry;
+    if(e->end_of_chain()) return NULL;
+    bucket = e->next_bucketnum();
+  }
+}
+
+template<class C>
+class IntTable {
+ public:
+  IntTable(uint32_t expected_num_entries) : Table(expected_num_entries) {}
+  virtual ~IntTable();
+
+  void Insert(const Entry& entry) { InsertBase(entry); }
+  Entry* Begin() { BeginBase(); }
+  Entry* Next(Entry *entry) { NextBase(entry); }
+  Entry* Lookup(Entry::Key key) { return Lookup(key, buckets(), mask()); }
+
+  class Entry : public Table::Entry {
+    typedef intptr_t Key;
+    Entry(Key key, C value) : Table::Entry(key, value) {}
+    Key key() const { return (Key)key_; }
+    C value() const { return (C)value_; }
+    HashValue Hash(Key key) const { return (uint32_t)key; }
+    EqualsKey(Key key) const { return (Key)key_ == key; }
+  };
+
+ private:
+  virtual HashValue Hash(const Table::Entry& entry) {
+    return Entry::Hash((Entry)entry.key());
+  }
+#ifndef NDEBUG
+  // This will cause the Lookup code to get emitted once per instantiation, and
+  // we only use this for an assertion check in the base class.
+  virtual Table::Entry* Lookup(const Table::Entry& e1) {
+    return Lookup((Entry)e1.key());
+  }
 #endif
-
-/* Note: the key cannot be zero!  Zero is used by the implementation. */
-typedef uint32_t upb_inttable_key_t;
-
-#define UPB_END_OF_CHAIN (uint32_t)0
-#define UPB_EMPTY_ENTRY (uint32_t)0
-
-struct upb_inttable_entry {
-  upb_inttable_key_t key;
-  uint32_t next;  /* Internal chaining. */
+  DISALLOW_COPY_AND_ASSIGN(IntTable);
 };
 
-// TODO: consider storing the hash in the entry.  This would avoid the need to
-// rehash on table resizes, but more importantly could possibly improve lookup
-// performance by letting us compare hashes before comparing lengths or the
-// strings themselves.
-struct upb_strtable_entry {
-  struct upb_string *key;  // We own one ref.
-  uint32_t next;           // Internal chaining.
-};
+extern uint32_t MurmurHash2(const void *key, size_t len, uint32_t seed);
 
-struct upb_table {
-  void *entries;
-  uint32_t count;       /* How many elements are currently in the table? */
-  uint16_t entry_size;  /* How big is each entry? */
-  uint8_t size_lg2;     /* The table is 2^size_lg2 in size. */
-  uint32_t mask;
-};
+template<class C>
+class StrTable {
+ public:
+  IntTable(uint32_t expected_num_entries) : Table(expected_num_entries) {}
+  virtual ~IntTable();
 
-struct upb_strtable {
-  struct upb_table t;
-};
+  void Insert(const Entry& entry) { InsertBase(entry); }
+  Entry* Begin() { BeginBase(); }
+  Entry* Next(Entry *entry) { NextBase(entry); }
+  Entry* Lookup(Entry::Key key) { return Lookup(key, entries_, mask_); }
 
-struct upb_inttable {
-  struct upb_table t;
-};
-
-/* Initialize and free a table, respectively.  Specify the initial size
- * with 'size' (the size will be increased as necessary).  Entry size
- * specifies how many bytes each entry in the table is. */
-void upb_inttable_init(struct upb_inttable *table,
-                       uint32_t size, uint16_t entry_size);
-void upb_inttable_free(struct upb_inttable *table);
-void upb_strtable_init(struct upb_strtable *table,
-                       uint32_t size, uint16_t entry_size);
-void upb_strtable_free(struct upb_strtable *table);
-
-INLINE uint32_t upb_table_size(struct upb_table *t) { return 1 << t->size_lg2; }
-INLINE uint32_t upb_inttable_size(struct upb_inttable *t) {
-  return upb_table_size(&t->t);
-}
-INLINE uint32_t upb_strtable_size(struct upb_strtable *t) {
-  return upb_table_size(&t->t);
-}
-
-INLINE uint32_t upb_table_count(struct upb_table *t) { return t->count; }
-INLINE uint32_t upb_inttable_count(struct upb_inttable *t) {
-  return upb_table_count(&t->t);
-}
-INLINE uint32_t upb_strtable_count(struct upb_strtable *t) {
-  return upb_table_count(&t->t);
-}
-
-/* Inserts the given key into the hashtable with the given value.  The key must
- * not already exist in the hash table.  The data will be copied from e into
- * the hashtable (the amount of data copied comes from entry_size when the
- * table was constructed).  Therefore the data at val may be freed once the
- * call returns. */
-void upb_inttable_insert(struct upb_inttable *t, struct upb_inttable_entry *e);
-void upb_strtable_insert(struct upb_strtable *t, struct upb_strtable_entry *e);
-
-INLINE uint32_t upb_inttable_bucket(struct upb_inttable *t, upb_inttable_key_t k) {
-  return (k & t->t.mask) + 1;  /* Identity hash for ints. */
-}
-
-/* Looks up key in this table.  Inlined because this is in the critical path
- * of parsing.  We have the caller specify the entry_size because fixing
- * this as a literal (instead of reading table->entry_size) gives the
- * compiler more ability to optimize. */
-INLINE void *upb_inttable_fast_lookup(struct upb_inttable *t,
-                                      uint32_t key, uint32_t entry_size) {
-  assert(key != 0);
-  uint32_t bucket = upb_inttable_bucket(t, key);
-  struct upb_inttable_entry *e;
-  do {
-    e = (struct upb_inttable_entry*)UPB_INDEX(t->t.entries, bucket-1, entry_size);
-    if(e->key == key) return e;
-  } while((bucket = e->next) != UPB_END_OF_CHAIN);
-  return NULL;  /* Not found. */
-}
-
-INLINE void *upb_inttable_lookup(struct upb_inttable *t, uint32_t key) {
-  return upb_inttable_fast_lookup(t, key, t->t.entry_size);
-}
-
-void *upb_strtable_lookup(struct upb_strtable *t, struct upb_string *key);
-
-/* Provides iteration over the table.  The order in which the entries are
- * returned is undefined.  Insertions invalidate iterators.  The _next
- * functions return NULL when the end has been reached. */
-void *upb_inttable_begin(struct upb_inttable *t);
-void *upb_inttable_next(struct upb_inttable *t, struct upb_inttable_entry *cur);
-
-void *upb_strtable_begin(struct upb_strtable *t);
-void *upb_strtable_next(struct upb_strtable *t, struct upb_strtable_entry *cur);
-
-#ifdef __cplusplus
-}  /* extern "C" */
+  class Entry : public Table::Entry {
+    typedef struct upb_string* Key;
+    Key key() { return (Key)key_; }
+    C value() { return (C)value_; }
+    uint32_t Hash(Key key) {
+      Key key = (Key)key_;
+      return MurmurHash2(key->ptr, key->len);
+    }
+    EqualsKey(Key key) { return upb_streql((Key)key_, key); }
+  };
+#ifndef NDEBUG
+  // This will cause the Lookup code to get emitted once per instantiation, and
+  // we only use this for an assertion check in the base class.
+  virtual Table::Entry* Lookup(const Table::Entry& e1) {
+    return Lookup((Entry)e1.key());
+  }
 #endif
+  DISALLOW_COPY_AND_ASSIGN(StrTable);
+};
+
+}  // namespace upb
 
 #endif  /* UPB_TABLE_H_ */

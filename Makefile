@@ -20,6 +20,9 @@
 # Other:
 # * -DUPB_UNALIGNED_READS_OK: makes code smaller, but not standard compliant
 
+tests/test_table:
+	g++ -Idescriptor -Isrc -o tests/test_table tests/test_table.cc src/upb_table.cc
+
 # Function to expand a wildcard pattern recursively.
 rwildcard=$(strip $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2)$(filter $(subst *,%,$2),$d)))
 
@@ -111,9 +114,9 @@ tests/t.test_vs_proto2.googlemessage2: \
 	  -DMESSAGE_CIDENT="benchmarks::SpeedMessage2" \
 	  -DMESSAGE_HFILE=\"../benchmarks/google_messages.pb.h\" \
 	  benchmarks/google_messages.pb.cc -lprotobuf -lpthread $(LIBUPB)
-tests/test_table: tests/test_table.cc
-	# Includes <hash_set> which is a deprecated header.
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Wno-deprecated -o $@ $< $(LIBUPB)
+#tests/test_table: tests/test_table.cc
+#	# Includes <hash_set> which is a deprecated header.
+#	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Wno-deprecated -o $@ $< $(LIBUPB)
 
 tests/tests: src/libupb.a
 
