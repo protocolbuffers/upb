@@ -21,7 +21,7 @@ static inline int memrchr(char *data, char c, size_t len)
   return off;
 }
 
-#undef DISALLOW_COPY_AND_ASSIGN(TypeName)
+#undef DISALLOW_COPY_AND_ASSIGN
 #define DISALLOW_COPY_AND_ASSIGN(TypeName)    \
   TypeName(const TypeName&);                  \
   void operator=(const TypeName&)
@@ -208,5 +208,37 @@ class scoped_array {
   scoped_array(const scoped_array&);
   void operator=(const scoped_array&);
 };
+
+/*
+ Lifted direct from:
+ Modern C++ Design: Generic Programming and Design Patterns Applied
+ Section 2.1
+ by Andrei Alexandrescu
+*/
+namespace ww
+{
+    template<bool> class compile_time_check
+    {
+    public:
+        compile_time_check(...) {}
+    };
+
+    template<> class compile_time_check<false>
+    {
+    };
+}
+
+    /*
+    StaticAssert will test its first argument at compile time and on failure
+    report the error message of the second argument, which must be a valid c++
+    classname. i.e. no spaces, punctuation or reserved keywords.
+    */
+#define StaticAssert(test, errormsg)                         \
+ do {                                                        \
+     struct ERROR_##errormsg {};                             \
+     typedef ww::compile_time_check< (test) != 0 > tmplimpl; \
+     tmplimpl aTemp = tmplimpl(ERROR_##errormsg());          \
+     sizeof(aTemp);                                          \
+ } while (0)
 
 }  // namespace upb

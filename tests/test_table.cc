@@ -13,16 +13,8 @@
 
 using std::string;
 using std::vector;
-
-struct inttable_entry {
-  struct upb_inttable_entry e;
-  uint32_t value;  /* key*2 */
-};
-
-struct strtable_entry {
-  struct upb_strtable_entry e;
-  int32_t value;  /* ASCII Value of first letter */
-};
+using upb::StrTable;
+using upb::IntTable;
 
 double get_usertime()
 {
@@ -42,17 +34,13 @@ struct upb_string *get_upbstring(const string& key) {
 void test_strtable(const vector<string>& keys, uint32_t num_to_insert)
 {
   /* Initialize structures. */
-  struct upb_strtable table;
   std::map<string, int32_t> m;
-  upb_strtable_init(&table, 0, sizeof(struct strtable_entry));
   std::set<string> all;
+  StrTable<int32_t>::Table table(num_to_insert);
   for(size_t i = 0; i < num_to_insert; i++) {
     const string& key = keys[i];
     all.insert(key);
-    struct strtable_entry e;
-    e.value = key[0];
-    e.e.key = get_upbstring(key);
-    upb_strtable_insert(&table, &e.e);
+    table.Insert(get_upbstring(key), key[0]);
     m[key] = key[0];
   }
 
@@ -60,59 +48,49 @@ void test_strtable(const vector<string>& keys, uint32_t num_to_insert)
   for(uint32_t i = 0; i < keys.size(); i++) {
     const string& key = keys[i];
     struct upb_string *str = get_upbstring(key);
-    struct strtable_entry *e =
-        (struct strtable_entry*)upb_strtable_lookup(&table, str);
+    StrTable<int32_t>::Entry* e = table.Lookup(str);
     if(m.find(key) != m.end()) { /* Assume map implementation is correct. */
       assert(e);
-      assert(upb_streql(e->e.key, get_upbstring(key)));
-      assert(e->value == key[0]);
+      assert(upb_streql(e->key(), get_upbstring(key)));
+      assert(e->value() == key[0]);
       assert(m[key] == key[0]);
     } else {
       assert(e == NULL);
     }
   }
 
-  struct strtable_entry *e;
-  for(e = (struct strtable_entry*)upb_strtable_begin(&table); e;
-      e = (struct strtable_entry*)upb_strtable_next(&table, &e->e)) {
-    string tmp(e->e.key->ptr, e->e.key->byte_len);
+  for(StrTable<int32_t>::Entry* e = table.Begin(); e; e = table.Next(e)) {
+    string tmp(e->key()->ptr, e->key()->byte_len);
     std::set<string>::iterator i = all.find(tmp);
     assert(i != all.end());
     all.erase(i);
   }
   assert(all.empty());
-
-  upb_strtable_free(&table);
 }
 
 /* num_entries must be a power of 2. */
 void test_inttable(int32_t *keys, size_t num_entries)
 {
   /* Initialize structures. */
-  struct upb_inttable table;
   uint32_t largest_key = 0;
   std::map<uint32_t, uint32_t> m;
   __gnu_cxx::hash_map<uint32_t, uint32_t> hm;
-  upb_inttable_init(&table, num_entries, sizeof(struct inttable_entry));
+  IntTable<uint32_t>::Table table(num_entries);
   for(size_t i = 0; i < num_entries; i++) {
     int32_t key = keys[i];
     largest_key = UPB_MAX((int32_t)largest_key, key);
-    struct inttable_entry e;
-    e.e.key = key;
-    e.value = key*2;
-    upb_inttable_insert(&table, &e.e);
+    table.Insert(key, key * 2);
     m[key] = key*2;
     hm[key] = key*2;
   }
 
   /* Test correctness. */
   for(uint32_t i = 1; i <= largest_key; i++) {
-    struct inttable_entry *e = (struct inttable_entry*)upb_inttable_lookup(
-        &table, i);
+    IntTable<uint32_t>::Entry* e = table.Lookup(i);
     if(m.find(i) != m.end()) { /* Assume map implementation is correct. */
       assert(e);
-      assert(e->e.key == i);
-      assert(e->value == i*2);
+      assert(e->key() == i);
+      assert(e->value() == i*2);
       assert(m[i] == i*2);
       assert(hm[i] == i*2);
     } else {
@@ -150,8 +128,7 @@ void test_inttable(int32_t *keys, size_t num_entries)
   before = get_usertime();
   for(unsigned int i = 0; i < iterations; i++) {
     int32_t key = keys[i & mask];
-    struct inttable_entry *e = (struct inttable_entry*)upb_inttable_lookup(
-        &table, key);
+    IntTable<uint32_t>::Entry* e = table.Lookup(key);
     x += (uintptr_t)e;
   }
   double total = get_usertime() - before;
@@ -163,8 +140,7 @@ void test_inttable(int32_t *keys, size_t num_entries)
   before = get_usertime();
   for(unsigned int i = 0; i < iterations; i++) {
     int32_t key = keys[rand() & mask];
-    struct inttable_entry *e = (struct inttable_entry*)upb_inttable_lookup(
-        &table, key);
+    IntTable<uint32_t>::Entry* e = table.Lookup(key);
     x += (uintptr_t)e;
   }
   total = get_usertime() - before;
@@ -214,7 +190,6 @@ void test_inttable(int32_t *keys, size_t num_entries)
   total = get_usertime() - before;
   without_overhead = total - rand_overhead;
   printf("%0.3f seconds (%0.3f - %0.3f overhead) for %d iterations.  %s/s\n\n", without_overhead, total, rand_overhead, iterations, eng(iterations/without_overhead, 3, false));
-  upb_inttable_free(&table);
 }
 
 int32_t *get_contiguous_keys(int32_t num)
@@ -247,7 +222,7 @@ int main()
   keys.push_back("google.protobuf.UninterpretedOption");
   keys.push_back("google.protobuf.UninterpretedOption.NamePart");
 
-  test_strtable(keys, 18);
+  //test_strtable(keys, 18);
 
   int32_t *keys1 = get_contiguous_keys(8);
   printf("Contiguous 1-8 ====\n");

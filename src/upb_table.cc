@@ -7,90 +7,79 @@
 #include "upb_table.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 namespace upb {
 
-static const upb_inttable_key_t EMPTYENT = 0;
 static const double MAX_LOAD = 0.85;
 
-Table::Table(uint32_t size, uint16_t entry_size)
+TableBase::TableBase(uint32_t expected_num_entries)
     : count_(0),
       size_lg2_(ceil(log2(expected_num_entries / MAX_LOAD))),
-      mask_(Size() - 1),
-      buckets_(new Entry[Size()]) {}
+      mask_(size() - 1) {}
 
-Table::~Table() {}
+TableBase::~TableBase() {}
 
-int32_t Table::GetEmptyBucket() {
+TableBase::HashValue TableBase::GetEmptyBucket() const {
   // TODO: does it matter that this is biased towards the front of the table?
   for (uint32_t i = 0; i < size(); i++)
-    if (entries_[i].metadata.is_empty) return i;
+    if (GetEntryForBucket(i)->is_empty) return i;
   assert(false);
   return 0;
 }
 
-void Table::DoInsert(const Entry& e) {
-  assert(Lookup(e) == NULL);
+void TableBase::DoInsert(const Entry& e) {
+  assert(VirtualLookup(e) == NULL);
   count_++;
-  uint32_t bucket = GetBucket(e);
+  HashValue bucket = GetBucket(e);
   Entry* table_e = GetEntryForBucket(bucket);
-  if(!table_e->metadata.is_empty) {  // Collision.
-    uint32_t collider_bucket = GetBucket(table_e);
+  if(!table_e->is_empty) {  // Collision.
+    HashValue collider_bucket = GetBucket(*table_e);
     if(bucket == collider_bucket) {
       // Existing element is in its main posisiton.  Find an empty slot to
       // place our new element and append it to this key's chain.
-      uint32_t empty_bucket = GetEmptyBucket();
-      while (!table_e->metadata.end_of_chain)
-        table_e = GetEntryForBucket(table_e->metadata.next_bucket);
-      table_e->metadata.next_bucket = empty_bucket;
-      table_e->metadata.end_of_chain = false;
+      HashValue empty_bucket = GetEmptyBucket();
+      while (!table_e->end_of_chain)
+        table_e = GetEntryForBucket(table_e->next_bucket);
+      table_e->next_bucket = empty_bucket;
+      table_e->end_of_chain = false;
       table_e = GetEntryForBucket(empty_bucket);
     } else {
       // Existing element is not in its main position.  Move it to an empty
       // slot and put our element in its main position.
-      uint32_t empty_bucket = GetEmptyBucket(t);
-      entries_[empty_bucket] = *table_e;  // copies next.
-      Entry* collider_chain_e = entries_[collider_bucket];
+      HashValue empty_bucket = GetEmptyBucket();
+      CopyEntry(*table_e, GetEntryForBucket(empty_bucket));  // copies next.
+      Entry* collider_chain_e = GetEntryForBucket(collider_bucket);
       while(1) {
-        assert(!collider_chain_e->metadata.is_empty);
-        assert(!collider_chain_e->metadata.end_of_chain);
-        if(collider_chain_e->metadata.next_bucket == collider_bucket) {
+        assert(!collider_chain_e->is_empty);
+        assert(!collider_chain_e->end_of_chain);
+        if(collider_chain_e->next_bucket == bucket) {
           collider_chain_e->next_bucket = empty_bucket;
           break;
         }
-        collider_chain_e = GetEntryForBucket(collider_chain_e->next);
+        collider_chain_e = GetEntryForBucket(collider_chain_e->next_bucket);
       }
       // table_e remains set to our mainpos.
     }
   }
-  *table_e = e;
+  CopyEntry(e, table_e);
   table_e->end_of_chain = true;
-  assert(Lookup(e) == table_e);
+  assert(VirtualLookup(e) == table_e);
 }
 
-void Table::InsertBase(const Entry& e)
-{
+void TableBase::InsertBase(const Entry& e) {
   if((double)(count_ + 1) / size() > MAX_LOAD) {
     // Need to resize.  New table of double the size, add old elements to it.
-    scoped_ptr<Table> new_table(NewOfSameType(count_ * 2));
-    for (Entry *e = Begin(); e; e = Next(e))
-      new_table->InsertBase(*e);
+    scoped_ptr<TableBase> new_table(NewOfSameType(count_ * 2));
+    for (unsigned int i = 0; i < size(); i++) {
+      Entry *e = GetEntryForBucket(i);
+      if (!e->is_empty) new_table->InsertBase(*e);
+    }
     Swap(new_table.get());
   }
   DoInsert(e);
-}
-
-Table::Entry* Table::Begin() {
-  return Next(buckets_ - 1);
-}
-
-Table::Entry* Table::Next(Table::Entry* entry) {
-  do {
-    if (++entry == &buckets_[size()]) return NULL;
-  } while (entry->metadata.is_empty());
-  return entry;
 }
 
 #ifdef UPB_UNALIGNED_READS_OK
@@ -104,8 +93,7 @@ Table::Entry* Table::Next(Table::Entry* entry) {
 //   1. It will not work incrementally.
 //   2. It will not produce the same results on little-endian and big-endian
 //      machines.
-static uint32_t MurmurHash2(const void *key, size_t len, uint32_t seed)
-{
+uint32_t MurmurHash2(const void *key, size_t len, uint32_t seed) {
   // 'm' and 'r' are mixing constants generated offline.
   // They're not really 'magic', they just happen to work well.
   const uint32_t m = 0x5bd1e995;
@@ -156,8 +144,7 @@ static uint32_t MurmurHash2(const void *key, size_t len, uint32_t seed)
 
 #define MIX(h,k,m) { k *= m; k ^= k >> r; k *= m; h *= m; h ^= k; }
 
-static uint32_t MurmurHash2(const void * key, size_t len, uint32_t seed)
-{
+uint32_t MurmurHash2(const void * key, size_t len, uint32_t seed) {
   const uint32_t m = 0x5bd1e995;
   const int32_t r = 24;
   const uint8_t * data = (const uint8_t *)key;
@@ -253,3 +240,5 @@ static uint32_t MurmurHash2(const void * key, size_t len, uint32_t seed)
 #undef MIX
 
 #endif // UPB_UNALIGNED_READS_OK
+
+}  // namespace upb
