@@ -131,8 +131,10 @@ class MsgDef : public Def {
   // The num->field and name->field maps in upb_msgdef allow fast lookup of fields
   // by number or name.  These lookups are in the critical path of parsing and
   // field lookup, so they must be as fast as possible.
-  IntTable<FieldDef*> fields_by_num_;
-  StrTable<FieldDef*> fields_by_name_;
+  typedef IntTable<FieldDef*> FieldsByNum;
+  typedef StrTable<FieldDef*> FieldsByName;
+  FieldsByNum::Table fields_by_num_;
+  FieldsByName::Table fields_by_name_;
   DISALLOW_COPY_AND_ASSIGN(MsgDef);
 };
 

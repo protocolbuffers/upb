@@ -69,12 +69,9 @@ MsgDef::MsgDef(FieldDef* fields, int num_fields, struct upb_string *fqname)
       set_flags_bytes_(div_round_up(num_fields, 8)),
       num_required_fields_(0),  // Incremented in the loop.
       size_(set_flags_bytes_),  // Incremented in the loop.
-      fields_(fields)
-{
-  upb_inttable_init(&m->fields_by_num, num_fields,
-                    sizeof(struct upb_fieldsbynum_entry));
-  upb_strtable_init(&m->fields_by_name, num_fields,
-                    sizeof(struct upb_fieldsbyname_entry));
+      fields_(fields),
+      fields_by_num_(num_fields),
+      fields_by_name_(num_fields) {
   size_t max_align = 0;
   for(int i = 0; i < num_fields; i++) {
     FieldDef* f = &fields_[i];
@@ -96,72 +93,48 @@ MsgDef::MsgDef(FieldDef* fields, int num_fields, struct upb_string *fqname)
     // Insert into the tables.  Note that f->ref will be uninitialized, even in
     // the tables' copies of *f, which is why we must update them separately
     // in upb_msg_setref() below.
-    struct upb_fieldsbynum_entry nument = {.e = {.key = f->number}, .f = *f};
-    struct upb_fieldsbyname_entry strent = {.e = {.key = upb_strdup(f->name)}, .f = *f};
-    upb_inttable_insert(&m->fields_by_num, &nument.e);
-    upb_strtable_insert(&m->fields_by_name, &strent.e);
+    fields_by_num_.Insert(f->number, f);
+    fields_by_name_.Insert(f->name, f);
   }
 
   if(max_align > 0) size_ = ALIGN_UP(size_, max_align);
 }
 
 virtual MsgDef::~MsgDef() {
-  upb_inttable_free(&m->fields_by_num);
-  upb_strtable_free(&m->fields_by_name);
   // TODO
   for (unsigned int i = 0; i < m->num_fields; i++)
     upb_fielddef_uninit(&m->fields[i]);
-  free(m->fields);
 }
 
 void MsgDef::Resolve(FieldDef* f, Def* def) {
-  struct upb_fieldsbynum_entry *int_e = upb_inttable_fast_lookup(
-      &fields_by_num_, f->number, sizeof(struct upb_fieldsbynum_entry));
-  struct upb_fieldsbyname_entry *str_e =
-      upb_strtable_lookup(fields_by_name_, f->name);
-  assert(int_e && str_e);
-  f->def = def;
-  int_e->f.def = def;
-  str_e->f.def = def;
-  upb_def_ref(def);
+  f->SetDef(def);
 }
 
 /* EnumDef ********************************************************************/
 
 EnumDef::EnumDef(struct google_protobuf_EnumDescriptorProto *ed,
                  struct upb_string *fqname)
-    : Def(fqname) {
-  int num_values = ed->set_flags.has.value ? ed->value->len : 0;
-  upb_strtable_init(&nametoint_, num_values,
-                    sizeof(struct upb_enumdef_ntoi_entry));
-  upb_inttable_init(&inttoname_, num_values,
-                    sizeof(struct upb_enumdef_iton_entry));
-
+    : Def(fqname),
+      num_values_(ed->set_flags.has.value ? ed->value->len : 0),
+      nametoint_(num_values_),
+      inttoname_(num_values) {
   for(int i = 0; i < num_values; i++) {
     google_protobuf_EnumValueDescriptorProto *value = ed->value->elements[i];
-    struct upb_enumdef_ntoi_entry ntoi_entry = {.e = {.key = upb_strdup(value->name)},
-                                                .value = value->number};
-    struct upb_enumdef_iton_entry iton_entry = {.e = {.key = value->number},
-                                                .string = value->name};
-    upb_strtable_insert(&nametoint_, &ntoi_entry.e);
-    upb_inttable_insert(&inttoname_, &iton_entry.e);
+    struct upb_string* str = upb_strdup(value->name);
+    nametoint_.Insert(str, value->number);
+    inttoname_.Insert(value->number, str);
   }
   return e;
 }
 
-virtual EnumDef::~EnumDef() {
-  upb_strtable_free(&nametoint_);
-  upb_inttable_free(&inttoname_);
-}
+virtual EnumDef::~EnumDef() {}
 
 /* SymbolTable::Table *********************************************************/
 
 // The actual symbol table.  We keep this separate because SymbolTable keeps a
 // private internal symbol table in addition to its public one.
 class SymbolTable::Table {
-  Table() {
-    upb_strtable_init(&c->psymtab, 16, sizeof(struct upb_symtab_entry));
-  }
+  Table() : symtab_(16) {}
 
   ~Table() {
     struct upb_symtab_entry *e = upb_strtable_begin(t);
