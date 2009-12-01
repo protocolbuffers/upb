@@ -4,8 +4,7 @@
  * Copyright (c) 2009 Joshua Haberman.  See LICENSE for details.
  *
  * This file defines two hash tables (keyed by integer and string) that are
- * templated on the type of value being stored.  This value must be no bigger
- * than a pointer.  The tables are optimized for:
+ * templated on the type of value being stored.  The tables are optimized for:
  *  1. fast lookup
  *  2. small code size (template instantiations do not generate extra code).
  *
@@ -34,8 +33,9 @@ void SwapValues(C a, C b) {
   b = tmp;
 }
 
-// The base class.  Cannot be used directly, but implemented as a base so we
-// can share code for insertion instead of duplicating between the two table types.
+// The base class.  Cannot be used directly, but implemented as a base so that
+// bulky-but-non-time-critical code (mainly insert) can be emitted only once,
+// instead of being re-instantiated for every derived class.
 class TableBase {
  public:
   virtual ~TableBase();
@@ -55,10 +55,7 @@ class TableBase {
     // Copy and assign explicitly allowed.
   };
 
-  // User-intended functions that derived classes wrapped type-safely.
   void InsertBase(const Entry& entry);
-  Entry* BeginBase() const;
-  Entry* NextBase(Entry *entry) const;
   uint32_t GetBucket(const Entry& entry) const { return Hash(entry) & mask_; }
 
   // Having access to these as virtual methods lets us write a generic Insert
@@ -108,10 +105,10 @@ E* LookupFunc(typename E::Key key, E* buckets, uint32_t mask) {
 // the storage for each entry, as well as supplying implementations of hashing,
 // and comparing.
 //
-// Insertions and iteration are handled by the base class.  We implement virtual
-// functions that are necessary for this to happen.  It is safe to cast entries
-// to our specific entry type, because the base class only obtains entries from
-// us (which are always of the right type).
+// Insertions are handled by the base class.  We implement virtual functions
+// that are necessary for this to happen.  It is safe to cast entries to our
+// specific entry type, because the base class only obtains entries from us
+// (which are always of the right type).
 template<class E>
 class Table : public TableBase {
  public:
@@ -121,9 +118,22 @@ class Table : public TableBase {
   }
   virtual ~Table() {}
 
+  // Inserts the given key and value.  Duplicate insertions are not allowed;
+  // to modify an existing value, look it up and modify the returned entry.
   void Insert(typename E::Key key, typename E::Val value) {
     InsertBase(E(key, value));
   }
+
+  // Lookup a value by key.  Returns the entry if found, otherwise NULL.  The
+  // entry's value may be modified as desired.
+  E* Lookup(typename E::Key key) const {
+    return LookupFunc(key, buckets_.get(), mask());
+  }
+
+  // Iteration over the table, as in:
+  //   for (Table<Foo>::Entry* e = table.Begin(); e; e = table.Next(e)) {
+  //     // ...
+  //   }
   virtual E* Begin() const { return Next(buckets_.get() - 1); }
   virtual E* Next(E *entry) const {
     do {
@@ -131,10 +141,6 @@ class Table : public TableBase {
     } while (entry->is_empty);
     return entry;
   }
-  E* Lookup(typename E::Key key) const {
-    return LookupFunc(key, buckets_.get(), mask());
-  }
-
 
  private:
   scoped_array<E> buckets_;

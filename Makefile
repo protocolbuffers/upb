@@ -21,7 +21,7 @@
 # * -DUPB_UNALIGNED_READS_OK: makes code smaller, but not standard compliant
 
 tests/test_table:
-	g++ -Idescriptor -Isrc -o tests/test_table tests/test_table.cc src/upb_table.cc
+	g++ -DNDEBUG -O3 -DUPB_UNALIGNED_READS_OK -Wall -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -Idescriptor -Isrc -o tests/test_table tests/test_table.cc src/upb_table.cc
 
 # Function to expand a wildcard pattern recursively.
 rwildcard=$(strip $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2)$(filter $(subst *,%,$2),$d)))
