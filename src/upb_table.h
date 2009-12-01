@@ -26,12 +26,6 @@
 namespace upb {
 
 extern uint32_t MurmurHash2(const void *key, size_t len, uint32_t seed);
-template<class C>
-void SwapValues(C a, C b) {
-  C tmp = a;
-  a = b;
-  b = tmp;
-}
 
 // The base class.  Cannot be used directly, but implemented as a base so that
 // bulky-but-non-time-critical code (mainly insert) can be emitted only once,
@@ -44,7 +38,7 @@ class TableBase {
   uint32_t size() const { return 1 << size_lg2_; }
 
  protected:
-  typedef uint32_t HashValue;
+  typedef uint32_t HashVal;
   TableBase(uint32_t expected_num_entries);
 
   struct Entry {
@@ -56,50 +50,32 @@ class TableBase {
   };
 
   void InsertBase(const Entry& entry);
+  HashVal mask() const { return mask_; }
+
+ private:
+  void DoInsert(const Entry& e);
+  HashVal GetEmptyBucket() const;
+  void Swap(TableBase* other);
   uint32_t GetBucket(const Entry& entry) const { return Hash(entry) & mask_; }
 
   // Having access to these as virtual methods lets us write a generic Insert
   // routine.
-  virtual HashValue Hash(const Entry& entry) const = 0;
+  virtual HashVal Hash(const Entry& entry) const = 0;
   virtual Entry* GetEntryForBucket(uint32_t bucket) const = 0;
   virtual void CopyEntry(const Entry& src, Entry* dst) const = 0;
   virtual void SwapDerived(TableBase* other) = 0;
   virtual TableBase* NewOfSameType(int num) const = 0;
 
+#ifndef NDEBUG
   // Overridden in derived classes; for assertion-checking only.
   virtual Entry* VirtualLookup(const Entry& e1) const { return NULL; }
+#endif
 
-  HashValue mask() const { return mask_; }
-  HashValue GetEmptyBucket() const;
-  void Swap(TableBase* other) {
-    SwapValues(count_, other->count_);
-    SwapValues(size_lg2_, other->size_lg2_);
-    SwapValues(mask_, other->mask_);
-    SwapDerived(other);
-  }
-
- private:
-  void DoInsert(const Entry& e);
   uint32_t count_;       /* How many elements are currently in the table? */
   const uint8_t size_lg2_;     /* The table is 2^size_lg2 in size. */
   const uint32_t mask_;
   DISALLOW_COPY_AND_ASSIGN(TableBase);
 };
-
-// A generic hash lookup function that is templated on the hash function and
-// equality comparison.  We expect this to be inlined, and it must be very fast.
-template<class E>
-E* LookupFunc(typename E::Key key, E* buckets, uint32_t mask) {
-  uint32_t bucket = E::Hash(key) & mask;
-  while (1) {
-    E* e = &buckets[bucket];
-    // For an empty entry the key will be kInvalidKey, so this will always
-    // return false.
-    if(e->EqualsKey(key)) return e;
-    if(e->end_of_chain) return NULL;
-    bucket = e->next_bucket;
-  }
-}
 
 // A Table that is templated on the entry type.  The Entry object is used as
 // the storage for each entry, as well as supplying implementations of hashing,
@@ -127,7 +103,15 @@ class Table : public TableBase {
   // Lookup a value by key.  Returns the entry if found, otherwise NULL.  The
   // entry's value may be modified as desired.
   E* Lookup(typename E::Key key) const {
-    return LookupFunc(key, buckets_.get(), mask());
+    uint32_t bucket = E::Hash(key) & mask();
+    while (1) {
+      E* e = &buckets_[bucket];
+      // For an empty entry the key will be kInvalidKey, so this will always
+      // return false.
+      if(e->EqualsKey(key)) return e;
+      if(e->end_of_chain) return NULL;
+      bucket = e->next_bucket;
+    }
   }
 
   // Iteration over the table, as in:
@@ -145,7 +129,7 @@ class Table : public TableBase {
  private:
   scoped_array<E> buckets_;
 
-  virtual TableBase::HashValue Hash(const TableBase::Entry& entry) const {
+  virtual TableBase::HashVal Hash(const TableBase::Entry& entry) const {
     return E::Hash(static_cast<const E&>(entry).key());
   }
   virtual Entry* GetEntryForBucket(uint32_t bucket) const {
@@ -197,7 +181,9 @@ class IntTableEntry : public TableEntry<uint32_t, V> {
   typedef V Val;
   IntTableEntry() : TableEntry<Key, Val>() {}
   IntTableEntry(Key key, Val value) : TableEntry<Key, Val>(key, value) {}
-  static TableBase::HashValue Hash(Key key) { return key; }  // Identity.
+
+  // Hash function and equality operation.
+  static TableBase::HashVal Hash(Key key) { return key; }  // Identity.
   bool EqualsKey(Key k) const { return k == TableEntry<Key, Val>::key(); }
 };
 
@@ -208,9 +194,10 @@ class StrTableEntry : public TableEntry<upb_string*, V> {
   typedef V Val;
   StrTableEntry() : TableEntry<Key, Val>() {}
   StrTableEntry(Key key, Val value) : TableEntry<Key, Val>(key, value) {}
-  static TableBase::HashValue Hash(Key key) {
-    Key str_key = (Key)key;
-    return MurmurHash2(str_key->ptr, str_key->byte_len, 0);
+
+  // Hash function and equality operation.
+  static TableBase::HashVal Hash(Key k) {
+    return MurmurHash2(k->ptr, k->byte_len, 0);
   }
   bool EqualsKey(Key key) { return upb_streql(key, TableEntry<Key, V>::key()); }
 };

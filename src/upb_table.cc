@@ -22,7 +22,7 @@ TableBase::TableBase(uint32_t expected_num_entries)
 
 TableBase::~TableBase() {}
 
-TableBase::HashValue TableBase::GetEmptyBucket() const {
+TableBase::HashVal TableBase::GetEmptyBucket() const {
   // TODO: does it matter that this is biased towards the front of the table?
   for (uint32_t i = 0; i < size(); i++)
     if (GetEntryForBucket(i)->is_empty) return i;
@@ -33,14 +33,14 @@ TableBase::HashValue TableBase::GetEmptyBucket() const {
 void TableBase::DoInsert(const Entry& e) {
   assert(VirtualLookup(e) == NULL);
   count_++;
-  HashValue bucket = GetBucket(e);
+  HashVal bucket = GetBucket(e);
   Entry* table_e = GetEntryForBucket(bucket);
   if(!table_e->is_empty) {  // Collision.
-    HashValue collider_bucket = GetBucket(*table_e);
+    HashVal collider_bucket = GetBucket(*table_e);
     if(bucket == collider_bucket) {
       // Existing element is in its main posisiton.  Find an empty slot to
       // place our new element and append it to this key's chain.
-      HashValue empty_bucket = GetEmptyBucket();
+      HashVal empty_bucket = GetEmptyBucket();
       while (!table_e->end_of_chain)
         table_e = GetEntryForBucket(table_e->next_bucket);
       table_e->next_bucket = empty_bucket;
@@ -49,7 +49,7 @@ void TableBase::DoInsert(const Entry& e) {
     } else {
       // Existing element is not in its main position.  Move it to an empty
       // slot and put our element in its main position.
-      HashValue empty_bucket = GetEmptyBucket();
+      HashVal empty_bucket = GetEmptyBucket();
       CopyEntry(*table_e, GetEntryForBucket(empty_bucket));  // copies next.
       Entry* collider_chain_e = GetEntryForBucket(collider_bucket);
       while(1) {
@@ -80,6 +80,20 @@ void TableBase::InsertBase(const Entry& e) {
     Swap(new_table.get());
   }
   DoInsert(e);
+}
+
+template<class C>
+void SwapValues(C a, C b) {
+  C tmp = a;
+  a = b;
+  b = tmp;
+}
+
+void TableBase::Swap(TableBase* other) {
+  SwapValues(count_, other->count_);
+  SwapValues(size_lg2_, other->size_lg2_);
+  SwapValues(mask_, other->mask_);
+  SwapDerived(other);
 }
 
 #ifdef UPB_UNALIGNED_READS_OK
