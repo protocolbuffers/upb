@@ -47,7 +47,6 @@ class Def : public RefCounted {
     kEnum,
     kUnresolved,
   };
-  Def(struct upb_string *fqname) : fqname_(fqname) {}
 
   upb_string* fqname() { return fqname_.get(); }
   Type type() { return type_; }
@@ -56,6 +55,7 @@ class Def : public RefCounted {
   UnresolvedDef* DowncastUnresolvedDef();
 
  protected:
+  Def(struct upb_string *fqname) : fqname_(fqname) {}
   virtual ~Def() {}  // Refcounted.
 
  private:
@@ -69,12 +69,12 @@ class Def : public RefCounted {
 // either a field of a MsgDef or contained inside a ExtensionDef.
 class FieldDef {
  public:
-  explicit FieldDef(struct google_protobuf_FieldDescriptorProto *fd);
-
   upb_field_type_t type() const { return type_; }
   upb_label_t label() const { return label_; }
   upb_field_number_t number() const { return number_; }
   upb_string* name() { return name_.get(); }
+  size_t byte_offset() { return byte_offset_; }
+  int set_bit() { return field_index_; }
 
   bool IsSubMsg() const {
     return type_ == UPB_TYPE(GROUP) || type_ == UPB_TYPE(MESSAGE);
@@ -109,6 +109,7 @@ class FieldDef {
  private:
   friend class MsgDef;
   friend class SymbolTable;
+  explicit FieldDef(struct google_protobuf_FieldDescriptorProto *fd);
   virtual ~FieldDef() {}  // Refcounted.
 
   void ResetSubDef(Def* subdef) { subdef_.reset(subdef); }
@@ -135,7 +136,11 @@ class FieldDef {
 
 // Structure that describes a single .proto message type.
 class MsgDef : public Def {
-  MsgDef(FieldDef** fields, int num_fields, upb_string *fqname);
+ public:
+  // TODO: These should be private with Message friended.
+  size_t size() { return size_; }
+  int num_required_fields() { return num_required_fields_; }
+  int set_flags_bytes() { return set_flags_bytes_; }
 
   // Looks up a field by name or number.  While these are written to be as fast
   // as possible, it will still be faster to cache the results of this lookup if
@@ -157,12 +162,8 @@ class MsgDef : public Def {
 
  private:
   friend class SymbolTable;
+  MsgDef(FieldDef** fields, int num_fields, upb_string *fqname);
   virtual ~MsgDef();  // Refcounted.
-
-  // The SymbolTable uses this function to resolve the "ref" field in the given
-  // FieldDef.  Since messages can refer to each other in mutually-recursive
-  // ways, this step must be separated from initialization.
-  void Resolve(FieldDef* f, Def* def);
 
   struct upb_msg *default_msg_;   // Message with all default values set.
   uint32_t num_fields_;
@@ -176,25 +177,26 @@ class MsgDef : public Def {
   // field lookup, so they must be as fast as possible.
   typedef IntTable<FieldDef*> FieldsByNum;
   typedef StrTable<FieldDef*> FieldsByName;
-  FieldsByNum::Table fields_by_num_;
-  FieldsByName::Table fields_by_name_;
+  FieldsByNum::Type fields_by_num_;
+  FieldsByName::Type fields_by_name_;
   DISALLOW_COPY_AND_ASSIGN(MsgDef);
 };
 
 
 class EnumDef : public Def {
  public:
-  EnumDef(struct google_protobuf_EnumDescriptorProto *ed,
-          struct upb_string *fqname);
 
  private:
+  friend class SymbolTable;
+  EnumDef(struct google_protobuf_EnumDescriptorProto *ed,
+          struct upb_string *fqname);
   virtual ~EnumDef();  // Refcounted.
 
   int num_values_;
   typedef StrTable<uint32_t> NameToInt;
   typedef IntTable<struct upb_string*> IntToName;
-  NameToInt::Table nametoint_;
-  IntToName::Table inttoname_;
+  NameToInt::Type nametoint_;
+  IntToName::Type inttoname_;
   DISALLOW_COPY_AND_ASSIGN(EnumDef);
 };
 
@@ -204,11 +206,12 @@ class EnumDef : public Def {
 // definition is replaced with a real definition.
 class UnresolvedDef : public Def {
  public:
-  explicit UnresolvedDef(struct upb_string *name);
 
   upb_string* name() { return name_.get(); }
 
  private:
+  friend class FieldDef;
+  explicit UnresolvedDef(struct upb_string *name);
   StringRef name_;  // Not fully-qualified.
   DISALLOW_COPY_AND_ASSIGN(UnresolvedDef);
 };

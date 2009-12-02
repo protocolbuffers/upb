@@ -25,8 +25,8 @@ rwildcard=$(strip $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2)$(filter $
 
 .PHONY: all clean test benchmarks benchmark descriptorgen tests
 CC=gcc
-CXX=g++
-CFLAGS=-std=c99
+CXX=/usr/crosstool/v12/gcc-4.3.1-glibc-2.3.6-grte/x86_64-unknown-linux-gnu/bin/x86_64-unknown-linux-gnu-g++
+CFLAGS=
 INCLUDE=-Idescriptor -Isrc -Itests -I.
 CPPFLAGS=-Wall -Wextra -g $(INCLUDE) $(strip $(shell test -f perf-cppflags && cat perf-cppflags))
 LDLIBS=-lpthread
@@ -54,7 +54,7 @@ SRC=src/upb_def.cc src/upb_table.cc #src/upb_context.c src/upb_string.c src/upb_
 STATICOBJ=$(patsubst %.cc,%.o,$(SRC))
 SHAREDOBJ=$(patsubst %.cc,%.lo,$(SRC))
 # building shared objects is like building static ones, except -fPIC is added.
-%.lo : %.c ; $(CC) -fPIC $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+%.lo : %.cc ; $(CC) -fPIC $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 $(LIBUPB): $(STATICOBJ)
 	ar rcs $(LIBUPB) $(STATICOBJ)
 $(LIBUPB_PIC): $(SHAREDOBJ)

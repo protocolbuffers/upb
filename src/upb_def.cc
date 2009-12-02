@@ -303,7 +303,7 @@ class SymbolTable::Table {
     return joined;
   }
 
-  TableType::Table table_;
+  TableType::Type table_;
 };
 
 /* SymbolTable ****************************************************************/
@@ -332,12 +332,12 @@ SymbolTable::~SymbolTable() {}
 
 Def* SymbolTable::LookupAndRef(struct upb_string *sym) {
   ReaderMutexLock l(&lock_);
-  RefAndReturnDef(symtab_->Lookup(sym));
+  return RefAndReturnDef(symtab_->Lookup(sym));
 }
 
 Def *SymbolTable::ResolveAndRef(struct upb_string *base, struct upb_string *symbol) {
   ReaderMutexLock l(&lock_);
-  RefAndReturnDef(symtab_->Resolve(base, symbol));
+  return RefAndReturnDef(symtab_->Resolve(base, symbol));
 }
 
 Def *SymbolTable::RefAndReturnDef(TableType::Entry* e) {
@@ -368,7 +368,7 @@ void SymbolTable::AddFileDescriptorSet(google_protobuf_FileDescriptorSet *fds,
 
 void SymbolTable::ParseFileDescriptorSet(struct upb_string *fds_str,
                                          struct upb_status *status) {
-  struct upb_msg *fds = upb_msg_new(fds_msgdef_);
+  struct upb_msg *fds = upb_msg_new(fds_msgdef_.get());
   upb_msg_parsestr(fds, fds_str->ptr, fds_str->byte_len, status);
   if(!upb_ok(status)) return;
   AddFileDescriptorSet((google_protobuf_FileDescriptorSet*)fds, status);

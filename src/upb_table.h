@@ -116,7 +116,7 @@ class Table : public TableBase {
 
   typename E::Val LookupVal(typename E::Key key) const {
     E* e = Lookup(key);
-    return e ? e->value() : E::Val();
+    return e ? e->value() : typename E::Val();
   }
 
   // Iteration over the table, as in:
@@ -213,13 +213,13 @@ class StrTableEntry : public TableEntry<upb_string*, V> {
 template<class Val>
 struct IntTable {
   typedef IntTableEntry<Val> Entry;
-  typedef Table<Entry> Table;
+  typedef Table<Entry> Type;
 };
 
 template<class Val>
 struct StrTable {
   typedef StrTableEntry<Val> Entry;
-  typedef Table<Entry> Table;
+  typedef Table<Entry> Type;
 };
 
 }  // namespace upb

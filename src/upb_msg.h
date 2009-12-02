@@ -44,22 +44,21 @@
 #include "upb_def.h"
 #include "upb_parse.h"
 #include "upb_table.h"
+#include "upb_struct.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace upb {
 
 /* Message structure. *********************************************************/
 
 /* Constructs a new msg corresponding to the given msgdef, and having one
  * counted reference. */
-INLINE struct upb_msg *upb_msg_new(struct upb_msgdef *md) {
-  size_t size = md->size + offsetof(struct upb_msg, data);
+INLINE struct upb_msg *upb_msg_new(MsgDef *md) {
+  size_t size = md->size() + offsetof(struct upb_msg, data);
   struct upb_msg *msg = (struct upb_msg*)malloc(size);
   memset(msg, 0, size);
   upb_mmhead_init(&msg->mmhead);
   msg->def = md;
-  upb_msgdef_ref(md);
+  md->Ref();
   return msg;
 }
 
@@ -71,9 +70,9 @@ INLINE struct upb_msg *upb_msg_new(struct upb_msgdef *md) {
 
 /* Returns a pointer to a specific field in a message. */
 INLINE union upb_value_ptr upb_msg_getptr(struct upb_msg *msg,
-                                          struct upb_fielddef *f) {
+                                          FieldDef *f) {
   union upb_value_ptr p;
-  p._void = &msg->data[f->byte_offset];
+  p._void = &msg->data[f->byte_offset()];
   return p;
 }
 
@@ -96,27 +95,27 @@ INLINE uint8_t upb_isset_mask(uint32_t field_index) {
 }
 
 /* Returns true if the given field is set, false otherwise. */
-INLINE void upb_msg_set(struct upb_msg *msg, struct upb_fielddef *f)
+INLINE void upb_msg_set(struct upb_msg *msg, FieldDef *f)
 {
-  msg->data[upb_isset_offset(f->field_index)] |= upb_isset_mask(f->field_index);
+  msg->data[upb_isset_offset(f->set_bit())] |= upb_isset_mask(f->set_bit());
 }
 
 /* Clears the set bit for this field in the given message. */
-INLINE void upb_msg_unset(struct upb_msg *msg, struct upb_fielddef *f)
+INLINE void upb_msg_unset(struct upb_msg *msg, FieldDef *f)
 {
-  msg->data[upb_isset_offset(f->field_index)] &= ~upb_isset_mask(f->field_index);
+  msg->data[upb_isset_offset(f->set_bit())] &= ~upb_isset_mask(f->set_bit());
 }
 
 /* Tests whether the given field is set. */
-INLINE bool upb_msg_isset(struct upb_msg *msg, struct upb_fielddef *f)
+INLINE bool upb_msg_isset(struct upb_msg *msg, FieldDef *f)
 {
-  return msg->data[upb_isset_offset(f->field_index)] & upb_isset_mask(f->field_index);
+  return msg->data[upb_isset_offset(f->set_bit())] & upb_isset_mask(f->set_bit());
 }
 
 /* Returns true if *all* required fields are set, false otherwise. */
 INLINE bool upb_msg_all_required_fields_set(struct upb_msg *msg)
 {
-  int num_fields = msg->def->num_required_fields;
+  int num_fields = msg->def->num_required_fields();
   int i = 0;
   while(num_fields > 8) {
     if(msg->data[i++] != 0xFF) return false;
@@ -129,7 +128,7 @@ INLINE bool upb_msg_all_required_fields_set(struct upb_msg *msg)
 /* Clears the set bit for all fields. */
 INLINE void upb_msg_clear(struct upb_msg *msg)
 {
-  memset(msg->data, 0, msg->def->set_flags_bytes);
+  memset(msg->data, 0, msg->def->set_flags_bytes());
 }
 
 /* Parsing ********************************************************************/
@@ -138,7 +137,7 @@ INLINE void upb_msg_clear(struct upb_msg *msg)
 void upb_msg_parsestr(struct upb_msg *msg, void *buf, size_t len,
                       struct upb_status *status);
 
-struct upb_msgparser *upb_msgparser_new(struct upb_msgdef *def);
+struct upb_msgparser *upb_msgparser_new(MsgDef *def);
 void upb_msgparser_free(struct upb_msgparser *mp);
 
 void upb_msgparser_reset(struct upb_msgparser *mp, struct upb_msg *m,
@@ -197,8 +196,6 @@ void upb_msg_serialize_all(struct upb_msg *msg, struct upb_msgsizes *sizes,
 bool upb_msg_eql(struct upb_msg *msg1, struct upb_msg *msg2, bool recursive);
 void upb_msg_print(struct upb_msg *data, bool single_line, FILE *stream);
 
-#ifdef __cplusplus
-}  /* extern "C" */
-#endif
+}  // namespace
 
 #endif  /* UPB_MSG_H_ */

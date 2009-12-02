@@ -46,19 +46,21 @@ INLINE void upb_mmhead_ref(struct upb_mmhead *head) {
 
 /* These are all self describing. */
 
-struct upb_msgdef;
-struct upb_fielddef;
+namespace upb {
+class MsgDef;
+class FieldDef;
+}
 
 struct upb_msg {
   struct upb_mmhead mmhead;
-  struct upb_msgdef *def;
+  upb::MsgDef *def;
   uint8_t data[1];
 };
 
 typedef uint32_t upb_arraylen_t;  /* can be at most 2**32 elements long. */
 struct upb_array {
   struct upb_mmhead mmhead;
-  struct upb_fielddef *fielddef;  /* Defines the type of the array. */
+  upb::FieldDef *fielddef;  /* Defines the type of the array. */
   union upb_value_ptr elements;
   upb_arraylen_t len;     /* Number of elements in "elements". */
   upb_arraylen_t size;    /* Memory we own. */
