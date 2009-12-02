@@ -26,6 +26,7 @@
 #define UPB_DEF_H_
 
 #include "upb_atomic.h"
+#include "upb_misc.h"
 #include "upb_table.h"
 
 struct google_protobuf_DescriptorProto;
@@ -35,12 +36,31 @@ struct google_protobuf_FileDescriptorSet;
 
 namespace upb {
 
+class MsgDef;
+class EnumDef;
+class UnresolvedDef;
+
 class Def : public RefCounted {
+ public:
+  enum Type {
+    kMessage,
+    kEnum,
+    kUnresolved,
+  };
   Def(struct upb_string *fqname) : fqname_(fqname) {}
 
- private:
+  upb_string* fqname() { return fqname_.get(); }
+  Type type() { return type_; }
+
+  MsgDef* DowncastMsgDef();
+  UnresolvedDef* DowncastUnresolvedDef();
+
+ protected:
   virtual ~Def() {}  // Refcounted.
+
+ private:
   StringRef fqname_;
+  Type type_;
   DISALLOW_COPY_AND_ASSIGN(Def);
 };
 
@@ -51,15 +71,23 @@ class FieldDef {
  public:
   explicit FieldDef(struct google_protobuf_FieldDescriptorProto *fd);
 
-  bool IsSubMsg() { return upb_issubmsgtype(f->type); }
-  bool IsString() { return upb_isstringtype(f->type); }
-  bool IsArray() {
-    return f->label == GOOGLE_PROTOBUF_FIELDDESCRIPTORPROTO_LABEL_REPEATED;
+  upb_field_type_t type() const { return type_; }
+  upb_label_t label() const { return label_; }
+  upb_field_number_t number() const { return number_; }
+  upb_string* name() { return name_.get(); }
+
+  bool IsSubMsg() const {
+    return type_ == UPB_TYPE(GROUP) || type_ == UPB_TYPE(MESSAGE);
   }
+  bool IsString() const {
+    return type_ == UPB_TYPE(STRING) || type_ == UPB_TYPE(BYTES);
+  }
+  bool IsArray() const { return label_ == UPB_LABEL(REPEATED); }
+
   // Does the type of this field imply that it should contain an associated def?
-  bool HasDef() { return upb_issubmsg(f) || f->type == UPB_TYPENUM(ENUM); }
-  bool IsMM() { return upb_isarray(f) || upb_isstring(f) || upb_issubmsg(f); }
-  bool ElemIsMM() { return upb_isstring(f) || upb_issubmsg(f); }
+  bool HasSubDef() const { return IsSubMsg() || type_ == UPB_TYPE(ENUM); }
+  bool IsMM() const { return IsArray() || IsString() || IsSubMsg(); }
+  bool ElemIsMM() { return IsString() || IsSubMsg(); }
 
   /* Defined iff IsMM(). */
   upb_mm_ptrtype PtrType() {
@@ -76,41 +104,56 @@ class FieldDef {
     else return -1;
   }
 
+  Def* subdef() { return subdef_.get(); }
+
  private:
+  friend class MsgDef;
+  friend class SymbolTable;
   virtual ~FieldDef() {}  // Refcounted.
+
+  void ResetSubDef(Def* subdef) { subdef_.reset(subdef); }
+
   // Sort the given fielddefs in-place, according to what we think is an optimal
   // ordering of fields.  This can change from upb release to upb release.
-  static void Sort(struct upb_fielddef *defs, size_t num);
+  static void Sort(FieldDef** defs, size_t num);
   static void SortFds(struct google_protobuf_FieldDescriptorProto **fds,
                       size_t num);
 
-  upb_field_type_t type_;
-  upb_label_t label_;
-  upb_field_number_t number_;
-  StringRef name_;
+  const upb_field_type_t type_;
+  const upb_label_t label_;
+  const upb_field_number_t number_;
+  const StringRef name_;
 
   // These are set only when this fielddef is part of a msgdef.
   uint32_t byte_offset_;     // Where in a upb_msg to find the data.
   uint16_t field_index_;     // Indicates set bit.
 
   // For the case of an enum or a submessage, points to the def for that type.
-  ScopedRef<Def> def_;
-}
+  ScopedRef<Def> subdef_;
+};
 
 
 // Structure that describes a single .proto message type.
 class MsgDef : public Def {
-  MsgDef(Field *fields, int num_fields, struct upb_string *fqname);
+  MsgDef(FieldDef** fields, int num_fields, upb_string *fqname);
 
   // Looks up a field by name or number.  While these are written to be as fast
   // as possible, it will still be faster to cache the results of this lookup if
   // possible.  These return NULL if no such field is found.  Ownership is
   // retained by the MsgDef, and these are only guaranteed to live for as long
   // as the MsgDef does.
-  FieldDef *FieldByNum(uint32_t num) { return fields_by_num_.Lookup(num); }
-  FieldDef *FieldByName(struct upb_string *name) {
-    return fields_by_num_.Lookup(name);
+  FieldDef* FieldByNum(uint32_t num) { return fields_by_num_.LookupVal(num); }
+  FieldDef* FieldByName(upb_string *name) {
+    return fields_by_name_.LookupVal(name);
   }
+
+  class FieldIterator {
+   public:
+    FieldDef* Get();
+    bool Done();
+    void Next();
+  };
+  FieldIterator* Begin();
 
  private:
   friend class SymbolTable;
@@ -122,11 +165,11 @@ class MsgDef : public Def {
   void Resolve(FieldDef* f, Def* def);
 
   struct upb_msg *default_msg_;   // Message with all default values set.
-  size_t size_;
   uint32_t num_fields_;
   uint32_t set_flags_bytes_;
   uint32_t num_required_fields_;
-  scoped_array<FieldDef> fields_;
+  size_t size_;
+  scoped_array<FieldDef*> fields_;
 
   // The num->field and name->field maps in upb_msgdef allow fast lookup of fields
   // by number or name.  These lookups are in the critical path of parsing and
@@ -140,14 +183,18 @@ class MsgDef : public Def {
 
 
 class EnumDef : public Def {
+ public:
   EnumDef(struct google_protobuf_EnumDescriptorProto *ed,
           struct upb_string *fqname);
 
  private:
   virtual ~EnumDef();  // Refcounted.
 
-  StrTable<uint32_t> nametoint_;
-  IntTable<struct upb_string*> inttoname_;
+  int num_values_;
+  typedef StrTable<uint32_t> NameToInt;
+  typedef IntTable<struct upb_string*> IntToName;
+  NameToInt::Table nametoint_;
+  IntToName::Table inttoname_;
   DISALLOW_COPY_AND_ASSIGN(EnumDef);
 };
 
@@ -155,8 +202,12 @@ class EnumDef : public Def {
 // This is a placeholder definition that contains only the name of the type
 // that should eventually be referenced.  Once symbols are resolved, this
 // definition is replaced with a real definition.
-class UnresolvedDef {
+class UnresolvedDef : public Def {
+ public:
   explicit UnresolvedDef(struct upb_string *name);
+
+  upb_string* name() { return name_.get(); }
+
  private:
   StringRef name_;  // Not fully-qualified.
   DISALLOW_COPY_AND_ASSIGN(UnresolvedDef);
@@ -169,6 +220,7 @@ class UnresolvedDef {
 class SymbolTable : public RefCounted {
  public:
   SymbolTable();
+  ~SymbolTable();
 
   // Resolves the given symbol using the rules described in descriptor.proto,
   // namely:
@@ -180,19 +232,12 @@ class SymbolTable : public RefCounted {
   //
   // Returns NULL if no such symbol has been defined.  The caller owns one ref
   // to the returned def.
-  Def* Resolve(struct upb_string *base, struct upb_string *symbol);
+  Def* ResolveAndRef(struct upb_string *base, struct upb_string *symbol);
 
   // Finds an entry in the symbol table with this exact name.  Returns NULL if
   // no such symbol name has been defined.  The caller owns one ref to the
   // returned def.
-  Def* Lookup(struct upb_string *sym);
-
-  // Accepts a visitor and calls the appropriate method for each symbol.  This
-  // is performed with the table's internal lock held, so the visitor must not
-  // block or perform any long-running operation.  If the client wants to keep
-  // a reference to any of the defs, it must ref them before the calback
-  // returns.
-  void Accept(DefVisitor* visitor);
+  Def* LookupAndRef(struct upb_string *sym);
 
   // Adds the definitions in the given file descriptor to this context.  All
   // types that are referenced from fd must have previously been defined (or be
@@ -205,8 +250,11 @@ class SymbolTable : public RefCounted {
   void ParseFileDescriptorSet(struct upb_string *fds, struct upb_status *status);
 
  private:
-  ReaderWriterLock lock_;          // Protects all members except the refcount.
+  ReaderWriterLock lock_;
   ScopedRef<MsgDef> fds_msgdef_;  // In psymtab, ptr here for convenience.
+
+  typedef StrTable<Def*> TableType;
+  Def* RefAndReturnDef(TableType::Entry* e);
 
   // Our symbol tables; we own refs to the defs therein.
   class Table;

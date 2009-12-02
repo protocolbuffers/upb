@@ -68,7 +68,7 @@ class TableBase {
 
 #ifndef NDEBUG
   // Overridden in derived classes; for assertion-checking only.
-  virtual Entry* VirtualLookup(const Entry& e1) const { return NULL; }
+  virtual Entry* VirtualLookup(const Entry& e1) const { (void)e1; return NULL; }
 #endif
 
   uint32_t count_;       /* How many elements are currently in the table? */
@@ -112,6 +112,11 @@ class Table : public TableBase {
       if(e->end_of_chain) return NULL;
       bucket = e->next_bucket;
     }
+  }
+
+  typename E::Val LookupVal(typename E::Key key) const {
+    E* e = Lookup(key);
+    return e ? e->value() : E::Val();
   }
 
   // Iteration over the table, as in:

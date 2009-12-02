@@ -20,9 +20,6 @@
 # Other:
 # * -DUPB_UNALIGNED_READS_OK: makes code smaller, but not standard compliant
 
-tests/test_table:
-	g++ -DNDEBUG -O3 -DUPB_UNALIGNED_READS_OK -Wall -fno-exceptions -fno-rtti -fvisibility-inlines-hidden -Idescriptor -Isrc -o tests/test_table tests/test_table.cc src/upb_table.cc
-
 # Function to expand a wildcard pattern recursively.
 rwildcard=$(strip $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2)$(filter $(subst *,%,$2),$d)))
 
@@ -49,12 +46,13 @@ clean:
 	cd lang_ext/python && python setup.py clean --all
 
 # The core library (src/libupb.a)
-SRC=src/upb.c src/upb_parse.c src/upb_table.c src/upb_msg.c src/upb_mm.c \
-    src/upb_def.c src/upb_context.c src/upb_string.c src/upb_text.c \
+#SRC=src/upb.c src/upb_parse.c src/upb_table.c src/upb_msg.c src/upb_mm.c \
+
+SRC=src/upb_def.cc src/upb_table.cc #src/upb_context.c src/upb_string.c src/upb_text.c \
     descriptor/descriptor.c
     #src/upb_serialize.c descriptor/descriptor.c
-STATICOBJ=$(patsubst %.c,%.o,$(SRC))
-SHAREDOBJ=$(patsubst %.c,%.lo,$(SRC))
+STATICOBJ=$(patsubst %.cc,%.o,$(SRC))
+SHAREDOBJ=$(patsubst %.cc,%.lo,$(SRC))
 # building shared objects is like building static ones, except -fPIC is added.
 %.lo : %.c ; $(CC) -fPIC $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 $(LIBUPB): $(STATICOBJ)

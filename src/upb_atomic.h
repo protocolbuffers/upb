@@ -19,6 +19,7 @@
 #define UPB_ATOMIC_H_
 
 #include <stdbool.h>
+#include "upb_misc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -161,5 +162,91 @@ INLINE void upb_rwlock_unlock(upb_rwlock_t *l) {
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
+
+namespace upb {
+
+class RefCounted {
+ public:
+  RefCounted() { upb_atomic_refcount_init(&refcount_, 1); }
+  void Ref() { upb_atomic_ref(&refcount_); }
+  void Unref() { if (upb_atomic_unref(&refcount_)) delete this; }
+
+ protected:
+  virtual ~RefCounted() {}
+
+ private:
+  upb_atomic_refcount_t refcount_;
+  DISALLOW_COPY_AND_ASSIGN(RefCounted);
+};
+
+template<class C> class ScopedRef {
+ public:
+  static const bool kNew = false;
+  // Construct from a brand new object with:
+  //   ScopedRef<Foo> foo(new Foo, kNew);
+  // This will make us own the only reference.
+  explicit ScopedRef(C* p = NULL, bool ref = true)
+      : ptr_(p) {
+    if (ptr_ && ref) ptr_->Ref();
+  }
+  ~ScopedRef() { ptr_->Unref(); }
+  void reset(C* p = NULL) {
+    if (p != ptr_) {
+      if (ptr_) ptr_->Unref();
+      if (p) p->Ref();
+    }
+    ptr_ = p;
+  }
+  C& operator*() const {
+    assert(ptr_ != NULL);
+    return *ptr_;
+  }
+  C* operator->() const {
+    assert(ptr_ != NULL);
+    return ptr_;
+  }
+  C* get() const { return ptr_; }
+  C* release() {
+    C* ret = ptr_;
+    ptr_ = NULL;
+    return ret;
+  }
+
+ private:
+  C* ptr_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedRef);
+};
+
+class ReaderWriterLock {
+ public:
+  ReaderWriterLock() { upb_rwlock_init(&lock_); }
+  ~ReaderWriterLock() { upb_rwlock_destroy(&lock_); }
+  void ReaderLock() { upb_rwlock_rdlock(&lock_); }
+  void WriterLock() { upb_rwlock_wrlock(&lock_); }
+  void Unlock() { upb_rwlock_unlock(&lock_); }
+
+ private:
+  upb_rwlock_t lock_;
+};
+
+class ReaderMutexLock {
+ public:
+  ReaderMutexLock(ReaderWriterLock* l) : lock_(l) { lock_->ReaderLock(); }
+  ~ReaderMutexLock() { lock_->Unlock(); }
+
+ private:
+  ReaderWriterLock* lock_;
+};
+
+class WriterMutexLock {
+ public:
+  WriterMutexLock(ReaderWriterLock* l) : lock_(l) { lock_->WriterLock(); }
+  ~WriterMutexLock() { lock_->Unlock(); }
+
+ private:
+  ReaderWriterLock* lock_;
+};
+
+}  // namespace upb
 
 #endif  /* UPB_ATOMIC_H_ */

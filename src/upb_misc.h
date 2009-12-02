@@ -1,6 +1,11 @@
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "upb_string.h"
+
+#ifndef UPB_MISC_H_
+#define UPB_MISC_H_
 
 namespace upb {
 
@@ -209,36 +214,44 @@ class scoped_array {
   void operator=(const scoped_array&);
 };
 
-/*
- Lifted direct from:
- Modern C++ Design: Generic Programming and Design Patterns Applied
- Section 2.1
- by Andrei Alexandrescu
-*/
-namespace ww
-{
-    template<bool> class compile_time_check
-    {
-    public:
-        compile_time_check(...) {}
-    };
+class StringRef {
+ public:
+  static const bool kNew = false;
+  // Construct from a brand new object with:
+  //   StringRef foo(upb_string_new(), kNew);
+  // This will make us own the only reference.
+  explicit StringRef(upb_string* p = NULL, bool ref = true)
+      : ptr_(p) {
+    if (ptr_ && ref) upb_string_ref(ptr_);
+  }
+  ~StringRef() { upb_string_unref(ptr_); }
+  void reset(upb_string* p = NULL) {
+    if (p != ptr_) {
+      if (ptr_) upb_string_unref(ptr_);
+      if (p) upb_string_ref(p);
+    }
+    ptr_ = p;
+  }
+  upb_string& operator*() const {
+    assert(ptr_ != NULL);
+    return *ptr_;
+  }
+  upb_string* operator->() const {
+    assert(ptr_ != NULL);
+    return ptr_;
+  }
+  upb_string* get() const { return ptr_; }
+  upb_string* release() {
+    upb_string* ret = ptr_;
+    ptr_ = NULL;
+    return ret;
+  }
 
-    template<> class compile_time_check<false>
-    {
-    };
-}
-
-    /*
-    StaticAssert will test its first argument at compile time and on failure
-    report the error message of the second argument, which must be a valid c++
-    classname. i.e. no spaces, punctuation or reserved keywords.
-    */
-#define StaticAssert(test, errormsg)                         \
- do {                                                        \
-     struct ERROR_##errormsg {};                             \
-     typedef ww::compile_time_check< (test) != 0 > tmplimpl; \
-     tmplimpl aTemp = tmplimpl(ERROR_##errormsg());          \
-     sizeof(aTemp);                                          \
- } while (0)
+ private:
+  upb_string* ptr_;
+  DISALLOW_COPY_AND_ASSIGN(StringRef);
+};
 
 }  // namespace upb
+
+#endif  // UPB_MISC_H_
