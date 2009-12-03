@@ -124,189 +124,211 @@ class SymbolTable::Table {
  public:
   Table() : table_(16) {}
 
-  ~Table() {
-    for (TableType::Entry *e = table_.Begin(); e; e = table_.Next(e)) {
-      upb_string_unref(e->key());
-      e->value()->Unref();
-    }
-  }
+  ~Table();
 
   void AddFileDescriptor(const Table& existing_defs,
                          google_protobuf_FileDescriptorProto *fd, bool sort,
-                         struct upb_status *status) {
-    struct upb_string *pkg;
-    if (fd->set_flags.has.package)
-      pkg = fd->package;
-    else
-      pkg = upb_string_new();
-
-    if(fd->set_flags.has.message_type)
-      for(unsigned int i = 0; i < fd->message_type->len; i++)
-        InsertMessage(fd->message_type->elements[i], pkg, sort, status);
-
-    if(fd->set_flags.has.enum_type)
-      for(unsigned int i = 0; i < fd->enum_type->len; i++)
-        InsertEnum(fd->enum_type->elements[i], pkg, status);
-
-    if(!upb_ok(status)) return;
-
-    // TODO: handle extensions and services.
-
-    // Attempt to resolve all references.
-    for (TableType::Entry *e = table_.Begin(); e; e = table_.Next(e)) {
-      if (existing_defs.Contains(e->value()->fqname())) {
-        upb_seterr(status, UPB_STATUS_ERROR,
-                   "attempted to redefine symbol '" UPB_STRFMT "'",
-                   UPB_STRARG(e->value()->fqname()));
-        return;
-      }
-
-      // Only need to resolve references for fields in messages.
-      MsgDef* m = e->value()->DowncastMsgDef();
-      if (!m) continue;
-      upb_string* base = m->fqname();
-
-      for (MsgDef::FieldIterator* iter = m->Begin(); !iter->Done(); iter->Next()) {
-        FieldDef* f = iter->Get();
-        if (!f->HasSubDef()) continue; // No resolving necessary.
-        Def::Type expected_type = f->IsSubMsg() ? Def::kMessage : Def::kEnum;
-        UnresolvedDef* u_def = f->subdef()->DowncastUnresolvedDef();
-        assert(u_def);
-        upb_string* name = u_def->name();
-
-        TableType::Entry* e = existing_defs.Resolve(base, name);
-        if (!e) e = Resolve(base, name);
-        if (!e) {
-          upb_seterr(status, UPB_STATUS_ERROR,
-                     "could not resolve symbol '" UPB_STRFMT "'"
-                     " in context '" UPB_STRFMT "'",
-                     UPB_STRARG(name), UPB_STRARG(base));
-          return;
-        } else if (expected_type != e->value()->type()) {
-          upb_seterr(status, UPB_STATUS_ERROR,
-                     "symbol '" UPB_STRFMT "' referenced from context "
-                     "'" UPB_STRFMT "' did not have expected type.",
-                     UPB_STRARG(name), UPB_STRARG(base));
-          return;
-        }
-        f->ResetSubDef(e->value());
-      }
-    }
-  }
-
-  TableType::Entry* Resolve(upb_string* base, upb_string* symbol) const {
-    if(base->byte_len + symbol->byte_len + 1 >= UPB_SYMBOL_MAXLEN ||
-       symbol->byte_len == 0) return NULL;
-
-    if(symbol->ptr[0] == UPB_SYMBOL_SEPARATOR) {
-      // Symbols starting with '.' are absolute, so we do a single lookup.
-      struct upb_string sym_str;
-      sym_str.ptr = symbol->ptr+1;
-      sym_str.byte_len = symbol->byte_len-1;
-      return table_.Lookup(&sym_str);
-    } else {
-      // Remove components from base until we find an entry or run out.
-      char sym[UPB_SYMBOL_MAXLEN+1];
-      struct upb_string sym_str;
-      sym_str.ptr = sym;
-      int baselen = base->byte_len;
-      while(1) {
-        // sym_str = base[0...base_len] + UPB_SYMBOL_SEPARATOR + symbol
-        memcpy(sym, base->ptr, baselen);
-        sym[baselen] = UPB_SYMBOL_SEPARATOR;
-        memcpy(sym + baselen + 1, symbol->ptr, symbol->byte_len);
-        sym_str.byte_len = baselen + symbol->byte_len + 1;
-
-        TableType::Entry* e = table_.Lookup(&sym_str);
-        if (e) return e;
-        if (baselen == 0) return NULL;  // No more scopes to try.
-
-        baselen = memrchr(base->ptr, UPB_SYMBOL_SEPARATOR, baselen);
-      }
-    }
-  }
+                         struct upb_status *status);
 
   TableType::Entry* Lookup(upb_string* sym) const { return table_.Lookup(sym); }
-
-  bool Contains(upb_string* fqname) const {
-    return table_.Lookup(fqname) != NULL;
-  }
-
+  bool Contains(upb_string* fqname) const { return Lookup(fqname) != NULL; }
   void InsertFrom(const Table& t) { (void)t; }
+  TableType::Entry* Resolve(upb_string* base, upb_string* symbol) const;
 
  private:
   upb_string* TryDefine(bool name_defined, upb_string* name, upb_string* base,
-                       struct upb_status* status) {
-    if(!name_defined) {
-      upb_seterr(status, UPB_STATUS_ERROR,
-                 "enum in context '" UPB_STRFMT "' does not have a name",
-                 UPB_STRARG(base));
-      return NULL;
-    }
-    StringRef fqname(Join(base, name), StringRef::kNew);
-    if(Contains(fqname.get())) {
-      upb_seterr(status, UPB_STATUS_ERROR,
-                 "attempted to redefine symbol '" UPB_STRFMT "'",
-                 UPB_STRARG(fqname));
-      return NULL;
-    }
-    return fqname.release();
-  }
+                       struct upb_status* status);
 
   void InsertEnum(google_protobuf_EnumDescriptorProto *ed,
-                  struct upb_string *base, struct upb_status *status) {
-    StringRef fqname(TryDefine(ed->set_flags.has.name, ed->name, base, status), StringRef::kNew);
-    if (!fqname.get()) return;
-    table_.Insert(fqname.release(), new EnumDef(ed, fqname.get()));
-  }
+                  struct upb_string *base, struct upb_status *status);
 
   void InsertMessage(google_protobuf_DescriptorProto *d,
                      struct upb_string *base, bool sort,
-                     struct upb_status *status) {
-    StringRef fqname(TryDefine(d->set_flags.has.name, d->name, base, status));
-
-    int num_fields = d->set_flags.has.field ? d->field->len : 0;
-    FieldDef** fielddefs = new FieldDef*[num_fields];
-    for (int i = 0; i < num_fields; i++)
-      fielddefs[i] = new FieldDef(d->field->elements[i]);
-    if(sort) FieldDef::Sort(fielddefs, d->field->len);
-
-    table_.Insert(fqname.release(), new MsgDef(fielddefs, num_fields, fqname.get()));
-
-    // Add nested messages and enums.
-    if(d->set_flags.has.nested_type)
-      for(unsigned int i = 0; i < d->nested_type->len; i++)
-        InsertMessage(d->nested_type->elements[i], fqname.get(), sort, status);
-
-    if(d->set_flags.has.enum_type)
-      for(unsigned int i = 0; i < d->enum_type->len; i++)
-        InsertEnum(d->enum_type->elements[i], fqname.get(), status);
-  }
+                     struct upb_status *status);
 
   // Joins strings together by the symbol separator, for example:
   //   join("Foo.Bar", "Baz") -> "Foo.Bar.Baz"
   //   join("", "Baz") -> "Baz"
   // Caller owns a reference to the returned string.
-  struct upb_string *Join(struct upb_string *base, struct upb_string *name) {
-    size_t len = base->byte_len + name->byte_len;
-    if(base->byte_len > 0) len++;  // For the separator.
-    struct upb_string *joined = upb_string_new();
-    upb_string_resize(joined, len);
-    if(base->byte_len > 0) {
-      // nested_base = base + '.' +  d->name
-      memcpy(joined->ptr, base->ptr, base->byte_len);
-      joined->ptr[base->byte_len] = UPB_SYMBOL_SEPARATOR;
-      memcpy(&joined->ptr[base->byte_len+1], name->ptr, name->byte_len);
-    } else {
-      memcpy(joined->ptr, name->ptr, name->byte_len);
-    }
-    return joined;
-  }
+  struct upb_string *Join(struct upb_string *base, struct upb_string *name);
 
   TableType::Type table_;
 };
 
-/* SymbolTable ****************************************************************/
+SymbolTable::Table::~Table() {
+  for (TableType::Entry *e = table_.Begin(); e; e = table_.Next(e)) {
+    upb_string_unref(e->key());
+    e->value()->Unref();
+  }
+}
+
+void SymbolTable::Table::AddFileDescriptor(
+    const Table& existing_defs,
+    google_protobuf_FileDescriptorProto *fd,
+    bool sort,
+    struct upb_status *status) {
+  struct upb_string *pkg;
+  if (fd->set_flags.has.package)
+    pkg = fd->package;
+  else
+    pkg = upb_string_new();
+
+  if(fd->set_flags.has.message_type)
+    for(unsigned int i = 0; i < fd->message_type->len; i++)
+      InsertMessage(fd->message_type->elements[i], pkg, sort, status);
+
+  if(fd->set_flags.has.enum_type)
+    for(unsigned int i = 0; i < fd->enum_type->len; i++)
+      InsertEnum(fd->enum_type->elements[i], pkg, status);
+
+  if(!upb_ok(status)) return;
+
+  // TODO: handle extensions and services.
+
+  // Attempt to resolve all references.
+  for (TableType::Entry *e = table_.Begin(); e; e = table_.Next(e)) {
+    if (existing_defs.Contains(e->value()->fqname())) {
+      upb_seterr(status, UPB_STATUS_ERROR,
+                 "attempted to redefine symbol '" UPB_STRFMT "'",
+                 UPB_STRARG(e->value()->fqname()));
+      return;
+    }
+
+    // Only need to resolve references for fields in messages.
+    MsgDef* m = e->value()->DowncastMsgDef();
+    if (!m) continue;
+    upb_string* base = m->fqname();
+
+    for (MsgDef::FieldIterator* iter = m->Begin(); !iter->Done(); iter->Next()) {
+      FieldDef* f = iter->Get();
+      if (!f->HasSubDef()) continue; // No resolving necessary.
+      Def::Type expected_type = f->IsSubMsg() ? Def::kMessage : Def::kEnum;
+      UnresolvedDef* u_def = f->subdef()->DowncastUnresolvedDef();
+      assert(u_def);
+      upb_string* name = u_def->name();
+
+      TableType::Entry* e = existing_defs.Resolve(base, name);
+      if (!e) e = Resolve(base, name);
+      if (!e) {
+        upb_seterr(status, UPB_STATUS_ERROR,
+                   "could not resolve symbol '" UPB_STRFMT "'"
+                   " in context '" UPB_STRFMT "'",
+                   UPB_STRARG(name), UPB_STRARG(base));
+        return;
+      } else if (expected_type != e->value()->type()) {
+        upb_seterr(status, UPB_STATUS_ERROR,
+                   "symbol '" UPB_STRFMT "' referenced from context "
+                   "'" UPB_STRFMT "' did not have expected type.",
+                   UPB_STRARG(name), UPB_STRARG(base));
+        return;
+      }
+      f->ResetSubDef(e->value());
+    }
+  }
+}
+
+void SymbolTable::Table::InsertMessage(google_protobuf_DescriptorProto *d,
+                                       struct upb_string *base, bool sort,
+                                       struct upb_status *status) {
+  StringRef fqname(TryDefine(d->set_flags.has.name, d->name, base, status));
+
+  int num_fields = d->set_flags.has.field ? d->field->len : 0;
+  FieldDef** fielddefs = new FieldDef*[num_fields];
+  for (int i = 0; i < num_fields; i++)
+    fielddefs[i] = new FieldDef(d->field->elements[i]);
+  if(sort) FieldDef::Sort(fielddefs, d->field->len);
+
+  table_.Insert(fqname.release(), new MsgDef(fielddefs, num_fields, fqname.get()));
+
+  // Add nested messages and enums.
+  if(d->set_flags.has.nested_type)
+    for(unsigned int i = 0; i < d->nested_type->len; i++)
+      InsertMessage(d->nested_type->elements[i], fqname.get(), sort, status);
+
+  if(d->set_flags.has.enum_type)
+    for(unsigned int i = 0; i < d->enum_type->len; i++)
+      InsertEnum(d->enum_type->elements[i], fqname.get(), status);
+}
+
+void SymbolTable::Table::InsertEnum(google_protobuf_EnumDescriptorProto *ed,
+                                    struct upb_string *base,
+                                    struct upb_status *status) {
+  StringRef fqname(TryDefine(ed->set_flags.has.name, ed->name, base, status), StringRef::kNew);
+  if (!fqname.get()) return;
+  table_.Insert(fqname.release(), new EnumDef(ed, fqname.get()));
+}
+
+struct upb_string *SymbolTable::Table::Join(struct upb_string *base,
+                                            struct upb_string *name) {
+  size_t len = base->byte_len + name->byte_len;
+  if(base->byte_len > 0) len++;  // For the separator.
+  struct upb_string *joined = upb_string_new();
+  upb_string_resize(joined, len);
+  if(base->byte_len > 0) {
+    // nested_base = base + '.' +  d->name
+    memcpy(joined->ptr, base->ptr, base->byte_len);
+    joined->ptr[base->byte_len] = UPB_SYMBOL_SEPARATOR;
+    memcpy(&joined->ptr[base->byte_len+1], name->ptr, name->byte_len);
+  } else {
+    memcpy(joined->ptr, name->ptr, name->byte_len);
+  }
+  return joined;
+}
+
+upb_string* SymbolTable::Table::TryDefine(bool name_defined, upb_string* name,
+                                          upb_string* base,
+                                          struct upb_status* status) {
+  if(!name_defined) {
+    upb_seterr(status, UPB_STATUS_ERROR,
+               "enum in context '" UPB_STRFMT "' does not have a name",
+               UPB_STRARG(base));
+    return NULL;
+  }
+  StringRef fqname(Join(base, name), StringRef::kNew);
+  if(Contains(fqname.get())) {
+    upb_seterr(status, UPB_STATUS_ERROR,
+               "attempted to redefine symbol '" UPB_STRFMT "'",
+               UPB_STRARG(fqname));
+    return NULL;
+  }
+  return fqname.release();
+}
+
+SymbolTable::TableType::Entry* SymbolTable::Table::Resolve(upb_string* base,
+                                              upb_string* symbol) const {
+  if(base->byte_len + symbol->byte_len + 1 >= UPB_SYMBOL_MAXLEN ||
+     symbol->byte_len == 0) return NULL;
+
+  if(symbol->ptr[0] == UPB_SYMBOL_SEPARATOR) {
+    // Symbols starting with '.' are absolute, so we do a single lookup.
+    struct upb_string sym_str;
+    sym_str.ptr = symbol->ptr+1;
+    sym_str.byte_len = symbol->byte_len-1;
+    return table_.Lookup(&sym_str);
+  } else {
+    // Remove components from base until we find an entry or run out.
+    char sym[UPB_SYMBOL_MAXLEN+1];
+    struct upb_string sym_str;
+    sym_str.ptr = sym;
+    int baselen = base->byte_len;
+    while(1) {
+      // sym_str = base[0...base_len] + UPB_SYMBOL_SEPARATOR + symbol
+      memcpy(sym, base->ptr, baselen);
+      sym[baselen] = UPB_SYMBOL_SEPARATOR;
+      memcpy(sym + baselen + 1, symbol->ptr, symbol->byte_len);
+      sym_str.byte_len = baselen + symbol->byte_len + 1;
+
+      TableType::Entry* e = table_.Lookup(&sym_str);
+      if (e) return e;
+      if (baselen == 0) return NULL;  // No more scopes to try.
+
+      baselen = memrchr(base->ptr, UPB_SYMBOL_SEPARATOR, baselen);
+    }
+  }
+}
+
+
+/* {} SymbolTable ****************************************************************/
 
 SymbolTable::SymbolTable() : symtab_(new Table), psymtab_(new Table) {
   // Add all the types in descriptor.proto to the private table so we can parse
