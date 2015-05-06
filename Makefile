@@ -38,19 +38,27 @@ USER_CPPFLAGS=
 # Build with "make WITH_JIT=yes" (or anything besides "no") to enable the JIT.
 WITH_JIT=no
 
+# Build with "make WITH_MAX_WARNINGS=yes" (or anything besides "no") to enable
+# with strict warnings and treat warnings as errors.
+WITH_MAX_WARNINGS=no
+
 # Basic compiler/flag setup.
 CC=cc
 CXX=c++
 CFLAGS=-std=c99
 CXXFLAGS=-Wno-unused-private-field
 INCLUDE=-I.
-WARNFLAGS=-Wall -Wextra -Wno-sign-compare 
+WARNFLAGS=-Wall -Wextra
 CPPFLAGS=$(INCLUDE) -DNDEBUG $(USER_CPPFLAGS)
 LUA=lua  # 5.1 and 5.2 should both be supported
 
 ifneq ($(WITH_JIT), no)
   USE_JIT=true
   CPPFLAGS += -DUPB_USE_JIT_X64
+endif
+
+ifneq ($(WITH_MAX_WARNINGS), no)
+  WARNFLAGS += -Wpointer-arith -Wconditional-uninitialized -Werror
 endif
 
 # Build with "make Q=" to see all commands that are being executed.
