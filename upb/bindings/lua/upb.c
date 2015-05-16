@@ -76,7 +76,7 @@ static void lupb_newlib(lua_State *L, const char *name, const luaL_Reg *funcs) {
 
 #define lupb_setfuncs(L, l) luaL_register(L, NULL, l)
 
-#elif LUA_VERSION_NUM == 502
+#elif LUA_VERSION_NUM == 502 || LUA_VERSION_NUM == 503
 
 int luaL_typerror(lua_State *L, int narg, const char *tname) {
   const char *msg = lua_pushfstring(L, "%s expected, got %s",
@@ -98,16 +98,19 @@ static void lupb_newlib(lua_State *L, const char *name, const luaL_Reg *funcs) {
 #define lupb_setfuncs(L, l) luaL_setfuncs(L, l, 0)
 
 #else
-#error Only Lua 5.1 and 5.2 are supported
+#error Only Lua 5.1, 5.2, and 5.3 are supported
 #endif
 
+#if LUA_VERSION_NUM == 501 || LUA_VERSION_NUM == 502
+
 // Shims for upcoming Lua 5.3 functionality.
-bool lua_isinteger(lua_State *L, int argn) {
+int lua_isinteger(lua_State *L, int argn) {
   UPB_UNUSED(L);
   UPB_UNUSED(argn);
   return false;
 }
 
+#endif
 
 /* Utility functions **********************************************************/
 
@@ -273,7 +276,7 @@ void lupb_checkstatus(lua_State *L, upb_status *s) {
 }
 
 static upb_fieldtype_t lupb_checkfieldtype(lua_State *L, int narg) {
-  int type = luaL_checkint(L, narg);
+  int type = (int)luaL_checkinteger(L, narg);
   if (!upb_fielddef_checktype(type))
     luaL_argerror(L, narg, "invalid field type");
   return type;
@@ -731,7 +734,7 @@ static int lupb_fielddef_setisextension(lua_State *L) {
 
 static int lupb_fielddef_setlabel(lua_State *L) {
   upb_fielddef *f = lupb_fielddef_checkmutable(L, 1);
-  int label = luaL_checkint(L, 2);
+  int label = (int)luaL_checkinteger(L, 2);
   if (!upb_fielddef_checklabel(label))
     luaL_argerror(L, 2, "invalid field label");
   upb_fielddef_setlabel(f, label);
@@ -752,7 +755,7 @@ static int lupb_fielddef_setname(lua_State *L) {
 
 static int lupb_fielddef_setnumber(lua_State *L) {
   upb_fielddef *f = lupb_fielddef_checkmutable(L, 1);
-  CHK(upb_fielddef_setnumber(f, luaL_checkint(L, 2), &status));
+  CHK(upb_fielddef_setnumber(f, (uint32_t)luaL_checkinteger(L, 2), &status));
   return 0;
 }
 
@@ -1163,7 +1166,8 @@ static int lupb_symtabiter_next(lua_State *L) {
 
 static int lupb_symtab_defs(lua_State *L) {
   const upb_symtab *s = lupb_symtab_check(L, 1);
-  upb_deftype_t type = lua_gettop(L) > 1 ? luaL_checkint(L, 2) : UPB_DEF_ANY;
+  upb_deftype_t type = lua_gettop(L) > 1
+      ? (int)luaL_checkinteger(L, 2) : UPB_DEF_ANY;
   upb_symtab_iter *i = lua_newuserdata(L, sizeof(upb_symtab_iter));
   upb_symtab_begin(i, s, type);
   // Need to guarantee that the symtab outlives the iter.

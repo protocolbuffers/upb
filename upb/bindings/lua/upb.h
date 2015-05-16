@@ -28,12 +28,12 @@
 
 void *luaL_testudata(lua_State *L, int ud, const char *tname);
 
-#elif LUA_VERSION_NUM == 502
+#elif LUA_VERSION_NUM == 502 || LUA_VERSION_NUM == 503
 
 int luaL_typerror(lua_State *L, int narg, const char *tname);
 
 #else
-#error Only Lua 5.1 and 5.2 are supported
+#error Only Lua 5.1, 5.2, and 5.3 are supported
 #endif
 
 #define lupb_assert(L, predicate) \
