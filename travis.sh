@@ -20,21 +20,10 @@ barejit_script() {
 
 # Build with Google protobuf support and tests (with JIT).
 withprotobuf_install() {
-  sudo apt-get update -qq
-  sudo apt-get install protobuf-compiler libprotobuf-dev
+  :
 }
 withprotobuf_script() {
   make -j12 tests googlepbtests WITH_JIT=yes
-  make test
-}
-
-# Build with strict warnings.
-warnings_install() {
-  :
-}
-warnings_script() {
-  make -j12 default WITH_MAX_WARNINGS=yes
-  make -j12 tests WITH_MAX_WARNINGS=yes
   make test
 }
 
@@ -42,8 +31,7 @@ warnings_script() {
 # need to be available as 32-bit libs also, which gets hairy fast.
 # Can't enable the JIT because it only supports x64.
 core32_install() {
-  sudo apt-get update -qq
-  sudo apt-get install libc6-dev-i386 g++-multilib
+  :
 }
 core32_script() {
   make -j12 tests USER_CPPFLAGS="$USER_CPPFLAGS -m32"
@@ -52,8 +40,7 @@ core32_script() {
 
 # A build of Lua and running of Lua tests.
 lua_install() {
-  sudo apt-get update -qq
-  sudo apt-get install lua5.2 liblua5.2-dev
+  :
 }
 lua_script() {
   make -j12 testlua USER_CPPFLAGS="$USER_CPPFLAGS `pkg-config lua5.2 --cflags`"
@@ -65,8 +52,7 @@ lua_script() {
 # that its output will be stable for multiple versions of the tool, and we
 # don't want the test to be brittle.
 genfiles_install() {
-  sudo apt-get update -qq
-  sudo apt-get install lua5.2 liblua5.2-dev protobuf-compiler
+  :
 }
 genfiles_script() {
   make -j12 genfiles USER_CPPFLAGS="$USER_CPPFLAGS `pkg-config lua5.2 --cflags`"
@@ -76,8 +62,7 @@ genfiles_script() {
 
 # Tests the ndebug build.
 ndebug_install() {
-  sudo apt-get update -qq
-  sudo apt-get install lua5.2 liblua5.2-dev protobuf-compiler libprotobuf-dev
+  :
 }
 ndebug_script() {
   # Override of USER_CPPFLAGS removes -UNDEBUG.
@@ -88,9 +73,7 @@ ndebug_script() {
 
 # A run that executes with coverage support and uploads to coveralls.io
 coverage_install() {
-  sudo apt-get update -qq
-  sudo apt-get install protobuf-compiler libprotobuf-dev lua5.2 liblua5.2-dev
-  sudo pip install cpp-coveralls
+  pip install cpp-coveralls
 }
 coverage_script() {
   export USER_CPPFLAGS="--coverage -O0 `pkg-config lua5.2 --cflags`"
