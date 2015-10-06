@@ -472,9 +472,9 @@ upb/bindings/lua/upb/table_c.so: upb/bindings/lua/upb/table.c lib/libupb_pic.a
 	$(E) CC upb/bindings/lua/upb/table.c
 	$(Q) $(CC) $(OPT) $(CSTD) $(WARNFLAGS) $(CPPFLAGS) $(CFLAGS) -fpic -shared -o $@ $< $(LUA_LDFLAGS)
 
-upb/bindings/lua/upb/pb_c.so: upb/bindings/lua/upb/pb.c $(LUA_LIB_DEPS)
+upb/bindings/lua/upb/pb_c.so: upb/bindings/lua/upb/pb.c $(LUA_LIB_DEPS) upb/bindings/lua/upb_c.so
 	$(E) CC upb/bindings/lua/upb/pb.c
-	$(Q) $(CC) $(OPT) $(CSTD) $(WARNFLAGS) $(CPPFLAGS) $(CFLAGS) -fpic -shared -o $@ $< $(LUA_LDFLAGS)
+	$(Q) $(CC) $(OPT) $(CSTD) $(WARNFLAGS) $(CPPFLAGS) $(CFLAGS) -fpic -shared -o $@ $< upb/bindings/lua/upb_c.so $(LUA_LDFLAGS)
 
 
 # Python extension #############################################################
