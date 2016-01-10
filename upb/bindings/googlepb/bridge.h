@@ -48,6 +48,7 @@ class FieldDescriptor;
 class Descriptor;
 class EnumDescriptor;
 class Message;
+class OneofDescriptor;
 }  // namespace protobuf
 }  // namespace google
 
@@ -56,6 +57,7 @@ class FieldDescriptor;
 class Descriptor;
 class EnumDescriptor;
 class Message;
+class OneofDescriptor;
 }
 
 namespace upb {
@@ -122,6 +124,9 @@ class DefBuilder {
                                    const proto2::Message* m);
   reffed_ptr<FieldDef> NewFieldDef(const ::google::protobuf::FieldDescriptor* f,
                                    const ::google::protobuf::Message* m);
+
+  reffed_ptr<OneofDef> NewOneofDef(const proto2::OneofDescriptor* o);
+  reffed_ptr<OneofDef> NewOneofDef(const ::google::protobuf::OneofDescriptor* o);
 
   // Freeze all defs that haven't been frozen yet.
   void Freeze();

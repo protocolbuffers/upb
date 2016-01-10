@@ -94,9 +94,23 @@ const MessageDef* DefBuilder::GetMaybeUnfrozenMessageDef(
     fields.push_back(d->field(i));
   }
 
+  // Oneof fields
+  for (int i = 0, maxi = d->oneof_decl_count(); i < maxi; ++i) {
+    const goog::OneofDescriptor *proto2_oneof = d->oneof_decl(i);
+    reffed_ptr<OneofDef> oneof = NewOneofDef(proto2_oneof);
+    for (int j = 0, maxj = proto2_oneof->field_count(); j < maxj; ++j) {
+      const goog::FieldDescriptor *proto2_f = proto2_oneof->field(j);
+      oneof->AddField(NewFieldDef(proto2_f, m), &status);
+    }
+    md->AddOneof(oneof, &status);
+  }
+
   for (size_t i = 0; i < fields.size(); i++) {
     const goog::FieldDescriptor* proto2_f = fields[i];
     UPB_ASSERT(proto2_f);
+    // already added when adding the containing oneof
+    if (proto2_f->containing_oneof())
+      continue;
     md->AddField(NewFieldDef(proto2_f, m), &status);
   }
   ASSERT_STATUS(&status);
@@ -178,6 +192,16 @@ reffed_ptr<FieldDef> DefBuilder::NewFieldDef(const goog::FieldDescriptor* f,
 
   ASSERT_STATUS(&status);
   return upb_f;
+}
+
+reffed_ptr<OneofDef> DefBuilder::NewOneofDef(const goog::OneofDescriptor* o) {
+  reffed_ptr<OneofDef> upb_o(OneofDef::New());
+  Status status;
+
+  upb_o->set_name(o->name().c_str(), &status);
+
+  ASSERT_STATUS(&status);
+  return upb_o;
 }
 
 void DefBuilder::Freeze() {
