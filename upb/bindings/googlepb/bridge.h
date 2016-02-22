@@ -125,6 +125,7 @@ class DefBuilder {
   reffed_ptr<FieldDef> NewFieldDef(const ::google::protobuf::FieldDescriptor* f,
                                    const ::google::protobuf::Message* m);
 
+  // only defined if GOOGLE_PROTOBUF_HAS_ONEOF is defined
   reffed_ptr<OneofDef> NewOneofDef(const proto2::OneofDescriptor* o);
   reffed_ptr<OneofDef> NewOneofDef(const ::google::protobuf::OneofDescriptor* o);
 
