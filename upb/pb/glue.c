@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "upb/descriptor/reader.h"
 #include "upb/pb/decoder.h"
 
@@ -56,22 +60,24 @@ bool upb_load_descriptor_into_symtab(upb_symtab *s, const char *str, size_t len,
 }
 
 char *upb_readfile(const char *filename, size_t *len) {
-  long size;
+  off_t size;
   char *buf;
-  FILE *f = fopen(filename, "rb");
-  if(!f) return NULL;
-  if(fseek(f, 0, SEEK_END) != 0) goto error;
-  size = ftell(f);
-  if(size < 0) goto error;
-  if(fseek(f, 0, SEEK_SET) != 0) goto error;
-  buf = malloc(size + 1);
-  if(size && fread(buf, size, 1, f) != 1) goto error;
-  fclose(f);
+  struct stat result;
+  int fd = open(filename, O_RDONLY);
+  if (fd == -1) return NULL;
+  if (fstat(fd, &result) == -1) goto error;
+  if (!S_ISREG(result.st_mode)) goto error;
+  size = (size_t) result.st_size;
+  buf = (char *) malloc(size + 1);
+  if (buf == NULL) goto error;
+  if (size && read(fd, buf, size) < (ssize_t) size) goto error;
+  buf[size] = '\0';
+  close(fd);
   if (len) *len = size;
   return buf;
 
 error:
-  fclose(f);
+  close(fd);
   return NULL;
 }
 
