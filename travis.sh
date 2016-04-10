@@ -72,7 +72,7 @@ lua_script() {
 # don't want the test to be brittle.
 genfiles_install() {
   sudo apt-get update -qq
-  sudo apt-get install lua5.2 liblua5.2-dev
+  sudo apt-get install lua5.2 liblua5.2-dev protobuf-compiler
 }
 genfiles_script() {
   # Avoid regenerating descriptor.pb, since its output can vary based on the
