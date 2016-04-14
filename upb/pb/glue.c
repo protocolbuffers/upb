@@ -36,7 +36,7 @@ upb_filedef **upb_loaddescriptor(const char *buf, size_t n, const void *owner,
     goto cleanup;
   }
 
-  ret = malloc(sizeof (*ret) * (upb_descreader_filecount(reader) + 1));
+  ret = upb_gmalloc(sizeof (*ret) * (upb_descreader_filecount(reader) + 1));
 
   if (!ret) {
     goto cleanup;

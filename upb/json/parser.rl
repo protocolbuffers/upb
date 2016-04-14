@@ -1332,12 +1332,12 @@ static void free_json_parsermethod(upb_refcounted *r) {
     upb_value val = upb_inttable_iter_value(&i);
     upb_strtable *t = upb_value_getptr(val);
     upb_strtable_uninit(t);
-    free(t);
+    upb_gfree(t);
   }
 
   upb_inttable_uninit(&method->name_tables);
 
-  free(r);
+  upb_gfree(r);
 }
 
 static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
@@ -1354,7 +1354,7 @@ static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
   }
 
   /* TODO(haberman): handle malloc failure. */
-  t = malloc(sizeof(*t));
+  t = upb_gmalloc(sizeof(*t));
   upb_strtable_init(t, UPB_CTYPE_CONSTPTR);
   upb_inttable_insertptr(&m->name_tables, md, upb_value_ptr(t));
 
@@ -1386,7 +1386,7 @@ static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
     }
   }
 
-  free(buf);
+  upb_gfree(buf);
 }
 
 /* Public API *****************************************************************/
@@ -1426,7 +1426,7 @@ upb_json_parsermethod *upb_json_parsermethod_new(const upb_msgdef* md,
                                                  const void* owner) {
   static const struct upb_refcounted_vtbl vtbl = {visit_json_parsermethod,
                                                   free_json_parsermethod};
-  upb_json_parsermethod *ret = malloc(sizeof(*ret));
+  upb_json_parsermethod *ret = upb_gmalloc(sizeof(*ret));
   upb_refcounted_init(upb_json_parsermethod_upcast_mutable(ret), &vtbl, owner);
 
   ret->msg = md;

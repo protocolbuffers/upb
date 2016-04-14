@@ -39,8 +39,8 @@ typedef struct {
 
 void freestrpc(void *ptr) {
   strpc *pc = ptr;
-  free(pc->ptr);
-  free(pc);
+  upb_gfree(pc->ptr);
+  upb_gfree(pc);
 }
 
 /* Convert fielddef name to JSON name and return as a string piece. */
@@ -49,12 +49,12 @@ strpc *newstrpc(upb_handlers *h, const upb_fielddef *f,
   /* TODO(haberman): handle malloc failure. */
   strpc *ret = malloc(sizeof(*ret));
   if (preserve_fieldnames) {
-    ret->ptr = upb_strdup(upb_fielddef_name(f));
+    ret->ptr = upb_gstrdup(upb_fielddef_name(f));
     ret->len = strlen(ret->ptr);
   } else {
     size_t len;
     ret->len = upb_fielddef_getjsonname(f, NULL, 0);
-    ret->ptr = malloc(ret->len);
+    ret->ptr = upb_gmalloc(ret->len);
     len = upb_fielddef_getjsonname(f, ret->ptr, ret->len);
     UPB_ASSERT_VAR(len, len == ret->len);
     ret->len--;  /* NULL */
@@ -566,10 +566,10 @@ static void set_enum_hd(upb_handlers *h,
                         const upb_fielddef *f,
                         bool preserve_fieldnames,
                         upb_handlerattr *attr) {
-  EnumHandlerData *hd = malloc(sizeof(EnumHandlerData));
+  EnumHandlerData *hd = upb_gmalloc(sizeof(EnumHandlerData));
   hd->enumdef = (const upb_enumdef *)upb_fielddef_subdef(f);
   hd->keyname = newstrpc(h, f, preserve_fieldnames);
-  upb_handlers_addcleanup(h, hd, free);
+  upb_handlers_addcleanup(h, hd, upb_gfree);
   upb_handlerattr_sethandlerdata(attr, hd);
 }
 

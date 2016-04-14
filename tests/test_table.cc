@@ -81,7 +81,7 @@ void test_strtable(const vector<std::string>& keys, uint32_t num_to_insert) {
       int new_lg2 = table.t.size_lg2 + 1;
       // Don't use more than 64k tables, to avoid exhausting memory.
       new_lg2 = UPB_MIN(new_lg2, 16);
-      upb_strtable_resize(&table, new_lg2);
+      upb_strtable_resize(&table, new_lg2, &upb_alloc_global);
     }
   }
 
