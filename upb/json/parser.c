@@ -1527,7 +1527,7 @@ _again:
 #line 1270 "upb/json/parser.rl"
 
   if (p != pe) {
-    upb_status_seterrf(&parser->status, "Parse error at %s\n", p);
+    upb_status_seterrf(&parser->status, "Parse error at '%.*s'\n", p, pe - p);
     upb_env_reporterror(parser->env, &parser->status);
   } else {
     capture_suspend(parser, &p);
@@ -1639,10 +1639,12 @@ static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
     }
     upb_strtable_insert(t, buf, upb_value_constptr(f));
 
-    /* Add an entry for the raw name (compliant proto3 JSON parsers must
-     * accept both).  This might fail if the two names are the same but that
-     * is ok. */
-    upb_strtable_insert(t, upb_fielddef_name(f), upb_value_constptr(f));
+    if (strcmp(buf, upb_fielddef_name(f)) != 0) {
+      /* Since the JSON name is different from the regular field name, add an
+       * entry for the raw name (compliant proto3 JSON parsers must accept
+       * both). */
+      upb_strtable_insert(t, upb_fielddef_name(f), upb_value_constptr(f));
+    }
 
     if (upb_fielddef_issubmsg(f)) {
       add_jsonname_table(m, upb_fielddef_msgsubdef(f));

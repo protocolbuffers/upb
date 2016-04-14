@@ -132,6 +132,7 @@ static TestCase kTestRoundtripMessagesPreserve[] = {
          "{\"foo\":2}]}"),
     EXPECT_SAME
   },
+  TEST_SENTINEL
 };
 
 static void AddField(upb::MessageDef* message,
