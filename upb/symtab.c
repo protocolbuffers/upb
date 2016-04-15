@@ -2,7 +2,6 @@
 #include "upb/structdefs.int.h"
 #include "upb/symtab.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 static void upb_symtab_free(upb_refcounted *r) {

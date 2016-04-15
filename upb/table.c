@@ -6,7 +6,6 @@
 
 #include "upb/table.int.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #define UPB_MAXARRSIZE 16  /* 64k. */
@@ -365,12 +364,12 @@ bool upb_strtable_lookup2(const upb_strtable *t, const char *key, size_t len,
   return lookup(&t->t, strkey2(key, len), v, hash, &streql);
 }
 
-bool upb_strtable_remove2(upb_strtable *t, const char *key, size_t len,
-                         upb_value *val) {
+bool upb_strtable_remove3(upb_strtable *t, const char *key, size_t len,
+                         upb_value *val, upb_alloc *alloc) {
   uint32_t hash = MurmurHash2(key, strlen(key), 0);
   upb_tabkey tabkey;
   if (rm(&t->t, strkey2(key, len), val, &tabkey, hash, &streql)) {
-    free((void*)tabkey);
+    upb_free(alloc, (void*)tabkey);
     return true;
   } else {
     return false;
@@ -502,7 +501,7 @@ bool upb_inttable_init2(upb_inttable *t, upb_ctype_t ctype, upb_alloc *a) {
 
 void upb_inttable_uninit2(upb_inttable *t, upb_alloc *a) {
   uninit(&t->t, a);
-  free(mutable_array(t));
+  upb_free(a, mutable_array(t));
 }
 
 bool upb_inttable_insert2(upb_inttable *t, uintptr_t key, upb_value val,

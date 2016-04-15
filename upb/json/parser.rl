@@ -19,12 +19,11 @@
 ** - handling of keys/escape-sequences/etc that span input buffers.
 */
 
-#include <stdio.h>
-#include <stdint.h>
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
 #include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "upb/json/parser.h"
 
@@ -1367,7 +1366,7 @@ static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
     size_t field_len = upb_fielddef_getjsonname(f, buf, len);
     if (field_len > len) {
       size_t len2;
-      buf = realloc(buf, field_len);
+      buf = upb_grealloc(buf, 0, field_len);
       len = field_len;
       len2 = upb_fielddef_getjsonname(f, buf, len);
       UPB_ASSERT_VAR(len2, len == len2);

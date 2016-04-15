@@ -398,8 +398,13 @@ UPB_INLINE bool upb_strtable_lookup(const upb_strtable *t, const char *key,
 /* Removes an item from the table.  Returns true if the remove was successful,
  * and stores the removed item in *val if non-NULL. */
 bool upb_inttable_remove(upb_inttable *t, uintptr_t key, upb_value *val);
-bool upb_strtable_remove2(upb_strtable *t, const char *key, size_t len,
-                          upb_value *val);
+bool upb_strtable_remove3(upb_strtable *t, const char *key, size_t len,
+                          upb_value *val, upb_alloc *alloc);
+
+UPB_INLINE bool upb_strtable_remove2(upb_strtable *t, const char *key,
+                                     size_t len, upb_value *val) {
+  return upb_strtable_remove3(t, key, len, val, &upb_alloc_global);
+}
 
 /* For NULL-terminated strings. */
 UPB_INLINE bool upb_strtable_remove(upb_strtable *t, const char *key,

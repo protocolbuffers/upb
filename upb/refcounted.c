@@ -18,7 +18,6 @@
 #include "upb/refcounted.h"
 
 #include <setjmp.h>
-#include <stdlib.h>
 
 static void freeobj(upb_refcounted *o);
 
@@ -97,6 +96,8 @@ void upb_unlock();
  * these errors can only occur in UPB_DEBUG_REFS mode, we use an allocator that
  * immediately aborts on failure (avoiding the global allocator, which might
  * inject failures). */
+
+#include <stdlib.h>
 
 static void *upb_debugrefs_allocfunc(upb_alloc *alloc, void *ptr,
                                      size_t oldsize, size_t size) {

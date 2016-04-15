@@ -1,9 +1,6 @@
 
 #include "upb/pb/glue.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "upb/descriptor/reader.h"
 #include "upb/pb/decoder.h"
 

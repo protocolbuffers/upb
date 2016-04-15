@@ -427,11 +427,13 @@ struct upb_alloc {
 };
 
 UPB_INLINE void *upb_malloc(upb_alloc *alloc, size_t size) {
+  assert(size > 0);
   return alloc->func(alloc, NULL, 0, size);
 }
 
 UPB_INLINE void *upb_realloc(upb_alloc *alloc, void *ptr, size_t oldsize,
                              size_t size) {
+  assert(size > 0);
   return alloc->func(alloc, ptr, oldsize, size);
 }
 
@@ -449,8 +451,11 @@ extern upb_alloc upb_alloc_global;
  * allocator, like injecting out-of-memory faults in debug/testing builds. */
 
 UPB_INLINE void *upb_gmalloc(size_t size) {
-  assert(size > 0);
   return upb_malloc(&upb_alloc_global, size);
+}
+
+UPB_INLINE void *upb_grealloc(void *ptr, size_t oldsize, size_t size) {
+  return upb_realloc(&upb_alloc_global, ptr, oldsize, size);
 }
 
 UPB_INLINE void upb_gfree(void *ptr) {

@@ -5,8 +5,6 @@
 
 #include "upb/json/printer.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -47,7 +45,7 @@ void freestrpc(void *ptr) {
 strpc *newstrpc(upb_handlers *h, const upb_fielddef *f,
                 bool preserve_fieldnames) {
   /* TODO(haberman): handle malloc failure. */
-  strpc *ret = malloc(sizeof(*ret));
+  strpc *ret = upb_gmalloc(sizeof(*ret));
   if (preserve_fieldnames) {
     ret->ptr = upb_gstrdup(upb_fielddef_name(f));
     ret->len = strlen(ret->ptr);

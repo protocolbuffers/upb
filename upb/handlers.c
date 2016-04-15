@@ -6,7 +6,6 @@
 #include "upb/handlers.h"
 #include "upb/structdefs.int.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #include "upb/sink.h"
