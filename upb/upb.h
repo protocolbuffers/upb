@@ -303,19 +303,6 @@ struct upb_errorspace {
   const char *name;
 };
 
-/* Errors raised by upb that we want to be able to detect programmatically. */
-typedef enum {
-  UPB_NOMEM   /* Can't reuse ENOMEM because it is POSIX, not ISO C. */
-} upb_errcode_t;
-
-extern upb_errorspace upb_errspace_upb;
-
-/* Since errno is defined by standard C, we define an error space for it in
- * core upb.  Other error spaces should be defined in other, platform-specific
- * modules. */
-
-extern upb_errorspace upb_errspace_errno;
-
 
 /* upb::Status ****************************************************************/
 
@@ -388,14 +375,35 @@ struct upb_status {
   int code_;
   upb_errorspace *error_space_;
 
+  const char *file_;
+  uint32_t line_;
+
   /* Error message; NULL-terminated. */
   char msg[UPB_STATUS_MAX_MESSAGE];
 };
 
-#define UPB_STATUS_INIT {true, 0, NULL, {0}}
+#define UPB_STATUS_INIT {true, 0, NULL, NULL, 0, {0}}
 
 
-/** upb::Allocator * **********************************************************/
+/** Built-in error spaces. ****************************************************/
+
+/* Errors raised by upb that we want to be able to detect programmatically. */
+typedef enum {
+  UPB_NOMEM   /* Can't reuse ENOMEM because it is POSIX, not ISO C. */
+} upb_errcode_t;
+
+extern upb_errorspace upb_upberr;
+
+void upb_upberr_setoom(upb_status *s);
+
+/* Since errno is defined by standard C, we define an error space for it in
+ * core upb.  Other error spaces should be defined in other, platform-specific
+ * modules. */
+
+extern upb_errorspace upb_errnoerr;
+
+
+/** upb::Allocator ************************************************************/
 
 /* A upb::Allocator is a possibly-stateful allocator object.
  *

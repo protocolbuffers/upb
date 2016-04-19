@@ -396,12 +396,12 @@ bool upb_strtable_done(const upb_strtable_iter *i) {
          upb_tabent_isempty(str_tabent(i));
 }
 
-const char *upb_strtable_iter_key(upb_strtable_iter *i) {
+const char *upb_strtable_iter_key(const upb_strtable_iter *i) {
   assert(!upb_strtable_done(i));
   return upb_tabstr(str_tabent(i)->key, NULL);
 }
 
-size_t upb_strtable_iter_keylength(upb_strtable_iter *i) {
+size_t upb_strtable_iter_keylength(const upb_strtable_iter *i) {
   uint32_t len;
   assert(!upb_strtable_done(i));
   upb_tabstr(str_tabent(i)->key, &len);
@@ -506,8 +506,6 @@ void upb_inttable_uninit2(upb_inttable *t, upb_alloc *a) {
 
 bool upb_inttable_insert2(upb_inttable *t, uintptr_t key, upb_value val,
                           upb_alloc *a) {
-  /* XXX: Table can't store value (uint64_t)-1.  Need to somehow statically
-   * guarantee that this is not necessary, or fix the limitation. */
   upb_tabval tabval;
   tabval.val = val.val;
   UPB_UNUSED(tabval);

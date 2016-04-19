@@ -95,7 +95,7 @@ bool upb_def_setfullname(upb_def *def, const char *fullname, upb_status *s) {
 
   fullname = upb_gstrdup(fullname);
   if (!fullname) {
-    upb_status_seterrmsg(s, "Out of memory.");
+    upb_upberr_setoom(s);
     return false;
   }
 
@@ -280,7 +280,7 @@ static bool assign_msg_indices(upb_msgdef *m, upb_status *s) {
 
   fields = upb_gmalloc(n * sizeof(*fields));
   if (!fields) {
-    upb_status_seterrmsg(s, "Out of memory");
+    upb_upberr_setoom(s);
     return false;
   }
 
@@ -850,7 +850,7 @@ bool upb_fielddef_setcontainingtypename(upb_fielddef *f, const char *name,
 
   name_copy = upb_gstrdup(name);
   if (!name_copy) {
-    upb_status_seterrmsg(s, "Out of memory");
+    upb_upberr_setoom(s);
     return false;
   }
 
@@ -1295,7 +1295,7 @@ bool upb_fielddef_setsubdefname(upb_fielddef *f, const char *name,
 
   name_copy = upb_gstrdup(name);
   if (!name_copy) {
-    upb_status_seterrmsg(s, "Out of memory.");
+    upb_upberr_setoom(s);
     return false;
   }
 
@@ -1944,7 +1944,7 @@ const upb_filedef *upb_filedef_dep(const upb_filedef *f, size_t i) {
 bool upb_filedef_setname(upb_filedef *f, const char *name, upb_status *s) {
   name = upb_gstrdup(name);
   if (!name) {
-    upb_status_seterrmsg(s, "Out of memory");
+    upb_upberr_setoom(s);
     return false;
   }
   upb_gfree((void*)f->name);
@@ -1957,7 +1957,7 @@ bool upb_filedef_setpackage(upb_filedef *f, const char *package,
   if (!upb_isident(package, strlen(package), true, s)) return false;
   package = upb_gstrdup(package);
   if (!package) {
-    upb_status_seterrmsg(s, "Out of memory");
+    upb_upberr_setoom(s);
     return false;
   }
   upb_gfree((void*)f->package);
@@ -2009,7 +2009,7 @@ bool upb_filedef_adddef(upb_filedef *f, upb_def *def, const void *ref_donor,
     }
     return true;
   } else {
-    upb_status_seterrmsg(s, "Out of memory.");
+    upb_upberr_setoom(s);
     return false;
   }
 }

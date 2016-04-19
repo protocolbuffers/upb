@@ -26,6 +26,16 @@ static void nullz(upb_status *status) {
 }
 
 
+/* upb_upberr *****************************************************************/
+
+upb_errorspace upb_upberr = {"upb error"};
+
+void upb_upberr_setoom(upb_status *status) {
+  status->error_space_ = &upb_upberr;
+  upb_status_seterrmsg(status, "Out of memory");
+}
+
+
 /* upb_status *****************************************************************/
 
 void upb_status_clear(upb_status *status) {

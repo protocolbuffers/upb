@@ -519,8 +519,8 @@ typedef struct {
 void upb_strtable_begin(upb_strtable_iter *i, const upb_strtable *t);
 void upb_strtable_next(upb_strtable_iter *i);
 bool upb_strtable_done(const upb_strtable_iter *i);
-const char *upb_strtable_iter_key(upb_strtable_iter *i);
-size_t upb_strtable_iter_keylength(upb_strtable_iter *i);
+const char *upb_strtable_iter_key(const upb_strtable_iter *i);
+size_t upb_strtable_iter_keylength(const upb_strtable_iter *i);
 upb_value upb_strtable_iter_value(const upb_strtable_iter *i);
 void upb_strtable_iter_setdone(upb_strtable_iter *i);
 bool upb_strtable_iter_isequal(const upb_strtable_iter *i1,

@@ -14,10 +14,8 @@ static void *upb_calloc(size_t size) {
   void *mem = upb_gmalloc(size);
   if (mem) {
     memset(mem, 0, size);
-    return mem;
-  } else {
-    return NULL;
   }
+  return mem;
 }
 
 /* Defined for the sole purpose of having a unique pointer value for

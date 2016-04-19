@@ -78,6 +78,9 @@ static char *upb_join(const char *base, const char *name) {
     return upb_gstrdup(name);
   } else {
     char *ret = upb_gmalloc(strlen(base) + strlen(name) + 2);
+    if (!ret) {
+      return NULL;
+    }
     ret[0] = '\0';
     strcat(ret, base);
     strcat(ret, ".");
@@ -87,14 +90,20 @@ static char *upb_join(const char *base, const char *name) {
 }
 
 /* Qualify the defname for all defs starting with offset "start" with "str". */
-static void upb_descreader_qualify(upb_filedef *f, char *str, int32_t start) {
+static bool upb_descreader_qualify(upb_filedef *f, char *str, int32_t start) {
   size_t i;
   for (i = start; i < upb_filedef_defcount(f); i++) {
     upb_def *def = upb_filedef_mutabledef(f, i);
     char *name = upb_join(str, upb_def_fullname(def));
+    if (!name) {
+      /* Need better logic here; at this point we've qualified some names but
+       * not others. */
+      return false;
+    }
     upb_def_setfullname(def, name, NULL);
     upb_gfree(name);
   }
+  return true;
 }
 
 
@@ -120,11 +129,14 @@ void upb_descreader_startcontainer(upb_descreader *r) {
   f->name = NULL;
 }
 
-void upb_descreader_endcontainer(upb_descreader *r) {
+bool upb_descreader_endcontainer(upb_descreader *r) {
   upb_descreader_frame *f = &r->stack[--r->stack_len];
-  upb_descreader_qualify(r->file, f->name, f->start);
+  if (!upb_descreader_qualify(r->file, f->name, f->start)) {
+    return false;
+  }
   upb_gfree(f->name);
   f->name = NULL;
+  return true;
 }
 
 void upb_descreader_setscopename(upb_descreader *r, char *str) {
@@ -156,8 +168,7 @@ static bool file_end(void *closure, const void *hd, upb_status *status) {
   upb_descreader *r = closure;
   UPB_UNUSED(hd);
   UPB_UNUSED(status);
-  upb_descreader_endcontainer(r);
-  return true;
+  return upb_descreader_endcontainer(r);
 }
 
 static size_t file_onname(void *closure, const void *hd, const char *buf,
@@ -544,8 +555,7 @@ static bool msg_end(void *closure, const void *hd, upb_status *status) {
     upb_status_seterrmsg(status, "Encountered message with no name.");
     return false;
   }
-  upb_descreader_endcontainer(r);
-  return true;
+  return upb_descreader_endcontainer(r);
 }
 
 static size_t msg_name(void *closure, const void *hd, const char *buf,
