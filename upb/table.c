@@ -509,7 +509,7 @@ bool upb_inttable_insert2(upb_inttable *t, uintptr_t key, upb_value val,
   upb_tabval tabval;
   tabval.val = val.val;
   UPB_UNUSED(tabval);
-  assert(upb_arrhas(tabval));
+  assert(upb_arrhas(tabval));  /* This will reject (uint64_t)-1.  Fix this. */
 
   upb_check_alloc(&t->t, a);
 
