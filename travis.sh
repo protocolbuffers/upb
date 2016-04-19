@@ -1,7 +1,9 @@
 #!/bin/bash
 
 install_protoc() {
-  sudo apt-get install protobuf-compiler
+  wget https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protoc-3.0.0-beta-2-linux-x86_64.zip
+  unzip protoc-3.0.0-beta-2-linux-x86_64.zip
+  export PATH=.:$PATH
   protoc --version || true
 }
 
@@ -72,7 +74,8 @@ lua_script() {
 # don't want the test to be brittle.
 genfiles_install() {
   sudo apt-get update -qq
-  sudo apt-get install lua5.2 liblua5.2-dev protobuf-compiler
+  sudo apt-get install lua5.2 liblua5.2-dev
+  install_protoc
 }
 genfiles_script() {
   # Avoid regenerating descriptor.pb, since its output can vary based on the

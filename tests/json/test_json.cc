@@ -205,7 +205,7 @@ void test_json_roundtrip() {
   upb::reffed_ptr<const upb::MessageDef> md(
       upbdefs::upb::test::json::TestMessage::get());
   upb::reffed_ptr<const upb::Handlers> serialize_handlers(
-      upb::json::Printer::NewHandlers(md, false));
+      upb::json::Printer::NewHandlers(md.get(), false));
   upb::reffed_ptr<const upb::json::ParserMethod> parser_method(
       upb::json::ParserMethod::New(md.get()));
 
@@ -223,7 +223,7 @@ void test_json_roundtrip() {
     }
   }
 
-  serialize_handlers = upb::json::Printer::NewHandlers(md, true);
+  serialize_handlers = upb::json::Printer::NewHandlers(md.get(), true);
 
   for (const TestCase* test_case = kTestRoundtripMessagesPreserve;
        test_case->input != NULL; test_case++) {
