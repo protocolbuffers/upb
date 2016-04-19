@@ -1,9 +1,7 @@
 #!/bin/bash
 
 install_protoc() {
-  wget https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protoc-3.0.0-beta-2-linux-x86_64.zip
-  unzip protoc-3.0.0-beta-2-linux-x86_64.zip
-  export PATH=.:$PATH
+  sudo apt-get install protobuf-compiler
   protoc --version || true
 }
 
@@ -75,7 +73,12 @@ lua_script() {
 genfiles_install() {
   sudo apt-get update -qq
   sudo apt-get install lua5.2 liblua5.2-dev
-  install_protoc
+
+  # Need a recent version of protoc to compile proto3 files.
+  wget https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protoc-3.0.0-beta-2-linux-x86_64.zip
+  unzip protoc-3.0.0-beta-2-linux-x86_64.zip
+  export PATH=.:$PATH
+  protoc --version || true
 }
 genfiles_script() {
   # Avoid regenerating descriptor.pb, since its output can vary based on the
