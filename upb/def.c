@@ -1508,9 +1508,11 @@ static bool check_field_add(const upb_msgdef *m, const upb_fielddef *f,
   } else if (upb_fielddef_name(f) == NULL || upb_fielddef_number(f) == 0) {
     upb_status_seterrmsg(s, "field name or number were not set");
     return false;
-  } else if (upb_strtable_lookup(&m->ntof, upb_fielddef_name(f), NULL) ||
-             upb_msgdef_itof(m, upb_fielddef_number(f))) {
-    upb_status_seterrmsg(s, "duplicate field name or number for field");
+  } else if (upb_msgdef_itof(m, upb_fielddef_number(f))) {
+    upb_status_seterrmsg(s, "duplicate field number");
+    return false;
+  } else if (upb_strtable_lookup(&m->ntof, upb_fielddef_name(f), NULL)) {
+    upb_status_seterrmsg(s, "name conflicts with existing field or oneof");
     return false;
   }
   return true;
@@ -1642,6 +1644,7 @@ bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
 
   *o = upb_trygetoneof(upb_value_getptr(val));
   *f = upb_trygetfield(upb_value_getptr(val));
+  assert((*o != NULL) ^ (*f != NULL));  /* Exactly one of the two should be set. */
   return true;
 }
 

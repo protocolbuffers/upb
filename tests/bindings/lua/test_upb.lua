@@ -17,16 +17,15 @@ function iter_to_array(iter)
 end
 
 function test_msgdef()
-  local o = upb.OneofDef{name = "field1", fields = {
-    upb.FieldDef{name = "field2", number = 1, type = upb.TYPE_INT32},
-  }}
-
+  local f2 = upb.FieldDef{name = "field2", number = 1, type = upb.TYPE_INT32}
+  local o = upb.OneofDef{name = "field1", fields = {f2}}
   local f = upb.FieldDef{name = "field3", number = 2, type = upb.TYPE_INT32}
 
   local m = upb.MessageDef{fields = {o, f}}
 
   assert_equal(f, m:lookup_name("field3"))
   assert_equal(o, m:lookup_name("field1"))
+  assert_equal(f2, m:lookup_name("field2"))
 end
 
 function test_fielddef()
