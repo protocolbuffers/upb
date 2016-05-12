@@ -221,7 +221,7 @@ static int getjmptarget(jitcompiler *jc, const void *key) {
   int pclabel = 0;
   bool ok;
 
-  UPB_ASSERT(upb_inttable_lookupptr(&jc->jmpdefined, key, NULL));
+  UPB_ASSERT_DEBUGVAR(upb_inttable_lookupptr(&jc->jmpdefined, key, NULL));
   ok = try_getjmptarget(jc, key, &pclabel);
   UPB_ASSERT(ok);
   return pclabel;
