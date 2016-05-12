@@ -199,12 +199,12 @@ template <int N> class InlinedEnvironment;
 /* UPB_ASSERT(): in release mode, we use the expression without letting it be
  * evaluated.  This prevents "unused variable" warnings. */
 #ifdef NDEBUG
-#define UPB_ASSERT(expr) if (false && (expr)) {}
+#define UPB_ASSERT(expr) do {} while (false && (expr))
 #else
 #define UPB_ASSERT(expr) assert(expr)
 #endif
 
-/* UPB_ASSERT_DEBUGVAR(): assert that uses functions or variables that do not
+/* UPB_ASSERT_DEBUGVAR(): assert that uses functions or variables that only
  * exist in debug mode.  This turns into regular assert. */
 #define UPB_ASSERT_DEBUGVAR(expr) assert(expr)
 
