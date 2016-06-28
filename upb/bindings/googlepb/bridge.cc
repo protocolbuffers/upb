@@ -87,6 +87,9 @@ const MessageDef* DefBuilder::GetMaybeUnfrozenMessageDef(
   md->set_full_name(d->full_name(), &status);
   ASSERT_STATUS(&status);
 
+#if GOOGLE_PROTOBUF_VERSION >= 3000000
+  upb_msgdef_setmapentry(md, d->options().map_entry());
+#endif
   // Find all regular fields and extensions for this message.
   std::vector<const goog::FieldDescriptor*> fields;
   d->file()->pool()->FindAllExtensions(d, &fields);
