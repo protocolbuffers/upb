@@ -25,8 +25,118 @@
 #include "upb/upb.h"
 
 #ifdef __cplusplus
-extern "C" {
+
+namespace upb {
+class Array;
+class Map;
+class MapIterator;
+class MessageFactory;
+class MessageLayout;
+class Visitor;
+class VisitorPlan;
+}
+
 #endif
+
+UPB_DECLARE_TYPE(upb::MessageFactory, upb_msgfactory)
+UPB_DECLARE_TYPE(upb::MessageLayout, upb_msglayout)
+UPB_DECLARE_TYPE(upb::Array, upb_array)
+UPB_DECLARE_TYPE(upb::Map, upb_map)
+UPB_DECLARE_TYPE(upb::MapIterator, upb_mapiter)
+UPB_DECLARE_TYPE(upb::Visitor, upb_visitor)
+UPB_DECLARE_TYPE(upb::VisitorPlan, upb_visitorplan)
+
+UPB_BEGIN_EXTERN_C
+
+typedef void upb_msg;
+
+
+/** upb_stringview ************************************************************/
+
+typedef struct {
+  const char *data;
+  size_t size;
+} upb_stringview;
+
+UPB_INLINE upb_stringview upb_stringview_make(const char *data, size_t size) {
+  upb_stringview ret;
+  ret.data = data;
+  ret.size = size;
+  return ret;
+}
+
+#define UPB_STRINGVIEW_INIT(ptr, len) {ptr, len}
+
+
+/** upb_msgval ****************************************************************/
+
+/* A union representing all possible protobuf values.  Used for generic get/set
+ * operations. */
+
+typedef union {
+  bool b;
+  float flt;
+  double dbl;
+  int32_t i32;
+  int64_t i64;
+  uint32_t u32;
+  uint64_t u64;
+  const upb_array* arr;
+  const upb_map* map;
+  const upb_msg* msg;
+  const void* ptr;
+  const char* csptr;
+  upb_func* fptr;
+  upb_stringview str;
+} upb_msgval;
+
+#define ACCESSORS(name, membername, ctype) \
+  UPB_INLINE ctype upb_msgval_get ## name(upb_msgval v) { \
+    return v.membername; \
+  } \
+  UPB_INLINE void upb_msgval_set ## name(upb_msgval *v, ctype cval) { \
+    v->membername = cval; \
+  } \
+  UPB_INLINE upb_msgval upb_msgval_ ## name(ctype v) { \
+    upb_msgval ret; \
+    ret.membername = v; \
+    return ret; \
+  }
+
+ACCESSORS(bool,   b,   bool)
+ACCESSORS(float,  flt, float)
+ACCESSORS(double, dbl, double)
+ACCESSORS(int32,  i32, int32_t)
+ACCESSORS(int64,  i64, int64_t)
+ACCESSORS(uint32, u32, uint32_t)
+ACCESSORS(uint64, u64, uint64_t)
+ACCESSORS(arr,    arr, const upb_array*)
+ACCESSORS(map,    map, const upb_map*)
+ACCESSORS(msg,    msg, const upb_msg*)
+ACCESSORS(ptr,    ptr, const void*)
+ACCESSORS(str,    str, upb_stringview)
+ACCESSORS(fptr,   fptr, upb_func*)
+ACCESSORS(cstr,   csptr, const char*)
+ACCESSORS(constptr, ptr, const void*)
+
+#undef ACCESSORS
+
+/* upb_stringview and const char* cannot use the above macro together */
+/*UPB_INLINE const char* upb_msgval_getcstr(upb_msgval v) {
+  return v.membername;
+}
+UPB_INLINE void upb_msgval_setcstr(upb_msgval *v, const char* cval) {
+  v->membername = cval;
+}
+UPB_INLINE upb_msgval upb_msgval_cstr(const char* v) {
+  upb_msgval ret;
+  ret.membername = v;
+  return ret;
+}*/
+
+UPB_INLINE upb_msgval upb_msgval_makestr(const char *data, size_t size) {
+  return upb_msgval_str(upb_stringview_make(data, size));
+}
 
 
 /* upb_value ******************************************************************/
@@ -49,7 +159,7 @@ typedef enum {
 } upb_ctype_t;
 
 typedef struct {
-  uint64_t val;
+  upb_msgval val;
 #ifndef NDEBUG
   /* In debug mode we carry the value type around also so we can check accesses
    * to be sure the right member is being read. */
@@ -73,13 +183,13 @@ UPB_INLINE char *upb_gstrdup(const char *s) {
   return upb_strdup(s, &upb_alloc_global);
 }
 
-UPB_INLINE void _upb_value_setval(upb_value *v, uint64_t val,
+UPB_INLINE void _upb_value_setval(upb_value *v, upb_msgval val,
                                   upb_ctype_t ctype) {
   v->val = val;
   SET_TYPE(v->ctype, ctype);
 }
 
-UPB_INLINE upb_value _upb_value_val(uint64_t val, upb_ctype_t ctype) {
+UPB_INLINE upb_value _upb_value_val(upb_msgval val, upb_ctype_t ctype) {
   upb_value ret;
   _upb_value_setval(&ret, val, ctype);
   return ret;
@@ -95,7 +205,7 @@ UPB_INLINE upb_value _upb_value_val(uint64_t val, upb_ctype_t ctype) {
  * upb_value upb_value_int32(int32_t val); */
 #define FUNCS(name, membername, type_t, converter, proto_type) \
   UPB_INLINE void upb_value_set ## name(upb_value *val, type_t cval) { \
-    val->val = (converter)cval; \
+    val->val = upb_msgval_ ## converter(cval); \
     SET_TYPE(val->ctype, proto_type); \
   } \
   UPB_INLINE upb_value upb_value_ ## name(type_t val) { \
@@ -105,18 +215,18 @@ UPB_INLINE upb_value _upb_value_val(uint64_t val, upb_ctype_t ctype) {
   } \
   UPB_INLINE type_t upb_value_get ## name(upb_value val) { \
     UPB_ASSERT_DEBUGVAR(val.ctype == proto_type); \
-    return (type_t)(converter)val.val; \
+    return (type_t)upb_msgval_get ## converter(val.val); \
   }
 
-FUNCS(int32,    int32,        int32_t,      int32_t,    UPB_CTYPE_INT32)
-FUNCS(int64,    int64,        int64_t,      int64_t,    UPB_CTYPE_INT64)
-FUNCS(uint32,   uint32,       uint32_t,     uint32_t,   UPB_CTYPE_UINT32)
-FUNCS(uint64,   uint64,       uint64_t,     uint64_t,   UPB_CTYPE_UINT64)
-FUNCS(bool,     _bool,        bool,         bool,       UPB_CTYPE_BOOL)
-FUNCS(cstr,     cstr,         char*,        uintptr_t,  UPB_CTYPE_CSTR)
-FUNCS(ptr,      ptr,          void*,        uintptr_t,  UPB_CTYPE_PTR)
-FUNCS(constptr, constptr,     const void*,  uintptr_t,  UPB_CTYPE_CONSTPTR)
-FUNCS(fptr,     fptr,         upb_func*,    uintptr_t,  UPB_CTYPE_FPTR)
+FUNCS(int32,    int32,        int32_t,      int32,    UPB_CTYPE_INT32)
+FUNCS(int64,    int64,        int64_t,      int64,    UPB_CTYPE_INT64)
+FUNCS(uint32,   uint32,       uint32_t,     uint32,   UPB_CTYPE_UINT32)
+FUNCS(uint64,   uint64,       uint64_t,     uint64,   UPB_CTYPE_UINT64)
+FUNCS(bool,     _bool,        bool,         bool,     UPB_CTYPE_BOOL)
+FUNCS(cstr,     cstr,         char*,        cstr,     UPB_CTYPE_CSTR)
+FUNCS(ptr,      ptr,          void*,        ptr,      UPB_CTYPE_PTR)
+FUNCS(constptr, constptr,     const void*,  constptr, UPB_CTYPE_CONSTPTR)
+FUNCS(fptr,     fptr,         upb_func*,    fptr,     UPB_CTYPE_FPTR)
 
 #undef FUNCS
 
@@ -187,7 +297,7 @@ UPB_INLINE char *upb_tabstr(upb_tabkey key, uint32_t *len) {
  * This separate definition is necessary because in C++, UINTPTR_MAX isn't
  * reliably available. */
 typedef struct {
-  uint64_t val;
+  upb_msgval val;
 } upb_tabval;
 
 #else
@@ -218,7 +328,7 @@ typedef union {
   } staticinit;
 
   /* The normal accessor that we use for everything at runtime. */
-  uint64_t val;
+  upb_msgval val;
 } upb_tabval;
 
 #ifdef UPB_PTR_IS_64BITS
@@ -352,7 +462,7 @@ static const upb_tabent *upb_getentry(const upb_table *t, uint32_t hash) {
 }
 
 UPB_INLINE bool upb_arrhas(upb_tabval key) {
-  return key.val != (uint64_t)-1;
+  return key.val.u64 != (uint64_t)-1;
 }
 
 /* Initialize and uninitialize a table, respectively.  If memory allocation
@@ -589,9 +699,6 @@ void upb_inttable_iter_setdone(upb_inttable_iter *i);
 bool upb_inttable_iter_isequal(const upb_inttable_iter *i1,
                                const upb_inttable_iter *i2);
 
-
-#ifdef __cplusplus
-}  /* extern "C" */
-#endif
+UPB_END_EXTERN_C
 
 #endif  /* UPB_TABLE_H_ */
