@@ -76,7 +76,7 @@ upb_json_parser* upb_json_parser_create(upb_env* e,
 upb_bytessink *upb_json_parser_input(upb_json_parser *p);
 
 upb_json_parsermethod* upb_json_parsermethod_new(const upb_msgdef* md,
-                                                 const void* owner);
+                                                 const void* owner, bool ignore_unknown_fields);
 const upb_handlers *upb_json_parsermethod_desthandlers(
     const upb_json_parsermethod *m);
 const upb_byteshandler *upb_json_parsermethod_inputhandler(
@@ -108,7 +108,7 @@ inline const BytesHandler* ParserMethod::input_handler() const {
 /* static */
 inline reffed_ptr<const ParserMethod> ParserMethod::New(
     const MessageDef* md) {
-  const upb_json_parsermethod *m = upb_json_parsermethod_new(md, &m);
+  const upb_json_parsermethod *m = upb_json_parsermethod_new(md, &m, false);
   return reffed_ptr<const ParserMethod>(m, &m);
 }
 

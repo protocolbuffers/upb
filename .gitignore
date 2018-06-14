@@ -1,3 +1,5 @@
 *.s??
 obj/
 lib/
+upb.c
+upb.h
