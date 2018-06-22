@@ -431,6 +431,35 @@ static void test_oneofs() {
   upb_oneofdef_unref(o, &o);
 }
 
+static void test_extension_ranges() {
+  upb_status s = UPB_STATUS_INIT;
+  bool ok = true;
+  upb_symtab *symtab = upb_symtab_new(&symtab);
+  upb_msgdef *m = upb_msgdef_newnamed("TestMessage", &symtab);
+
+  ASSERT(symtab != NULL);
+
+  ok = upb_msgdef_addextrange(m, 100, 200, &s);
+  ASSERT_STATUS(ok, &s);
+
+  ok = upb_msgdef_addextrange(m, 1000, (1 << 30), &s);
+  ASSERT_STATUS(ok, &s);
+
+  ok = upb_msgdef_addextrange(m, 200, 201, &s);  /* end is exclusive */
+  ASSERT_STATUS(ok, &s);
+
+  ok = upb_msgdef_addextrange(m, 201, 300, &s);
+  ASSERT_STATUS(ok, &s);
+
+  ASSERT(!upb_msgdef_addextrange(m, -1, 100, &s)); /* invalid start */
+  ASSERT(!upb_msgdef_addextrange(m, 50, 1, &s)); /* invalid range */
+  ASSERT(!upb_msgdef_addextrange(m, 400, 400, &s)); /* invalid range */
+  ASSERT(!upb_msgdef_addextrange(m, 1, 150, &s)); /* overlapping range */
+  ASSERT(!upb_msgdef_addextrange(m, 150, 151, &s)); /* overlapping range */
+  ASSERT(!upb_msgdef_addextrange(m, 1, 900, &s)); /* overlapping range */
+  ASSERT(!upb_msgdef_addextrange(m, 250, 400, &s)); /* overlapping range */
+}
+
 int run_tests(int argc, char *argv[]) {
   if (argc < 2) {
     fprintf(stderr, "Usage: test_def <test.proto.pb>\n");
@@ -449,5 +478,6 @@ int run_tests(int argc, char *argv[]) {
   test_descriptor_flags();
   test_mapentry_check();
   test_oneofs();
+  test_extension_ranges();
   return 0;
 }

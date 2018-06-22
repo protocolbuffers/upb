@@ -1362,6 +1362,9 @@ static void visitmsg(const upb_refcounted *r, upb_refcounted_visit *visit,
 
 static void freemsg(upb_refcounted *r) {
   upb_msgdef *m = (upb_msgdef*)r;
+  if (!m->extension_ranges) {
+    upb_gfree(m->extension_ranges);
+  }
   upb_strtable_uninit(&m->ntof);
   upb_inttable_uninit(&m->itof);
   upb_def_uninit(upb_msgdef_upcast_mutable(m));
@@ -1383,6 +1386,9 @@ upb_msgdef *upb_msgdef_new(const void *owner) {
   if (!upb_strtable_init(&m->ntof, UPB_CTYPE_PTR)) goto err1;
   m->map_entry = false;
   m->syntax = UPB_SYNTAX_PROTO2;
+  m->extension_ranges = NULL;
+  m->extension_range_size = 0;
+  m->extension_range_count = 0;
   return m;
 
 err1:
@@ -1591,6 +1597,56 @@ void upb_msgdef_setmapentry(upb_msgdef *m, bool map_entry) {
 
 bool upb_msgdef_mapentry(const upb_msgdef *m) {
   return m->map_entry;
+}
+
+static const upb_msgdef_extension_range* find_overlapping_range(upb_msgdef *m, int32_t start, int32_t end) {
+  size_t i;
+  for (i = 0; i < m->extension_range_count; ++i) {
+    const upb_msgdef_extension_range *existing_range = &(m->extension_ranges[i]);
+    if (!(end <= existing_range->start || start >= existing_range->end)) {
+      return existing_range;
+    }
+  }
+  return NULL;
+}
+
+bool upb_msgdef_addextrange(upb_msgdef *m, int32_t start, int32_t end, upb_status *s) {
+  UPB_ASSERT(!upb_msgdef_isfrozen(m));
+  
+  if (start < 1) {
+    upb_status_seterrmsg(s, "Extension range should consist of positive numbers");
+    return false;
+  } else if (start >= end) {
+    upb_status_seterrmsg(s, "Invalid extension range");
+    return false;
+  } else if (find_overlapping_range(m, start, end)) {
+    /* Provided range overlaps with an existing range. */
+    upb_status_seterrmsg(s, "Extension range overlaps with an already registered range");
+    return false;
+  }
+
+  /* Resize the extension_ranges array if needed. */
+  if (m->extension_range_count + 1 >= m->extension_range_size) {
+    size_t new_size = m->extension_range_size * 2;
+    if (new_size == 0) {
+      /* Start with a capacity of 5 elements. */
+      new_size = 5;
+    }
+    m->extension_ranges = upb_grealloc(m->extension_ranges,
+				       m->extension_range_size * sizeof(upb_msgdef_extension_range),
+				       new_size * sizeof(upb_msgdef_extension_range));
+    if (!m->extension_ranges) {
+      upb_upberr_setoom(s);
+      return false;
+    }
+    m->extension_range_size = new_size;
+  }
+
+  m->extension_ranges[m->extension_range_count].start = start;
+  m->extension_ranges[m->extension_range_count].end = end;
+  m->extension_range_count++;
+
+  return true;
 }
 
 void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m) {

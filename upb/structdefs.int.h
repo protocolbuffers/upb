@@ -99,6 +99,11 @@ extern const struct upb_refcounted_vtbl upb_fielddef_vtbl;
 
 /* upb_msgdef *****************************************************************/
 
+typedef struct {
+  int32_t start;  /* inclusive */
+  int32_t end;  /* exclusive */
+} upb_msgdef_extension_range;
+
 struct upb_msgdef {
   upb_def base;
 
@@ -115,7 +120,10 @@ struct upb_msgdef {
   /* Whether this message has proto2 or proto3 semantics. */
   upb_syntax_t syntax;
 
-  /* TODO(haberman): proper extension ranges (there can be multiple). */
+  /* List of extension ranges for this message. */
+  upb_msgdef_extension_range* extension_ranges;
+  size_t extension_range_size;
+  size_t extension_range_count;
 };
 
 extern const struct upb_refcounted_vtbl upb_msgdef_vtbl;
@@ -123,10 +131,11 @@ extern const struct upb_refcounted_vtbl upb_msgdef_vtbl;
 /* TODO: also support static initialization of the oneofs table. This will be
  * needed if we compile in descriptors that contain oneofs. */
 #define UPB_MSGDEF_INIT(name, selector_count, submsg_field_count, itof, ntof, \
-                        map_entry, syntax, refs, ref2s)                       \
+                        map_entry, syntax, refs, ref2s) \
   {                                                                           \
     UPB_DEF_INIT(name, UPB_DEF_MSG, &upb_fielddef_vtbl, refs, ref2s),         \
-        selector_count, submsg_field_count, itof, ntof, map_entry, syntax     \
+        selector_count, submsg_field_count, itof, ntof, map_entry, syntax,    \
+        NULL, 0, 0                                                            \
   }
 
 

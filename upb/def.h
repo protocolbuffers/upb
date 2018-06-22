@@ -737,7 +737,6 @@ class upb::MessageDef {
   const FieldDef* FindFieldByNumber(uint32_t number) const;
   const FieldDef* FindFieldByName(const char* name, size_t len) const;
 
-
   FieldDef* FindFieldByName(const char *name) {
     return FindFieldByName(name, strlen(name));
   }
@@ -776,6 +775,12 @@ class upb::MessageDef {
   /* Is this message a map entry? */
   void setmapentry(bool map_entry);
   bool mapentry() const;
+
+  /* Adds an extension range to this message.
+   * 'start' is inclusive, 'end' is exclusive.
+   * The range should not overlap with any existing extension range.
+   */
+  bool AddExtensionRange(int32_t start, int32_t end, Status* s);
 
   /* Iteration over fields.  The order is undefined. */
   class field_iterator
@@ -919,6 +924,7 @@ bool upb_msgdef_setfullname(upb_msgdef *m, const char *fullname, upb_status *s);
 void upb_msgdef_setmapentry(upb_msgdef *m, bool map_entry);
 bool upb_msgdef_mapentry(const upb_msgdef *m);
 bool upb_msgdef_setsyntax(upb_msgdef *m, upb_syntax_t syntax);
+bool upb_msgdef_addextrange(upb_msgdef *m, int32_t start, int32_t end, upb_status *s);
 
 /* Field lookup in a couple of different variations:
  *   - itof = int to field
@@ -1856,6 +1862,9 @@ inline void MessageDef::setmapentry(bool map_entry) {
 }
 inline bool MessageDef::mapentry() const {
   return upb_msgdef_mapentry(this);
+}
+inline bool MessageDef::AddExtensionRange(int32_t start, int32_t end, Status* s) {
+  return upb_msgdef_addextrange(this, start, end, s);
 }
 inline MessageDef::field_iterator MessageDef::field_begin() {
   return field_iterator(this);
