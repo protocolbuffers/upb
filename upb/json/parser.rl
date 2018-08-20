@@ -46,7 +46,6 @@ static const char *kUInt32ValueFullMessageName = "google.protobuf.UInt32Value";
 static const char *kBoolValueFullMessageName = "google.protobuf.BoolValue";
 static const char *kStringValueFullMessageName = "google.protobuf.StringValue";
 static const char *kBytesValueFullMessageName = "google.protobuf.BytesValue";
-static const char *kTimestampFullMessageName = "google.protobuf.Timestamp";
 
 /* Forward declare */
 static bool is_top_level(upb_json_parser *p);
@@ -1564,10 +1563,6 @@ static bool is_string_wrapper(const upb_msgdef *m) {
          is_bytes_value(m);
 }
 
-static bool is_timestamp(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kTimestampFullMessageName) == 0;
-}
-
 static void start_wrapper_object(upb_json_parser *p) {
   const char *membername = "value";
 
@@ -1634,15 +1629,15 @@ static bool is_boolean_wrapper_object(upb_json_parser *p) {
 static bool does_timestamp_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         is_timestamp(upb_fielddef_msgsubdef(p->top->f));
+         upb_msgdef_timestamp(upb_fielddef_msgsubdef(p->top->f));
 }
 
 static bool does_timestamp_end(upb_json_parser *p) {
-  return p->top->m != NULL && is_timestamp(p->top->m);
+  return p->top->m != NULL && upb_msgdef_timestamp(p->top->m);
 }
 
 static bool is_timestamp_object(upb_json_parser *p) {
-  return p->top->m != NULL && is_timestamp(p->top->m);
+  return p->top->m != NULL && upb_msgdef_timestamp(p->top->m);
 }
 
 #define CHECK_RETURN_TOP(x) if (!(x)) goto error
