@@ -148,6 +148,10 @@ struct upb_json_parser {
 
   /* Whether to proceed if unknown field is met. */
   bool ignore_json_unknown;
+
+  /* Cache for parsing timestamp due to base and zone are handled in different
+   * handlers. */
+  struct tm tm;
 };
 
 struct upb_json_parsermethod {
@@ -974,130 +978,7 @@ static bool end_stringval_nontop(upb_json_parser *p) {
   bool ok = true;
 
   if (is_timestamp_object(p)) {
-    struct tm tm;
-    size_t len;
-    size_t i;
-    const char *buf = accumulate_getptr(p, &len);
-    const char *seconds_membername = "seconds";
-    const char *nanos_membername = "nanos";
-    char seconds_buf[20];
-    int64_t seconds = 0;
-    int32_t nanos = 0;
-
-    if (len < 19) {
-      upb_status_seterrf(&p->status, "error parsing timestamp");
-      upb_env_reporterror(p->env, &p->status);
-      multipart_end(p);
-      return false;
-    }
-
-    /* Parse seconds */
-    memcpy(seconds_buf, buf, 19);
-    seconds_buf[19] = 0;
-    if (strptime(seconds_buf, "%FT%H:%M:%S", &tm) == NULL) {
-      upb_status_seterrf(&p->status, "error parsing timestamp: %s",
-                         seconds_buf);
-      upb_env_reporterror(p->env, &p->status);
-      multipart_end(p);
-      return false;
-    }
-
-    /* Parse nanos */
-    if (len > 19 && buf[19] == '.') {
-      char *end;
-      char *nanos_buf;
-      char *nanos_bufend;
-      double val = 0.0;
-
-      i = 20;
-      while (i < len && buf[i] != 'Z' &&
-             buf[i] != '+' && buf[i] != '-') {
-        i++;
-      }
-
-      /* i - 19 is length of fractional part without starting '0'.
-       * Additional 2 for starting '0' and ending 0. */
-      nanos_buf = upb_gmalloc(i - 17);
-      nanos_buf[0] = '0';
-      memcpy(nanos_buf + 1, buf + 19, i - 19);
-      nanos_buf[i - 17] = 0;
-      nanos_bufend = nanos_buf + i - 18;
-
-      val = strtod(nanos_buf, &end);
-      if (errno == ERANGE || end != nanos_bufend) {
-        upb_status_seterrf(&p->status, "error parsing timestamp nanos: %s",
-                           nanos_buf);
-        upb_env_reporterror(p->env, &p->status);
-        upb_gfree(nanos_buf);
-        multipart_end(p);
-        return false;
-      }
-
-      nanos = val * 1000000000;
-      upb_gfree(nanos_buf);
-    } else {
-      i = 19;
-    }
-
-    /* Parse timezone */
-    if ((i == len - 1 && buf[i] == 'Z')) {
-      /* no-op */
-    } else if (i == len || len - i != 6) {
-      upb_status_seterrf(&p->status, "error parsing timestamp offset");
-      upb_env_reporterror(p->env, &p->status);
-      multipart_end(p);
-      return false;
-    } else {
-      /* If code reaches here, buf[i] == '+'/'-' */
-      int hours;
-      int minutes;
-      if (sscanf(&buf[i + 1], "%2d:%2d", &hours, &minutes) != 2) {
-        upb_status_seterrf(&p->status, "error parsing timestamp offset");
-        upb_env_reporterror(p->env, &p->status);
-        multipart_end(p);
-        return false;
-      }
-
-      if (buf[i] == '+') {
-        hours = -hours;
-        minutes = -minutes;
-      }
-
-      tm.tm_hour += hours;
-      tm.tm_min += minutes;
-    }
-
-    /* Clean up previous environment */
     multipart_end(p);
-
-    /* Normalize tm */
-    seconds = mktime(&tm);
-
-    if (seconds < -62135596800) {
-      upb_status_seterrf(&p->status, "error parsing timestamp: "
-                                     "minimum acceptable value is "
-                                     "0001-01-01T00:00:00Z");
-      upb_env_reporterror(p->env, &p->status);
-      multipart_end(p);
-      return false;
-    }
-
-    /* Set seconds */
-    start_member(p);
-    capture_begin(p, seconds_membername);
-    capture_end(p, seconds_membername + 7);
-    end_membername(p);
-    upb_sink_putint64(&p->top->sink, parser_getsel(p), seconds);
-    end_member(p);
-
-    /* Set nanos */
-    start_member(p);
-    capture_begin(p, nanos_membername);
-    capture_end(p, nanos_membername + 5);
-    end_membername(p);
-    upb_sink_putint32(&p->top->sink, parser_getsel(p), nanos);
-    end_member(p);
-
     return true;
   }
 
@@ -1183,6 +1064,153 @@ static bool end_stringval(upb_json_parser *p) {
       end_subobject(p);
     }
   }
+
+  return true;
+}
+
+static void start_timestamp_base(upb_json_parser *p, const char *ptr) {
+  capture_begin(p, ptr);
+}
+
+static bool end_timestamp_base(upb_json_parser *p, const char *ptr) {
+  size_t len;
+  const char *buf;
+
+  if (!capture_end(p, ptr)) {
+    return false;
+  }
+
+  buf = accumulate_getptr(p, &len);
+
+  /* Parse seconds */
+  if (strptime(buf, "%FT%H:%M:%S", &p->tm) == NULL) {
+    upb_status_seterrf(&p->status, "error parsing timestamp: %s", buf);
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+
+  /* Clean up buffer */
+  multipart_end(p);
+  multipart_startaccum(p);
+
+  return true;
+}
+
+static void start_timestamp_fraction(upb_json_parser *p, const char *ptr) {
+  capture_begin(p, ptr);
+}
+
+static bool end_timestamp_fraction(upb_json_parser *p, const char *ptr) {
+  size_t len;
+  const char *buf;
+  char nanos_buf[12];
+  char *end;
+  double val = 0.0;
+  int32_t nanos;
+  const char *nanos_membername = "nanos";
+
+  memset(nanos_buf, 0, 12);
+
+  if (!capture_end(p, ptr)) {
+    return false;
+  }
+
+  buf = accumulate_getptr(p, &len);
+
+  if (len > 10) {
+    upb_status_seterrf(&p->status,
+        "error parsing timestamp: at most 9-digit fraction.");
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+
+  /* Parse nanos */
+  nanos_buf[0] = '0';
+  memcpy(nanos_buf + 1, buf, len);
+  val = strtod(nanos_buf, &end);
+
+  if (errno == ERANGE || end != nanos_buf + len + 1) {
+    upb_status_seterrf(&p->status, "error parsing timestamp nanos: %s",
+                       nanos_buf);
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+
+  nanos = val * 1000000000;
+
+  /* Clean up previous environment */
+  multipart_end(p);
+
+  /* Set nanos */
+  start_member(p);
+  capture_begin(p, nanos_membername);
+  capture_end(p, nanos_membername + 5);
+  end_membername(p);
+  upb_sink_putint32(&p->top->sink, parser_getsel(p), nanos);
+  end_member(p);
+
+  /* Continue previous environment */
+  multipart_startaccum(p);
+
+  return true;
+}
+
+static void start_timestamp_zone(upb_json_parser *p, const char *ptr) {
+  capture_begin(p, ptr);
+}
+
+static bool end_timestamp_zone(upb_json_parser *p, const char *ptr) {
+  size_t len;
+  const char *buf;
+  int hours;
+  int64_t seconds;
+  const char *seconds_membername = "seconds";
+
+  if (!capture_end(p, ptr)) {
+    return false;
+  }
+
+  buf = accumulate_getptr(p, &len);
+
+  if (buf[0] != 'Z') {
+    if (sscanf(buf + 1, "%2d:00", &hours) != 1) {
+      upb_status_seterrf(&p->status, "error parsing timestamp offset");
+      upb_env_reporterror(p->env, &p->status);
+      return false;
+    }
+
+    if (buf[0] == '+') {
+      hours = -hours;
+    }
+
+    p->tm.tm_hour += hours;
+  }
+
+  /* Normalize tm */
+  seconds = mktime(&p->tm);
+
+  /* Check timestamp boundary */
+  if (seconds < -62135596800) {
+    upb_status_seterrf(&p->status, "error parsing timestamp: "
+                                   "minimum acceptable value is "
+                                   "0001-01-01T00:00:00Z");
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+
+  /* Clean up previous environment */
+  multipart_end(p);
+
+  /* Set seconds */
+  start_member(p);
+  capture_begin(p, seconds_membername);
+  capture_end(p, seconds_membername + 7);
+  end_membername(p);
+  upb_sink_putint64(&p->top->sink, parser_getsel(p), seconds);
+  end_member(p);
+
+  /* Continue previous environment */
+  multipart_startaccum(p);
 
   return true;
 }
@@ -1703,7 +1731,37 @@ static bool is_timestamp_object(upb_json_parser *p) {
       @{ fhold; fret; }
     ;
 
-  string       = '"' @{ fcall string_machine; } '"';
+  year = digit digit digit digit;
+  month = digit digit;
+  day = digit digit;
+  hour = digit digit;
+  minute = digit digit;
+  second = digit digit;
+
+  timestamp_machine :=
+    (year "-" month "-" day "T" hour ":" minute ":" second)
+      >{ start_timestamp_base(parser, p); }
+      %{ CHECK_RETURN_TOP(end_timestamp_base(parser, p)); }
+    ("." digit+)?
+      >{ start_timestamp_fraction(parser, p); }
+      %{ CHECK_RETURN_TOP(end_timestamp_fraction(parser, p)); }
+    ([+\-] hour ":00" | "Z")
+      >{ start_timestamp_zone(parser, p); }
+      %{ CHECK_RETURN_TOP(end_timestamp_zone(parser, p)); }
+    '"'
+      @{ fhold; fret; }
+    ;
+
+  string =
+    '"'
+      @{
+        if (is_timestamp_object(parser)) {
+          fcall timestamp_machine;
+        } else {
+          fcall string_machine;
+        }
+      }
+    '"';
 
   value2 = ^(space | "]" | "}") >{ fhold; fcall value_machine; } ;
 
