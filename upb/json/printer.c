@@ -758,7 +758,7 @@ static bool printer_endtimestampmsg(void *closure, const void *handler_data,
                   p->nanos / 1000000000.0);
     /* Remove trailing 0. */
     for (i = UPB_TIMESTAMP_MAX_NANO_LEN + 2;
-         i >= 0 && nanos_buffer[i] == '0'; i--) {
+         nanos_buffer[i] == '0'; i--) {
       nanos_buffer[i] = 0;
     }
     strcpy(buffer + UPB_TIMESTAMP_BEFORE_NANO_LEN, nanos_buffer + 1);
