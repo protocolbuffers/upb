@@ -744,7 +744,7 @@ static bool printer_enddurationmsg(void *closure, const void *handler_data,
     return false;
   }
 
-  _upb_snprintf(buffer, sizeof(buffer), "%lld", p->seconds);
+  _upb_snprintf(buffer, sizeof(buffer), "%ld", (long)p->seconds);
   base_len = strlen(buffer);
 
   if (p->nanos != 0) {
