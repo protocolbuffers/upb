@@ -1342,6 +1342,15 @@ static const char *kTimestampFullMessageName = "google.protobuf.Timestamp";
 static const char *kValueFullMessageName = "google.protobuf.Value";
 static const char *kListValueFullMessageName = "google.protobuf.ListValue";
 static const char *kStructFullMessageName = "google.protobuf.Struct";
+static const char *kDoubleValueFullMessageName = "google.protobuf.DoubleValue";
+static const char *kFloatValueFullMessageName = "google.protobuf.FloatValue";
+static const char *kInt64ValueFullMessageName = "google.protobuf.Int64Value";
+static const char *kUInt64ValueFullMessageName = "google.protobuf.UInt64Value";
+static const char *kInt32ValueFullMessageName = "google.protobuf.Int32Value";
+static const char *kUInt32ValueFullMessageName = "google.protobuf.UInt32Value";
+static const char *kBoolValueFullMessageName = "google.protobuf.BoolValue";
+static const char *kStringValueFullMessageName = "google.protobuf.StringValue";
+static const char *kBytesValueFullMessageName = "google.protobuf.BytesValue";
 
 static void visitmsg(const upb_refcounted *r, upb_refcounted_visit *visit,
                      void *closure) {
@@ -1609,6 +1618,42 @@ bool upb_msgdef_timestamp(const upb_msgdef *m) {
 
 bool upb_msgdef_value(const upb_msgdef *m) {
   return strcmp(upb_msgdef_fullname(m), kValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_doublevalue(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kDoubleValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_floatvalue(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kFloatValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_int64value(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kInt64ValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_uint64value(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kUInt64ValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_int32value(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kInt32ValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_uint32value(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kUInt32ValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_boolvalue(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kBoolValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_stringvalue(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kStringValueFullMessageName) == 0;
+}
+
+bool upb_msgdef_bytesvalue(const upb_msgdef *m) {
+  return strcmp(upb_msgdef_fullname(m), kBytesValueFullMessageName) == 0;
 }
 
 bool upb_msgdef_listvalue(const upb_msgdef *m) {

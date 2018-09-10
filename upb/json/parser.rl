@@ -37,16 +37,6 @@
 
 #define UPB_JSON_MAX_DEPTH 64
 
-static const char *kDoubleValueFullMessageName = "google.protobuf.DoubleValue";
-static const char *kFloatValueFullMessageName = "google.protobuf.FloatValue";
-static const char *kInt64ValueFullMessageName = "google.protobuf.Int64Value";
-static const char *kUInt64ValueFullMessageName = "google.protobuf.UInt64Value";
-static const char *kInt32ValueFullMessageName = "google.protobuf.Int32Value";
-static const char *kUInt32ValueFullMessageName = "google.protobuf.UInt32Value";
-static const char *kBoolValueFullMessageName = "google.protobuf.BoolValue";
-static const char *kStringValueFullMessageName = "google.protobuf.StringValue";
-static const char *kBytesValueFullMessageName = "google.protobuf.BytesValue";
-
 /* Type of value message */
 enum {
   VALUE_NULLVALUE   = 0,
@@ -1828,54 +1818,18 @@ static void end_object(upb_json_parser *p) {
   }
 }
 
-static bool is_double_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kDoubleValueFullMessageName) == 0;
-}
-
-static bool is_float_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kFloatValueFullMessageName) == 0;
-}
-
-static bool is_int64_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kInt64ValueFullMessageName) == 0;
-}
-
-static bool is_uint64_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kUInt64ValueFullMessageName) == 0;
-}
-
-static bool is_int32_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kInt32ValueFullMessageName) == 0;
-}
-
-static bool is_uint32_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kUInt32ValueFullMessageName) == 0;
-}
-
-static bool is_bool_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kBoolValueFullMessageName) == 0;
-}
-
-static bool is_string_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kStringValueFullMessageName) == 0;
-}
-
-static bool is_bytes_value(const upb_msgdef *m) {
-  return strcmp(upb_msgdef_fullname(m), kBytesValueFullMessageName) == 0;
-}
-
 static bool is_number_wrapper(const upb_msgdef *m) {
-  return is_double_value(m) ||
-         is_float_value(m) ||
-         is_int64_value(m) ||
-         is_uint64_value(m) ||
-         is_int32_value(m) ||
-         is_uint32_value(m);
+  return upb_msgdef_doublevalue(m) ||
+         upb_msgdef_floatvalue(m) ||
+         upb_msgdef_int64value(m) ||
+         upb_msgdef_uint64value(m) ||
+         upb_msgdef_int32value(m) ||
+         upb_msgdef_uint32value(m);
 }
 
 static bool is_string_wrapper(const upb_msgdef *m) {
-  return is_string_value(m) ||
-         is_bytes_value(m);
+  return upb_msgdef_stringvalue(m) ||
+         upb_msgdef_bytesvalue(m);
 }
 
 static void start_wrapper_object(upb_json_parser *p) {
@@ -2008,15 +1962,15 @@ static bool is_string_wrapper_object(upb_json_parser *p) {
 static bool does_boolean_wrapper_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         is_bool_value(upb_fielddef_msgsubdef(p->top->f));
+         upb_msgdef_boolvalue(upb_fielddef_msgsubdef(p->top->f));
 }
 
 static bool does_boolean_wrapper_end(upb_json_parser *p) {
-  return p->top->m != NULL && is_bool_value(p->top->m);
+  return p->top->m != NULL && upb_msgdef_boolvalue(p->top->m);
 }
 
 static bool is_boolean_wrapper_object(upb_json_parser *p) {
-  return p->top->m != NULL && is_bool_value(p->top->m);
+  return p->top->m != NULL && upb_msgdef_boolvalue(p->top->m);
 }
 
 static bool does_duration_start(upb_json_parser *p) {

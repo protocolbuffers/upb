@@ -794,6 +794,33 @@ class upb::MessageDef {
   /* Is this message a value? */
   bool value() const;
 
+  /* Is this message a doublevalue? */
+  bool doublevalue() const;
+
+  /* Is this message a floatvalue? */
+  bool floatvalue() const;
+
+  /* Is this message a int64value? */
+  bool int64value() const;
+
+  /* Is this message a uint64value? */
+  bool uint64value() const;
+
+  /* Is this message a int32value? */
+  bool int32value() const;
+
+  /* Is this message a uint32value? */
+  bool uint32value() const;
+
+  /* Is this message a boolvalue? */
+  bool boolvalue() const;
+
+  /* Is this message a stringvalue? */
+  bool stringvalue() const;
+
+  /* Is this message a bytesvalue? */
+  bool bytesvalue() const;
+
   /* Is this message a list value? */
   bool listvalue() const;
 
@@ -944,6 +971,15 @@ bool upb_msgdef_mapentry(const upb_msgdef *m);
 bool upb_msgdef_duration(const upb_msgdef *m);
 bool upb_msgdef_timestamp(const upb_msgdef *m);
 bool upb_msgdef_value(const upb_msgdef *m);
+bool upb_msgdef_doublevalue(const upb_msgdef *m);
+bool upb_msgdef_floatvalue(const upb_msgdef *m);
+bool upb_msgdef_int64value(const upb_msgdef *m);
+bool upb_msgdef_uint64value(const upb_msgdef *m);
+bool upb_msgdef_int32value(const upb_msgdef *m);
+bool upb_msgdef_uint32value(const upb_msgdef *m);
+bool upb_msgdef_boolvalue(const upb_msgdef *m);
+bool upb_msgdef_stringvalue(const upb_msgdef *m);
+bool upb_msgdef_bytesvalue(const upb_msgdef *m);
 bool upb_msgdef_listvalue(const upb_msgdef *m);
 bool upb_msgdef_structvalue(const upb_msgdef *m);
 bool upb_msgdef_setsyntax(upb_msgdef *m, upb_syntax_t syntax);
@@ -1893,6 +1929,33 @@ inline bool MessageDef::timestamp() const {
 }
 inline bool MessageDef::value() const {
   return upb_msgdef_value(this);
+}
+inline bool MessageDef::doublevalue() const {
+  return upb_msgdef_doublevalue(this);
+}
+inline bool MessageDef::floatvalue() const {
+  return upb_msgdef_floatvalue(this);
+}
+inline bool MessageDef::int64value() const {
+  return upb_msgdef_int64value(this);
+}
+inline bool MessageDef::uint64value() const {
+  return upb_msgdef_uint64value(this);
+}
+inline bool MessageDef::int32value() const {
+  return upb_msgdef_int32value(this);
+}
+inline bool MessageDef::uint32value() const {
+  return upb_msgdef_uint32value(this);
+}
+inline bool MessageDef::boolvalue() const {
+  return upb_msgdef_boolvalue(this);
+}
+inline bool MessageDef::stringvalue() const {
+  return upb_msgdef_stringvalue(this);
+}
+inline bool MessageDef::bytesvalue() const {
+  return upb_msgdef_bytesvalue(this);
 }
 inline bool MessageDef::listvalue() const {
   return upb_msgdef_listvalue(this);
