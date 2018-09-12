@@ -1262,15 +1262,19 @@ static void start_timestamp_base(upb_json_parser *p, const char *ptr) {
 static bool end_timestamp_base(upb_json_parser *p, const char *ptr) {
   size_t len;
   const char *buf;
+  char timestamp_buf[23];
 
   if (!capture_end(p, ptr)) {
     return false;
   }
 
   buf = accumulate_getptr(p, &len);
+  memset(timestamp_buf, 0, 23);
+  memcpy(timestamp_buf, buf, len);
+  memcpy(timestamp_buf + 19, "GMT", 3);
 
   /* Parse seconds */
-  if (strptime(buf, "%FT%H:%M:%S", &p->tm) == NULL) {
+  if (strptime(timestamp_buf, "%FT%H:%M:%S%Z", &p->tm) == NULL) {
     upb_status_seterrf(&p->status, "error parsing timestamp: %s", buf);
     upb_env_reporterror(p->env, &p->status);
     return false;
