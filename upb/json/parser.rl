@@ -1272,6 +1272,7 @@ static bool end_timestamp_base(upb_json_parser *p, const char *ptr) {
   }
 
   buf = accumulate_getptr(p, &len);
+  UPB_ASSERT(len == UPB_TIMESTAMP_BASE_SIZE);
   memcpy(timestamp_buf, buf, UPB_TIMESTAMP_BASE_SIZE);
   memcpy(timestamp_buf + UPB_TIMESTAMP_BASE_SIZE, "GMT", 3);
   timestamp_buf[UPB_TIMESTAMP_BASE_SIZE + 3] = 0;
