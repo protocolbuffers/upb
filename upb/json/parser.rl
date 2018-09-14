@@ -1819,17 +1819,17 @@ static void end_object(upb_json_parser *p) {
 }
 
 static bool is_number_wrapper(const upb_msgdef *m) {
-  return upb_msgdef_doublevalue(m) ||
-         upb_msgdef_floatvalue(m) ||
-         upb_msgdef_int64value(m) ||
-         upb_msgdef_uint64value(m) ||
-         upb_msgdef_int32value(m) ||
-         upb_msgdef_uint32value(m);
+  return (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_DOUBLEVALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_FLOATVALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_INT64VALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_UINT64VALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_INT32VALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_UINT32VALUE);
 }
 
 static bool is_string_wrapper(const upb_msgdef *m) {
-  return upb_msgdef_stringvalue(m) ||
-         upb_msgdef_bytesvalue(m);
+  return (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_STRINGVALUE) ||
+         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_BYTESVALUE);
 }
 
 static void start_wrapper_object(upb_json_parser *p) {
@@ -1962,86 +1962,115 @@ static bool is_string_wrapper_object(upb_json_parser *p) {
 static bool does_boolean_wrapper_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_boolvalue(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool does_boolean_wrapper_end(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_boolvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool is_boolean_wrapper_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_boolvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool does_duration_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_duration(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_DURATION);
 }
 
 static bool does_duration_end(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_duration(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_DURATION);
 }
 
 static bool is_duration_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_duration(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_DURATION);
 }
 
 static bool does_timestamp_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_timestamp(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool does_timestamp_end(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_timestamp(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool is_timestamp_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_timestamp(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool does_value_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_value(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_VALUE);
 }
 
 static bool does_value_end(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_value(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_VALUE);
 }
 
 static bool is_value_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_value(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_VALUE);
 }
 
 static bool does_listvalue_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_listvalue(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool does_listvalue_end(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_listvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool is_listvalue_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_listvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool does_structvalue_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         upb_msgdef_structvalue(upb_fielddef_msgsubdef(p->top->f));
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == UPB_WELLKNOWN_STRUCT);
 }
 
 static bool does_structvalue_end(upb_json_parser *p) {
-  /* return p->top != p->stack && upb_msgdef_structvalue((p->top - 1)->m); */
-  return p->top->m != NULL && upb_msgdef_structvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_STRUCT);
 }
 
 static bool is_structvalue_object(upb_json_parser *p) {
-  return p->top->m != NULL && upb_msgdef_structvalue(p->top->m);
+  return p->top->m != NULL &&
+         (upb_msgdef_wellknowntype(p->top->m)
+              == UPB_WELLKNOWN_STRUCT);
 }
 
 #define CHECK_RETURN_TOP(x) if (!(x)) goto error

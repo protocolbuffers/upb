@@ -1021,36 +1021,6 @@ WRAPPER_SETHANDLERS(bytesvalue,  string, putbytes)
 
 #undef WRAPPER_SETHANDLERS
 
-/*
-void printer_sethandlers_stringvalue(const void *closure, upb_handlers *h) {
-  const upb_msgdef *md = upb_handlers_msgdef(h);
-  const upb_fielddef* f = upb_msgdef_itof(md, 1);
-
-  upb_handlerattr empty_attr = UPB_HANDLERATTR_INITIALIZER;
-
-  upb_handlers_setstartmsg(h, printer_startmsg_noframe, &empty_attr);
-  upb_handlers_setendmsg(h, printer_endmsg_noframe, &empty_attr);
-
-  upb_handlers_setstring(h, f, putstr_nokey, &empty_attr);
-
-  UPB_UNUSED(closure);
-}
-
-void printer_sethandlers_bytesvalue(const void *closure, upb_handlers *h) {
-  const upb_msgdef *md = upb_handlers_msgdef(h);
-  const upb_fielddef* f = upb_msgdef_itof(md, 1);
-
-  upb_handlerattr empty_attr = UPB_HANDLERATTR_INITIALIZER;
-
-  upb_handlers_setstartmsg(h, printer_startmsg_noframe, &empty_attr);
-  upb_handlers_setendmsg(h, printer_endmsg_noframe, &empty_attr);
-
-  upb_handlers_setstring(h, f, putbytes, &empty_attr);
-
-  UPB_UNUSED(closure);
-}
-*/
-
 void printer_sethandlers_listvalue(const void *closure, upb_handlers *h) {
   const upb_msgdef *md = upb_handlers_msgdef(h);
   const upb_fielddef* f = upb_msgdef_itof(md, 1);
@@ -1100,46 +1070,46 @@ void printer_sethandlers(const void *closure, upb_handlers *h) {
     return;
   }
 
-  if (upb_msgdef_duration(md)) {
+  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_DURATION) {
     printer_sethandlers_duration(closure, h);
     return;
   }
 
-  if (upb_msgdef_timestamp(md)) {
+  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_TIMESTAMP) {
     printer_sethandlers_timestamp(closure, h);
     return;
   }
 
-  if (upb_msgdef_value(md)) {
+  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_VALUE) {
     printer_sethandlers_value(closure, h);
     return;
   }
 
-  if (upb_msgdef_listvalue(md)) {
+  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_LISTVALUE) {
     printer_sethandlers_listvalue(closure, h);
     return;
   }
 
-  if (upb_msgdef_structvalue(md)) {
+  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_STRUCT) {
     printer_sethandlers_structvalue(closure, h);
     return;
   }
 
-#define WRAPPER(name)                       \
-  if (upb_msgdef_##name(md)) {              \
-    printer_sethandlers_##name(closure, h); \
-    return;                                 \
+#define WRAPPER(wellknowntype, name)                   \
+  if (upb_msgdef_wellknowntype(md) == wellknowntype) { \
+    printer_sethandlers_##name(closure, h);            \
+    return;                                            \
   }
 
-  WRAPPER(doublevalue);
-  WRAPPER(floatvalue);
-  WRAPPER(int64value);
-  WRAPPER(uint64value);
-  WRAPPER(int32value);
-  WRAPPER(uint32value);
-  WRAPPER(boolvalue);
-  WRAPPER(stringvalue);
-  WRAPPER(bytesvalue);
+  WRAPPER(UPB_WELLKNOWN_DOUBLEVALUE, doublevalue);
+  WRAPPER(UPB_WELLKNOWN_FLOATVALUE, floatvalue);
+  WRAPPER(UPB_WELLKNOWN_INT64VALUE, int64value);
+  WRAPPER(UPB_WELLKNOWN_UINT64VALUE, uint64value);
+  WRAPPER(UPB_WELLKNOWN_INT32VALUE, int32value);
+  WRAPPER(UPB_WELLKNOWN_UINT32VALUE, uint32value);
+  WRAPPER(UPB_WELLKNOWN_BOOLVALUE, boolvalue);
+  WRAPPER(UPB_WELLKNOWN_STRINGVALUE, stringvalue);
+  WRAPPER(UPB_WELLKNOWN_BYTESVALUE, bytesvalue);
 
 #undef WRAPPER
 
