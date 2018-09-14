@@ -1264,7 +1264,7 @@ static void start_timestamp_base(upb_json_parser *p, const char *ptr) {
 static bool end_timestamp_base(upb_json_parser *p, const char *ptr) {
   size_t len;
   const char *buf;
-  // 3 for GMT and 1 for ending 0;
+  /* 3 for GMT and 1 for ending 0 */
   char timestamp_buf[UPB_TIMESTAMP_BASE_SIZE + 4];
 
   if (!capture_end(p, ptr)) {
