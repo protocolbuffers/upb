@@ -279,21 +279,25 @@ typedef enum {
   UPB_SYNTAX_PROTO3 = 3
 } upb_syntax_t;
 
-/* All the different kind of well known type messages.
+/* All the different kind of well known type messages. For simplicity of check,
+ * number wrappers and string wrappers are grouped together. Make sure the
+ * order and merber of these groups are not changed.
  */
 typedef enum {
   UPB_WELLKNOWN_UNSPECIFIED,
   UPB_WELLKNOWN_DURATION,
   UPB_WELLKNOWN_TIMESTAMP,
+  /* number wrappers */
   UPB_WELLKNOWN_DOUBLEVALUE,
   UPB_WELLKNOWN_FLOATVALUE,
   UPB_WELLKNOWN_INT64VALUE,
   UPB_WELLKNOWN_UINT64VALUE,
   UPB_WELLKNOWN_INT32VALUE,
   UPB_WELLKNOWN_UINT32VALUE,
-  UPB_WELLKNOWN_BOOLVALUE,
+  /* string wrappers */
   UPB_WELLKNOWN_STRINGVALUE,
   UPB_WELLKNOWN_BYTESVALUE,
+  UPB_WELLKNOWN_BOOLVALUE,
   UPB_WELLKNOWN_VALUE,
   UPB_WELLKNOWN_LISTVALUE,
   UPB_WELLKNOWN_STRUCT
@@ -810,6 +814,9 @@ class upb::MessageDef {
    * non-well-known message. */
   upb_wellknowntype_t wellknowntype() const;
 
+  /* Whether is a number wrapper. */
+  bool isnumberwrapper() const;
+
   /* Iteration over fields.  The order is undefined. */
   class field_iterator
       : public std::iterator<std::forward_iterator_tag, FieldDef*> {
@@ -952,6 +959,7 @@ bool upb_msgdef_setfullname(upb_msgdef *m, const char *fullname, upb_status *s);
 void upb_msgdef_setmapentry(upb_msgdef *m, bool map_entry);
 bool upb_msgdef_mapentry(const upb_msgdef *m);
 upb_wellknowntype_t upb_msgdef_wellknowntype(const upb_msgdef *m);
+bool upb_msgdef_isnumberwrapper(const upb_msgdef *m);
 bool upb_msgdef_setsyntax(upb_msgdef *m, upb_syntax_t syntax);
 
 /* Field lookup in a couple of different variations:
@@ -1893,6 +1901,9 @@ inline bool MessageDef::mapentry() const {
 }
 inline upb_wellknowntype_t MessageDef::wellknowntype() const {
   return upb_msgdef_wellknowntype(this);
+}
+inline bool MessageDef::isnumberwrapper() const {
+  return upb_msgdef_isnumberwrapper(this);
 }
 inline MessageDef::field_iterator MessageDef::field_begin() {
   return field_iterator(this);

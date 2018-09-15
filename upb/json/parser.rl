@@ -1818,15 +1818,6 @@ static void end_object(upb_json_parser *p) {
   }
 }
 
-static bool is_number_wrapper(const upb_msgdef *m) {
-  return (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_DOUBLEVALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_FLOATVALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_INT64VALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_UINT64VALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_INT32VALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_UINT32VALUE);
-}
-
 static bool is_string_wrapper(const upb_msgdef *m) {
   return (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_STRINGVALUE) ||
          (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_BYTESVALUE);
@@ -1934,15 +1925,15 @@ static bool is_top_level(upb_json_parser *p) {
 static bool does_number_wrapper_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
-         is_number_wrapper(upb_fielddef_msgsubdef(p->top->f));
+         upb_msgdef_isnumberwrapper(upb_fielddef_msgsubdef(p->top->f));
 }
 
 static bool does_number_wrapper_end(upb_json_parser *p) {
-  return p->top->m != NULL && is_number_wrapper(p->top->m);
+  return p->top->m != NULL && upb_msgdef_isnumberwrapper(p->top->m);
 }
 
 static bool is_number_wrapper_object(upb_json_parser *p) {
-  return p->top->m != NULL && is_number_wrapper(p->top->m);
+  return p->top->m != NULL && upb_msgdef_isnumberwrapper(p->top->m);
 }
 
 static bool does_string_wrapper_start(upb_json_parser *p) {

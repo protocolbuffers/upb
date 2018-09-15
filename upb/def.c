@@ -1638,6 +1638,12 @@ upb_wellknowntype_t upb_msgdef_wellknowntype(const upb_msgdef *m) {
   return m->well_known_type;
 }
 
+bool upb_msgdef_isnumberwrapper(const upb_msgdef *m) {
+  upb_wellknowntype_t type = upb_msgdef_wellknowntype(m);
+  return type >= UPB_WELLKNOWN_DOUBLEVALUE &&
+         type <= UPB_WELLKNOWN_UINT32VALUE;
+}
+
 void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m) {
   upb_inttable_begin(iter, &m->itof);
 }
