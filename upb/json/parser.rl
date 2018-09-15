@@ -49,6 +49,8 @@ enum {
 
 /* Forward declare */
 static bool is_top_level(upb_json_parser *p);
+static bool is_wellknown_msg(upb_json_parser *p, upb_wellknowntype_t type);
+static bool is_wellknown_field(upb_json_parser *p, upb_wellknowntype_t type);
 
 static bool is_number_wrapper_object(upb_json_parser *p);
 static bool does_number_wrapper_start(upb_json_parser *p);
@@ -1819,8 +1821,9 @@ static void end_object(upb_json_parser *p) {
 }
 
 static bool is_string_wrapper(const upb_msgdef *m) {
-  return (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_STRINGVALUE) ||
-         (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_BYTESVALUE);
+  upb_wellknowntype_t type = upb_msgdef_wellknowntype(m);
+  return type == UPB_WELLKNOWN_STRINGVALUE ||
+         type == UPB_WELLKNOWN_BYTESVALUE;
 }
 
 static void start_wrapper_object(upb_json_parser *p) {
@@ -1922,6 +1925,17 @@ static bool is_top_level(upb_json_parser *p) {
   return p->top == p->stack && p->top->f == NULL;
 }
 
+static bool is_wellknown_msg(upb_json_parser *p, upb_wellknowntype_t type) {
+  return p->top->m != NULL && upb_msgdef_wellknowntype(p->top->m) == type;
+}
+
+static bool is_wellknown_field(upb_json_parser *p, upb_wellknowntype_t type) {
+  return p->top->f != NULL &&
+         upb_fielddef_issubmsg(p->top->f) &&
+         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
+              == type);
+}
+
 static bool does_number_wrapper_start(upb_json_parser *p) {
   return p->top->f != NULL &&
          upb_fielddef_issubmsg(p->top->f) &&
@@ -1951,117 +1965,75 @@ static bool is_string_wrapper_object(upb_json_parser *p) {
 }
 
 static bool does_boolean_wrapper_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_BOOLVALUE);
+  return is_wellknown_field(p, UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool does_boolean_wrapper_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_BOOLVALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool is_boolean_wrapper_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_BOOLVALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_BOOLVALUE);
 }
 
 static bool does_duration_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_DURATION);
+  return is_wellknown_field(p, UPB_WELLKNOWN_DURATION);
 }
 
 static bool does_duration_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_DURATION);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_DURATION);
 }
 
 static bool is_duration_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_DURATION);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_DURATION);
 }
 
 static bool does_timestamp_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_TIMESTAMP);
+  return is_wellknown_field(p, UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool does_timestamp_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_TIMESTAMP);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool is_timestamp_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_TIMESTAMP);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_TIMESTAMP);
 }
 
 static bool does_value_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_VALUE);
+  return is_wellknown_field(p, UPB_WELLKNOWN_VALUE);
 }
 
 static bool does_value_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_VALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_VALUE);
 }
 
 static bool is_value_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_VALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_VALUE);
 }
 
 static bool does_listvalue_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_LISTVALUE);
+  return is_wellknown_field(p, UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool does_listvalue_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_LISTVALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool is_listvalue_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_LISTVALUE);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_LISTVALUE);
 }
 
 static bool does_structvalue_start(upb_json_parser *p) {
-  return p->top->f != NULL &&
-         upb_fielddef_issubmsg(p->top->f) &&
-         (upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(p->top->f))
-              == UPB_WELLKNOWN_STRUCT);
+  return is_wellknown_field(p, UPB_WELLKNOWN_STRUCT);
 }
 
 static bool does_structvalue_end(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_STRUCT);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_STRUCT);
 }
 
 static bool is_structvalue_object(upb_json_parser *p) {
-  return p->top->m != NULL &&
-         (upb_msgdef_wellknowntype(p->top->m)
-              == UPB_WELLKNOWN_STRUCT);
+  return is_wellknown_msg(p, UPB_WELLKNOWN_STRUCT);
 }
 
 #define CHECK_RETURN_TOP(x) if (!(x)) goto error

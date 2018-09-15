@@ -1070,48 +1070,41 @@ void printer_sethandlers(const void *closure, upb_handlers *h) {
     return;
   }
 
-  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_DURATION) {
-    printer_sethandlers_duration(closure, h);
-    return;
-  }
+  switch (upb_msgdef_wellknowntype(md)) {
+    case UPB_WELLKNOWN_UNSPECIFIED:
+      break;
+    case UPB_WELLKNOWN_DURATION:
+      printer_sethandlers_duration(closure, h);
+      return;
+    case UPB_WELLKNOWN_TIMESTAMP:
+      printer_sethandlers_timestamp(closure, h);
+      return;
+    case UPB_WELLKNOWN_VALUE:
+      printer_sethandlers_value(closure, h);
+      return;
+    case UPB_WELLKNOWN_LISTVALUE:
+      printer_sethandlers_listvalue(closure, h);
+      return;
+    case UPB_WELLKNOWN_STRUCT:
+      printer_sethandlers_structvalue(closure, h);
+      return;
+#define WRAPPER(wellknowntype, name)        \
+  case wellknowntype:                       \
+    printer_sethandlers_##name(closure, h); \
+    return;                                 \
 
-  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_TIMESTAMP) {
-    printer_sethandlers_timestamp(closure, h);
-    return;
-  }
-
-  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_VALUE) {
-    printer_sethandlers_value(closure, h);
-    return;
-  }
-
-  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_LISTVALUE) {
-    printer_sethandlers_listvalue(closure, h);
-    return;
-  }
-
-  if (upb_msgdef_wellknowntype(md) == UPB_WELLKNOWN_STRUCT) {
-    printer_sethandlers_structvalue(closure, h);
-    return;
-  }
-
-#define WRAPPER(wellknowntype, name)                   \
-  if (upb_msgdef_wellknowntype(md) == wellknowntype) { \
-    printer_sethandlers_##name(closure, h);            \
-    return;                                            \
-  }
-
-  WRAPPER(UPB_WELLKNOWN_DOUBLEVALUE, doublevalue);
-  WRAPPER(UPB_WELLKNOWN_FLOATVALUE, floatvalue);
-  WRAPPER(UPB_WELLKNOWN_INT64VALUE, int64value);
-  WRAPPER(UPB_WELLKNOWN_UINT64VALUE, uint64value);
-  WRAPPER(UPB_WELLKNOWN_INT32VALUE, int32value);
-  WRAPPER(UPB_WELLKNOWN_UINT32VALUE, uint32value);
-  WRAPPER(UPB_WELLKNOWN_BOOLVALUE, boolvalue);
-  WRAPPER(UPB_WELLKNOWN_STRINGVALUE, stringvalue);
-  WRAPPER(UPB_WELLKNOWN_BYTESVALUE, bytesvalue);
+    WRAPPER(UPB_WELLKNOWN_DOUBLEVALUE, doublevalue);
+    WRAPPER(UPB_WELLKNOWN_FLOATVALUE, floatvalue);
+    WRAPPER(UPB_WELLKNOWN_INT64VALUE, int64value);
+    WRAPPER(UPB_WELLKNOWN_UINT64VALUE, uint64value);
+    WRAPPER(UPB_WELLKNOWN_INT32VALUE, int32value);
+    WRAPPER(UPB_WELLKNOWN_UINT32VALUE, uint32value);
+    WRAPPER(UPB_WELLKNOWN_BOOLVALUE, boolvalue);
+    WRAPPER(UPB_WELLKNOWN_STRINGVALUE, stringvalue);
+    WRAPPER(UPB_WELLKNOWN_BYTESVALUE, bytesvalue);
 
 #undef WRAPPER
+  }
 
   upb_handlers_setstartmsg(h, printer_startmsg, &empty_attr);
   upb_handlers_setendmsg(h, printer_endmsg, &empty_attr);
