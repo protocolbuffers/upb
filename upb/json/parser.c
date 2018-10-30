@@ -36,6 +36,7 @@
 #include <time.h>
 
 #include "upb/json/parser.h"
+#include "upb/pb/encoder.h"
 
 #define UPB_JSON_MAX_DEPTH 64
 
@@ -77,6 +78,9 @@ static void end_structvalue_object(upb_json_parser *p);
 static void start_object(upb_json_parser *p);
 static void end_object(upb_json_parser *p);
 
+static void start_any_object(upb_json_parser *p, const char *ptr);
+static bool end_any_object(upb_json_parser *p, const char *ptr);
+
 static bool start_subobject(upb_json_parser *p);
 static void end_subobject(upb_json_parser *p);
 
@@ -84,7 +88,88 @@ static void start_member(upb_json_parser *p);
 static void end_member(upb_json_parser *p);
 static bool end_membername(upb_json_parser *p);
 
+static void start_any_member(upb_json_parser *p, const char *ptr);
+static void end_any_member(upb_json_parser *p, const char *ptr);
+static bool end_any_membername(upb_json_parser *p);
+
+size_t parse(void *closure, const void *hd, const char *buf, size_t size,
+             const upb_bufhandle *handle);
+bool end(void *closure, const void *hd);
+
 static const char eof_ch = 'e';
+
+/* stringsink */
+typedef struct {
+  upb_byteshandler handler;
+  upb_bytessink sink;
+  char *ptr;
+  size_t len, size;
+} upb_stringsink;
+
+
+static void *stringsink_start(void *_sink, const void *hd, size_t size_hint) {
+  upb_stringsink *sink = _sink;
+  sink->len = 0;
+  UPB_UNUSED(hd);
+  UPB_UNUSED(size_hint);
+  return sink;
+}
+
+static size_t stringsink_string(void *_sink, const void *hd, const char *ptr,
+                                size_t len, const upb_bufhandle *handle) {
+  upb_stringsink *sink = _sink;
+  size_t new_size = sink->size;
+
+  UPB_UNUSED(hd);
+  UPB_UNUSED(handle);
+
+  while (sink->len + len > new_size) {
+    new_size *= 2;
+  }
+
+  if (new_size != sink->size) {
+    sink->ptr = realloc(sink->ptr, new_size);
+    sink->size = new_size;
+  }
+
+  memcpy(sink->ptr + sink->len, ptr, len);
+  sink->len += len;
+
+  return len;
+}
+
+void upb_stringsink_init(upb_stringsink *sink) {
+  upb_byteshandler_init(&sink->handler);
+  upb_byteshandler_setstartstr(&sink->handler, stringsink_start, NULL);
+  upb_byteshandler_setstring(&sink->handler, stringsink_string, NULL);
+
+  upb_bytessink_reset(&sink->sink, &sink->handler, sink);
+
+  sink->size = 32;
+  sink->ptr = malloc(sink->size);
+  sink->len = 0;
+}
+
+void upb_stringsink_uninit(upb_stringsink *sink) { free(sink->ptr); }
+
+typedef struct {
+  /* For encoding Any value field in binary format. */
+  const upb_handlers *encoder_handlers;
+  upb_pb_encoder *encoder;
+  upb_stringsink stringsink;
+
+  /* For decoding Any value field in json format. */
+  upb_json_parsermethod *parser_method;
+  upb_json_parser* parser;
+  upb_sink sink;
+
+  /* Mark the range of unpacked values in json input before type url. */
+  const char *before_type_url_start;
+  const char *before_type_url_end;
+
+  /* Mark the range of unpacked values in json input after type url. */
+  const char *after_type_url_start;
+} upb_jsonparser_any_frame;
 
 typedef struct {
   upb_sink sink;
@@ -113,6 +198,15 @@ typedef struct {
    * because |f| is the field in the *current* message (i.e., the map-entry
    * message itself), not the parent's field that leads to this map. */
   const upb_fielddef *mapfield;
+
+  /* We are in an Any message context. This flag is set when parsing the Any
+   * message and indicates to all field parsers (subobjects, strings, numbers,
+   * and bools) that the parsed field should be serialized as binary data or
+   * cached (type url not found yet). */
+  bool is_any;
+
+  /* The type of packed message in Any. */
+  upb_jsonparser_any_frame *any_frame;
 
   /* True if the field to be parsed is unknown. */
   bool is_unknown_field;
@@ -154,6 +248,9 @@ struct upb_json_parser {
   /* Intermediate result of parsing a unicode escape sequence. */
   uint32_t digit;
 
+  /* For resolve type url in Any. */
+  const upb_symtab *symtab;
+
   /* Whether to proceed if unknown field is met. */
   bool ignore_json_unknown;
 
@@ -176,6 +273,84 @@ struct upb_json_parsermethod {
 };
 
 #define PARSER_CHECK_RETURN(x) if (!(x)) return false
+
+static void json_parser_any_frame_reset(upb_jsonparser_any_frame *frame) {
+  frame->encoder_handlers = NULL;
+  frame->encoder = NULL;
+  frame->parser_method = NULL;
+  frame->parser = NULL;
+  frame->before_type_url_start = NULL;
+  frame->before_type_url_end = NULL;
+  frame->after_type_url_start = NULL;
+}
+
+static void json_parser_any_frame_set_packed(
+    upb_json_parser *p,
+    upb_jsonparser_any_frame *frame,
+    const upb_msgdef *packed) {
+  /* Initialize encoder. */
+  frame->encoder_handlers =
+      upb_pb_encoder_newhandlers(packed, &frame->encoder_handlers);
+  upb_stringsink_init(&frame->stringsink);
+  frame->encoder =
+      upb_pb_encoder_create(
+          p->env, frame->encoder_handlers,
+          &frame->stringsink.sink);
+
+  /* Initialize parser. */
+  frame->parser_method =
+      upb_json_parsermethod_new(packed, &frame->parser_method);
+  upb_sink_reset(&frame->sink, frame->encoder_handlers, frame->encoder);
+  frame->parser =
+      upb_json_parser_create(p->env, frame->parser_method, p->symtab,
+                             &frame->sink, p->ignore_json_unknown);
+}
+
+static void json_parser_any_frame_free(upb_jsonparser_any_frame *frame) {
+  upb_handlers_unref(frame->encoder_handlers,
+                     &frame->encoder_handlers);
+  upb_json_parsermethod_unref(frame->parser_method,
+                              &frame->parser_method);
+  upb_stringsink_uninit(&frame->stringsink);
+}
+
+static bool json_parser_any_frame_has_type_url(
+  upb_jsonparser_any_frame *frame) {
+  return frame->encoder != NULL;
+}
+
+static bool json_parser_any_frame_has_value_before_type_url(
+  upb_jsonparser_any_frame *frame) {
+  return frame->before_type_url_start != frame->before_type_url_end;
+}
+
+static bool json_parser_any_frame_has_value_after_type_url(
+  upb_jsonparser_any_frame *frame) {
+  return frame->after_type_url_start != NULL;
+}
+
+static bool json_parser_any_frame_has_value(
+  upb_jsonparser_any_frame *frame) {
+  return json_parser_any_frame_has_value_before_type_url(frame) ||
+         json_parser_any_frame_has_value_after_type_url(frame);
+}
+
+static void json_parser_any_frame_set_before_type_url_end(
+    upb_jsonparser_any_frame *frame,
+    const char *ptr) {
+  if (frame->encoder == NULL) {
+    frame->before_type_url_end = ptr;
+  }
+}
+
+static void json_parser_any_frame_set_after_type_url_start_once(
+    upb_jsonparser_any_frame *frame,
+    const char *ptr) {
+  if (json_parser_any_frame_has_type_url(frame) &&
+      frame->after_type_url_start == NULL) {
+    frame->after_type_url_start = ptr;
+  }
+}
 
 /* Used to signal that a capture has been suspended. */
 static char suspend_capture;
@@ -980,6 +1155,11 @@ static bool end_null(upb_json_parser *p) {
   return true;
 }
 
+static bool start_any_stringval(upb_json_parser *p) {
+  multipart_startaccum(p);
+  return true;
+}
+
 static bool start_stringval(upb_json_parser *p) {
   if (is_top_level(p)) {
     if (is_string_wrapper_object(p)) {
@@ -1015,6 +1195,10 @@ static bool start_stringval(upb_json_parser *p) {
     return true;
   }
 
+  if (p->top->is_any) {
+    return start_any_stringval(p);
+  }
+
   if (upb_fielddef_isstring(p->top->f)) {
     upb_jsonparser_frame *inner;
     upb_selector_t sel;
@@ -1031,6 +1215,8 @@ static bool start_stringval(upb_json_parser *p) {
     inner->name_table = NULL;
     inner->is_map = false;
     inner->is_mapentry = false;
+    inner->is_any = false;
+    inner->any_frame = NULL;
     inner->is_unknown_field = false;
     p->top = inner;
 
@@ -1062,6 +1248,50 @@ static bool start_stringval(upb_json_parser *p) {
   }
 }
 
+static bool end_any_stringval(upb_json_parser *p) {
+  size_t len;
+  const char *buf = accumulate_getptr(p, &len);
+
+  /* Set type_url */
+  upb_selector_t sel;
+  upb_jsonparser_frame *inner;
+  if (!check_stack(p)) return false;
+  inner = p->top + 1;
+
+  sel = getsel_for_handlertype(p, UPB_HANDLER_STARTSTR);
+  upb_sink_startstr(&p->top->sink, sel, 0, &inner->sink);
+  sel = getsel_for_handlertype(p, UPB_HANDLER_STRING);
+  upb_sink_putstring(&inner->sink, sel, buf, len, NULL);
+  sel = getsel_for_handlertype(p, UPB_HANDLER_ENDSTR);
+  upb_sink_endstr(&inner->sink, sel);
+
+  multipart_end(p);
+
+  /* Resolve type url */
+  if (strncmp(buf, "type.googleapis.com/", 20) == 0 && len > 20) {
+    const upb_msgdef *packed = NULL;
+    buf += 20;
+    len -= 20;
+
+    packed = upb_symtab_lookupmsg2(p->symtab, buf, len);
+    if (packed == NULL) {
+      upb_status_seterrf(
+          &p->status, "Cannot find packed type: %.*s\n", (int)len, buf);
+      upb_env_reporterror(p->env, &p->status);
+      return false;
+    }
+
+    json_parser_any_frame_set_packed(p, p->top->any_frame, packed);
+    
+    return true;
+  } else {
+    upb_status_seterrf(
+        &p->status, "Invalid type url: %.*s\n", (int)len, buf);
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+}
+
 static bool end_stringval_nontop(upb_json_parser *p) {
   bool ok = true;
 
@@ -1069,6 +1299,10 @@ static bool end_stringval_nontop(upb_json_parser *p) {
       is_wellknown_msg(p, UPB_WELLKNOWN_DURATION)) {
     multipart_end(p);
     return true;
+  }
+
+  if (p->top->is_any) {
+    return end_any_stringval(p);
   }
 
   if (p->top->f == NULL) {
@@ -1523,6 +1757,8 @@ static bool handle_mapentry(upb_json_parser *p) {
   inner->name_table = NULL;
   inner->mapfield = mapfield;
   inner->is_map = false;
+  inner->is_any = false;
+  inner->any_frame = NULL;
   inner->is_unknown_field = false;
 
   /* Don't set this to true *yet* -- we reuse parsing handlers below to push
@@ -1559,7 +1795,9 @@ static bool end_membername(upb_json_parser *p) {
     return true;
   }
 
-  if (p->top->is_map) {
+  if (p->top->is_any) {
+    return end_any_membername(p);
+  } else if (p->top->is_map) {
     return handle_mapentry(p);
   } else {
     size_t len;
@@ -1580,6 +1818,23 @@ static bool end_membername(upb_json_parser *p) {
       upb_env_reporterror(p->env, &p->status);
       return false;
     }
+  }
+}
+
+static bool end_any_membername(upb_json_parser *p) {
+  size_t len;
+  const char *buf = accumulate_getptr(p, &len);
+  upb_value v;
+
+  if (len == 5 && strncmp(buf, "@type", len) == 0) {
+    upb_strtable_lookup2(p->top->name_table, "type_url", 8, &v);
+    p->top->f = upb_value_getconstptr(v);
+    multipart_end(p);
+    return true;
+  } else {
+    p->top->is_unknown_field = true;
+    multipart_end(p);
+    return true;
   }
 }
 
@@ -1607,6 +1862,16 @@ static void end_member(upb_json_parser *p) {
   p->top->is_unknown_field = false;
 }
 
+static void start_any_member(upb_json_parser *p, const char *ptr) {
+  start_member(p);
+  json_parser_any_frame_set_after_type_url_start_once(p->top->any_frame, ptr);
+}
+
+static void end_any_member(upb_json_parser *p, const char *ptr) {
+  json_parser_any_frame_set_before_type_url_end(p->top->any_frame, ptr);
+  end_member(p);
+}
+
 static bool start_subobject(upb_json_parser *p) {
   if (p->top->is_unknown_field) {
     upb_jsonparser_frame *inner;
@@ -1617,6 +1882,8 @@ static bool start_subobject(upb_json_parser *p) {
     inner->f = NULL;
     inner->is_map = false;
     inner->is_mapentry = false;
+    inner->is_any = false;
+    inner->any_frame = NULL;
     inner->is_unknown_field = false;
     p->top = inner;
     return true;
@@ -1639,6 +1906,8 @@ static bool start_subobject(upb_json_parser *p) {
     inner->f = NULL;
     inner->is_map = true;
     inner->is_mapentry = false;
+    inner->is_any = false;
+    inner->any_frame = NULL;
     inner->is_unknown_field = false;
     p->top = inner;
 
@@ -1662,6 +1931,16 @@ static bool start_subobject(upb_json_parser *p) {
     inner->is_mapentry = false;
     inner->is_unknown_field = false;
     p->top = inner;
+
+    if (is_wellknown_msg(p, UPB_WELLKNOWN_ANY)) {
+      p->top->is_any = true;
+      p->top->any_frame =
+          upb_env_malloc(p->env, sizeof(upb_jsonparser_any_frame));
+      json_parser_any_frame_reset(p->top->any_frame);
+    } else {
+      p->top->is_any = false;
+      p->top->any_frame = NULL;
+    }
 
     return true;
   } else {
@@ -1767,6 +2046,8 @@ static bool start_array(upb_json_parser *p) {
     inner->f = NULL;
     inner->is_map = false;
     inner->is_mapentry = false;
+    inner->is_any = false;
+    inner->any_frame = NULL;
     inner->is_unknown_field = true;
     p->top = inner;
 
@@ -1791,6 +2072,8 @@ static bool start_array(upb_json_parser *p) {
   inner->f = p->top->f;
   inner->is_map = false;
   inner->is_mapentry = false;
+  inner->is_any = false;
+  inner->any_frame = NULL;
   inner->is_unknown_field = false;
   p->top = inner;
 
@@ -1841,6 +2124,129 @@ static void end_object(upb_json_parser *p) {
       upb_env_reporterror(p->env, &status);
     }
   }
+}
+
+static void start_any_object(upb_json_parser *p, const char *ptr) {
+  start_object(p);
+  p->top->any_frame->before_type_url_start = ptr;
+  p->top->any_frame->before_type_url_end = ptr;
+}
+
+static bool end_any_object(upb_json_parser *p, const char *ptr) {
+  const char *value_membername = "value";
+  bool is_well_known_packed = false;
+  const char *packed_end = ptr + 1;
+  upb_selector_t sel;
+  upb_jsonparser_frame *inner;
+
+  if (json_parser_any_frame_has_value(p->top->any_frame) &&
+      !json_parser_any_frame_has_type_url(p->top->any_frame)) {
+    upb_status_seterrmsg(&p->status, "No valid type url");
+    upb_env_reporterror(p->env, &p->status);
+    return false;
+  }
+
+  /* Well known types data is represented as value field. */
+  if (upb_msgdef_wellknowntype(p->top->any_frame->parser->top->m) !=
+          UPB_WELLKNOWN_UNSPECIFIED) {
+    is_well_known_packed = true;
+
+    if (json_parser_any_frame_has_value_before_type_url(p->top->any_frame)) {
+      p->top->any_frame->before_type_url_start =
+          memchr(p->top->any_frame->before_type_url_start, ':',
+                 p->top->any_frame->before_type_url_end -
+                 p->top->any_frame->before_type_url_start);
+      if (p->top->any_frame->before_type_url_start == NULL) {
+        upb_status_seterrmsg(&p->status, "invalid data for well known type.");
+        upb_env_reporterror(p->env, &p->status);
+        return false;
+      }
+      p->top->any_frame->before_type_url_start++;
+    }
+
+    if (json_parser_any_frame_has_value_after_type_url(p->top->any_frame)) {
+      p->top->any_frame->after_type_url_start =
+          memchr(p->top->any_frame->after_type_url_start, ':',
+                 (ptr + 1) -
+                 p->top->any_frame->after_type_url_start);
+      if (p->top->any_frame->after_type_url_start == NULL) {
+        upb_status_seterrmsg(&p->status, "Invalid data for well known type.");
+        upb_env_reporterror(p->env, &p->status);
+        return false;
+      }
+      p->top->any_frame->after_type_url_start++;
+      packed_end = ptr;
+    }
+  }
+
+  if (json_parser_any_frame_has_value_before_type_url(p->top->any_frame)) {
+    if (!parse(p->top->any_frame->parser, NULL,
+               p->top->any_frame->before_type_url_start,
+               p->top->any_frame->before_type_url_end -
+               p->top->any_frame->before_type_url_start, NULL)) {
+      return false;
+    }
+  } else {
+    if (!is_well_known_packed) {
+      if (!parse(p->top->any_frame->parser, NULL, "{", 1, NULL)) {
+        return false;
+      }
+    }
+  }
+
+  if (json_parser_any_frame_has_value_before_type_url(p->top->any_frame) &&
+      json_parser_any_frame_has_value_after_type_url(p->top->any_frame)) {
+    if (!parse(p->top->any_frame->parser, NULL, ",", 1, NULL)) {
+      return false;
+    }
+  }
+
+  if (json_parser_any_frame_has_value_after_type_url(p->top->any_frame)) {
+    if (!parse(p->top->any_frame->parser, NULL,
+               p->top->any_frame->after_type_url_start,
+               packed_end - p->top->any_frame->after_type_url_start, NULL)) {
+      return false;
+    }
+  } else {
+    if (!is_well_known_packed) {
+      if (!parse(p->top->any_frame->parser, NULL, "}", 1, NULL)) {
+        return false;
+      }
+    }
+  }
+
+  if (!end(p->top->any_frame->parser, NULL)) {
+    return false;
+  }
+
+  p->top->is_any = false;
+
+  /* Set value */
+  start_member(p);
+  capture_begin(p, value_membername);
+  capture_end(p, value_membername + 5);
+  end_membername(p);
+
+  if (!check_stack(p)) return false;
+  inner = p->top + 1;
+
+  sel = getsel_for_handlertype(p, UPB_HANDLER_STARTSTR);
+  upb_sink_startstr(&p->top->sink, sel, 0, &inner->sink);
+  sel = getsel_for_handlertype(p, UPB_HANDLER_STRING);
+  upb_sink_putstring(&inner->sink, sel, p->top->any_frame->stringsink.ptr,
+                     p->top->any_frame->stringsink.len, NULL);
+  sel = getsel_for_handlertype(p, UPB_HANDLER_ENDSTR);
+  upb_sink_endstr(&inner->sink, sel);
+
+  end_member(p);
+
+  end_object(p);
+
+  /* Deallocate any parse frame. */
+  json_parser_any_frame_free(p->top->any_frame);
+  upb_env_free(p->env, p->top->any_frame);
+
+  return true;
 }
 
 static bool is_string_wrapper(const upb_msgdef *m) {
@@ -2008,239 +2414,33 @@ static bool is_string_wrapper_object(upb_json_parser *p) {
  * final state once, when the closing '"' is seen. */
 
 
-#line 2147 "upb/json/parser.rl"
+#line 2576 "upb/json/parser.rl"
 
 
 
-#line 2016 "upb/json/parser.c"
+#line 2422 "upb/json/parser.c"
 static const char _json_actions[] = {
 	0, 1, 0, 1, 1, 1, 3, 1, 
 	4, 1, 6, 1, 7, 1, 8, 1, 
 	9, 1, 10, 1, 11, 1, 12, 1, 
 	13, 1, 21, 1, 23, 1, 24, 1, 
-	25, 1, 27, 1, 28, 1, 30, 1, 
+	26, 1, 27, 1, 28, 1, 30, 1, 
 	32, 1, 33, 1, 34, 1, 35, 1, 
-	36, 1, 38, 2, 4, 9, 2, 5, 
+	37, 1, 38, 2, 4, 9, 2, 5, 
 	6, 2, 7, 3, 2, 7, 9, 2, 
 	14, 15, 2, 16, 17, 2, 18, 19, 
-	2, 22, 20, 2, 26, 37, 2, 29, 
+	2, 22, 20, 2, 24, 26, 2, 29, 
 	2, 2, 30, 38, 2, 31, 20, 2, 
 	33, 38, 2, 34, 38, 2, 35, 38, 
-	3, 25, 22, 20, 3, 26, 37, 38, 
-	4, 14, 15, 16, 17
-};
-
-static const short _json_key_offsets[] = {
-	0, 0, 12, 13, 18, 23, 28, 29, 
-	30, 31, 32, 33, 34, 35, 36, 37, 
-	38, 43, 48, 49, 53, 58, 63, 68, 
-	72, 76, 79, 82, 84, 88, 92, 94, 
-	96, 101, 103, 105, 114, 120, 126, 132, 
-	138, 140, 144, 147, 149, 151, 154, 155, 
-	159, 161, 163, 165, 167, 168, 170, 172, 
-	173, 175, 177, 178, 180, 182, 183, 185, 
-	187, 188, 190, 192, 196, 198, 200, 201, 
-	202, 203, 204, 206, 211, 220, 221, 221, 
-	221, 226, 231, 236, 237, 238, 239, 240, 
-	240, 241, 242, 243, 243, 244, 245, 246, 
-	246, 251, 256, 257, 261, 266, 271, 276, 
-	280, 280, 283, 286, 289, 292, 295, 298, 
-	298, 298, 298, 298
-};
-
-static const char _json_trans_keys[] = {
-	32, 34, 45, 91, 102, 110, 116, 123, 
-	9, 13, 48, 57, 34, 32, 93, 125, 
-	9, 13, 32, 44, 93, 9, 13, 32, 
-	93, 125, 9, 13, 97, 108, 115, 101, 
-	117, 108, 108, 114, 117, 101, 32, 34, 
-	125, 9, 13, 32, 34, 125, 9, 13, 
-	34, 32, 58, 9, 13, 32, 93, 125, 
-	9, 13, 32, 44, 125, 9, 13, 32, 
-	44, 125, 9, 13, 32, 34, 9, 13, 
-	45, 48, 49, 57, 48, 49, 57, 46, 
-	69, 101, 48, 57, 69, 101, 48, 57, 
-	43, 45, 48, 57, 48, 57, 48, 57, 
-	46, 69, 101, 48, 57, 34, 92, 34, 
-	92, 34, 47, 92, 98, 102, 110, 114, 
-	116, 117, 48, 57, 65, 70, 97, 102, 
-	48, 57, 65, 70, 97, 102, 48, 57, 
-	65, 70, 97, 102, 48, 57, 65, 70, 
-	97, 102, 34, 92, 45, 48, 49, 57, 
-	48, 49, 57, 46, 115, 48, 57, 115, 
-	48, 57, 34, 46, 115, 48, 57, 48, 
-	57, 48, 57, 48, 57, 48, 57, 45, 
-	48, 57, 48, 57, 45, 48, 57, 48, 
-	57, 84, 48, 57, 48, 57, 58, 48, 
-	57, 48, 57, 58, 48, 57, 48, 57, 
-	43, 45, 46, 90, 48, 57, 48, 57, 
-	58, 48, 48, 34, 48, 57, 43, 45, 
-	90, 48, 57, 34, 45, 91, 102, 110, 
-	116, 123, 48, 57, 34, 32, 93, 125, 
-	9, 13, 32, 44, 93, 9, 13, 32, 
-	93, 125, 9, 13, 97, 108, 115, 101, 
-	117, 108, 108, 114, 117, 101, 32, 34, 
-	125, 9, 13, 32, 34, 125, 9, 13, 
-	34, 32, 58, 9, 13, 32, 93, 125, 
-	9, 13, 32, 44, 125, 9, 13, 32, 
-	44, 125, 9, 13, 32, 34, 9, 13, 
-	32, 9, 13, 32, 9, 13, 32, 9, 
-	13, 32, 9, 13, 32, 9, 13, 32, 
-	9, 13, 0
-};
-
-static const char _json_single_lengths[] = {
-	0, 8, 1, 3, 3, 3, 1, 1, 
-	1, 1, 1, 1, 1, 1, 1, 1, 
-	3, 3, 1, 2, 3, 3, 3, 2, 
-	2, 1, 3, 0, 2, 2, 0, 0, 
-	3, 2, 2, 9, 0, 0, 0, 0, 
-	2, 2, 1, 2, 0, 1, 1, 2, 
-	0, 0, 0, 0, 1, 0, 0, 1, 
-	0, 0, 1, 0, 0, 1, 0, 0, 
-	1, 0, 0, 4, 0, 0, 1, 1, 
-	1, 1, 0, 3, 7, 1, 0, 0, 
-	3, 3, 3, 1, 1, 1, 1, 0, 
-	1, 1, 1, 0, 1, 1, 1, 0, 
-	3, 3, 1, 2, 3, 3, 3, 2, 
-	0, 1, 1, 1, 1, 1, 1, 0, 
-	0, 0, 0, 0
-};
-
-static const char _json_range_lengths[] = {
-	0, 2, 0, 1, 1, 1, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	1, 1, 0, 1, 1, 1, 1, 1, 
-	1, 1, 0, 1, 1, 1, 1, 1, 
-	1, 0, 0, 0, 3, 3, 3, 3, 
-	0, 1, 1, 0, 1, 1, 0, 1, 
-	1, 1, 1, 1, 0, 1, 1, 0, 
-	1, 1, 0, 1, 1, 0, 1, 1, 
-	0, 1, 1, 0, 1, 1, 0, 0, 
-	0, 0, 1, 1, 1, 0, 0, 0, 
-	1, 1, 1, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	1, 1, 0, 1, 1, 1, 1, 1, 
-	0, 1, 1, 1, 1, 1, 1, 0, 
-	0, 0, 0, 0
-};
-
-static const short _json_index_offsets[] = {
-	0, 0, 11, 13, 18, 23, 28, 30, 
-	32, 34, 36, 38, 40, 42, 44, 46, 
-	48, 53, 58, 60, 64, 69, 74, 79, 
-	83, 87, 90, 94, 96, 100, 104, 106, 
-	108, 113, 116, 119, 129, 133, 137, 141, 
-	145, 148, 152, 155, 158, 160, 163, 165, 
-	169, 171, 173, 175, 177, 179, 181, 183, 
-	185, 187, 189, 191, 193, 195, 197, 199, 
-	201, 203, 205, 207, 212, 214, 216, 218, 
-	220, 222, 224, 226, 231, 240, 242, 243, 
-	244, 249, 254, 259, 261, 263, 265, 267, 
-	268, 270, 272, 274, 275, 277, 279, 281, 
-	282, 287, 292, 294, 298, 303, 308, 313, 
-	317, 318, 321, 324, 327, 330, 333, 336, 
-	337, 338, 339, 340
-};
-
-static const unsigned char _json_indicies[] = {
-	0, 2, 3, 4, 5, 6, 7, 8, 
-	0, 3, 1, 9, 1, 11, 12, 1, 
-	11, 10, 13, 14, 12, 13, 1, 14, 
-	1, 1, 14, 10, 15, 1, 16, 1, 
-	17, 1, 18, 1, 19, 1, 20, 1, 
-	21, 1, 22, 1, 23, 1, 24, 1, 
-	25, 26, 27, 25, 1, 28, 29, 30, 
-	28, 1, 31, 1, 32, 33, 32, 1, 
-	33, 1, 1, 33, 34, 35, 36, 37, 
-	35, 1, 38, 39, 30, 38, 1, 39, 
-	29, 39, 1, 40, 41, 42, 1, 41, 
-	42, 1, 44, 45, 45, 43, 46, 1, 
-	45, 45, 46, 43, 47, 47, 48, 1, 
-	48, 1, 48, 43, 44, 45, 45, 42, 
-	43, 50, 51, 49, 53, 54, 52, 55, 
-	55, 55, 55, 55, 55, 55, 55, 56, 
-	1, 57, 57, 57, 1, 58, 58, 58, 
-	1, 59, 59, 59, 1, 60, 60, 60, 
-	1, 62, 63, 61, 64, 65, 66, 1, 
-	67, 68, 1, 69, 70, 1, 71, 1, 
-	70, 71, 1, 72, 1, 69, 70, 68, 
-	1, 73, 1, 74, 1, 75, 1, 76, 
-	1, 77, 1, 78, 1, 79, 1, 80, 
-	1, 81, 1, 82, 1, 83, 1, 84, 
-	1, 85, 1, 86, 1, 87, 1, 88, 
-	1, 89, 1, 90, 1, 91, 1, 92, 
-	92, 93, 94, 1, 95, 1, 96, 1, 
-	97, 1, 98, 1, 99, 1, 100, 1, 
-	101, 1, 102, 102, 103, 101, 1, 104, 
-	105, 106, 107, 108, 109, 110, 105, 1, 
-	111, 1, 112, 113, 115, 116, 1, 115, 
-	114, 117, 118, 116, 117, 1, 118, 1, 
-	1, 118, 114, 119, 1, 120, 1, 121, 
-	1, 122, 1, 123, 124, 1, 125, 1, 
-	126, 1, 127, 128, 1, 129, 1, 130, 
-	1, 131, 132, 133, 134, 132, 1, 135, 
-	136, 137, 135, 1, 138, 1, 139, 140, 
-	139, 1, 140, 1, 1, 140, 141, 142, 
-	143, 144, 142, 1, 145, 146, 137, 145, 
-	1, 146, 136, 146, 1, 147, 148, 148, 
-	1, 149, 149, 1, 150, 150, 1, 151, 
-	151, 1, 152, 152, 1, 153, 153, 1, 
-	1, 1, 1, 1, 1, 0
-};
-
-static const char _json_trans_targs[] = {
-	1, 0, 2, 106, 3, 6, 10, 13, 
-	16, 105, 4, 3, 105, 4, 5, 7, 
-	8, 9, 107, 11, 12, 108, 14, 15, 
-	109, 17, 18, 110, 17, 18, 110, 19, 
-	19, 20, 21, 22, 23, 110, 22, 23, 
-	25, 26, 32, 111, 27, 29, 28, 30, 
-	31, 34, 112, 35, 34, 112, 35, 33, 
-	36, 37, 38, 39, 40, 34, 112, 35, 
-	42, 43, 47, 43, 47, 44, 46, 45, 
-	113, 49, 50, 51, 52, 53, 54, 55, 
-	56, 57, 58, 59, 60, 61, 62, 63, 
-	64, 65, 66, 67, 68, 74, 73, 69, 
-	70, 71, 72, 73, 114, 75, 68, 73, 
-	77, 79, 80, 83, 88, 92, 96, 78, 
-	115, 115, 81, 80, 78, 81, 82, 84, 
-	85, 86, 87, 115, 89, 90, 91, 115, 
-	93, 94, 95, 115, 97, 98, 104, 97, 
-	98, 104, 99, 99, 100, 101, 102, 103, 
-	104, 102, 103, 115, 105, 105, 105, 105, 
-	105, 105
-};
-
-static const char _json_trans_actions[] = {
-	0, 0, 84, 78, 33, 0, 0, 0, 
-	47, 39, 25, 0, 35, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 31, 96, 31, 0, 72, 0, 27, 
-	0, 0, 25, 29, 29, 29, 0, 0, 
-	0, 0, 0, 3, 0, 0, 0, 0, 
-	0, 5, 15, 0, 0, 51, 7, 13, 
-	0, 54, 9, 9, 9, 57, 60, 11, 
-	17, 17, 17, 0, 0, 0, 19, 0, 
-	21, 23, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 104, 63, 104, 0, 
-	0, 0, 0, 0, 69, 0, 66, 66, 
-	84, 78, 33, 0, 0, 0, 47, 39, 
-	49, 81, 25, 0, 35, 0, 0, 0, 
-	0, 0, 0, 90, 0, 0, 0, 93, 
-	0, 0, 0, 87, 31, 96, 31, 0, 
-	72, 0, 27, 0, 0, 25, 29, 29, 
-	29, 0, 0, 100, 0, 37, 43, 45, 
-	41, 75
+	2, 36, 25, 2, 37, 38, 4, 14, 
+	15, 16, 17
 };
 
 static const char _json_eof_actions[] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 1, 0, 1, 0, 0, 1, 
-	1, 0, 0, 0, 0, 0, 0, 0, 
+	0, 1, 0, 1, 0, 0, 1, 1, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
@@ -2249,21 +2449,22 @@ static const char _json_eof_actions[] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 37, 43, 45, 41, 75, 0, 
-	0, 0, 0, 0
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	37, 43, 45, 41, 47, 0, 0, 0, 
+	0, 0
 };
 
 static const int json_start = 1;
 
-static const int json_en_number_machine = 24;
-static const int json_en_string_machine = 33;
-static const int json_en_duration_machine = 41;
-static const int json_en_timestamp_machine = 48;
-static const int json_en_value_machine = 76;
+static const int json_en_number_machine = 23;
+static const int json_en_string_machine = 32;
+static const int json_en_duration_machine = 40;
+static const int json_en_timestamp_machine = 47;
+static const int json_en_value_machine = 75;
 static const int json_en_main = 1;
 
 
-#line 2150 "upb/json/parser.rl"
+#line 2579 "upb/json/parser.rl"
 
 size_t parse(void *closure, const void *hd, const char *buf, size_t size,
              const upb_bufhandle *handle) {
@@ -2286,243 +2487,1039 @@ size_t parse(void *closure, const void *hd, const char *buf, size_t size,
   capture_resume(parser, buf);
 
   
-#line 2290 "upb/json/parser.c"
+#line 2491 "upb/json/parser.c"
 	{
-	int _klen;
-	unsigned int _trans;
 	const char *_acts;
 	unsigned int _nacts;
-	const char *_keys;
 
 	if ( p == pe )
 		goto _test_eof;
 	if ( cs == 0 )
 		goto _out;
 _resume:
-	_keys = _json_trans_keys + _json_key_offsets[cs];
-	_trans = _json_index_offsets[cs];
-
-	_klen = _json_single_lengths[cs];
-	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + _klen - 1;
-		while (1) {
-			if ( _upper < _lower )
-				break;
-
-			_mid = _lower + ((_upper-_lower) >> 1);
-			if ( (*p) < *_mid )
-				_upper = _mid - 1;
-			else if ( (*p) > *_mid )
-				_lower = _mid + 1;
-			else {
-				_trans += (unsigned int)(_mid - _keys);
-				goto _match;
-			}
-		}
-		_keys += _klen;
-		_trans += _klen;
+	switch ( cs ) {
+case 1:
+	switch( (*p) ) {
+		case 32: goto tr0;
+		case 34: goto tr2;
+		case 45: goto tr3;
+		case 91: goto tr4;
+		case 102: goto tr5;
+		case 110: goto tr6;
+		case 116: goto tr7;
+		case 123: goto tr8;
+	}
+	if ( (*p) > 13 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr3;
+	} else if ( (*p) >= 9 )
+		goto tr0;
+	goto tr1;
+case 0:
+	goto _out;
+case 2:
+	if ( (*p) == 34 )
+		goto tr9;
+	goto tr1;
+case 103:
+	if ( (*p) == 32 )
+		goto tr142;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr142;
+	goto tr1;
+case 104:
+	if ( (*p) == 32 )
+		goto tr143;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr143;
+	goto tr1;
+case 3:
+	switch( (*p) ) {
+		case 32: goto tr11;
+		case 93: goto tr12;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr11;
+	goto tr10;
+case 4:
+	switch( (*p) ) {
+		case 32: goto tr13;
+		case 44: goto tr14;
+		case 93: goto tr12;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr13;
+	goto tr1;
+case 5:
+	switch( (*p) ) {
+		case 32: goto tr14;
+		case 93: goto tr1;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr14;
+	goto tr10;
+case 6:
+	if ( (*p) == 97 )
+		goto tr15;
+	goto tr1;
+case 7:
+	if ( (*p) == 108 )
+		goto tr16;
+	goto tr1;
+case 8:
+	if ( (*p) == 115 )
+		goto tr17;
+	goto tr1;
+case 9:
+	if ( (*p) == 101 )
+		goto tr18;
+	goto tr1;
+case 105:
+	if ( (*p) == 32 )
+		goto tr144;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr144;
+	goto tr1;
+case 10:
+	if ( (*p) == 117 )
+		goto tr19;
+	goto tr1;
+case 11:
+	if ( (*p) == 108 )
+		goto tr20;
+	goto tr1;
+case 12:
+	if ( (*p) == 108 )
+		goto tr21;
+	goto tr1;
+case 106:
+	if ( (*p) == 32 )
+		goto tr145;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr145;
+	goto tr1;
+case 13:
+	if ( (*p) == 114 )
+		goto tr22;
+	goto tr1;
+case 14:
+	if ( (*p) == 117 )
+		goto tr23;
+	goto tr1;
+case 15:
+	if ( (*p) == 101 )
+		goto tr24;
+	goto tr1;
+case 107:
+	if ( (*p) == 32 )
+		goto tr146;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr146;
+	goto tr1;
+case 16:
+	switch( (*p) ) {
+		case 32: goto tr25;
+		case 34: goto tr26;
+		case 125: goto tr27;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr25;
+	goto tr1;
+case 17:
+	if ( (*p) == 34 )
+		goto tr28;
+	goto tr1;
+case 18:
+	switch( (*p) ) {
+		case 32: goto tr29;
+		case 58: goto tr30;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr29;
+	goto tr1;
+case 19:
+	switch( (*p) ) {
+		case 32: goto tr30;
+		case 93: goto tr1;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr30;
+	goto tr31;
+case 20:
+	switch( (*p) ) {
+		case 32: goto tr32;
+		case 44: goto tr33;
+		case 125: goto tr34;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr32;
+	goto tr1;
+case 21:
+	switch( (*p) ) {
+		case 32: goto tr35;
+		case 44: goto tr36;
+		case 125: goto tr27;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr35;
+	goto tr1;
+case 22:
+	switch( (*p) ) {
+		case 32: goto tr36;
+		case 34: goto tr26;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr36;
+	goto tr1;
+case 108:
+	if ( (*p) == 32 )
+		goto tr147;
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr147;
+	goto tr1;
+case 23:
+	switch( (*p) ) {
+		case 45: goto tr37;
+		case 48: goto tr38;
+	}
+	if ( 49 <= (*p) && (*p) <= 57 )
+		goto tr39;
+	goto tr1;
+case 24:
+	if ( (*p) == 48 )
+		goto tr38;
+	if ( 49 <= (*p) && (*p) <= 57 )
+		goto tr39;
+	goto tr1;
+case 25:
+	switch( (*p) ) {
+		case 46: goto tr41;
+		case 69: goto tr42;
+		case 101: goto tr42;
+	}
+	goto tr40;
+case 109:
+	goto tr1;
+case 26:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr43;
+	goto tr1;
+case 27:
+	switch( (*p) ) {
+		case 69: goto tr42;
+		case 101: goto tr42;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr43;
+	goto tr40;
+case 28:
+	switch( (*p) ) {
+		case 43: goto tr44;
+		case 45: goto tr44;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr45;
+	goto tr1;
+case 29:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr45;
+	goto tr1;
+case 30:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr45;
+	goto tr40;
+case 31:
+	switch( (*p) ) {
+		case 46: goto tr41;
+		case 69: goto tr42;
+		case 101: goto tr42;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr39;
+	goto tr40;
+case 32:
+	switch( (*p) ) {
+		case 34: goto tr47;
+		case 92: goto tr48;
+	}
+	goto tr46;
+case 33:
+	switch( (*p) ) {
+		case 34: goto tr50;
+		case 92: goto tr51;
+	}
+	goto tr49;
+case 110:
+	goto tr1;
+case 34:
+	switch( (*p) ) {
+		case 34: goto tr52;
+		case 47: goto tr52;
+		case 92: goto tr52;
+		case 98: goto tr52;
+		case 102: goto tr52;
+		case 110: goto tr52;
+		case 114: goto tr52;
+		case 116: goto tr52;
+		case 117: goto tr53;
+	}
+	goto tr1;
+case 35:
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr54;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr54;
+	} else
+		goto tr54;
+	goto tr1;
+case 36:
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr55;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr55;
+	} else
+		goto tr55;
+	goto tr1;
+case 37:
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr56;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr56;
+	} else
+		goto tr56;
+	goto tr1;
+case 38:
+	if ( (*p) < 65 ) {
+		if ( 48 <= (*p) && (*p) <= 57 )
+			goto tr57;
+	} else if ( (*p) > 70 ) {
+		if ( 97 <= (*p) && (*p) <= 102 )
+			goto tr57;
+	} else
+		goto tr57;
+	goto tr1;
+case 39:
+	switch( (*p) ) {
+		case 34: goto tr59;
+		case 92: goto tr60;
+	}
+	goto tr58;
+case 40:
+	switch( (*p) ) {
+		case 45: goto tr61;
+		case 48: goto tr62;
+	}
+	if ( 49 <= (*p) && (*p) <= 57 )
+		goto tr63;
+	goto tr1;
+case 41:
+	if ( (*p) == 48 )
+		goto tr64;
+	if ( 49 <= (*p) && (*p) <= 57 )
+		goto tr65;
+	goto tr1;
+case 42:
+	switch( (*p) ) {
+		case 46: goto tr66;
+		case 115: goto tr67;
+	}
+	goto tr1;
+case 43:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr68;
+	goto tr1;
+case 44:
+	if ( (*p) == 115 )
+		goto tr67;
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr68;
+	goto tr1;
+case 45:
+	if ( (*p) == 34 )
+		goto tr69;
+	goto tr1;
+case 111:
+	goto tr1;
+case 46:
+	switch( (*p) ) {
+		case 46: goto tr66;
+		case 115: goto tr67;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr65;
+	goto tr1;
+case 47:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr70;
+	goto tr1;
+case 48:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr71;
+	goto tr1;
+case 49:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr72;
+	goto tr1;
+case 50:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr73;
+	goto tr1;
+case 51:
+	if ( (*p) == 45 )
+		goto tr74;
+	goto tr1;
+case 52:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr75;
+	goto tr1;
+case 53:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr76;
+	goto tr1;
+case 54:
+	if ( (*p) == 45 )
+		goto tr77;
+	goto tr1;
+case 55:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr78;
+	goto tr1;
+case 56:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr79;
+	goto tr1;
+case 57:
+	if ( (*p) == 84 )
+		goto tr80;
+	goto tr1;
+case 58:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr81;
+	goto tr1;
+case 59:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr82;
+	goto tr1;
+case 60:
+	if ( (*p) == 58 )
+		goto tr83;
+	goto tr1;
+case 61:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr84;
+	goto tr1;
+case 62:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr85;
+	goto tr1;
+case 63:
+	if ( (*p) == 58 )
+		goto tr86;
+	goto tr1;
+case 64:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr87;
+	goto tr1;
+case 65:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr88;
+	goto tr1;
+case 66:
+	switch( (*p) ) {
+		case 43: goto tr89;
+		case 45: goto tr89;
+		case 46: goto tr90;
+		case 90: goto tr91;
+	}
+	goto tr1;
+case 67:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr92;
+	goto tr1;
+case 68:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr93;
+	goto tr1;
+case 69:
+	if ( (*p) == 58 )
+		goto tr94;
+	goto tr1;
+case 70:
+	if ( (*p) == 48 )
+		goto tr95;
+	goto tr1;
+case 71:
+	if ( (*p) == 48 )
+		goto tr96;
+	goto tr1;
+case 72:
+	if ( (*p) == 34 )
+		goto tr97;
+	goto tr1;
+case 112:
+	goto tr1;
+case 73:
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr98;
+	goto tr1;
+case 74:
+	switch( (*p) ) {
+		case 43: goto tr99;
+		case 45: goto tr99;
+		case 90: goto tr100;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr98;
+	goto tr1;
+case 75:
+	switch( (*p) ) {
+		case 34: goto tr101;
+		case 45: goto tr102;
+		case 91: goto tr103;
+		case 102: goto tr104;
+		case 110: goto tr105;
+		case 116: goto tr106;
+		case 123: goto tr107;
+	}
+	if ( 48 <= (*p) && (*p) <= 57 )
+		goto tr102;
+	goto tr1;
+case 76:
+	if ( (*p) == 34 )
+		goto tr108;
+	goto tr1;
+case 77:
+	goto tr109;
+case 113:
+	goto tr1;
+case 78:
+	goto tr110;
+case 79:
+	switch( (*p) ) {
+		case 32: goto tr112;
+		case 93: goto tr113;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr112;
+	goto tr111;
+case 80:
+	switch( (*p) ) {
+		case 32: goto tr114;
+		case 44: goto tr115;
+		case 93: goto tr113;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr114;
+	goto tr1;
+case 81:
+	switch( (*p) ) {
+		case 32: goto tr115;
+		case 93: goto tr1;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr115;
+	goto tr111;
+case 82:
+	if ( (*p) == 97 )
+		goto tr116;
+	goto tr1;
+case 83:
+	if ( (*p) == 108 )
+		goto tr117;
+	goto tr1;
+case 84:
+	if ( (*p) == 115 )
+		goto tr118;
+	goto tr1;
+case 85:
+	if ( (*p) == 101 )
+		goto tr119;
+	goto tr1;
+case 86:
+	goto tr120;
+case 87:
+	if ( (*p) == 117 )
+		goto tr121;
+	goto tr1;
+case 88:
+	if ( (*p) == 108 )
+		goto tr122;
+	goto tr1;
+case 89:
+	if ( (*p) == 108 )
+		goto tr123;
+	goto tr1;
+case 90:
+	goto tr124;
+case 91:
+	if ( (*p) == 114 )
+		goto tr125;
+	goto tr1;
+case 92:
+	if ( (*p) == 117 )
+		goto tr126;
+	goto tr1;
+case 93:
+	if ( (*p) == 101 )
+		goto tr127;
+	goto tr1;
+case 94:
+	goto tr128;
+case 95:
+	switch( (*p) ) {
+		case 32: goto tr129;
+		case 34: goto tr130;
+		case 125: goto tr131;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr129;
+	goto tr1;
+case 96:
+	if ( (*p) == 34 )
+		goto tr132;
+	goto tr1;
+case 97:
+	switch( (*p) ) {
+		case 32: goto tr133;
+		case 58: goto tr134;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr133;
+	goto tr1;
+case 98:
+	switch( (*p) ) {
+		case 32: goto tr134;
+		case 93: goto tr1;
+		case 125: goto tr1;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr134;
+	goto tr135;
+case 99:
+	switch( (*p) ) {
+		case 32: goto tr136;
+		case 44: goto tr137;
+		case 125: goto tr138;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr136;
+	goto tr1;
+case 100:
+	switch( (*p) ) {
+		case 32: goto tr139;
+		case 44: goto tr140;
+		case 125: goto tr131;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr139;
+	goto tr1;
+case 101:
+	switch( (*p) ) {
+		case 32: goto tr140;
+		case 34: goto tr130;
+	}
+	if ( 9 <= (*p) && (*p) <= 13 )
+		goto tr140;
+	goto tr1;
+case 102:
+	goto tr141;
 	}
 
-	_klen = _json_range_lengths[cs];
-	if ( _klen > 0 ) {
-		const char *_lower = _keys;
-		const char *_mid;
-		const char *_upper = _keys + (_klen<<1) - 2;
-		while (1) {
-			if ( _upper < _lower )
-				break;
+	tr1: cs = 0; goto _again;
+	tr0: cs = 1; goto _again;
+	tr2: cs = 2; goto f0;
+	tr11: cs = 3; goto _again;
+	tr4: cs = 3; goto f2;
+	tr13: cs = 4; goto _again;
+	tr10: cs = 4; goto f5;
+	tr14: cs = 5; goto _again;
+	tr5: cs = 6; goto _again;
+	tr15: cs = 7; goto _again;
+	tr16: cs = 8; goto _again;
+	tr17: cs = 9; goto _again;
+	tr6: cs = 10; goto _again;
+	tr19: cs = 11; goto _again;
+	tr20: cs = 12; goto _again;
+	tr7: cs = 13; goto _again;
+	tr22: cs = 14; goto _again;
+	tr23: cs = 15; goto _again;
+	tr25: cs = 16; goto _again;
+	tr8: cs = 16; goto f3;
+	tr26: cs = 17; goto f7;
+	tr29: cs = 18; goto _again;
+	tr28: cs = 18; goto f9;
+	tr30: cs = 19; goto _again;
+	tr31: cs = 20; goto f5;
+	tr35: cs = 21; goto _again;
+	tr32: cs = 21; goto f10;
+	tr36: cs = 22; goto _again;
+	tr33: cs = 22; goto f10;
+	tr37: cs = 24; goto _again;
+	tr38: cs = 25; goto _again;
+	tr41: cs = 26; goto _again;
+	tr43: cs = 27; goto _again;
+	tr42: cs = 28; goto _again;
+	tr44: cs = 29; goto _again;
+	tr45: cs = 30; goto _again;
+	tr39: cs = 31; goto _again;
+	tr52: cs = 32; goto f18;
+	tr49: cs = 33; goto _again;
+	tr46: cs = 33; goto f14;
+	tr58: cs = 33; goto f21;
+	tr48: cs = 34; goto _again;
+	tr51: cs = 34; goto f17;
+	tr60: cs = 34; goto f23;
+	tr53: cs = 35; goto _again;
+	tr54: cs = 36; goto f19;
+	tr55: cs = 37; goto f20;
+	tr56: cs = 38; goto f20;
+	tr57: cs = 39; goto f20;
+	tr61: cs = 41; goto f24;
+	tr64: cs = 42; goto _again;
+	tr62: cs = 42; goto f24;
+	tr66: cs = 43; goto _again;
+	tr68: cs = 44; goto _again;
+	tr67: cs = 45; goto f25;
+	tr65: cs = 46; goto _again;
+	tr63: cs = 46; goto f24;
+	tr70: cs = 48; goto f27;
+	tr71: cs = 49; goto _again;
+	tr72: cs = 50; goto _again;
+	tr73: cs = 51; goto _again;
+	tr74: cs = 52; goto _again;
+	tr75: cs = 53; goto _again;
+	tr76: cs = 54; goto _again;
+	tr77: cs = 55; goto _again;
+	tr78: cs = 56; goto _again;
+	tr79: cs = 57; goto _again;
+	tr80: cs = 58; goto _again;
+	tr81: cs = 59; goto _again;
+	tr82: cs = 60; goto _again;
+	tr83: cs = 61; goto _again;
+	tr84: cs = 62; goto _again;
+	tr85: cs = 63; goto _again;
+	tr86: cs = 64; goto _again;
+	tr87: cs = 65; goto _again;
+	tr88: cs = 66; goto _again;
+	tr89: cs = 67; goto f28;
+	tr99: cs = 67; goto f31;
+	tr92: cs = 68; goto _again;
+	tr93: cs = 69; goto _again;
+	tr94: cs = 70; goto _again;
+	tr95: cs = 71; goto _again;
+	tr96: cs = 72; goto _again;
+	tr91: cs = 72; goto f28;
+	tr100: cs = 72; goto f31;
+	tr90: cs = 73; goto f29;
+	tr98: cs = 74; goto _again;
+	tr101: cs = 76; goto f0;
+	tr108: cs = 77; goto f4;
+	tr113: cs = 77; goto f6;
+	tr102: cs = 78; goto f1;
+	tr112: cs = 79; goto _again;
+	tr103: cs = 79; goto f2;
+	tr114: cs = 80; goto _again;
+	tr111: cs = 80; goto f5;
+	tr115: cs = 81; goto _again;
+	tr104: cs = 82; goto _again;
+	tr116: cs = 83; goto _again;
+	tr117: cs = 84; goto _again;
+	tr118: cs = 85; goto _again;
+	tr119: cs = 86; goto _again;
+	tr105: cs = 87; goto _again;
+	tr121: cs = 88; goto _again;
+	tr122: cs = 89; goto _again;
+	tr123: cs = 90; goto _again;
+	tr106: cs = 91; goto _again;
+	tr125: cs = 92; goto _again;
+	tr126: cs = 93; goto _again;
+	tr127: cs = 94; goto _again;
+	tr129: cs = 95; goto _again;
+	tr107: cs = 95; goto f3;
+	tr130: cs = 96; goto f7;
+	tr133: cs = 97; goto _again;
+	tr132: cs = 97; goto f9;
+	tr134: cs = 98; goto _again;
+	tr135: cs = 99; goto f5;
+	tr139: cs = 100; goto _again;
+	tr136: cs = 100; goto f10;
+	tr140: cs = 101; goto _again;
+	tr137: cs = 101; goto f10;
+	tr131: cs = 102; goto f8;
+	tr138: cs = 102; goto f11;
+	tr142: cs = 103; goto _again;
+	tr9: cs = 103; goto f4;
+	tr12: cs = 103; goto f6;
+	tr143: cs = 103; goto f38;
+	tr144: cs = 103; goto f39;
+	tr145: cs = 103; goto f40;
+	tr146: cs = 103; goto f41;
+	tr147: cs = 103; goto f42;
+	tr3: cs = 104; goto f1;
+	tr18: cs = 105; goto _again;
+	tr21: cs = 106; goto _again;
+	tr24: cs = 107; goto _again;
+	tr27: cs = 108; goto f8;
+	tr34: cs = 108; goto f11;
+	tr40: cs = 109; goto f13;
+	tr47: cs = 110; goto f15;
+	tr50: cs = 110; goto f16;
+	tr59: cs = 110; goto f22;
+	tr69: cs = 111; goto f26;
+	tr97: cs = 112; goto f30;
+	tr109: cs = 113; goto f32;
+	tr110: cs = 113; goto f33;
+	tr120: cs = 113; goto f34;
+	tr124: cs = 113; goto f35;
+	tr128: cs = 113; goto f36;
+	tr141: cs = 113; goto f37;
 
-			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
-			if ( (*p) < _mid[0] )
-				_upper = _mid - 2;
-			else if ( (*p) > _mid[1] )
-				_lower = _mid + 2;
-			else {
-				_trans += (unsigned int)((_mid - _keys)>>1);
-				goto _match;
-			}
-		}
-		_trans += _klen;
-	}
+	f13: _acts = _json_actions + 3; goto execFuncs;
+	f14: _acts = _json_actions + 5; goto execFuncs;
+	f17: _acts = _json_actions + 7; goto execFuncs;
+	f20: _acts = _json_actions + 9; goto execFuncs;
+	f23: _acts = _json_actions + 11; goto execFuncs;
+	f18: _acts = _json_actions + 13; goto execFuncs;
+	f15: _acts = _json_actions + 15; goto execFuncs;
+	f24: _acts = _json_actions + 17; goto execFuncs;
+	f25: _acts = _json_actions + 19; goto execFuncs;
+	f26: _acts = _json_actions + 21; goto execFuncs;
+	f27: _acts = _json_actions + 23; goto execFuncs;
+	f5: _acts = _json_actions + 25; goto execFuncs;
+	f9: _acts = _json_actions + 27; goto execFuncs;
+	f10: _acts = _json_actions + 29; goto execFuncs;
+	f8: _acts = _json_actions + 31; goto execFuncs;
+	f2: _acts = _json_actions + 33; goto execFuncs;
+	f6: _acts = _json_actions + 35; goto execFuncs;
+	f38: _acts = _json_actions + 37; goto execFuncs;
+	f4: _acts = _json_actions + 39; goto execFuncs;
+	f41: _acts = _json_actions + 41; goto execFuncs;
+	f39: _acts = _json_actions + 43; goto execFuncs;
+	f40: _acts = _json_actions + 45; goto execFuncs;
+	f42: _acts = _json_actions + 47; goto execFuncs;
+	f32: _acts = _json_actions + 49; goto execFuncs;
+	f16: _acts = _json_actions + 51; goto execFuncs;
+	f19: _acts = _json_actions + 54; goto execFuncs;
+	f21: _acts = _json_actions + 57; goto execFuncs;
+	f22: _acts = _json_actions + 60; goto execFuncs;
+	f29: _acts = _json_actions + 63; goto execFuncs;
+	f31: _acts = _json_actions + 66; goto execFuncs;
+	f30: _acts = _json_actions + 69; goto execFuncs;
+	f7: _acts = _json_actions + 72; goto execFuncs;
+	f11: _acts = _json_actions + 75; goto execFuncs;
+	f1: _acts = _json_actions + 78; goto execFuncs;
+	f33: _acts = _json_actions + 81; goto execFuncs;
+	f0: _acts = _json_actions + 84; goto execFuncs;
+	f36: _acts = _json_actions + 87; goto execFuncs;
+	f34: _acts = _json_actions + 90; goto execFuncs;
+	f35: _acts = _json_actions + 93; goto execFuncs;
+	f3: _acts = _json_actions + 96; goto execFuncs;
+	f37: _acts = _json_actions + 99; goto execFuncs;
+	f28: _acts = _json_actions + 102; goto execFuncs;
 
-_match:
-	_trans = _json_indicies[_trans];
-	cs = _json_trans_targs[_trans];
-
-	if ( _json_trans_actions[_trans] == 0 )
-		goto _again;
-
-	_acts = _json_actions + _json_trans_actions[_trans];
-	_nacts = (unsigned int) *_acts++;
-	while ( _nacts-- > 0 )
-	{
-		switch ( *_acts++ )
-		{
+execFuncs:
+	_nacts = *_acts++;
+	while ( _nacts-- > 0 ) {
+		switch ( *_acts++ ) {
 	case 1:
-#line 2021 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; goto _again;} }
+#line 2427 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
 	case 2:
-#line 2023 "upb/json/parser.rl"
-	{ p--; {stack[top++] = cs; cs = 24;goto _again;} }
+#line 2429 "upb/json/parser.rl"
+	{ p--; {stack[top++] = cs; cs = 23; goto _again;} }
 	break;
 	case 3:
-#line 2027 "upb/json/parser.rl"
+#line 2433 "upb/json/parser.rl"
 	{ start_text(parser, p); }
 	break;
 	case 4:
-#line 2028 "upb/json/parser.rl"
+#line 2434 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_text(parser, p)); }
 	break;
 	case 5:
-#line 2034 "upb/json/parser.rl"
+#line 2440 "upb/json/parser.rl"
 	{ start_hex(parser); }
 	break;
 	case 6:
-#line 2035 "upb/json/parser.rl"
+#line 2441 "upb/json/parser.rl"
 	{ hexdigit(parser, p); }
 	break;
 	case 7:
-#line 2036 "upb/json/parser.rl"
+#line 2442 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_hex(parser)); }
 	break;
 	case 8:
-#line 2042 "upb/json/parser.rl"
+#line 2448 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(escape(parser, p)); }
 	break;
 	case 9:
-#line 2048 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; goto _again;} }
+#line 2454 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
 	case 10:
-#line 2060 "upb/json/parser.rl"
+#line 2466 "upb/json/parser.rl"
 	{ start_duration_base(parser, p); }
 	break;
 	case 11:
-#line 2061 "upb/json/parser.rl"
+#line 2467 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_duration_base(parser, p)); }
 	break;
 	case 12:
-#line 2063 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; goto _again;} }
+#line 2469 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
 	case 13:
-#line 2068 "upb/json/parser.rl"
+#line 2474 "upb/json/parser.rl"
 	{ start_timestamp_base(parser, p); }
 	break;
 	case 14:
-#line 2069 "upb/json/parser.rl"
+#line 2475 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_timestamp_base(parser, p)); }
 	break;
 	case 15:
-#line 2071 "upb/json/parser.rl"
+#line 2477 "upb/json/parser.rl"
 	{ start_timestamp_fraction(parser, p); }
 	break;
 	case 16:
-#line 2072 "upb/json/parser.rl"
+#line 2478 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_timestamp_fraction(parser, p)); }
 	break;
 	case 17:
-#line 2074 "upb/json/parser.rl"
+#line 2480 "upb/json/parser.rl"
 	{ start_timestamp_zone(parser, p); }
 	break;
 	case 18:
-#line 2075 "upb/json/parser.rl"
+#line 2481 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_timestamp_zone(parser, p)); }
 	break;
 	case 19:
-#line 2077 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; goto _again;} }
+#line 2483 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
 	case 20:
-#line 2082 "upb/json/parser.rl"
+#line 2488 "upb/json/parser.rl"
 	{
         if (is_wellknown_msg(parser, UPB_WELLKNOWN_TIMESTAMP)) {
-          {stack[top++] = cs; cs = 48;goto _again;}
+          {stack[top++] = cs; cs = 47; goto _again;}
         } else if (is_wellknown_msg(parser, UPB_WELLKNOWN_DURATION)) {
-          {stack[top++] = cs; cs = 41;goto _again;}
+          {stack[top++] = cs; cs = 40; goto _again;}
         } else {
-          {stack[top++] = cs; cs = 33;goto _again;}
+          {stack[top++] = cs; cs = 32; goto _again;}
         }
       }
 	break;
 	case 21:
-#line 2093 "upb/json/parser.rl"
-	{ p--; {stack[top++] = cs; cs = 76;goto _again;} }
+#line 2499 "upb/json/parser.rl"
+	{ p--; {stack[top++] = cs; cs = 75; goto _again;} }
 	break;
 	case 22:
-#line 2098 "upb/json/parser.rl"
-	{ start_member(parser); }
+#line 2504 "upb/json/parser.rl"
+	{
+        if (is_wellknown_msg(parser, UPB_WELLKNOWN_ANY)) {
+          start_any_member(parser, p);
+        } else {
+          start_member(parser);
+        }
+      }
 	break;
 	case 23:
-#line 2099 "upb/json/parser.rl"
+#line 2511 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_membername(parser)); }
 	break;
 	case 24:
-#line 2102 "upb/json/parser.rl"
-	{ end_member(parser); }
+#line 2514 "upb/json/parser.rl"
+	{
+        if (is_wellknown_msg(parser, UPB_WELLKNOWN_ANY)) {
+          end_any_member(parser, p);
+        } else {
+          end_member(parser);
+        }
+      }
 	break;
 	case 25:
-#line 2108 "upb/json/parser.rl"
-	{ start_object(parser); }
+#line 2525 "upb/json/parser.rl"
+	{
+        if (is_wellknown_msg(parser, UPB_WELLKNOWN_ANY)) {
+          start_any_object(parser, p);
+        } else {
+          start_object(parser);
+        }
+      }
 	break;
 	case 26:
-#line 2111 "upb/json/parser.rl"
-	{ end_object(parser); }
+#line 2534 "upb/json/parser.rl"
+	{
+        if (is_wellknown_msg(parser, UPB_WELLKNOWN_ANY)) {
+          CHECK_RETURN_TOP(end_any_object(parser, p));
+        } else {
+          end_object(parser);
+        }
+      }
 	break;
 	case 27:
-#line 2117 "upb/json/parser.rl"
+#line 2546 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(start_array(parser)); }
 	break;
 	case 28:
-#line 2121 "upb/json/parser.rl"
+#line 2550 "upb/json/parser.rl"
 	{ end_array(parser); }
 	break;
 	case 29:
-#line 2126 "upb/json/parser.rl"
+#line 2555 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(start_number(parser, p)); }
 	break;
 	case 30:
-#line 2127 "upb/json/parser.rl"
+#line 2556 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_number(parser, p)); }
 	break;
 	case 31:
-#line 2129 "upb/json/parser.rl"
+#line 2558 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(start_stringval(parser)); }
 	break;
 	case 32:
-#line 2130 "upb/json/parser.rl"
+#line 2559 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_stringval(parser)); }
 	break;
 	case 33:
-#line 2132 "upb/json/parser.rl"
+#line 2561 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_bool(parser, true)); }
 	break;
 	case 34:
-#line 2134 "upb/json/parser.rl"
+#line 2563 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_bool(parser, false)); }
 	break;
 	case 35:
-#line 2136 "upb/json/parser.rl"
+#line 2565 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_null(parser)); }
 	break;
 	case 36:
-#line 2138 "upb/json/parser.rl"
+#line 2567 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(start_subobject_full(parser)); }
 	break;
 	case 37:
-#line 2139 "upb/json/parser.rl"
+#line 2568 "upb/json/parser.rl"
 	{ end_subobject_full(parser); }
 	break;
 	case 38:
-#line 2144 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; goto _again;} }
+#line 2573 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
-#line 2524 "upb/json/parser.c"
+#line 3520 "upb/json/parser.c"
 		}
 	}
+	goto _again;
 
 _again:
 	if ( cs == 0 )
@@ -2537,36 +3534,30 @@ _again:
 	while ( __nacts-- > 0 ) {
 		switch ( *__acts++ ) {
 	case 0:
-#line 2019 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top]; 	if ( p == pe )
-		goto _test_eof;
-goto _again;} }
-	break;
-	case 26:
-#line 2111 "upb/json/parser.rl"
-	{ end_object(parser); }
+#line 2425 "upb/json/parser.rl"
+	{ p--; {cs = stack[--top];goto _again;} }
 	break;
 	case 30:
-#line 2127 "upb/json/parser.rl"
+#line 2556 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_number(parser, p)); }
 	break;
 	case 33:
-#line 2132 "upb/json/parser.rl"
+#line 2561 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_bool(parser, true)); }
 	break;
 	case 34:
-#line 2134 "upb/json/parser.rl"
+#line 2563 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_bool(parser, false)); }
 	break;
 	case 35:
-#line 2136 "upb/json/parser.rl"
+#line 2565 "upb/json/parser.rl"
 	{ CHECK_RETURN_TOP(end_null(parser)); }
 	break;
 	case 37:
-#line 2139 "upb/json/parser.rl"
+#line 2568 "upb/json/parser.rl"
 	{ end_subobject_full(parser); }
 	break;
-#line 2570 "upb/json/parser.c"
+#line 3561 "upb/json/parser.c"
 		}
 	}
 	}
@@ -2574,7 +3565,7 @@ goto _again;} }
 	_out: {}
 	}
 
-#line 2172 "upb/json/parser.rl"
+#line 2601 "upb/json/parser.rl"
 
   if (p != pe) {
     upb_status_seterrf(&parser->status, "Parse error at '%.*s'\n", pe - p, p);
@@ -2605,7 +3596,11 @@ static bool end(void *closure, const void *hd) {
 
   parse(parser, hd, &eof_ch, 0, NULL);
 
-  return parser->current_state >= 105;
+  return parser->current_state >= 
+#line 3601 "upb/json/parser.c"
+103
+#line 2631 "upb/json/parser.rl"
+;
 }
 
 static void json_parser_reset(upb_json_parser *p) {
@@ -2616,17 +3611,19 @@ static void json_parser_reset(upb_json_parser *p) {
   p->top->f = NULL;
   p->top->is_map = false;
   p->top->is_mapentry = false;
+  p->top->is_any = false;
+  p->top->any_frame = NULL;
   p->top->is_unknown_field = false;
 
   /* Emit Ragel initialization of the parser. */
   
-#line 2624 "upb/json/parser.c"
+#line 3621 "upb/json/parser.c"
 	{
 	cs = json_start;
 	top = 0;
 	}
 
-#line 2217 "upb/json/parser.rl"
+#line 2648 "upb/json/parser.rl"
   p->current_state = cs;
   p->parser_top = top;
   accumulate_clear(p);
@@ -2713,6 +3710,7 @@ static void add_jsonname_table(upb_json_parsermethod *m, const upb_msgdef* md) {
 
 upb_json_parser *upb_json_parser_create(upb_env *env,
                                         const upb_json_parsermethod *method,
+                                        const upb_symtab* symtab,
                                         upb_sink *output,
                                         bool ignore_json_unknown) {
 #ifndef NDEBUG
@@ -2731,7 +3729,17 @@ upb_json_parser *upb_json_parser_create(upb_env *env,
   json_parser_reset(p);
   upb_sink_reset(&p->top->sink, output->handlers, output->closure);
   p->top->m = upb_handlers_msgdef(output->handlers);
+  if (is_wellknown_msg(p, UPB_WELLKNOWN_ANY)) {
+    p->top->is_any = true;
+    p->top->any_frame =
+        upb_env_malloc(p->env, sizeof(upb_jsonparser_any_frame));
+    json_parser_any_frame_reset(p->top->any_frame);
+  } else {
+    p->top->is_any = false;
+    p->top->any_frame = NULL;
+  }
   set_name_table(p, p->top);
+  p->symtab = symtab;
 
   p->ignore_json_unknown = ignore_json_unknown;
 
