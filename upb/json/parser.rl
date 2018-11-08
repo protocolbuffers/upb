@@ -92,7 +92,7 @@ static bool end_any_membername(upb_json_parser *p);
 
 size_t parse(void *closure, const void *hd, const char *buf, size_t size,
              const upb_bufhandle *handle);
-bool end(void *closure, const void *hd);
+static bool end(void *closure, const void *hd);
 
 static const char eof_ch = 'e';
 

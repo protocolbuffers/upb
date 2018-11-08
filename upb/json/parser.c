@@ -94,7 +94,7 @@ static bool end_any_membername(upb_json_parser *p);
 
 size_t parse(void *closure, const void *hd, const char *buf, size_t size,
              const upb_bufhandle *handle);
-bool end(void *closure, const void *hd);
+static bool end(void *closure, const void *hd);
 
 static const char eof_ch = 'e';
 
@@ -163,11 +163,11 @@ typedef struct {
   upb_json_parser* parser;
   upb_sink sink;
 
-  /* Mark the range of unpacked values in json input before type url. */
+  /* Mark the range of uninterpreted values in json input before type url. */
   const char *before_type_url_start;
   const char *before_type_url_end;
 
-  /* Mark the range of unpacked values in json input after type url. */
+  /* Mark the range of uninterpreted values in json input after type url. */
   const char *after_type_url_start;
 } upb_jsonparser_any_frame;
 
@@ -284,13 +284,13 @@ static void json_parser_any_frame_reset(upb_jsonparser_any_frame *frame) {
   frame->after_type_url_start = NULL;
 }
 
-static void json_parser_any_frame_set_packed(
+static void json_parser_any_frame_set_payload_type(
     upb_json_parser *p,
     upb_jsonparser_any_frame *frame,
-    const upb_msgdef *packed) {
+    const upb_msgdef *payload_type) {
   /* Initialize encoder. */
   frame->encoder_handlers =
-      upb_pb_encoder_newhandlers(packed, &frame->encoder_handlers);
+      upb_pb_encoder_newhandlers(payload_type, &frame->encoder_handlers);
   upb_stringsink_init(&frame->stringsink);
   frame->encoder =
       upb_pb_encoder_create(
@@ -299,7 +299,7 @@ static void json_parser_any_frame_set_packed(
 
   /* Initialize parser. */
   frame->parser_method =
-      upb_json_parsermethod_new(packed, &frame->parser_method);
+      upb_json_parsermethod_new(payload_type, &frame->parser_method);
   upb_sink_reset(&frame->sink, frame->encoder_handlers, frame->encoder);
   frame->parser =
       upb_json_parser_create(p->env, frame->parser_method, p->symtab,
@@ -1269,19 +1269,19 @@ static bool end_any_stringval(upb_json_parser *p) {
 
   /* Resolve type url */
   if (strncmp(buf, "type.googleapis.com/", 20) == 0 && len > 20) {
-    const upb_msgdef *packed = NULL;
+    const upb_msgdef *payload_type = NULL;
     buf += 20;
     len -= 20;
 
-    packed = upb_symtab_lookupmsg2(p->symtab, buf, len);
-    if (packed == NULL) {
+    payload_type = upb_symtab_lookupmsg2(p->symtab, buf, len);
+    if (payload_type == NULL) {
       upb_status_seterrf(
           &p->status, "Cannot find packed type: %.*s\n", (int)len, buf);
       upb_env_reporterror(p->env, &p->status);
       return false;
     }
 
-    json_parser_any_frame_set_packed(p, p->top->any_frame, packed);
+    json_parser_any_frame_set_payload_type(p, p->top->any_frame, payload_type);
     
     return true;
   } else {
@@ -2436,6 +2436,207 @@ static const char _json_actions[] = {
 	15, 16, 17
 };
 
+static const short _json_key_offsets[] = {
+	0, 0, 12, 13, 18, 23, 28, 29, 
+	30, 31, 32, 33, 34, 35, 36, 37, 
+	38, 43, 44, 48, 53, 58, 63, 67, 
+	71, 74, 77, 79, 83, 87, 89, 91, 
+	96, 98, 100, 109, 115, 121, 127, 133, 
+	135, 139, 142, 144, 146, 149, 150, 154, 
+	156, 158, 160, 162, 163, 165, 167, 168, 
+	170, 172, 173, 175, 177, 178, 180, 182, 
+	183, 185, 187, 191, 193, 195, 196, 197, 
+	198, 199, 201, 206, 215, 216, 216, 216, 
+	221, 226, 231, 232, 233, 234, 235, 235, 
+	236, 237, 238, 238, 239, 240, 241, 241, 
+	246, 247, 251, 256, 261, 266, 270, 270, 
+	273, 276, 279, 282, 285, 288, 288, 288, 
+	288, 288
+};
+
+static const char _json_trans_keys[] = {
+	32, 34, 45, 91, 102, 110, 116, 123, 
+	9, 13, 48, 57, 34, 32, 93, 125, 
+	9, 13, 32, 44, 93, 9, 13, 32, 
+	93, 125, 9, 13, 97, 108, 115, 101, 
+	117, 108, 108, 114, 117, 101, 32, 34, 
+	125, 9, 13, 34, 32, 58, 9, 13, 
+	32, 93, 125, 9, 13, 32, 44, 125, 
+	9, 13, 32, 44, 125, 9, 13, 32, 
+	34, 9, 13, 45, 48, 49, 57, 48, 
+	49, 57, 46, 69, 101, 48, 57, 69, 
+	101, 48, 57, 43, 45, 48, 57, 48, 
+	57, 48, 57, 46, 69, 101, 48, 57, 
+	34, 92, 34, 92, 34, 47, 92, 98, 
+	102, 110, 114, 116, 117, 48, 57, 65, 
+	70, 97, 102, 48, 57, 65, 70, 97, 
+	102, 48, 57, 65, 70, 97, 102, 48, 
+	57, 65, 70, 97, 102, 34, 92, 45, 
+	48, 49, 57, 48, 49, 57, 46, 115, 
+	48, 57, 115, 48, 57, 34, 46, 115, 
+	48, 57, 48, 57, 48, 57, 48, 57, 
+	48, 57, 45, 48, 57, 48, 57, 45, 
+	48, 57, 48, 57, 84, 48, 57, 48, 
+	57, 58, 48, 57, 48, 57, 58, 48, 
+	57, 48, 57, 43, 45, 46, 90, 48, 
+	57, 48, 57, 58, 48, 48, 34, 48, 
+	57, 43, 45, 90, 48, 57, 34, 45, 
+	91, 102, 110, 116, 123, 48, 57, 34, 
+	32, 93, 125, 9, 13, 32, 44, 93, 
+	9, 13, 32, 93, 125, 9, 13, 97, 
+	108, 115, 101, 117, 108, 108, 114, 117, 
+	101, 32, 34, 125, 9, 13, 34, 32, 
+	58, 9, 13, 32, 93, 125, 9, 13, 
+	32, 44, 125, 9, 13, 32, 44, 125, 
+	9, 13, 32, 34, 9, 13, 32, 9, 
+	13, 32, 9, 13, 32, 9, 13, 32, 
+	9, 13, 32, 9, 13, 32, 9, 13, 
+	0
+};
+
+static const char _json_single_lengths[] = {
+	0, 8, 1, 3, 3, 3, 1, 1, 
+	1, 1, 1, 1, 1, 1, 1, 1, 
+	3, 1, 2, 3, 3, 3, 2, 2, 
+	1, 3, 0, 2, 2, 0, 0, 3, 
+	2, 2, 9, 0, 0, 0, 0, 2, 
+	2, 1, 2, 0, 1, 1, 2, 0, 
+	0, 0, 0, 1, 0, 0, 1, 0, 
+	0, 1, 0, 0, 1, 0, 0, 1, 
+	0, 0, 4, 0, 0, 1, 1, 1, 
+	1, 0, 3, 7, 1, 0, 0, 3, 
+	3, 3, 1, 1, 1, 1, 0, 1, 
+	1, 1, 0, 1, 1, 1, 0, 3, 
+	1, 2, 3, 3, 3, 2, 0, 1, 
+	1, 1, 1, 1, 1, 0, 0, 0, 
+	0, 0
+};
+
+static const char _json_range_lengths[] = {
+	0, 2, 0, 1, 1, 1, 0, 0, 
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	1, 0, 1, 1, 1, 1, 1, 1, 
+	1, 0, 1, 1, 1, 1, 1, 1, 
+	0, 0, 0, 3, 3, 3, 3, 0, 
+	1, 1, 0, 1, 1, 0, 1, 1, 
+	1, 1, 1, 0, 1, 1, 0, 1, 
+	1, 0, 1, 1, 0, 1, 1, 0, 
+	1, 1, 0, 1, 1, 0, 0, 0, 
+	0, 1, 1, 1, 0, 0, 0, 1, 
+	1, 1, 0, 0, 0, 0, 0, 0, 
+	0, 0, 0, 0, 0, 0, 0, 1, 
+	0, 1, 1, 1, 1, 1, 0, 1, 
+	1, 1, 1, 1, 1, 0, 0, 0, 
+	0, 0
+};
+
+static const short _json_index_offsets[] = {
+	0, 0, 11, 13, 18, 23, 28, 30, 
+	32, 34, 36, 38, 40, 42, 44, 46, 
+	48, 53, 55, 59, 64, 69, 74, 78, 
+	82, 85, 89, 91, 95, 99, 101, 103, 
+	108, 111, 114, 124, 128, 132, 136, 140, 
+	143, 147, 150, 153, 155, 158, 160, 164, 
+	166, 168, 170, 172, 174, 176, 178, 180, 
+	182, 184, 186, 188, 190, 192, 194, 196, 
+	198, 200, 202, 207, 209, 211, 213, 215, 
+	217, 219, 221, 226, 235, 237, 238, 239, 
+	244, 249, 254, 256, 258, 260, 262, 263, 
+	265, 267, 269, 270, 272, 274, 276, 277, 
+	282, 284, 288, 293, 298, 303, 307, 308, 
+	311, 314, 317, 320, 323, 326, 327, 328, 
+	329, 330
+};
+
+static const unsigned char _json_indicies[] = {
+	0, 2, 3, 4, 5, 6, 7, 8, 
+	0, 3, 1, 9, 1, 11, 12, 1, 
+	11, 10, 13, 14, 12, 13, 1, 14, 
+	1, 1, 14, 10, 15, 1, 16, 1, 
+	17, 1, 18, 1, 19, 1, 20, 1, 
+	21, 1, 22, 1, 23, 1, 24, 1, 
+	25, 26, 27, 25, 1, 28, 1, 29, 
+	30, 29, 1, 30, 1, 1, 30, 31, 
+	32, 33, 34, 32, 1, 35, 36, 27, 
+	35, 1, 36, 26, 36, 1, 37, 38, 
+	39, 1, 38, 39, 1, 41, 42, 42, 
+	40, 43, 1, 42, 42, 43, 40, 44, 
+	44, 45, 1, 45, 1, 45, 40, 41, 
+	42, 42, 39, 40, 47, 48, 46, 50, 
+	51, 49, 52, 52, 52, 52, 52, 52, 
+	52, 52, 53, 1, 54, 54, 54, 1, 
+	55, 55, 55, 1, 56, 56, 56, 1, 
+	57, 57, 57, 1, 59, 60, 58, 61, 
+	62, 63, 1, 64, 65, 1, 66, 67, 
+	1, 68, 1, 67, 68, 1, 69, 1, 
+	66, 67, 65, 1, 70, 1, 71, 1, 
+	72, 1, 73, 1, 74, 1, 75, 1, 
+	76, 1, 77, 1, 78, 1, 79, 1, 
+	80, 1, 81, 1, 82, 1, 83, 1, 
+	84, 1, 85, 1, 86, 1, 87, 1, 
+	88, 1, 89, 89, 90, 91, 1, 92, 
+	1, 93, 1, 94, 1, 95, 1, 96, 
+	1, 97, 1, 98, 1, 99, 99, 100, 
+	98, 1, 101, 102, 103, 104, 105, 106, 
+	107, 102, 1, 108, 1, 109, 110, 112, 
+	113, 1, 112, 111, 114, 115, 113, 114, 
+	1, 115, 1, 1, 115, 111, 116, 1, 
+	117, 1, 118, 1, 119, 1, 120, 121, 
+	1, 122, 1, 123, 1, 124, 125, 1, 
+	126, 1, 127, 1, 128, 129, 130, 131, 
+	129, 1, 132, 1, 133, 134, 133, 1, 
+	134, 1, 1, 134, 135, 136, 137, 138, 
+	136, 1, 139, 140, 131, 139, 1, 140, 
+	130, 140, 1, 141, 142, 142, 1, 143, 
+	143, 1, 144, 144, 1, 145, 145, 1, 
+	146, 146, 1, 147, 147, 1, 1, 1, 
+	1, 1, 1, 0
+};
+
+static const char _json_trans_targs[] = {
+	1, 0, 2, 104, 3, 6, 10, 13, 
+	16, 103, 4, 3, 103, 4, 5, 7, 
+	8, 9, 105, 11, 12, 106, 14, 15, 
+	107, 16, 17, 108, 18, 18, 19, 20, 
+	21, 22, 108, 21, 22, 24, 25, 31, 
+	109, 26, 28, 27, 29, 30, 33, 110, 
+	34, 33, 110, 34, 32, 35, 36, 37, 
+	38, 39, 33, 110, 34, 41, 42, 46, 
+	42, 46, 43, 45, 44, 111, 48, 49, 
+	50, 51, 52, 53, 54, 55, 56, 57, 
+	58, 59, 60, 61, 62, 63, 64, 65, 
+	66, 67, 73, 72, 68, 69, 70, 71, 
+	72, 112, 74, 67, 72, 76, 78, 79, 
+	82, 87, 91, 95, 77, 113, 113, 80, 
+	79, 77, 80, 81, 83, 84, 85, 86, 
+	113, 88, 89, 90, 113, 92, 93, 94, 
+	113, 95, 96, 102, 97, 97, 98, 99, 
+	100, 101, 102, 100, 101, 113, 103, 103, 
+	103, 103, 103, 103
+};
+
+static const char _json_trans_actions[] = {
+	0, 0, 84, 78, 33, 0, 0, 0, 
+	96, 39, 25, 0, 35, 0, 0, 0, 
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	0, 0, 72, 31, 27, 0, 0, 25, 
+	29, 29, 75, 0, 0, 0, 0, 0, 
+	3, 0, 0, 0, 0, 0, 5, 15, 
+	0, 0, 51, 7, 13, 0, 54, 9, 
+	9, 9, 57, 60, 11, 17, 17, 17, 
+	0, 0, 0, 19, 0, 21, 23, 0, 
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	0, 0, 0, 0, 0, 0, 0, 0, 
+	0, 102, 63, 102, 0, 0, 0, 0, 
+	0, 69, 0, 66, 66, 84, 78, 33, 
+	0, 0, 0, 96, 39, 49, 81, 25, 
+	0, 35, 0, 0, 0, 0, 0, 0, 
+	90, 0, 0, 0, 93, 0, 0, 0, 
+	87, 0, 72, 31, 27, 0, 0, 25, 
+	29, 29, 75, 0, 0, 99, 0, 37, 
+	43, 45, 41, 47
+};
+
 static const char _json_eof_actions[] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 
 	0, 0, 0, 0, 0, 0, 0, 0, 
@@ -2487,854 +2688,83 @@ size_t parse(void *closure, const void *hd, const char *buf, size_t size,
   capture_resume(parser, buf);
 
   
-#line 2491 "upb/json/parser.c"
+#line 2692 "upb/json/parser.c"
 	{
+	int _klen;
+	unsigned int _trans;
 	const char *_acts;
 	unsigned int _nacts;
+	const char *_keys;
 
 	if ( p == pe )
 		goto _test_eof;
 	if ( cs == 0 )
 		goto _out;
 _resume:
-	switch ( cs ) {
-case 1:
-	switch( (*p) ) {
-		case 32: goto tr0;
-		case 34: goto tr2;
-		case 45: goto tr3;
-		case 91: goto tr4;
-		case 102: goto tr5;
-		case 110: goto tr6;
-		case 116: goto tr7;
-		case 123: goto tr8;
-	}
-	if ( (*p) > 13 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr3;
-	} else if ( (*p) >= 9 )
-		goto tr0;
-	goto tr1;
-case 0:
-	goto _out;
-case 2:
-	if ( (*p) == 34 )
-		goto tr9;
-	goto tr1;
-case 103:
-	if ( (*p) == 32 )
-		goto tr142;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr142;
-	goto tr1;
-case 104:
-	if ( (*p) == 32 )
-		goto tr143;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr143;
-	goto tr1;
-case 3:
-	switch( (*p) ) {
-		case 32: goto tr11;
-		case 93: goto tr12;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr11;
-	goto tr10;
-case 4:
-	switch( (*p) ) {
-		case 32: goto tr13;
-		case 44: goto tr14;
-		case 93: goto tr12;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr13;
-	goto tr1;
-case 5:
-	switch( (*p) ) {
-		case 32: goto tr14;
-		case 93: goto tr1;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr14;
-	goto tr10;
-case 6:
-	if ( (*p) == 97 )
-		goto tr15;
-	goto tr1;
-case 7:
-	if ( (*p) == 108 )
-		goto tr16;
-	goto tr1;
-case 8:
-	if ( (*p) == 115 )
-		goto tr17;
-	goto tr1;
-case 9:
-	if ( (*p) == 101 )
-		goto tr18;
-	goto tr1;
-case 105:
-	if ( (*p) == 32 )
-		goto tr144;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr144;
-	goto tr1;
-case 10:
-	if ( (*p) == 117 )
-		goto tr19;
-	goto tr1;
-case 11:
-	if ( (*p) == 108 )
-		goto tr20;
-	goto tr1;
-case 12:
-	if ( (*p) == 108 )
-		goto tr21;
-	goto tr1;
-case 106:
-	if ( (*p) == 32 )
-		goto tr145;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr145;
-	goto tr1;
-case 13:
-	if ( (*p) == 114 )
-		goto tr22;
-	goto tr1;
-case 14:
-	if ( (*p) == 117 )
-		goto tr23;
-	goto tr1;
-case 15:
-	if ( (*p) == 101 )
-		goto tr24;
-	goto tr1;
-case 107:
-	if ( (*p) == 32 )
-		goto tr146;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr146;
-	goto tr1;
-case 16:
-	switch( (*p) ) {
-		case 32: goto tr25;
-		case 34: goto tr26;
-		case 125: goto tr27;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr25;
-	goto tr1;
-case 17:
-	if ( (*p) == 34 )
-		goto tr28;
-	goto tr1;
-case 18:
-	switch( (*p) ) {
-		case 32: goto tr29;
-		case 58: goto tr30;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr29;
-	goto tr1;
-case 19:
-	switch( (*p) ) {
-		case 32: goto tr30;
-		case 93: goto tr1;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr30;
-	goto tr31;
-case 20:
-	switch( (*p) ) {
-		case 32: goto tr32;
-		case 44: goto tr33;
-		case 125: goto tr34;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr32;
-	goto tr1;
-case 21:
-	switch( (*p) ) {
-		case 32: goto tr35;
-		case 44: goto tr36;
-		case 125: goto tr27;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr35;
-	goto tr1;
-case 22:
-	switch( (*p) ) {
-		case 32: goto tr36;
-		case 34: goto tr26;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr36;
-	goto tr1;
-case 108:
-	if ( (*p) == 32 )
-		goto tr147;
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr147;
-	goto tr1;
-case 23:
-	switch( (*p) ) {
-		case 45: goto tr37;
-		case 48: goto tr38;
-	}
-	if ( 49 <= (*p) && (*p) <= 57 )
-		goto tr39;
-	goto tr1;
-case 24:
-	if ( (*p) == 48 )
-		goto tr38;
-	if ( 49 <= (*p) && (*p) <= 57 )
-		goto tr39;
-	goto tr1;
-case 25:
-	switch( (*p) ) {
-		case 46: goto tr41;
-		case 69: goto tr42;
-		case 101: goto tr42;
-	}
-	goto tr40;
-case 109:
-	goto tr1;
-case 26:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr43;
-	goto tr1;
-case 27:
-	switch( (*p) ) {
-		case 69: goto tr42;
-		case 101: goto tr42;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr43;
-	goto tr40;
-case 28:
-	switch( (*p) ) {
-		case 43: goto tr44;
-		case 45: goto tr44;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr45;
-	goto tr1;
-case 29:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr45;
-	goto tr1;
-case 30:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr45;
-	goto tr40;
-case 31:
-	switch( (*p) ) {
-		case 46: goto tr41;
-		case 69: goto tr42;
-		case 101: goto tr42;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr39;
-	goto tr40;
-case 32:
-	switch( (*p) ) {
-		case 34: goto tr47;
-		case 92: goto tr48;
-	}
-	goto tr46;
-case 33:
-	switch( (*p) ) {
-		case 34: goto tr50;
-		case 92: goto tr51;
-	}
-	goto tr49;
-case 110:
-	goto tr1;
-case 34:
-	switch( (*p) ) {
-		case 34: goto tr52;
-		case 47: goto tr52;
-		case 92: goto tr52;
-		case 98: goto tr52;
-		case 102: goto tr52;
-		case 110: goto tr52;
-		case 114: goto tr52;
-		case 116: goto tr52;
-		case 117: goto tr53;
-	}
-	goto tr1;
-case 35:
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr54;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr54;
-	} else
-		goto tr54;
-	goto tr1;
-case 36:
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr55;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr55;
-	} else
-		goto tr55;
-	goto tr1;
-case 37:
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr56;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr56;
-	} else
-		goto tr56;
-	goto tr1;
-case 38:
-	if ( (*p) < 65 ) {
-		if ( 48 <= (*p) && (*p) <= 57 )
-			goto tr57;
-	} else if ( (*p) > 70 ) {
-		if ( 97 <= (*p) && (*p) <= 102 )
-			goto tr57;
-	} else
-		goto tr57;
-	goto tr1;
-case 39:
-	switch( (*p) ) {
-		case 34: goto tr59;
-		case 92: goto tr60;
-	}
-	goto tr58;
-case 40:
-	switch( (*p) ) {
-		case 45: goto tr61;
-		case 48: goto tr62;
-	}
-	if ( 49 <= (*p) && (*p) <= 57 )
-		goto tr63;
-	goto tr1;
-case 41:
-	if ( (*p) == 48 )
-		goto tr64;
-	if ( 49 <= (*p) && (*p) <= 57 )
-		goto tr65;
-	goto tr1;
-case 42:
-	switch( (*p) ) {
-		case 46: goto tr66;
-		case 115: goto tr67;
-	}
-	goto tr1;
-case 43:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr68;
-	goto tr1;
-case 44:
-	if ( (*p) == 115 )
-		goto tr67;
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr68;
-	goto tr1;
-case 45:
-	if ( (*p) == 34 )
-		goto tr69;
-	goto tr1;
-case 111:
-	goto tr1;
-case 46:
-	switch( (*p) ) {
-		case 46: goto tr66;
-		case 115: goto tr67;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr65;
-	goto tr1;
-case 47:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr70;
-	goto tr1;
-case 48:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr71;
-	goto tr1;
-case 49:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr72;
-	goto tr1;
-case 50:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr73;
-	goto tr1;
-case 51:
-	if ( (*p) == 45 )
-		goto tr74;
-	goto tr1;
-case 52:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr75;
-	goto tr1;
-case 53:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr76;
-	goto tr1;
-case 54:
-	if ( (*p) == 45 )
-		goto tr77;
-	goto tr1;
-case 55:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr78;
-	goto tr1;
-case 56:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr79;
-	goto tr1;
-case 57:
-	if ( (*p) == 84 )
-		goto tr80;
-	goto tr1;
-case 58:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr81;
-	goto tr1;
-case 59:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr82;
-	goto tr1;
-case 60:
-	if ( (*p) == 58 )
-		goto tr83;
-	goto tr1;
-case 61:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr84;
-	goto tr1;
-case 62:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr85;
-	goto tr1;
-case 63:
-	if ( (*p) == 58 )
-		goto tr86;
-	goto tr1;
-case 64:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr87;
-	goto tr1;
-case 65:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr88;
-	goto tr1;
-case 66:
-	switch( (*p) ) {
-		case 43: goto tr89;
-		case 45: goto tr89;
-		case 46: goto tr90;
-		case 90: goto tr91;
-	}
-	goto tr1;
-case 67:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr92;
-	goto tr1;
-case 68:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr93;
-	goto tr1;
-case 69:
-	if ( (*p) == 58 )
-		goto tr94;
-	goto tr1;
-case 70:
-	if ( (*p) == 48 )
-		goto tr95;
-	goto tr1;
-case 71:
-	if ( (*p) == 48 )
-		goto tr96;
-	goto tr1;
-case 72:
-	if ( (*p) == 34 )
-		goto tr97;
-	goto tr1;
-case 112:
-	goto tr1;
-case 73:
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr98;
-	goto tr1;
-case 74:
-	switch( (*p) ) {
-		case 43: goto tr99;
-		case 45: goto tr99;
-		case 90: goto tr100;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr98;
-	goto tr1;
-case 75:
-	switch( (*p) ) {
-		case 34: goto tr101;
-		case 45: goto tr102;
-		case 91: goto tr103;
-		case 102: goto tr104;
-		case 110: goto tr105;
-		case 116: goto tr106;
-		case 123: goto tr107;
-	}
-	if ( 48 <= (*p) && (*p) <= 57 )
-		goto tr102;
-	goto tr1;
-case 76:
-	if ( (*p) == 34 )
-		goto tr108;
-	goto tr1;
-case 77:
-	goto tr109;
-case 113:
-	goto tr1;
-case 78:
-	goto tr110;
-case 79:
-	switch( (*p) ) {
-		case 32: goto tr112;
-		case 93: goto tr113;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr112;
-	goto tr111;
-case 80:
-	switch( (*p) ) {
-		case 32: goto tr114;
-		case 44: goto tr115;
-		case 93: goto tr113;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr114;
-	goto tr1;
-case 81:
-	switch( (*p) ) {
-		case 32: goto tr115;
-		case 93: goto tr1;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr115;
-	goto tr111;
-case 82:
-	if ( (*p) == 97 )
-		goto tr116;
-	goto tr1;
-case 83:
-	if ( (*p) == 108 )
-		goto tr117;
-	goto tr1;
-case 84:
-	if ( (*p) == 115 )
-		goto tr118;
-	goto tr1;
-case 85:
-	if ( (*p) == 101 )
-		goto tr119;
-	goto tr1;
-case 86:
-	goto tr120;
-case 87:
-	if ( (*p) == 117 )
-		goto tr121;
-	goto tr1;
-case 88:
-	if ( (*p) == 108 )
-		goto tr122;
-	goto tr1;
-case 89:
-	if ( (*p) == 108 )
-		goto tr123;
-	goto tr1;
-case 90:
-	goto tr124;
-case 91:
-	if ( (*p) == 114 )
-		goto tr125;
-	goto tr1;
-case 92:
-	if ( (*p) == 117 )
-		goto tr126;
-	goto tr1;
-case 93:
-	if ( (*p) == 101 )
-		goto tr127;
-	goto tr1;
-case 94:
-	goto tr128;
-case 95:
-	switch( (*p) ) {
-		case 32: goto tr129;
-		case 34: goto tr130;
-		case 125: goto tr131;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr129;
-	goto tr1;
-case 96:
-	if ( (*p) == 34 )
-		goto tr132;
-	goto tr1;
-case 97:
-	switch( (*p) ) {
-		case 32: goto tr133;
-		case 58: goto tr134;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr133;
-	goto tr1;
-case 98:
-	switch( (*p) ) {
-		case 32: goto tr134;
-		case 93: goto tr1;
-		case 125: goto tr1;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr134;
-	goto tr135;
-case 99:
-	switch( (*p) ) {
-		case 32: goto tr136;
-		case 44: goto tr137;
-		case 125: goto tr138;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr136;
-	goto tr1;
-case 100:
-	switch( (*p) ) {
-		case 32: goto tr139;
-		case 44: goto tr140;
-		case 125: goto tr131;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr139;
-	goto tr1;
-case 101:
-	switch( (*p) ) {
-		case 32: goto tr140;
-		case 34: goto tr130;
-	}
-	if ( 9 <= (*p) && (*p) <= 13 )
-		goto tr140;
-	goto tr1;
-case 102:
-	goto tr141;
+	_keys = _json_trans_keys + _json_key_offsets[cs];
+	_trans = _json_index_offsets[cs];
+
+	_klen = _json_single_lengths[cs];
+	if ( _klen > 0 ) {
+		const char *_lower = _keys;
+		const char *_mid;
+		const char *_upper = _keys + _klen - 1;
+		while (1) {
+			if ( _upper < _lower )
+				break;
+
+			_mid = _lower + ((_upper-_lower) >> 1);
+			if ( (*p) < *_mid )
+				_upper = _mid - 1;
+			else if ( (*p) > *_mid )
+				_lower = _mid + 1;
+			else {
+				_trans += (unsigned int)(_mid - _keys);
+				goto _match;
+			}
+		}
+		_keys += _klen;
+		_trans += _klen;
 	}
 
-	tr1: cs = 0; goto _again;
-	tr0: cs = 1; goto _again;
-	tr2: cs = 2; goto f0;
-	tr11: cs = 3; goto _again;
-	tr4: cs = 3; goto f2;
-	tr13: cs = 4; goto _again;
-	tr10: cs = 4; goto f5;
-	tr14: cs = 5; goto _again;
-	tr5: cs = 6; goto _again;
-	tr15: cs = 7; goto _again;
-	tr16: cs = 8; goto _again;
-	tr17: cs = 9; goto _again;
-	tr6: cs = 10; goto _again;
-	tr19: cs = 11; goto _again;
-	tr20: cs = 12; goto _again;
-	tr7: cs = 13; goto _again;
-	tr22: cs = 14; goto _again;
-	tr23: cs = 15; goto _again;
-	tr25: cs = 16; goto _again;
-	tr8: cs = 16; goto f3;
-	tr26: cs = 17; goto f7;
-	tr29: cs = 18; goto _again;
-	tr28: cs = 18; goto f9;
-	tr30: cs = 19; goto _again;
-	tr31: cs = 20; goto f5;
-	tr35: cs = 21; goto _again;
-	tr32: cs = 21; goto f10;
-	tr36: cs = 22; goto _again;
-	tr33: cs = 22; goto f10;
-	tr37: cs = 24; goto _again;
-	tr38: cs = 25; goto _again;
-	tr41: cs = 26; goto _again;
-	tr43: cs = 27; goto _again;
-	tr42: cs = 28; goto _again;
-	tr44: cs = 29; goto _again;
-	tr45: cs = 30; goto _again;
-	tr39: cs = 31; goto _again;
-	tr52: cs = 32; goto f18;
-	tr49: cs = 33; goto _again;
-	tr46: cs = 33; goto f14;
-	tr58: cs = 33; goto f21;
-	tr48: cs = 34; goto _again;
-	tr51: cs = 34; goto f17;
-	tr60: cs = 34; goto f23;
-	tr53: cs = 35; goto _again;
-	tr54: cs = 36; goto f19;
-	tr55: cs = 37; goto f20;
-	tr56: cs = 38; goto f20;
-	tr57: cs = 39; goto f20;
-	tr61: cs = 41; goto f24;
-	tr64: cs = 42; goto _again;
-	tr62: cs = 42; goto f24;
-	tr66: cs = 43; goto _again;
-	tr68: cs = 44; goto _again;
-	tr67: cs = 45; goto f25;
-	tr65: cs = 46; goto _again;
-	tr63: cs = 46; goto f24;
-	tr70: cs = 48; goto f27;
-	tr71: cs = 49; goto _again;
-	tr72: cs = 50; goto _again;
-	tr73: cs = 51; goto _again;
-	tr74: cs = 52; goto _again;
-	tr75: cs = 53; goto _again;
-	tr76: cs = 54; goto _again;
-	tr77: cs = 55; goto _again;
-	tr78: cs = 56; goto _again;
-	tr79: cs = 57; goto _again;
-	tr80: cs = 58; goto _again;
-	tr81: cs = 59; goto _again;
-	tr82: cs = 60; goto _again;
-	tr83: cs = 61; goto _again;
-	tr84: cs = 62; goto _again;
-	tr85: cs = 63; goto _again;
-	tr86: cs = 64; goto _again;
-	tr87: cs = 65; goto _again;
-	tr88: cs = 66; goto _again;
-	tr89: cs = 67; goto f28;
-	tr99: cs = 67; goto f31;
-	tr92: cs = 68; goto _again;
-	tr93: cs = 69; goto _again;
-	tr94: cs = 70; goto _again;
-	tr95: cs = 71; goto _again;
-	tr96: cs = 72; goto _again;
-	tr91: cs = 72; goto f28;
-	tr100: cs = 72; goto f31;
-	tr90: cs = 73; goto f29;
-	tr98: cs = 74; goto _again;
-	tr101: cs = 76; goto f0;
-	tr108: cs = 77; goto f4;
-	tr113: cs = 77; goto f6;
-	tr102: cs = 78; goto f1;
-	tr112: cs = 79; goto _again;
-	tr103: cs = 79; goto f2;
-	tr114: cs = 80; goto _again;
-	tr111: cs = 80; goto f5;
-	tr115: cs = 81; goto _again;
-	tr104: cs = 82; goto _again;
-	tr116: cs = 83; goto _again;
-	tr117: cs = 84; goto _again;
-	tr118: cs = 85; goto _again;
-	tr119: cs = 86; goto _again;
-	tr105: cs = 87; goto _again;
-	tr121: cs = 88; goto _again;
-	tr122: cs = 89; goto _again;
-	tr123: cs = 90; goto _again;
-	tr106: cs = 91; goto _again;
-	tr125: cs = 92; goto _again;
-	tr126: cs = 93; goto _again;
-	tr127: cs = 94; goto _again;
-	tr129: cs = 95; goto _again;
-	tr107: cs = 95; goto f3;
-	tr130: cs = 96; goto f7;
-	tr133: cs = 97; goto _again;
-	tr132: cs = 97; goto f9;
-	tr134: cs = 98; goto _again;
-	tr135: cs = 99; goto f5;
-	tr139: cs = 100; goto _again;
-	tr136: cs = 100; goto f10;
-	tr140: cs = 101; goto _again;
-	tr137: cs = 101; goto f10;
-	tr131: cs = 102; goto f8;
-	tr138: cs = 102; goto f11;
-	tr142: cs = 103; goto _again;
-	tr9: cs = 103; goto f4;
-	tr12: cs = 103; goto f6;
-	tr143: cs = 103; goto f38;
-	tr144: cs = 103; goto f39;
-	tr145: cs = 103; goto f40;
-	tr146: cs = 103; goto f41;
-	tr147: cs = 103; goto f42;
-	tr3: cs = 104; goto f1;
-	tr18: cs = 105; goto _again;
-	tr21: cs = 106; goto _again;
-	tr24: cs = 107; goto _again;
-	tr27: cs = 108; goto f8;
-	tr34: cs = 108; goto f11;
-	tr40: cs = 109; goto f13;
-	tr47: cs = 110; goto f15;
-	tr50: cs = 110; goto f16;
-	tr59: cs = 110; goto f22;
-	tr69: cs = 111; goto f26;
-	tr97: cs = 112; goto f30;
-	tr109: cs = 113; goto f32;
-	tr110: cs = 113; goto f33;
-	tr120: cs = 113; goto f34;
-	tr124: cs = 113; goto f35;
-	tr128: cs = 113; goto f36;
-	tr141: cs = 113; goto f37;
+	_klen = _json_range_lengths[cs];
+	if ( _klen > 0 ) {
+		const char *_lower = _keys;
+		const char *_mid;
+		const char *_upper = _keys + (_klen<<1) - 2;
+		while (1) {
+			if ( _upper < _lower )
+				break;
 
-	f13: _acts = _json_actions + 3; goto execFuncs;
-	f14: _acts = _json_actions + 5; goto execFuncs;
-	f17: _acts = _json_actions + 7; goto execFuncs;
-	f20: _acts = _json_actions + 9; goto execFuncs;
-	f23: _acts = _json_actions + 11; goto execFuncs;
-	f18: _acts = _json_actions + 13; goto execFuncs;
-	f15: _acts = _json_actions + 15; goto execFuncs;
-	f24: _acts = _json_actions + 17; goto execFuncs;
-	f25: _acts = _json_actions + 19; goto execFuncs;
-	f26: _acts = _json_actions + 21; goto execFuncs;
-	f27: _acts = _json_actions + 23; goto execFuncs;
-	f5: _acts = _json_actions + 25; goto execFuncs;
-	f9: _acts = _json_actions + 27; goto execFuncs;
-	f10: _acts = _json_actions + 29; goto execFuncs;
-	f8: _acts = _json_actions + 31; goto execFuncs;
-	f2: _acts = _json_actions + 33; goto execFuncs;
-	f6: _acts = _json_actions + 35; goto execFuncs;
-	f38: _acts = _json_actions + 37; goto execFuncs;
-	f4: _acts = _json_actions + 39; goto execFuncs;
-	f41: _acts = _json_actions + 41; goto execFuncs;
-	f39: _acts = _json_actions + 43; goto execFuncs;
-	f40: _acts = _json_actions + 45; goto execFuncs;
-	f42: _acts = _json_actions + 47; goto execFuncs;
-	f32: _acts = _json_actions + 49; goto execFuncs;
-	f16: _acts = _json_actions + 51; goto execFuncs;
-	f19: _acts = _json_actions + 54; goto execFuncs;
-	f21: _acts = _json_actions + 57; goto execFuncs;
-	f22: _acts = _json_actions + 60; goto execFuncs;
-	f29: _acts = _json_actions + 63; goto execFuncs;
-	f31: _acts = _json_actions + 66; goto execFuncs;
-	f30: _acts = _json_actions + 69; goto execFuncs;
-	f7: _acts = _json_actions + 72; goto execFuncs;
-	f11: _acts = _json_actions + 75; goto execFuncs;
-	f1: _acts = _json_actions + 78; goto execFuncs;
-	f33: _acts = _json_actions + 81; goto execFuncs;
-	f0: _acts = _json_actions + 84; goto execFuncs;
-	f36: _acts = _json_actions + 87; goto execFuncs;
-	f34: _acts = _json_actions + 90; goto execFuncs;
-	f35: _acts = _json_actions + 93; goto execFuncs;
-	f3: _acts = _json_actions + 96; goto execFuncs;
-	f37: _acts = _json_actions + 99; goto execFuncs;
-	f28: _acts = _json_actions + 102; goto execFuncs;
+			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
+			if ( (*p) < _mid[0] )
+				_upper = _mid - 2;
+			else if ( (*p) > _mid[1] )
+				_lower = _mid + 2;
+			else {
+				_trans += (unsigned int)((_mid - _keys)>>1);
+				goto _match;
+			}
+		}
+		_trans += _klen;
+	}
 
-execFuncs:
-	_nacts = *_acts++;
-	while ( _nacts-- > 0 ) {
-		switch ( *_acts++ ) {
+_match:
+	_trans = _json_indicies[_trans];
+	cs = _json_trans_targs[_trans];
+
+	if ( _json_trans_actions[_trans] == 0 )
+		goto _again;
+
+	_acts = _json_actions + _json_trans_actions[_trans];
+	_nacts = (unsigned int) *_acts++;
+	while ( _nacts-- > 0 )
+	{
+		switch ( *_acts++ )
+		{
 	case 1:
 #line 2427 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
 	case 2:
 #line 2429 "upb/json/parser.rl"
@@ -3366,7 +2796,7 @@ execFuncs:
 	break;
 	case 9:
 #line 2454 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
 	case 10:
 #line 2466 "upb/json/parser.rl"
@@ -3378,7 +2808,7 @@ execFuncs:
 	break;
 	case 12:
 #line 2469 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
 	case 13:
 #line 2474 "upb/json/parser.rl"
@@ -3406,7 +2836,7 @@ execFuncs:
 	break;
 	case 19:
 #line 2483 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
 	case 20:
 #line 2488 "upb/json/parser.rl"
@@ -3514,12 +2944,11 @@ execFuncs:
 	break;
 	case 38:
 #line 2573 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
-#line 3520 "upb/json/parser.c"
+#line 2950 "upb/json/parser.c"
 		}
 	}
-	goto _again;
 
 _again:
 	if ( cs == 0 )
@@ -3535,7 +2964,7 @@ _again:
 		switch ( *__acts++ ) {
 	case 0:
 #line 2425 "upb/json/parser.rl"
-	{ p--; {cs = stack[--top];goto _again;} }
+	{ p--; {cs = stack[--top]; goto _again;} }
 	break;
 	case 30:
 #line 2556 "upb/json/parser.rl"
@@ -3557,7 +2986,7 @@ _again:
 #line 2568 "upb/json/parser.rl"
 	{ end_subobject_full(parser); }
 	break;
-#line 3561 "upb/json/parser.c"
+#line 2990 "upb/json/parser.c"
 		}
 	}
 	}
@@ -3597,7 +3026,7 @@ static bool end(void *closure, const void *hd) {
   parse(parser, hd, &eof_ch, 0, NULL);
 
   return parser->current_state >= 
-#line 3601 "upb/json/parser.c"
+#line 3030 "upb/json/parser.c"
 103
 #line 2631 "upb/json/parser.rl"
 ;
@@ -3617,7 +3046,7 @@ static void json_parser_reset(upb_json_parser *p) {
 
   /* Emit Ragel initialization of the parser. */
   
-#line 3621 "upb/json/parser.c"
+#line 3050 "upb/json/parser.c"
 	{
 	cs = json_start;
 	top = 0;
