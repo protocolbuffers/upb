@@ -161,11 +161,11 @@ typedef struct {
   upb_json_parser* parser;
   upb_sink sink;
 
-  /* Mark the range of unpacked values in json input before type url. */
+  /* Mark the range of uninterpreted values in json input before type url. */
   const char *before_type_url_start;
   const char *before_type_url_end;
 
-  /* Mark the range of unpacked values in json input after type url. */
+  /* Mark the range of uninterpreted values in json input after type url. */
   const char *after_type_url_start;
 } upb_jsonparser_any_frame;
 
@@ -282,13 +282,13 @@ static void json_parser_any_frame_reset(upb_jsonparser_any_frame *frame) {
   frame->after_type_url_start = NULL;
 }
 
-static void json_parser_any_frame_set_packed(
+static void json_parser_any_frame_set_payload_type(
     upb_json_parser *p,
     upb_jsonparser_any_frame *frame,
-    const upb_msgdef *packed) {
+    const upb_msgdef *payload_type) {
   /* Initialize encoder. */
   frame->encoder_handlers =
-      upb_pb_encoder_newhandlers(packed, &frame->encoder_handlers);
+      upb_pb_encoder_newhandlers(payload_type, &frame->encoder_handlers);
   upb_stringsink_init(&frame->stringsink);
   frame->encoder =
       upb_pb_encoder_create(
@@ -297,7 +297,7 @@ static void json_parser_any_frame_set_packed(
 
   /* Initialize parser. */
   frame->parser_method =
-      upb_json_parsermethod_new(packed, &frame->parser_method);
+      upb_json_parsermethod_new(payload_type, &frame->parser_method);
   upb_sink_reset(&frame->sink, frame->encoder_handlers, frame->encoder);
   frame->parser =
       upb_json_parser_create(p->env, frame->parser_method, p->symtab,
@@ -1267,19 +1267,19 @@ static bool end_any_stringval(upb_json_parser *p) {
 
   /* Resolve type url */
   if (strncmp(buf, "type.googleapis.com/", 20) == 0 && len > 20) {
-    const upb_msgdef *packed = NULL;
+    const upb_msgdef *payload_type = NULL;
     buf += 20;
     len -= 20;
 
-    packed = upb_symtab_lookupmsg2(p->symtab, buf, len);
-    if (packed == NULL) {
+    payload_type = upb_symtab_lookupmsg2(p->symtab, buf, len);
+    if (payload_type == NULL) {
       upb_status_seterrf(
           &p->status, "Cannot find packed type: %.*s\n", (int)len, buf);
       upb_env_reporterror(p->env, &p->status);
       return false;
     }
 
-    json_parser_any_frame_set_packed(p, p->top->any_frame, packed);
+    json_parser_any_frame_set_payload_type(p, p->top->any_frame, payload_type);
     
     return true;
   } else {
