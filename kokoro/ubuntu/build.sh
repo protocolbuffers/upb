@@ -1,5 +1,6 @@
 #!/bin/bash
 
 cd $(dirname $0)/../..
-bazel test :all
+bazel build :conformance_proto_upb
+# bazel test :all
 ls -R
