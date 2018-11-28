@@ -263,10 +263,46 @@ _upb_proto_library_srcs = rule(
 
 def upb_proto_library(name, deps, upbc):
     srcs_rule = name + "_srcs.cc"
-    _upb_proto_library_srcs(
-        name = srcs_rule,
-        upbc = upbc,
-        deps = deps,
+    # _upb_proto_library_srcs(
+    #     name = srcs_rule,
+    #     upbc = upbc,
+    #     deps = deps,
+    # )
+    sources = []
+    outs = []
+    include_dirs = {}
+    for dep in deps:
+        if hasattr(dep, 'proto'):
+            for src in dep.proto.transitive_sources:
+                sources.append(src)
+                include_dirs[_remove_suffix(src.path, _remove_up(src.short_path) + "." + src.extension)] = True
+                outs.append(_remove_up(src.short_path) + ".upb.h")
+                outs.append(_remove_up(src.short_path) + ".upb.c")
+                outdir = _remove_suffix(outs[-1].path, _remove_up(src.short_path) + ".upb.c")
+
+    # source_paths = [d.path for d in sources]
+    include_args = ["-I" + root for root in include_dirs.keys()]
+
+    # ctx.actions.run(
+    #     inputs = [ctx.executable.upbc] + sources,
+    #     outputs = outs,
+    #     executable = ctx.executable.protoc,
+    #     arguments = ["--upb_out", outdir, "--plugin=protoc-gen-upb=" + ctx.executable.upbc.path] + include_args + source_paths,
+    #     progress_message = "Generating upb protos",
+    # )
+
+    native.genrule(
+        name = name + "_srcs.cc",
+        outs = outs,
+        srcs = sources,
+        cmd = (
+            " ".join([
+                "'$(location @com_google_protobuf//:protoc)'",
+                "--upb_out",
+                outdir,
+                "--plugin=protoc-gen-upb='$(location //protoc-gen-upb)'"
+            ] + include_args + ["$(SRCS)"])
+        ),
     )
     native.cc_library(
         name = name,
