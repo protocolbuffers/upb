@@ -242,6 +242,7 @@ def _upb_proto_library_srcs_impl(ctx):
     )
 
     print(outs)
+    print([DefaultInfo(files = depset(outs))])
     return [DefaultInfo(files = depset(outs))]
 
 _upb_proto_library_srcs = rule(
