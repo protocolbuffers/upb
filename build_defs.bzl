@@ -272,5 +272,5 @@ def upb_proto_library(name, deps, upbc):
         name = name,
         srcs = [":" + srcs_rule],
         deps = [":upb"],
-        copts = ["-I."],
+        copts = ["-Ibazel-out/k8-fastbuild/bin"],
     )
