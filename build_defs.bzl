@@ -241,8 +241,6 @@ def _upb_proto_library_srcs_impl(ctx):
         progress_message = "Generating upb protos",
     )
 
-    print(outs)
-    print([DefaultInfo(files = depset(outs))])
     return [DefaultInfo(files = depset(outs))]
 
 _upb_proto_library_srcs = rule(
