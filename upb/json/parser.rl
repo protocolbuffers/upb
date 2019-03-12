@@ -184,6 +184,11 @@ typedef struct {
   /* The table mapping json name to fielddef for this message. */
   const upb_strtable *name_table;
 
+  /* We are in a repeated-field context. We need this flag to decide whether to
+   * handle the array as a normal repeated field or a
+   * google.protobuf.ListValue/google.protobuf.Value. */
+  bool is_repeated;
+
   /* We are in a repeated-field context, ready to emit mapentries as
    * submessages. This flag alters the start-of-object (open-brace) behavior to
    * begin a sequence of mapentry messages rather than a single submessage. */
@@ -1225,6 +1230,7 @@ static bool start_stringval(upb_json_parser *p) {
     inner->m = p->top->m;
     inner->f = p->top->f;
     inner->name_table = NULL;
+    inner->is_repeated = false;
     inner->is_map = false;
     inner->is_mapentry = false;
     inner->is_any = false;
@@ -1690,6 +1696,7 @@ static bool start_fieldmask_path(upb_json_parser *p) {
   inner->m = p->top->m;
   inner->f = p->top->f;
   inner->name_table = NULL;
+  inner->is_repeated = false;
   inner->is_map = false;
   inner->is_mapentry = false;
   inner->is_any = false;
@@ -1834,6 +1841,7 @@ static bool handle_mapentry(upb_json_parser *p) {
   inner->m = mapentrymsg;
   inner->name_table = NULL;
   inner->mapfield = mapfield;
+  inner->is_repeated = false;
   inner->is_map = false;
   inner->is_any = false;
   inner->any_frame = NULL;
@@ -1955,6 +1963,7 @@ static bool start_subobject(upb_json_parser *p) {
     inner = p->top + 1;
     inner->m = NULL;
     inner->f = NULL;
+    inner->is_repeated = false;
     inner->is_map = false;
     inner->is_mapentry = false;
     inner->is_any = false;
@@ -1979,6 +1988,7 @@ static bool start_subobject(upb_json_parser *p) {
     inner->name_table = NULL;
     inner->mapfield = p->top->f;
     inner->f = NULL;
+    inner->is_repeated = false;
     inner->is_map = true;
     inner->is_mapentry = false;
     inner->is_any = false;
@@ -2002,6 +2012,7 @@ static bool start_subobject(upb_json_parser *p) {
     inner->m = upb_fielddef_msgsubdef(p->top->f);
     set_name_table(p, inner);
     inner->f = NULL;
+    inner->is_repeated = false;
     inner->is_map = false;
     inner->is_mapentry = false;
     inner->is_unknown_field = false;
@@ -2101,10 +2112,14 @@ static bool start_array(upb_json_parser *p) {
     } else {
       return false;
     }
-  } else if (is_wellknown_field(p, UPB_WELLKNOWN_LISTVALUE)) {
+  } else if (is_wellknown_field(p, UPB_WELLKNOWN_LISTVALUE) &&
+             (!upb_fielddef_isseq(p->top->f) ||
+              p->top->is_repeated)) {
     if (!start_subobject(p)) return false;
     start_listvalue_object(p);
-  } else if (is_wellknown_field(p, UPB_WELLKNOWN_VALUE)) {
+  } else if (is_wellknown_field(p, UPB_WELLKNOWN_VALUE) &&
+             (!upb_fielddef_isseq(p->top->f) ||
+              p->top->is_repeated)) {
     if (!start_subobject(p)) return false;
     start_value_object(p, VALUE_LISTVALUE);
     if (!start_subobject(p)) return false;
@@ -2116,6 +2131,7 @@ static bool start_array(upb_json_parser *p) {
     inner->m = NULL;
     inner->name_table = NULL;
     inner->f = NULL;
+    inner->is_repeated = false;
     inner->is_map = false;
     inner->is_mapentry = false;
     inner->is_any = false;
@@ -2141,6 +2157,7 @@ static bool start_array(upb_json_parser *p) {
   inner->m = p->top->m;
   inner->name_table = NULL;
   inner->f = p->top->f;
+  inner->is_repeated = true;
   inner->is_map = false;
   inner->is_mapentry = false;
   inner->is_any = false;
@@ -2756,6 +2773,7 @@ static void json_parser_reset(upb_json_parser *p) {
 
   p->top = p->stack;
   p->top->f = NULL;
+  p->top->is_repeated = false;
   p->top->is_map = false;
   p->top->is_mapentry = false;
   p->top->is_any = false;
