@@ -28,6 +28,12 @@ COPTS = [
     # copybara:strip_end
 ]
 
+config_setting(
+    name = "darwin",
+    values = {"cpu": "darwin"},
+    visibility = ["//visibility:public"],
+)
+
 # C/C++ libraries ##############################################################
 
 cc_library(
