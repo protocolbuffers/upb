@@ -83,8 +83,8 @@ add_library(reflection
 target_link_libraries(reflection
   upb)
 add_library(legacy_msg_reflection
-  upb/table.int.h
   upb/legacy_msg_reflection.c
+  upb/table.int.h
   upb/legacy_msg_reflection.h)
 target_link_libraries(legacy_msg_reflection
   upb)
