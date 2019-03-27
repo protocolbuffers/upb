@@ -34,7 +34,7 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
-# C/C++ libraries ##############################################################
+# Public C/C++ libraries #######################################################
 
 cc_library(
     name = "upb",
@@ -76,13 +76,20 @@ cc_library(
     deps = [":upb"],
 )
 
+# Internal C/C++ libraries #####################################################
+
+cc_library(
+    name = "table",
+    hdrs = ["upb/table.int.h"],
+    deps = [":upb"],
+)
+
 # Legacy C/C++ Libraries (not recommended for new code) ########################
 
 cc_library(
     name = "legacy_msg_reflection",
     srcs = [
         "upb/legacy_msg_reflection.c",
-        "upb/table.int.h",
     ],
     hdrs = ["upb/legacy_msg_reflection.h"],
     deps = [":upb"],
@@ -116,7 +123,6 @@ cc_library(
         "upb/pb/textprinter.c",
         "upb/pb/varint.c",
         "upb/pb/varint.int.h",
-        "upb/table.int.h",
     ],
     hdrs = [
         "upb/pb/decoder.h",
@@ -126,6 +132,7 @@ cc_library(
     copts = COPTS,
     deps = [
         ":handlers",
+        ":table",
         ":upb",
     ],
 )

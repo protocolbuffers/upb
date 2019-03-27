@@ -82,9 +82,11 @@ add_library(reflection
   upb/msgfactory.h)
 target_link_libraries(reflection
   upb)
+add_library(table INTERFACE)
+target_link_libraries(table INTERFACE
+  upb)
 add_library(legacy_msg_reflection
   upb/legacy_msg_reflection.c
-  upb/table.int.h
   upb/legacy_msg_reflection.h)
 target_link_libraries(legacy_msg_reflection
   upb)
@@ -105,12 +107,12 @@ add_library(upb_pb
   upb/pb/textprinter.c
   upb/pb/varint.c
   upb/pb/varint.int.h
-  upb/table.int.h
   upb/pb/decoder.h
   upb/pb/encoder.h
   upb/pb/textprinter.h)
 target_link_libraries(upb_pb
   handlers
+  table
   upb)
 add_library(upb_json
   upb/json/parser.c
