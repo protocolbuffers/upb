@@ -1,4 +1,25 @@
-
+/*
+* This is where we define macros used across upb.
+*
+* All of these macros are undef'd in port_undef.inc to avoid leaking them to
+* users.
+*
+* The correct usage is:
+*
+*   #include "upb/foobar.h"
+*   #include "upb/baz.h"
+*
+*   // MUST be last included header.
+*   #include "upb/port_def.inc"
+*
+*   // Code for this file.
+*   // <...>
+*
+*   // Can be omitted for .c files, required for .h.
+*   #include "upb/port_undef.inc"
+*
+* This file is private and must not be included by users!
+*/
 #ifndef UINTPTR_MAX
 #error must include stdint.h first
 #endif
@@ -100,4 +121,3 @@
 #else
 #define UPB_UNREACHABLE() do { assert(0); } while(0)
 #endif
-
