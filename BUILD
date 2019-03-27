@@ -75,8 +75,8 @@ cc_library(
 cc_library(
     name = "legacy_msg_reflection",
     srcs = [
-        "upb/table.int.h",
         "upb/legacy_msg_reflection.c",
+        "upb/table.int.h",
     ],
     hdrs = ["upb/legacy_msg_reflection.h"],
     deps = [":upb"],
@@ -384,9 +384,9 @@ lua_cclibrary(
         "upb/bindings/lua/upb.h",
     ],
     deps = [
+        "legacy_msg_reflection",
         "upb",
         "upb_pb",
-        "legacy_msg_reflection",
     ],
 )
 
