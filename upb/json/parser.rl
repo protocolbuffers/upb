@@ -19,6 +19,10 @@
 ** - handling of keys/escape-sequences/etc that span input buffers.
 */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#endif
+
 #include <ctype.h>
 #include <errno.h>
 #include <float.h>
@@ -1687,7 +1691,7 @@ static void start_timestamp_zone(upb_json_parser *p, const char *ptr) {
 static bool end_timestamp_zone(upb_json_parser *p, const char *ptr) {
   size_t len;
   const char *buf;
-  int hours;
+  int hours = 0;
   int64_t seconds;
   const char *seconds_membername = "seconds";
 
@@ -1706,12 +1710,11 @@ static bool end_timestamp_zone(upb_json_parser *p, const char *ptr) {
     if (buf[0] == '+') {
       hours = -hours;
     }
-
-    p->tm.tm_hour += hours;
   }
 
   /* Normalize tm */
-  seconds = mktime(&p->tm);
+  seconds = mktime(&p->tm) - timezone;
+  seconds += 3600 * hours;
 
   /* Check timestamp boundary */
   if (seconds < -62135596800) {
