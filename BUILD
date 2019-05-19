@@ -96,6 +96,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "json",
+    srcs = ["upb/json.c"],
+    hdrs = ["upb/json.h"],
+    deps = [
+        ":upb",
+        ":reflection"
+    ]
+)
+
 # Internal C/C++ libraries #####################################################
 
 cc_library(
@@ -395,7 +405,13 @@ upb_proto_library(
 )
 
 upb_proto_library(
-    name = "test_messages_proto3_proto_upb",
+    name = "test_messages_proto3_upbproto",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
+)
+
+upb_proto_reflection_library(
+    name = "test_messages_proto3_upbreflection",
     testonly = 1,
     deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
 )
@@ -409,7 +425,9 @@ cc_binary(
     copts = COPTS + ["-Ibazel-out/k8-fastbuild/bin"],
     deps = [
         ":conformance_proto_upb",
-        ":test_messages_proto3_proto_upb",
+        ":json",
+        ":test_messages_proto3_upbproto",
+        ":test_messages_proto3_upbreflection",
         ":upb",
     ],
 )

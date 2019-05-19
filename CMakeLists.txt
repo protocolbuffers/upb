@@ -81,6 +81,12 @@ target_link_libraries(reflection
   descriptor_upbproto
   table
   upb)
+add_library(json
+  upb/json.c
+  upb/json.h)
+target_link_libraries(json
+  upb
+  reflection)
 add_library(table INTERFACE)
 target_link_libraries(table INTERFACE
   upb)

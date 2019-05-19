@@ -10,6 +10,8 @@
 
 #include "conformance/conformance.upb.h"
 #include "src/google/protobuf/test_messages_proto3.upb.h"
+#include "src/google/protobuf/test_messages_proto3.upbdefs.h"
+#include "upb/json.h"
 
 int test_count = 0;
 
@@ -43,35 +45,63 @@ bool strview_eql(upb_strview view, const char *str) {
   return view.size == strlen(str) && memcmp(view.data, str, view.size) == 0;
 }
 
+/* Stringify "str" to ensure it is static storage duration and will outlive. */
+#define SETERR(msg, err, str) \
+  conformance_ConformanceResponse_set_##err(msg, upb_strview_makez(#str))
+
 static const char *proto3_msg =
     "protobuf_test_messages.proto3.TestAllTypesProto3";
 
 void DoTest(
     const conformance_ConformanceRequest* request,
     conformance_ConformanceResponse *response,
+    upb_symtab *symtab,
     upb_arena *arena) {
   protobuf_test_messages_proto3_TestAllTypesProto3 *test_message;
+  upb_strview name = conformance_ConformanceRequest_message_type(request);
+  const upb_msgdef *m = upb_symtab_lookupmsg2(symtab, name.data, name.size);
+  upb_alloc *alloc = upb_arena_alloc(arena);
 
-  if (!strview_eql(conformance_ConformanceRequest_message_type(request),
-                   proto3_msg)) {
-    static const char msg[] = "Only proto3 for now.";
-    conformance_ConformanceResponse_set_skipped(
-        response, upb_strview_make(msg, sizeof(msg)));
+  if (!m || !strview_eql(name, proto3_msg)) {
+    SETERR(response, skipped, "Only proto3 for now.");
     return;
   }
 
   switch (conformance_ConformanceRequest_payload_case(request)) {
     case conformance_ConformanceRequest_payload_protobuf_payload: {
-      upb_strview payload = conformance_ConformanceRequest_protobuf_payload(request);
+      upb_strview payload;
+
+      payload = conformance_ConformanceRequest_protobuf_payload(request);
       test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
           payload.data, payload.size, arena);
 
       if (!test_message) {
-        static const char msg[] = "Parse error";
-        conformance_ConformanceResponse_set_parse_error(
-            response, upb_strview_make(msg, sizeof(msg)));
+        SETERR(response, parse_error, "Error parsing proto input.");
         return;
       }
+      break;
+    }
+
+    case conformance_ConformanceRequest_payload_json_payload: {
+      upb_strview json = conformance_ConformanceRequest_json_payload(request);
+      size_t bin_size;
+      char *bin_buf;
+
+      bin_buf = upb_jsontobinary(json.data, json.size, m, 0, alloc, &bin_size);
+
+      if (!bin_buf) {
+        SETERR(response, parse_error, "Error parsing JSON input.");
+        return;
+      }
+
+      test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
+          bin_buf, bin_size, arena);
+
+      if (!test_message) {
+        SETERR(response, parse_error, "Error parsing protobuf from JSON.");
+        return;
+      }
+
       break;
     }
 
@@ -80,9 +110,7 @@ void DoTest(
       return;
 
     default: {
-      static const char msg[] = "Unsupported input format.";
-      conformance_ConformanceResponse_set_skipped(
-          response, upb_strview_make(msg, sizeof(msg)));
+      SETERR(response, skipped, "Unsupported input format.");
       return;
     }
   }
@@ -93,25 +121,50 @@ void DoTest(
       exit(1);
 
     case conformance_PROTOBUF: {
-      size_t serialized_len;
-      char *serialized =
-          protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
-              test_message, arena, &serialized_len);
-      if (!serialized) {
-        static const char msg[] = "Error serializing.";
-        conformance_ConformanceResponse_set_serialize_error(
-            response, upb_strview_make(msg, sizeof(msg)));
+      size_t bin_len;
+      char *bin_buf;
+
+      bin_buf = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
+          test_message, arena, &bin_len);
+
+      if (!bin_buf) {
+        SETERR(response, serialize_error, "Error serializing to binary.");
         return;
       }
+
       conformance_ConformanceResponse_set_protobuf_payload(
-          response, upb_strview_make(serialized, serialized_len));
+          response, upb_strview_make(bin_buf, bin_len));
+      break;
+    }
+
+    case conformance_JSON: {
+      char *json_buf;
+      size_t json_size;
+      size_t bin_len;
+      char *bin_buf;
+
+      bin_buf = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
+          test_message, arena, &bin_len);
+
+      if (!bin_buf) {
+        SETERR(response, serialize_error, "Error serializing to binary.");
+        return;
+      }
+
+      json_buf = upb_binarytojson(bin_buf, bin_len, m, 0, alloc, &json_size);
+
+      if (!json_buf) {
+        SETERR(response, serialize_error, "Error serializing to JSON.");
+        return;
+      }
+
+      conformance_ConformanceResponse_set_protobuf_payload(
+          response, upb_strview_make(json_buf, json_size));
       break;
     }
 
     default: {
-      static const char msg[] = "Unsupported output format.";
-      conformance_ConformanceResponse_set_skipped(
-          response, upb_strview_make(msg, sizeof(msg)));
+      SETERR(response, skipped, "Unsupported output format.");
       return;
     }
   }
@@ -119,7 +172,7 @@ void DoTest(
   return;
 }
 
-bool DoTestIo() {
+bool DoTestIo(upb_symtab *symtab) {
   upb_arena *arena;
   upb_alloc *alloc;
   upb_status status;
@@ -149,7 +202,7 @@ bool DoTestIo() {
   response = conformance_ConformanceResponse_new(arena);
 
   if (request) {
-    DoTest(request, response, arena);
+    DoTest(request, response, symtab, arena);
   } else {
     fprintf(stderr, "conformance_upb: parse of ConformanceRequest failed: %s\n",
             upb_status_errmsg(&status));
@@ -169,11 +222,18 @@ bool DoTestIo() {
 }
 
 int main() {
+  upb_symtab *symtab = upb_symtab_new();
+
+  protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
+
   while (1) {
-    if (!DoTestIo()) {
+    if (!DoTestIo(symtab)) {
       fprintf(stderr, "conformance_upb: received EOF from test runner "
                       "after %d tests, exiting\n", test_count);
-      return 0;
+      break;
     }
   }
+
+  upb_symtab_free(symtab);
+  return 0;
 }
