@@ -53,6 +53,7 @@
 
 /* Hints to the compiler about likely/unlikely branches. */
 #define UPB_LIKELY(x) __builtin_expect((x),1)
+#define UPB_UNLIKELY(x) __builtin_expect((x),0)
 
 /* Define UPB_BIG_ENDIAN manually if you're on big endian and your compiler
  * doesn't provide these preprocessor symbols. */
