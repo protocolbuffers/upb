@@ -211,10 +211,10 @@ static const char* parse_escape(const char* buf, parsestate* state) {
   }
 }
 
-static const char* parse_raw_str(const char* buf, char** str, parsestate* state) {
+static const char* parse_raw_str(const char* buf, size_t* ofs, parsestate* state) {
   const char* span_start = buf;
 
-  *str = state->outptr;
+  *ofs = state->outptr - state->outbuf;
 
   while (true) {
     char ch;
@@ -289,17 +289,18 @@ static bool nonbase64(unsigned char ch) {
   return b64table[ch] == -1 && ch != '=';
 }
 
-static bool base64_decode(size_t ofs, size_t len, const upb_fielddef* f,
+static bool base64_decode(size_t ofs, const upb_fielddef* f,
                           parsestate* state) {
   /* Warning: in and out alias each other.  This works because we consume "in"
    * faster than "out". */
   char* out = state->outbuf + ofs;
   const char* in = out;
-  const char* limit = in + len;
+  const char* limit = state->outend;
+  size_t len = limit - in;
 
   /* No need to reserve, since out_size <= in_size. */
   if ((len % 4) != 0) {
-    upb_status_seterrf(p->status,
+    upb_status_seterrf(state->status,
                        "Base64 input for bytes field not a multiple of 4: %s",
                        upb_fielddef_name(f));
   }
@@ -326,12 +327,13 @@ finish:
 
 otherchar:
   if (nonbase64(in[0]) || nonbase64(in[1]) || nonbase64(in[2]) ||
-      nonbase64(in[3]) ) {
+      nonbase64(in[3])) {
     upb_status_seterrf(state->status,
                        "Non-base64 characters in bytes field: %s",
-                       upb_fielddef_name(p->top->f));
+                       upb_fielddef_name(f));
     return false;
-  } if (in[2] == '=') {
+  }
+  if (in[2] == '=') {
     uint32_t val;
 
     /* Last group contains only two input bytes, one output byte. */
@@ -369,72 +371,188 @@ badpadding:
   return false;
 }
 
+static bool convert_float(size_t ofs, parsestate* state) {
+  float f = strtof(outptr(ofs, state), NULL);
+  pop_output(ofs, state);
+  return write_str(&f, sizeof(f));
+}
+
+static bool convert_double(size_t ofs, parsestate* state) {
+  double d = strtod(outptr(ofs, state), NULL);
+  pop_output(ofs, state);
+  return write_str(&d, sizeof(d));
+}
+
+static bool convert_enum(size_t ofs, const upb_enumdef *e, parsestate* state) {
+  int32_t num;
+  const char* str = outptr(ofs, state);
+  size_t size = state->outptr - str;
+  CHK(upb_enumdef_ntoi(e, str, size, &num));
+  pop_output(ofs, state);
+  CHK(write_varint(num, state));
+  return true;
+}
+
+#define CONVERT_INT_BODY                                   \
+  const char* ptr = state->outptr;                         \
+  const char* end = state->outend;                         \
+  bool neg = false;                                        \
+                                                           \
+  CHK(ptr != end);                                         \
+                                                           \
+  if (*ptr == '-') {                                       \
+    neg = true;                                            \
+    ptr++;                                                 \
+  }                                                        \
+                                                           \
+  while (ptr != end) {                                     \
+    CHK(!__builtin_mul_overflow(val, 10, &val));           \
+    if (neg) {                                             \
+      CHK(!__builtin_sub_overflow(val, *ptr - '0', &val)); \
+    } else {                                               \
+      CHK(!__builtin_add_overflow(val, *ptr - '0', &val)); \
+    }                                                      \
+    ptr++;                                                 \
+  }                                                        \
+                                                           \
+  pop_output(ofs, state);                                  \
+  CHK(write_str(&val, sizeof(val)));                       \
+  return true;
+
+static bool convert_sfixed32(size_t ofs, parsestate* state) {
+  int32_t val = 0;
+  CONVERT_INT_BODY
+}
+
+static bool convert_sfixed64(size_t ofs, parsestate* state) {
+  int64_t val = 0;
+  CONVERT_INT_BODY
+}
+
+static bool convert_fixed32(size_t ofs, parsestate* state) {
+  uint32_t val = 0;
+  CONVERT_INT_BODY
+}
+
+static bool convert_fixed64(size_t ofs, parsestate* state) {
+  uint64_t val = 0;
+  CONVERT_INT_BODY
+}
+
+#undef CONVERT_INT_BODY
+
+static bool convert_int32(size_t ofs, parsestate* state) {
+
+}
+
 static const char* parse_str(const char* buf, const upb_fielddef* f,
                              parsestate* state) {
-  char* str;
+  size_t ofs;
   size_t size;
 
   CHK(write_tag(f, state));
-  CHK(buf = parse_raw_str(buf, &str, state));
-  size = state->outptr - str;
+  CHK(buf = parse_raw_str(buf, &ofs, state));
 
-  switch (upb_fielddef_type(f)) {
-    case UPB_TYPE_STRING:
-      CHK(insert_length(str, state));
+  switch (upb_fielddef_descriptortype(f)) {
+    case UPB_DESCRIPTOR_TYPE_STRING:
+      CHK(insert_length(ofs, state));
       break;
-    case UPB_TYPE_BYTES:
-      CHK(base64_decode(str, size, f, state));
-      CHK(insert_length(str, state));
+    case UPB_DESCRIPTOR_TYPE_BYTES:
+      CHK(base64_decode(ofs, f, state));
+      CHK(insert_length(ofs, state));
       break;
-    case UPB_TYPE_FLOAT: {
-      float f = strtof(str, NULL);
-      pop_output(ofs, state);
-      CHK(write_str(&f, sizeof(f)));
+    case UPB_DESCRIPTOR_TYPE_FLOAT:
+      CHK(convert_float(ofs, state));
       break;
-    }
-    case UPB_TYPE_DOUBLE: {
-      double d = strtod(str, NULL);
-      pop_output(ofs, state);
-      CHK(write_str(&d, sizeof(d)));
+    case UPB_DESCRIPTOR_TYPE_DOUBLE:
+      CHK(convert_double(ofs, state));
       break;
-    }
-    case UPB_TYPE_ENUM: {
-      const upb_enumdef* e = upb_fielddef_enumsubdef(f);
-      int32_t num;
-      CHK(upb_enumdef_ntoi(e, str, size, &num));
-      pop_output(ofs, state);
-      CHK(write_varint(num, state));
+    case UPB_DESCRIPTOR_TYPE_ENUM:
+      CHK(convert_enum(ofs, upb_fielddef_enumsubdef(f), state));
       break;
-    }
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_UINT32: {
-    }
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT64:
-    case UPB_TYPE_BOOL:
+    case UPB_DESCRIPTOR_TYPE_INT32:
+      CHK(convert_int32(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_UINT32:
+      CHK(convert_uint32(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_INT64:
+      CHK(convert_int64(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_UINT64:
+      CHK(convert_uint64(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_SINT32:
+      CHK(convert_sint32(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_SINT64:
+      CHK(convert_sint64(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_FIXED32:
+      CHK(convert_fixed32(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_FIXED64:
+      CHK(convert_fixed64(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_SFIXED32:
+      CHK(convert_sfixed32(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_SFIXED64:
+      CHK(convert_sfixed64(ofs, state));
+      break;
+    case UPB_DESCRIPTOR_TYPE_BOOL:
+      /* Should we accept 0/nonzero as true/false? */
       return NULL;
-    case UPB_TYPE_MESSAGE: {
+    case UPB_DESCRIPTOR_TYPE_GROUP:
+      return NULL;
+    case UPB_DESCRIPTOR_TYPE_MESSAGE: {
       const upb_msgdef* m = upb_fielddef_msgsubdef(f);
       switch (upb_msgdef_wellknowntype(m)) {
         case UPB_WELLKNOWN_STRINGVALUE:
-          CHK(insert_length(str, state));
+          CHK(insert_length(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_DELIMITED, state));
+          break;
         case UPB_WELLKNOWN_BYTESVALUE:
+          CHK(base64_decode(ofs, f, state));
+          CHK(insert_length(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_DELIMITED, state));
+          break;
         case UPB_WELLKNOWN_FIELDMASK:
-          CHK(parse_fieldmask(str, size, state));
+          CHK(parse_fieldmask(ofs, state));
           break;
         case UPB_WELLKNOWN_DURATION:
-          CHK(parse_duration(str, size, state));
+          CHK(parse_duration(ofs, state));
           break;
         case UPB_WELLKNOWN_TIMESTAMP:
-          CHK(parse_timestamp(str, size, state));
+          CHK(parse_timestamp(ofs, state));
           break;
         case UPB_WELLKNOWN_DOUBLEVALUE:
+          CHK(convert_double(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_64BIT, state));
+          break;
         case UPB_WELLKNOWN_FLOATVALUE:
+          CHK(convert_float(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_32BIT, state));
+          break;
         case UPB_WELLKNOWN_INT64VALUE:
+          CHK(convert_int64(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_VARINT, state));
+          break;
         case UPB_WELLKNOWN_UINT64VALUE:
+          CHK(convert_uint64(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_VARINT, state));
+          break;
+        case UPB_WELLKNOWN_UINT32VALUE:
+          CHK(convert_uint32(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_VARINT, state));
+          break;
         case UPB_WELLKNOWN_INT32VALUE:
+          CHK(convert_int32(ofs, state));
+          CHK(insert_knowntag(1, UPB_WIRE_TYPE_VARINT, state));
+          break;
         case UPB_WELLKNOWN_BOOLVALUE:
-
+          /* Should we accept 0/nonzero as true/false? */
+          return NULL;
         case UPB_WELLKNOWN_UNSPECIFIED:
         case UPB_WELLKNOWN_ANY:
         case UPB_WELLKNOWN_VALUE:
@@ -442,6 +560,7 @@ static const char* parse_str(const char* buf, const upb_fielddef* f,
         case UPB_WELLKNOWN_STRUCT:
           return NULL;
       }
+      CHK(insert_length(ofs, state));
     }
   }
 }
@@ -514,12 +633,12 @@ static const char* parse_json_value(const char* buf, const upb_fielddef* f,
   char ch;
 
   CHK(buf = consume_char(buf, state, &ch));
-  CHK(write_tag(f, state));
 
   switch (ch) {
     case '{': {
       size_t ofs = output_ofs(state);
       CHK(upb_fielddef_issubmsg(f));
+      CHK(write_tag(f, state));
       CHK(buf = parse_json_object(buf, upb_fielddef_msgsubdef(f), state));
       CHK(buf = parse_char(buf, '}', state));
       switch (upb_fielddef_descriptortype(f)) {
@@ -556,9 +675,15 @@ static const char* parse_json_value(const char* buf, const upb_fielddef* f,
       CHK(buf = parse_number(buf, f, state));
       break;
     case 't':
+      CHK(upb_fielddef_type(f) == UPB_TYPE_BOOL);
       CHK(buf = parse_lit(buf, "rue", state));
+      write_tag(f, state);
+      write_char(1, state);
     case 'f':
+      CHK(upb_fielddef_type(f) == UPB_TYPE_BOOL);
       CHK(buf = parse_lit(buf, "alse", state));
+      write_tag(f, state);
+      write_char(0, state);
       break;
     case 'n':
       CHK(buf = parse_lit(buf, "ull", state));
