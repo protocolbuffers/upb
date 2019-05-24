@@ -99,7 +99,8 @@ def _cc_library_func(ctx, name, hdrs, srcs, dep_ccinfos):
             linking_context = linking_info.linking_context,
         )
 
-    if not versions.is_at_least("0.25.2", bazel_version):
+    # Assume Bazel prerelease versions (version == "") are ok.
+    if not versions.is_at_least("0.25.2", bazel_version) or bazel_version == "":
         fail("upb requires Bazel >=0.25.2 or 0.24.1")
 
     # copybara:strip_end
