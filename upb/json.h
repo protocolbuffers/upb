@@ -11,9 +11,11 @@
 struct upb_jsonparser;
 typedef struct upb_jsonparser upb_jsonparser;
 
+#define UPB_JSON_IGNORE_UNKNOWN 1
+
 char* upb_jsontobinary(const char* buf, size_t len, const upb_msgdef* m,
-                       const upb_symtab* any_msgs, int options,
-                       upb_alloc* alloc, size_t* outlen);
+                       const upb_symtab* any_msgs, int options, int max_depth,
+                       upb_alloc* alloc, size_t* outlen, upb_status* s);
 
 char* upb_binarytojson(const char* buf, size_t len, const upb_msgdef* m,
                        int options, upb_alloc* alloc, size_t* outlen);
