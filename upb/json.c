@@ -3,7 +3,6 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -25,6 +24,9 @@ static size_t encode_varint(uint64_t val, char *buf) {
   }
   return i;
 }
+
+static uint32_t zzencode_32(int32_t n) { return (n << 1) ^ (n >> 31); }
+static uint64_t zzencode_64(int64_t n) { return (n << 1) ^ (n >> 63); }
 
 /* Output Buffer **************************************************************/
 
@@ -76,10 +78,14 @@ static bool write_char(char ch, outbuf* out) {
   return true;
 }
 
-static bool put_varint(uint64_t val, outbuf* out) {
+static bool write_varint(uint64_t val, outbuf* out) {
   CHK(reserve_bytes(10, out));
   out->ptr += encode_varint(val, out->ptr);
   return true;
+}
+
+static bool write_known_tag(int wire_type, int fieldnum, outbuf* out) {
+  return write_varint(wire_type | (fieldnum << 3), out);
 }
 
 static size_t buf_ofs(outbuf* out) { return out->ptr - out->buf; }
@@ -87,11 +93,14 @@ static size_t buf_ofs(outbuf* out) { return out->ptr - out->buf; }
 static bool insert_fixed_len(size_t ofs, outbuf* out) {
   size_t len = buf_ofs(out) - ofs;
   int intlen = len;
+  char* ptr = out->buf + ofs;
 
   CHK(len <= INT_MAX);
   CHK(reserve_bytes(4, out));
-  memmove(out->ptr + 4, out->ptr, len);
-  memcpy(out->ptr, &intlen, 4);
+  ptr = out->buf + ofs;
+  memmove(ptr + 4, ptr, len);
+  memcpy(ptr, &intlen, 4);
+  out->ptr += 4;
   return true;
 }
 
@@ -99,11 +108,14 @@ static bool insert_varint_len(size_t ofs, outbuf* out) {
   size_t len = buf_ofs(out) - ofs;
   char varint[10];
   size_t varint_len = encode_varint(len, varint);
+  char* ptr = out->buf + ofs;
 
   CHK(len <= INT_MAX);
   CHK(reserve_bytes(varint_len, out));
-  memmove(out->ptr + varint_len, out->ptr, len);
-  memcpy(out->ptr, varint, varint_len);
+  ptr = out->buf + ofs;
+  memmove(ptr + varint_len, ptr, len);
+  memcpy(ptr, varint, varint_len);
+  out->ptr += varint_len;
   return true;
 }
 
@@ -117,22 +129,10 @@ typedef struct {
   upb_status* status;
 } jsonparser;
 
-enum {
-  /* 0 is reserved for errors. */
-  kEnd = 1,
-  kObject,
-  kArray,
-  kNumber,
-  kString,
-  kTrue,
-  kFalse,
-  kNull,
-};
-
 static bool parse_json_object(jsonparser* state);
 static bool parse_json_array(jsonparser* state);
 
-// Input buffer.
+/* Input buffer. */
 
 static bool is_whitespace(char ch) {
   switch (ch) {
@@ -147,7 +147,7 @@ static bool is_whitespace(char ch) {
 }
 
 static bool is_eof(jsonparser* state) {
-  return (state->ptr == state->end);
+  return state->ptr == state->end;
 }
 
 static bool skip_whitespace(jsonparser* state) {
@@ -206,7 +206,6 @@ static bool skip_digits(jsonparser* state) {
 
   while (true) {
     char ch = peek_char(state);
-    CHK(ch);
     if (ch < '0' || ch > '9') {
       break;
     }
@@ -217,7 +216,7 @@ static bool skip_digits(jsonparser* state) {
   return state->ptr != start;
 }
 
-// Generic JSON parser.
+/* Generic JSON parser. */
 
 static bool parse_hex_digit(char ch, uint32_t* digit) {
   *digit <<= 4;
@@ -270,6 +269,9 @@ static bool parse_escape(jsonparser* state) {
       break;
     case 'b':
       CHK(write_char('\b', &state->out));
+      break;
+    case 'f':
+      CHK(write_char('\f', &state->out));
       break;
     case 'n':
       CHK(write_char('\n', &state->out));
@@ -340,24 +342,27 @@ static bool parse_json_number(jsonparser* state) {
   char* end;
   double d;
 
-  CHK(ch = consume_char(state));
+  CHK(ch = peek_char(state));
 
   if (ch == '-') {
-    CHK(ch = consume_char(state));
+    state->ptr++;
+    CHK(ch = peek_char(state));
   }
 
-  if (ch != '0') {
+  if (ch == '0') {
+    state->ptr++;
+  } else {
     CHK(skip_digits(state));
   }
 
-  if (is_eof(state)) return true;
+  if (is_eof(state)) goto parse;
 
   if (*state->ptr == '.') {
     state->ptr++;
     CHK(skip_digits(state));
   }
 
-  if (is_eof(state)) return true;
+  if (is_eof(state)) goto parse;
 
   if (*state->ptr == 'e' || *state->ptr == 'E') {
     state->ptr++;
@@ -370,6 +375,7 @@ static bool parse_json_number(jsonparser* state) {
     CHK(skip_digits(state));
   }
 
+parse:
   errno = 0;
   d = strtod(start, &end);
 
@@ -409,6 +415,7 @@ static bool parse_json_value(jsonparser* state) {
     case 't':
       CHK(parse_lit("true", state));
       CHK(write_char(kTrue, &state->out));
+      break;
     case 'f':
       CHK(parse_lit("false", state));
       CHK(write_char(kFalse, &state->out));
@@ -494,7 +501,6 @@ struct upb_jsonparser {
   const char* ptr;
   const char* end;
   outbuf out;
-  const upb_msgdef *m;
   const upb_symtab* any_msgs;
   upb_status *status;
   int options;
@@ -546,7 +552,7 @@ static bool write_tag(const upb_fielddef *f, upb_jsonparser* parser) {
   return true;
 }
 
-// Base64 decoding.
+/* Base64 decoding. */
 
 static const signed char b64table[] = {
   -1,      -1,      -1,      -1,      -1,      -1,      -1,      -1,
@@ -614,16 +620,16 @@ static char* decode_padding(const char* in, char* out) {
   }
 }
 
-static bool base64_decode(const upb_fielddef* f, upb_jsonparser* state) {
-  upb_strview str = read_str(state);
-  size_t ofs = buf_ofs(&state->out);
+static bool base64_decode(const upb_fielddef* f, upb_jsonparser* parser) {
+  upb_strview str = read_str(parser);
+  size_t ofs = buf_ofs(&parser->out);
   const char* in = str.data;
   const char *limit = str.data + str.size;
   /* This is a conservative estimate, assuming no padding. */
-  char* out = reserve_bytes(str.size / 4 * 3, &state->out);
+  char* out = reserve_bytes(str.size / 4 * 3, &parser->out);
 
   if ((str.size % 4) != 0) {
-    upb_status_seterrf(state->status,
+    upb_status_seterrf(parser->status,
                        "Base64 input for bytes field not a multiple of 4: %s",
                        upb_fielddef_name(f));
   }
@@ -638,14 +644,14 @@ static bool base64_decode(const upb_fielddef* f, upb_jsonparser* state) {
     if (UPB_UNLIKELY(val & 0x80000000)) {
       if (nonbase64(in[0]) || nonbase64(in[1]) || nonbase64(in[2]) ||
           nonbase64(in[3])) {
-        upb_status_seterrf(state->status,
+        upb_status_seterrf(parser->status,
                            "Non-base64 characters in bytes field: %s",
                            upb_fielddef_name(f));
         return false;
       }
 
       if (in != limit - 4 || (out = decode_padding(in, out)) == NULL) {
-        upb_status_seterrf(state->status,
+        upb_status_seterrf(parser->status,
                            "Incorrect base64 padding for field: %s (%.*s)",
                            upb_fielddef_name(f), 4, in);
         return false;
@@ -657,31 +663,18 @@ static bool base64_decode(const upb_fielddef* f, upb_jsonparser* state) {
     out[2] = val & 0xff;
   }
 
-  state->out.ptr = out;
-  insert_varint_len(ofs, &state->out);
+  parser->out.ptr = out;
+  insert_varint_len(ofs, &parser->out);
   return true;
 }
-
-#if 0
-
-static bool convert_enum(size_t ofs, const upb_enumdef *e, upb_jsonparser* state) {
-  int32_t num;
-  const char* str = outptr(ofs, state);
-  size_t size = state->outptr - str;
-  CHK(upb_enumdef_ntoi(e, str, size, &num));
-  pop_output(ofs, state);
-  CHK(write_varint(num, state));
-  return true;
-}
-#endif
 
 #define READ_INT_BODY                                          \
-  switch (consume_char2(state)) {                              \
+  switch (consume_char2(parser)) {                             \
     case kNumber:                                              \
-      val = read_num(state);                                   \
+      *out = read_num(parser);                                 \
       return true;                                             \
     case kString: {                                            \
-      upb_strview str = read_str(state);                       \
+      upb_strview str = read_str(parser);                      \
       const char* ptr = str.data;                              \
       const char* end = str.data + str.size;                   \
       bool neg = false;                                        \
@@ -705,53 +698,44 @@ static bool convert_enum(size_t ofs, const upb_enumdef *e, upb_jsonparser* state
         ptr++;                                                 \
       }                                                        \
                                                                \
-      return true;                                             \
+      *out = val;                                              \
+      return ptr == end;                                       \
     }                                                          \
     default:                                                   \
       return false;                                            \
   }                                                            \
   UPB_UNREACHABLE();
 
-static bool read_int64(upb_jsonparser* state) {
+static bool read_int64(upb_jsonparser* parser, int64_t* out) {
   int64_t val = 0;
   READ_INT_BODY
 }
 
-static bool read_uint64(upb_jsonparser* state) {
+static bool read_uint64(upb_jsonparser* parser, uint64_t* out) {
   uint64_t val = 0;
   READ_INT_BODY
 }
 
 #undef CONVERT_INT_BODY
 
-static bool convert_bool(const upb_fielddef* f, upb_jsonparser* state) {
-  switch (consume_char2(state)) {
-    case kFalse:
-      CHK(put_varint(0, &state->out));
-      return true;
-    case kTrue:
-      CHK(put_varint(1, &state->out));
-      return true;
-    default:
-      /* Should we accept 0/nonzero as true/false? */
-      return false;
-  }
-}
-
 static bool read_double(const upb_fielddef* f, double* d,
-                        upb_jsonparser* state) {
-  switch (consume_char2(state)) {
+                        upb_jsonparser* parser) {
+  /* C89 does not have macros for NAN or INFINITY. */
+  static const double nan = 0.0 / 0.0;
+  static const double inf = 1.0 / 0.0;
+
+  switch (consume_char2(parser)) {
     case kNumber:
-      *d = read_num(state);
+      *d = read_num(parser);
       return true;
     case kString: {
-      upb_strview str = read_str(state);
+      upb_strview str = read_str(parser);
       if (upb_strview_eql(str, upb_strview_makez("NaN"))) {
-        *d = NAN;
+        *d = nan;
       } else if (upb_strview_eql(str, upb_strview_makez("Infinity"))) {
-        *d = INFINITY;
+        *d = inf;
       } else if (upb_strview_eql(str, upb_strview_makez("-Infinity"))) {
-        *d = -INFINITY;
+        *d = -inf;
       } else {
         return false;
       }
@@ -762,28 +746,108 @@ static bool read_double(const upb_fielddef* f, double* d,
   }
 }
 
-static bool convert_double(const upb_fielddef* f, upb_jsonparser* parser) {
-  double d;
-  CHK(read_double(f, &d, parser));
-  CHK(write_str(&d, 8, &parser->out));
+static bool convert_wellknown_value(upb_jsonparser* parser) {
+  switch (consume_char2(parser)) {
+    case kNull:
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 1, &parser->out));
+      CHK(write_varint(0, &parser->out));
+      return true;
+    case kNumber: {
+      double d = read_num(parser);
+      CHK(write_known_tag(UPB_WIRE_TYPE_64BIT, 2, &parser->out));
+      CHK(write_str(&d, 8, &parser->out));
+      return true;
+    }
+    case kString: {
+      upb_strview str = read_str(parser);
+      CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 3, &parser->out));
+      CHK(write_varint(str.size, &parser->out));
+      CHK(write_str(str.data, str.size, &parser->out));
+      return true;
+    }
+    case kTrue:
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, &parser->out));
+      CHK(write_varint(1, &parser->out));
+      return true;
+    case kFalse:
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, &parser->out));
+      CHK(write_varint(0, &parser->out));
+      return true;
+    case kObject:
+    case kArray:
+    default:
+      return false;
+  }
+}
+
+static bool convert_wellknown_listvalue(upb_jsonparser* parser) {
+  CHK(parse_char2(kArray, parser));
+
+  while (true) {
+    size_t ofs;
+    if (peek_char2(parser) == kEnd) {
+      parser->ptr++;
+      return true;
+    }
+
+    /* repeated Value values = 1; */
+    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+    ofs = buf_ofs(&parser->out);
+    CHK(convert_wellknown_value(parser));
+    CHK(insert_varint_len(ofs, &parser->out));
+  }
+}
+
+static bool convert_wellknown_struct_entry(upb_jsonparser* parser) {
+  upb_strview key;
+  size_t value_ofs;
+
+  CHK(parse_char2(kString, parser));
+
+  key = read_str(parser);
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+  CHK(write_varint(key.size, &parser->out));
+  CHK(write_str(key.data, key.size, &parser->out));
+
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, &parser->out));
+  value_ofs = buf_ofs(&parser->out);
+  CHK(convert_wellknown_value(parser));
+  CHK(insert_varint_len(value_ofs, &parser->out));
+
   return true;
 }
 
-static bool convert_float(const upb_fielddef* f, upb_jsonparser* parser) {
-  double d;
-  float flt;
-  CHK(read_double(f, &d, parser));
-  flt = d;
-  CHK(write_str(&f, 4, &parser->out));
+static bool convert_wellknown_struct(upb_jsonparser* parser) {
+  CHK(parse_char2(kObject, parser));
+
+  while (true) {
+    size_t entry_ofs;
+    if (peek_char2(parser) == kEnd) {
+      parser->ptr++;
+      return true;
+    }
+
+    /* map<string, Value> fields = 1; */
+    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+    entry_ofs = buf_ofs(&parser->out);
+    CHK(convert_wellknown_struct_entry(parser));
+    CHK(insert_varint_len(entry_ofs, &parser->out));
+  }
+}
+
+static bool convert_timestamp(upb_jsonparser* parser) {
   return true;
 }
 
-static bool convert_string(const upb_fielddef* f, upb_jsonparser* parser) {
-  upb_strview str;
-  CHK(consume_char2(parser) == kString);
-  str = read_str(parser);
-  CHK(put_varint(str.size, &parser->out));
-  CHK(write_str(str.data, str.size, &parser->out));
+static bool convert_duration(upb_jsonparser* parser) {
+  return true;
+}
+
+static bool convert_fieldmask(upb_jsonparser* parser) {
+  return true;
+}
+
+static bool convert_any(upb_jsonparser* parser) {
   return true;
 }
 
@@ -797,20 +861,96 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
 
   switch (upb_fielddef_type(f)) {
     case UPB_TYPE_BOOL:
-      return convert_bool(f, parser);
+      switch (consume_char2(parser)) {
+        case kFalse:
+          CHK(write_varint(0, &parser->out));
+          return true;
+        case kTrue:
+          CHK(write_varint(1, &parser->out));
+          return true;
+        default:
+          /* Should we accept 0/nonzero as true/false? */
+          return false;
+      }
     case UPB_TYPE_FLOAT:
-      return convert_float(f, parser);
-    case UPB_TYPE_DOUBLE:
-      return convert_double(f, parser);
-    case UPB_TYPE_UINT32:
-      return convert_int32(f, parser);
-    case UPB_TYPE_INT32:
-      return convert_int32(f, parser);
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT64:
-      break;
-    case UPB_TYPE_STRING:
-      return convert_string(f, parser);
+    case UPB_TYPE_DOUBLE: {
+      double d;
+      CHK(read_double(f, &d, parser));
+      if (upb_fielddef_type(f) == UPB_TYPE_FLOAT) {
+        float flt = d;
+        return write_str(&flt, 4, &parser->out);
+      } else {
+        return write_str(&d, 8, &parser->out);
+      }
+      return true;
+    }
+    case UPB_TYPE_UINT32: {
+      uint64_t u64;
+      uint32_t val;
+      CHK(read_uint64(parser, &u64) && u64 <= UINT32_MAX);
+      val = u64;
+      switch (upb_fielddef_descriptortype(f)) {
+        case UPB_DESCRIPTOR_TYPE_FIXED32:
+          return write_str(&val, 4, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_UINT32:
+          return write_varint(val, &parser->out);
+        default:
+          UPB_UNREACHABLE();
+      }
+    }
+    case UPB_TYPE_UINT64: {
+      uint64_t val;
+      CHK(read_uint64(parser, &val));
+      switch (upb_fielddef_descriptortype(f)) {
+        case UPB_DESCRIPTOR_TYPE_FIXED64:
+          return write_str(&val, 8, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_UINT64:
+          return write_varint(val, &parser->out);
+        default:
+          UPB_UNREACHABLE();
+      }
+    }
+    case UPB_TYPE_INT32: {
+      int64_t i64;
+      int32_t val;
+    int32_val:
+      CHK(read_int64(parser, &i64) && i64 <= INT32_MAX && i64 >= INT32_MIN);
+      val = i64;
+      switch (upb_fielddef_descriptortype(f)) {
+        case UPB_DESCRIPTOR_TYPE_SFIXED32:
+          return write_str(&val, 4, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_INT32:
+        case UPB_DESCRIPTOR_TYPE_ENUM:
+          return write_varint(val, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_SINT32:
+          return write_varint(zzencode_32(val), &parser->out);
+        default:
+          UPB_UNREACHABLE();
+      }
+    }
+    case UPB_TYPE_INT64: {
+      int64_t val;
+      CHK(read_int64(parser, &val));
+      switch (upb_fielddef_descriptortype(f)) {
+        case UPB_DESCRIPTOR_TYPE_SFIXED32:
+          return write_str(&val, 8, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_INT32:
+        case UPB_DESCRIPTOR_TYPE_ENUM:
+          return write_varint(val, &parser->out);
+        case UPB_DESCRIPTOR_TYPE_SINT32:
+          return write_varint(zzencode_64(val), &parser->out);
+        default:
+          UPB_UNREACHABLE();
+      }
+    }
+    case UPB_TYPE_STRING: {
+      upb_strview str;
+      CHK(consume_char2(parser) == kString);
+      str = read_str(parser);
+      CHK(write_varint(str.size, &parser->out));
+      CHK(write_str(str.data, str.size, &parser->out));
+      return true;
+    }
     case UPB_TYPE_BYTES:
       return base64_decode(f, parser);
     case UPB_TYPE_ENUM:
@@ -819,16 +959,21 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         const upb_enumdef* e = upb_fielddef_enumsubdef(f);
         int32_t num;
         CHK(upb_enumdef_ntoi(e, str.data, str.size, &num));
-        CHK(put_varint(num, &parser->out));
+        CHK(write_varint(num, &parser->out));
         return true;
       }
-      /* Fallthrough. */
+      goto int32_val;
     case UPB_TYPE_MESSAGE: {
       const upb_msgdef* m = upb_fielddef_msgsubdef(f);
       size_t ofs = buf_ofs(&parser->out);
       switch (upb_msgdef_wellknowntype(m)) {
         case UPB_WELLKNOWN_UNSPECIFIED:
-          return convert_json_object(m, parser);
+          CHK(convert_json_object(m, parser));
+          if (upb_fielddef_descriptortype(f) == UPB_DESCRIPTOR_TYPE_GROUP) {
+            return write_known_tag(UPB_WIRE_TYPE_END_GROUP,
+                                   upb_fielddef_number(f), &parser->out);
+          }
+          break;
         case UPB_WELLKNOWN_STRINGVALUE:
         case UPB_WELLKNOWN_BYTESVALUE:
         case UPB_WELLKNOWN_DOUBLEVALUE:
@@ -839,23 +984,30 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         case UPB_WELLKNOWN_INT32VALUE:
         case UPB_WELLKNOWN_BOOLVALUE:
           CHK(convert_json_value(upb_msgdef_itof(m, 1), parser));
-          CHK(insert_varint_len(ofs, &parser->out));
-          return true;
+          break;
         case UPB_WELLKNOWN_FIELDMASK:
-          CHK(parse_fieldmask(ofs, parser));
+          CHK(convert_fieldmask(parser));
           break;
         case UPB_WELLKNOWN_DURATION:
-          CHK(parse_duration(ofs, parser));
+          CHK(convert_duration(parser));
           break;
         case UPB_WELLKNOWN_TIMESTAMP:
-          CHK(parse_timestamp(ofs, parser));
+          CHK(convert_timestamp(parser));
           break;
         case UPB_WELLKNOWN_ANY:
+          CHK(convert_any(parser));
+          break;
         case UPB_WELLKNOWN_VALUE:
+          CHK(convert_wellknown_value(parser));
+          break;
         case UPB_WELLKNOWN_LISTVALUE:
+          CHK(convert_wellknown_listvalue(parser));
+          break;
         case UPB_WELLKNOWN_STRUCT:
-          return NULL;
+          CHK(convert_wellknown_struct(parser));
+          break;
       }
+      CHK(insert_varint_len(ofs, &parser->out));
     }
   }
 
@@ -915,7 +1067,7 @@ static bool convert_json_map(const upb_fielddef* f, upb_jsonparser* parser) {
   ofs = buf_ofs(&parser->out);
 
   while (true) {
-    if (peek_char(parser) == kEnd) {
+    if (peek_char2(parser) == kEnd) {
       parser->ptr++;
       break;
     }
@@ -936,7 +1088,7 @@ static bool convert_json_object(const upb_msgdef* m, upb_jsonparser* parser) {
   CHK(parse_char2(kObject, parser));
 
   while (true) {
-    if (peek_char(parser) == kEnd) {
+    if (peek_char2(parser) == kEnd) {
       parser->ptr++;
       break;
     }
@@ -968,11 +1120,20 @@ static bool convert_json_object(const upb_msgdef* m, upb_jsonparser* parser) {
   return true;
 }
 
-static char* parse_json_stage1(const char* buf, size_t len, int max_depth,
-                               upb_alloc* alloc, size_t* outlen,
-                               upb_status* s) {
-  jsonparser parser = {buf, buf + len, {alloc}, max_depth, s};
-  if (parse_json_object(&parser) && !skip_whitespace(&parser)) {
+char* _parse_json_stage1(const char* buf, size_t len, int max_depth,
+                         upb_alloc* alloc, size_t* outlen, upb_status* s) {
+  jsonparser parser;
+
+  parser.ptr = buf;
+  parser.end = buf + len;
+  parser.depth = max_depth;
+  parser.status = s;
+  parser.out.alloc = alloc;
+  parser.out.buf = NULL;
+  parser.out.ptr = NULL;
+  parser.out.end = NULL;
+
+  if (parse_json_value(&parser) && !skip_whitespace(&parser)) {
     *outlen = parser.out.ptr - parser.out.buf;
     return parser.out.buf;
   } else {
@@ -985,8 +1146,17 @@ static char* parse_json_stage2(const char* buf, size_t len, const upb_msgdef* m,
                                const upb_symtab* any_msgs, int options,
                                upb_alloc* alloc, size_t* outlen,
                                upb_status* s) {
-  upb_jsonparser parser = {buf, buf + len, {alloc}, m, any_msgs, s, options};
-  bool ok;
+  upb_jsonparser parser;
+
+  parser.ptr = buf;
+  parser.end = buf + len;
+  parser.any_msgs = any_msgs;
+  parser.status = s;
+  parser.options = options;
+  parser.out.alloc = alloc;
+  parser.out.buf = NULL;
+  parser.out.ptr = NULL;
+  parser.out.end = NULL;
 
   /* TODO: should we support various well-known types at the top-level, or
    * does the top-level need to be a regular message? */
@@ -1007,7 +1177,7 @@ char* upb_jsontobinary(const char* buf, size_t len, const upb_msgdef* m,
   size_t stage1_len;
 
   CHK(is_proto3(m));
-  CHK(stage1 = parse_json_stage1(buf, len, max_depth, alloc, &stage1_len, s));
+  CHK(stage1 = _parse_json_stage1(buf, len, max_depth, alloc, &stage1_len, s));
 
   stage2 = parse_json_stage2(stage1, stage1_len, m, any_msgs, options, alloc,
                              outlen, s);

@@ -103,7 +103,8 @@ cc_library(
     deps = [
         ":upb",
         ":reflection"
-    ]
+    ],
+    copts = COPTS,
 )
 
 # Internal C/C++ libraries #####################################################
@@ -269,6 +270,15 @@ cc_test(
         ":upb",
         ":upb_pb",
         ":upb_test",
+    ],
+)
+
+cc_test(
+    name = "test_json_generic",
+    srcs = ["tests/test_json_generic.c"],
+    copts = COPTS,
+    deps = [
+        ":json",
     ],
 )
 
