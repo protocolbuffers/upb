@@ -71,6 +71,23 @@ static void *upb_global_allocfunc(upb_alloc *alloc, void *ptr, size_t oldsize,
 
 upb_alloc upb_alloc_global = {&upb_global_allocfunc};
 
+char *upb_strdup2(const char *s, size_t len, upb_alloc *a) {
+  size_t n;
+  char *p;
+
+  /* Prevent overflow errors. */
+  if (len == SIZE_MAX) return NULL;
+  /* Always null-terminate, even if binary data; but don't rely on the input to
+   * have a null-terminating byte since it may be a raw binary buffer. */
+  n = len + 1;
+  p = upb_malloc(a, n);
+  if (p) {
+    memcpy(p, s, len);
+    p[len] = 0;
+  }
+  return p;
+}
+
 /* upb_arena ******************************************************************/
 
 /* Be conservative and choose 16 in case anyone is using SSE. */

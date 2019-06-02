@@ -47,7 +47,7 @@ bool strview_eql(upb_strview view, const char *str) {
 
 /* Stringify "str" to ensure it is static storage duration and will outlive. */
 #define SETERR(msg, err, str) \
-  conformance_ConformanceResponse_set_##err(msg, upb_strview_makez(#str))
+  conformance_ConformanceResponse_set_##err(msg, upb_strview_makez(str))
 
 static const char *proto3_msg =
     "protobuf_test_messages.proto3.TestAllTypesProto3";
@@ -61,6 +61,9 @@ void DoTest(
   upb_strview name = conformance_ConformanceRequest_message_type(request);
   const upb_msgdef *m = upb_symtab_lookupmsg2(symtab, name.data, name.size);
   upb_alloc *alloc = upb_arena_alloc(arena);
+  upb_status status;
+
+  upb_status_clear(&status);
 
   if (!m || !strview_eql(name, proto3_msg)) {
     SETERR(response, skipped, "Only proto3 for now.");
@@ -87,10 +90,12 @@ void DoTest(
       size_t bin_size;
       char *bin_buf;
 
-      bin_buf = upb_jsontobinary(json.data, json.size, m, 0, alloc, &bin_size);
+      bin_buf = upb_jsontobinary(json.data, json.size, m, NULL, 0, 32, alloc,
+                                 &bin_size, &status);
 
       if (!bin_buf) {
-        SETERR(response, parse_error, "Error parsing JSON input.");
+        SETERR(response, parse_error,
+               upb_strdup(upb_status_errmsg(&status), alloc));
         return;
       }
 
@@ -137,6 +142,7 @@ void DoTest(
       break;
     }
 
+      /*
     case conformance_JSON: {
       char *json_buf;
       size_t json_size;
@@ -161,7 +167,7 @@ void DoTest(
       conformance_ConformanceResponse_set_protobuf_payload(
           response, upb_strview_make(json_buf, json_size));
       break;
-    }
+    }*/
 
     default: {
       SETERR(response, skipped, "Unsupported output format.");

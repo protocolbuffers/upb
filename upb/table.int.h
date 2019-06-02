@@ -65,16 +65,6 @@ typedef struct {
 #define SET_TYPE(dest, val) dest = val
 #endif
 
-/* Like strdup(), which isn't always available since it's not ANSI C. */
-char *upb_strdup(const char *s, upb_alloc *a);
-/* Variant that works with a length-delimited rather than NULL-delimited string,
- * as supported by strtable. */
-char *upb_strdup2(const char *s, size_t len, upb_alloc *a);
-
-UPB_INLINE char *upb_gstrdup(const char *s) {
-  return upb_strdup(s, &upb_alloc_global);
-}
-
 UPB_INLINE void _upb_value_setval(upb_value *v, uint64_t val,
                                   upb_ctype_t ctype) {
   v->val = val;

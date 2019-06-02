@@ -39,27 +39,6 @@ int log2ceil(uint64_t v) {
   return UPB_MIN(UPB_MAXARRSIZE, ret);
 }
 
-char *upb_strdup(const char *s, upb_alloc *a) {
-  return upb_strdup2(s, strlen(s), a);
-}
-
-char *upb_strdup2(const char *s, size_t len, upb_alloc *a) {
-  size_t n;
-  char *p;
-
-  /* Prevent overflow errors. */
-  if (len == SIZE_MAX) return NULL;
-  /* Always null-terminate, even if binary data; but don't rely on the input to
-   * have a null-terminating byte since it may be a raw binary buffer. */
-  n = len + 1;
-  p = upb_malloc(a, n);
-  if (p) {
-    memcpy(p, s, len);
-    p[len] = 0;
-  }
-  return p;
-}
-
 /* A type to represent the lookup key of either a strtable or an inttable. */
 typedef union {
   uintptr_t num;

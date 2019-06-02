@@ -157,6 +157,12 @@ UPB_INLINE void upb_free(upb_alloc *alloc, void *ptr) {
   alloc->func(alloc, ptr, 0, 0);
 }
 
+char *upb_strdup2(const char *s, size_t len, upb_alloc *a);
+
+UPB_INLINE char *upb_strdup(const char *s, upb_alloc *a) {
+  return upb_strdup2(s, strlen(s), a);
+}
+
 /* The global allocator used by upb.  Uses the standard malloc()/free(). */
 
 extern upb_alloc upb_alloc_global;
@@ -176,6 +182,10 @@ UPB_INLINE void *upb_grealloc(void *ptr, size_t oldsize, size_t size) {
 
 UPB_INLINE void upb_gfree(void *ptr) {
   upb_free(&upb_alloc_global, ptr);
+}
+
+UPB_INLINE char *upb_gstrdup(const char *s) {
+  return upb_strdup(s, &upb_alloc_global);
 }
 
 /* upb_arena ******************************************************************/
