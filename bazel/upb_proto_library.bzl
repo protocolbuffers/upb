@@ -101,8 +101,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, dep_ccinfos):
 
     # Assume Bazel prerelease versions are ok.
     is_prerelease = (bazel_version == "")
-    new_enough = versions.is_at_least("0.25.2", bazel_version)
-    if not new_enough and not is_prerelease:
+    if not is_prerelease and not versions.is_at_least("0.25.2", bazel_version):
         fail("upb requires Bazel >=0.25.2 or 0.24.1")
 
     # copybara:strip_end
@@ -180,7 +179,7 @@ def _upb_proto_rule_impl(ctx):
              "_WrappedGeneratedSrcs (aspect should have handled this).")
     cc_info = dep[_WrappedCcInfo].cc_info
     srcs = dep[_WrappedGeneratedSrcs].srcs
-    lib = cc_info.linking_context.libraries_to_link[0]
+    lib = cc_info.linking_context.libraries_to_link.to_list()[0]
     files = _filter_none([
         lib.static_library,
         lib.pic_static_library,
