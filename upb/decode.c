@@ -5,29 +5,6 @@
 
 #include "upb/port_def.inc"
 
-/* Maps descriptor type -> upb field type.  */
-const uint8_t upb_desctype_to_fieldtype[] = {
-  UPB_WIRE_TYPE_END_GROUP,  /* ENDGROUP */
-  UPB_TYPE_DOUBLE,          /* DOUBLE */
-  UPB_TYPE_FLOAT,           /* FLOAT */
-  UPB_TYPE_INT64,           /* INT64 */
-  UPB_TYPE_UINT64,          /* UINT64 */
-  UPB_TYPE_INT32,           /* INT32 */
-  UPB_TYPE_UINT64,          /* FIXED64 */
-  UPB_TYPE_UINT32,          /* FIXED32 */
-  UPB_TYPE_BOOL,            /* BOOL */
-  UPB_TYPE_STRING,          /* STRING */
-  UPB_TYPE_MESSAGE,         /* GROUP */
-  UPB_TYPE_MESSAGE,         /* MESSAGE */
-  UPB_TYPE_BYTES,           /* BYTES */
-  UPB_TYPE_UINT32,          /* UINT32 */
-  UPB_TYPE_ENUM,            /* ENUM */
-  UPB_TYPE_INT32,           /* SFIXED32 */
-  UPB_TYPE_INT64,           /* SFIXED64 */
-  UPB_TYPE_INT32,           /* SINT32 */
-  UPB_TYPE_INT64,           /* SINT64 */
-};
-
 /* Data pertaining to the parse. */
 typedef struct {
   const char *ptr;           /* Current parsing position. */

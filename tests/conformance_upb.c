@@ -52,6 +52,7 @@ bool strview_eql(upb_strview view, const char *str) {
 static const char *proto3_msg =
     "protobuf_test_messages.proto3.TestAllTypesProto3";
 
+#include <ctype.h>
 void DoTest(
     const conformance_ConformanceRequest* request,
     conformance_ConformanceResponse *response,
@@ -89,15 +90,30 @@ void DoTest(
       upb_strview json = conformance_ConformanceRequest_json_payload(request);
       size_t bin_size;
       char *bin_buf;
+      size_t i;
 
       bin_buf = upb_jsontobinary(json.data, json.size, m, NULL, 0, 32, alloc,
                                  &bin_size, &status);
+
+      fprintf(stderr, "Parsing JSON %.*s\n", (int)json.size, json.data);
 
       if (!bin_buf) {
         SETERR(response, parse_error,
                upb_strdup(upb_status_errmsg(&status), alloc));
         return;
       }
+
+      fprintf(stderr, "Produced protobuf bytes: ");
+
+      for (i = 0; i < bin_size; i++) {
+        if (isprint(bin_buf[i])) {
+          fprintf(stderr, "%c ", bin_buf[i]);
+        } else {
+          fprintf(stderr, "\\x%02x ", (int)(unsigned char)bin_buf[i]);
+        }
+      }
+
+      fprintf(stderr, "\n");
 
       test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
           bin_buf, bin_size, arena);
