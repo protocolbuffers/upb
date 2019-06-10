@@ -8,6 +8,10 @@
 
 #include "upb/def.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct upb_jsonparser;
 typedef struct upb_jsonparser upb_jsonparser;
 
@@ -36,5 +40,9 @@ enum {
 
 char* _parse_json_stage1(const char* buf, size_t len, int max_depth,
                          upb_alloc* alloc, size_t* outlen, upb_status* s);
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
 
 #endif  /* UPB_JSON_H */

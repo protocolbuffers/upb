@@ -62,15 +62,10 @@ strpc *newstrpc(upb_handlers *h, const upb_fielddef *f,
   strpc *ret = upb_gmalloc(sizeof(*ret));
   if (preserve_fieldnames) {
     ret->ptr = upb_gstrdup(upb_fielddef_name(f));
-    ret->len = strlen(ret->ptr);
   } else {
-    size_t len;
-    ret->len = upb_fielddef_getjsonname(f, NULL, 0);
-    ret->ptr = upb_gmalloc(ret->len);
-    len = upb_fielddef_getjsonname(f, ret->ptr, ret->len);
-    UPB_ASSERT(len == ret->len);
-    ret->len--;  /* NULL */
+    ret->ptr = upb_gstrdup(upb_fielddef_jsonname(f));
   }
+  ret->len = strlen(ret->ptr);
 
   upb_handlers_addcleanup(h, ret, freestrpc);
   return ret;

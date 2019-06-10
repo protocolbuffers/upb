@@ -10,12 +10,14 @@
 
 #include "upb/port_def.inc"
 
-#define CHK(x)                                                                \
-  if (UPB_UNLIKELY(!(x))) {                                                   \
-    if (upb_ok(parser->status)) {                                             \
-      upb_status_seterrf(parser->status, "CHK failed on line: %d", __LINE__); \
-    }                                                                         \
-    return 0;                                                                 \
+#define CHK(x)                                                             \
+  if (UPB_UNLIKELY(!(x))) {                                                \
+    if (upb_ok(parser->status)) {                                          \
+      upb_status_seterrf(parser->status, "CHK failed on: %s:%d", __FILE__, \
+                         __LINE__);                                        \
+      __builtin_trap(); \
+    }                                                                      \
+    return 0;                                                              \
   }
 
 #define CHK2(x)             \
@@ -174,14 +176,14 @@ static bool has_n_bytes(size_t n, jsonparser* parser) {
 
 static bool parse_char(char ch, jsonparser* parser) {
   CHK(!is_eof(parser));
-  CHK(*parser->ptr == ch);
+  CHK2(*parser->ptr == ch);
   parser->ptr++;
   return true;
 }
 
 static bool parse_char_skipws(char ch, jsonparser* parser) {
   CHK(skip_whitespace(parser));
-  CHK(*parser->ptr == ch);
+  CHK2(*parser->ptr == ch);
   parser->ptr++;
   return true;
 }
@@ -534,16 +536,23 @@ static char consume_char2(upb_jsonparser* parser) {
   return ch;
 }
 
-static bool parse_char2(char ch, upb_jsonparser* parser) {
-  return consume_char2(parser) == ch;
+static bool parse_char2(char want_ch, upb_jsonparser* parser) {
+  char ch = peek_char2(parser);
+  CHK(ch);
+  CHK2(ch == want_ch);
+  parser->ptr++;
+  return true;
 }
 
 static upb_strview read_str(upb_jsonparser* parser) {
+  const char* str;
   int len;
   UPB_ASSERT(*(parser->ptr - 1) == kString);
   memcpy(&len, parser->ptr, sizeof(int));
   parser->ptr += sizeof(int);
-  return upb_strview_make(parser->ptr, len);
+  str = parser->ptr;
+  parser->ptr += len;
+  return upb_strview_make(str, len);
 }
 
 static double read_num(upb_jsonparser* parser) {
@@ -840,23 +849,29 @@ static bool convert_wellknown_struct(upb_jsonparser* parser) {
 }
 
 static bool convert_timestamp(upb_jsonparser* parser) {
-  return true;
+  return false;
 }
 
 static bool convert_duration(upb_jsonparser* parser) {
-  return true;
+  return false;
 }
 
 static bool convert_fieldmask(upb_jsonparser* parser) {
-  return true;
+  return false;
 }
 
 static bool convert_any(upb_jsonparser* parser) {
-  return true;
+  return false;
+}
+
+static bool is_map_key(const upb_fielddef* f) {
+  return upb_fielddef_number(f) == UPB_MAPENTRY_KEY &&
+         upb_msgdef_mapentry(upb_fielddef_containingtype(f));
 }
 
 static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
-  if (*parser->ptr == kNull) {
+  if (peek_char2(parser) == kNull) {
+    /* JSON "null" indicates a default value, so no need to encode anything. */
     parser->ptr++;
     return true;
   }
@@ -865,16 +880,29 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
 
   switch (upb_fielddef_type(f)) {
     case UPB_TYPE_BOOL:
-      switch (consume_char2(parser)) {
-        case kFalse:
-          CHK(write_varint(0, &parser->out));
-          return true;
-        case kTrue:
-          CHK(write_varint(1, &parser->out));
-          return true;
-        default:
-          /* Should we accept 0/nonzero as true/false? */
+      if (is_map_key(f)) {
+        upb_strview str;
+        CHK(parse_char2(kString, parser));
+        str = read_str(parser);
+        if (upb_strview_eql(str, upb_strview_makez("false"))) {
+          return write_varint(0, &parser->out);
+        } else if (upb_strview_eql(str, upb_strview_makez("true"))) {
+          return write_varint(1, &parser->out);
+        } else {
           return false;
+        }
+      } else {
+        switch (consume_char2(parser)) {
+          case kFalse:
+            CHK(write_varint(0, &parser->out));
+            return true;
+          case kTrue:
+            CHK(write_varint(1, &parser->out));
+            return true;
+          default:
+            /* Should we accept 0/nonzero as true/false? */
+            return false;
+        }
       }
     case UPB_TYPE_FLOAT:
     case UPB_TYPE_DOUBLE: {
@@ -918,7 +946,8 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
       int64_t i64;
       int32_t val;
     int32_val:
-      CHK(read_int64(parser, &i64) && i64 <= INT32_MAX && i64 >= INT32_MIN);
+      CHK(read_int64(parser, &i64));
+      CHK(i64 <= INT32_MAX && i64 >= INT32_MIN);
       val = i64;
       switch (upb_fielddef_descriptortype(f)) {
         case UPB_DESCRIPTOR_TYPE_SFIXED32:
@@ -949,14 +978,14 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
     }
     case UPB_TYPE_STRING: {
       upb_strview str;
-      CHK(consume_char2(parser) == kString);
+      CHK(parse_char2(kString, parser));
       str = read_str(parser);
       CHK(write_varint(str.size, &parser->out));
       CHK(write_str(str.data, str.size, &parser->out));
       return true;
     }
     case UPB_TYPE_BYTES:
-      CHK(consume_char2(parser) == kString);
+      CHK(parse_char2(kString, parser));
       return base64_decode(f, parser);
     case UPB_TYPE_ENUM:
       if (parse_char2(kString, parser)) {
@@ -1012,7 +1041,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
           CHK(convert_wellknown_struct(parser));
           break;
       }
-      CHK(insert_varint_len(ofs, &parser->out));
+      return insert_varint_len(ofs, &parser->out);
     }
   }
 
@@ -1023,7 +1052,7 @@ static void skip_json_value(upb_jsonparser* parser) {
   int depth = 0;
 
   do {
-    switch (*parser->ptr) {
+    switch (consume_char2(parser)) {
       case kObject:
       case kArray:
         depth++;
@@ -1099,9 +1128,9 @@ static bool convert_json_object(const upb_msgdef* m, upb_jsonparser* parser) {
       break;
     }
 
-    parse_char2(kString, parser);
+    CHK(parse_char2(kString, parser));
     name = read_str(parser);
-    f = upb_msgdef_ntof(m, name.data, name.size);
+    f = upb_msgdef_lookupjsonname(m, name.data, name.size);
 
     if (!f) {
       if (parser->options & UPB_JSON_IGNORE_UNKNOWN) {
@@ -1114,10 +1143,10 @@ static bool convert_json_object(const upb_msgdef* m, upb_jsonparser* parser) {
       }
     }
 
-    if (upb_fielddef_isseq(f)) {
-      CHK(convert_json_array(f, parser));
-    } else if (upb_fielddef_ismap(f)) {
+    if (upb_fielddef_ismap(f)) {
       CHK(convert_json_map(f, parser));
+    } else if (upb_fielddef_isseq(f)) {
+      CHK(convert_json_array(f, parser));
     } else {
       CHK(convert_json_value(f, parser));
     }

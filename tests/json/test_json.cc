@@ -11,6 +11,7 @@
 #include "upb/json/parser.h"
 #include "upb/json/printer.h"
 #include "upb/upb.h"
+#include "upb/json.h"
 
 #include <string>
 
@@ -246,11 +247,39 @@ void test_json_roundtrip() {
   }
 }
 
+void test_json_roundtrip2() {
+  upb::SymbolTable symtab;
+  upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
+  ASSERT(md);
+
+  for (const TestCase* test_case = kTestRoundtripMessages;
+       test_case->input != NULL; test_case++) {
+    upb::Arena arena;
+    upb::Status status;
+    size_t size;
+    /*
+    const char *expected =
+        (test_case->expected == EXPECT_SAME) ?
+        test_case->input :
+        test_case->expected;
+    */
+
+    printf("Parsing: %s\n", test_case->input);
+    upb_jsontobinary(test_case->input, strlen(test_case->input), md.ptr(), NULL,
+                     0, 32, arena.allocator(), &size, status.ptr());
+    if (!status.ok()) {
+      fprintf(stderr, "Error: %s\n", status.error_message());
+    }
+    ASSERT(status.ok());
+  }
+}
+
 extern "C" {
 int run_tests(int argc, char *argv[]) {
   UPB_UNUSED(argc);
   UPB_UNUSED(argv);
   test_json_roundtrip();
+  test_json_roundtrip2();
   return 0;
 }
 }

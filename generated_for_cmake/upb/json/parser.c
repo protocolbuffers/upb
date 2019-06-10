@@ -3280,12 +3280,10 @@ static upb_json_parsermethod *parsermethod_new(upb_json_codecache *c,
       upb_msg_field_next(&i)) {
     const upb_fielddef *f = upb_msg_iter_field(&i);
     upb_value v = upb_value_constptr(f);
-    char *buf;
+    const char *buf;
 
     /* Add an entry for the JSON name. */
-    size_t len = upb_fielddef_getjsonname(f, NULL, 0);
-    buf = upb_malloc(alloc, len);
-    upb_fielddef_getjsonname(f, buf, len);
+    buf = upb_fielddef_jsonname(f);
     upb_strtable_insert3(&m->name_table, buf, strlen(buf), v, alloc);
 
     if (strcmp(buf, upb_fielddef_name(f)) != 0) {

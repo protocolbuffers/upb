@@ -402,6 +402,7 @@ cc_test(
     deps = [
         ":test_json_upbproto",
         ":test_json_upbprotoreflection",
+        ":json",
         ":upb_json",
         ":upb_test",
     ],
