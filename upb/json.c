@@ -41,13 +41,11 @@ static const uint8_t upb_desctype_to_wiretype[] = {
       upb_status_seterrf(parser->status, "CHK failed on: %s:%d", __FILE__, \
                          __LINE__);                                        \
     }                                                                      \
-    fprintf(stderr, "CHK failed on %s:%d\n", __FILE__, __LINE__); \
     return 0;                                                              \
   }
 
 #define CHK2(x)             \
   if (UPB_UNLIKELY(!(x))) { \
-    fprintf(stderr, "CHK2 failed on %s:%d\n", __FILE__, __LINE__); \
     return 0;               \
   }
 
@@ -915,36 +913,29 @@ static bool convert_wellknown_struct(upb_jsonparser* parser) {
   }
 }
 
-static bool isleap(int year) {
-  return (year % 4) == 0 && (year % 100 != 0 || (year % 400) == 0);
-}
+/* Only works for positive numbers, but that's all we need. */
+static int div_round_up(int a, int b) { return (a + (b - 1)) / b; }
 
-static const uint16_t month_yday[2][13] = {
-    /* Normal years.  */
-    {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
-    /* Leap years.  */
-    {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}};
+static int epoch_days(int year, int month, int day) {
+  static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
+                                          181, 212, 243, 273, 304, 334};
+  int febs_since_0 = month > 2 ? year + 1 : year;
+  int days_since_0 = 365 * year + month_yday[month - 1] + (day - 1) +
+                     div_round_up(febs_since_0, 4) -
+                     div_round_up(febs_since_0, 100) +
+                     div_round_up(febs_since_0, 400);
 
-static int64_t epoch(int year, int yday, int hour, int min, int sec) {
-  const int64_t years = year - 1970;
-
-  const int64_t leap_days = years / 4 - years / 100 + years / 400;
-
-  const int64_t days = years * 365 + yday + leap_days;
-  const int64_t hours = days * 24 + hour;
-  const int64_t mins = hours * 60 + min;
-  const int64_t secs = mins * 60 + sec;
-  return secs;
+  /* Convert from 0-epoch (0001-01-01 BC) to Unix Epoch (1970-01-01 AD).
+   * Since the "BC" system does not have a year zero, 1 BC == year zero. */
+  return days_since_0 - 719528;
 }
 
 static int64_t upb_timegm(const struct tm *tp) {
-  const int year = tp->tm_year + 1900;
-
-  /* Calculate day of year from year, month, and day of month. */
-  const int mon_yday = month_yday[isleap(year)][tp->tm_mon] - 1;
-  const int yday = mon_yday + tp->tm_mday;
-
-  return epoch(year, yday, tp->tm_hour, tp->tm_min, tp->tm_sec);
+  int64_t ret = epoch_days(tp->tm_year, tp->tm_mon, tp->tm_mday);
+  ret = (ret * 24) + tp->tm_hour;
+  ret = (ret * 60) + tp->tm_min;
+  ret = (ret * 60) + tp->tm_sec;
+  return ret;
 }
 
 static bool upb_isdigit(char ch) { return ch >= '0' && ch <= '9'; }
@@ -1046,6 +1037,7 @@ static bool convert_timestamp(upb_jsonparser* parser, const upb_fielddef *f) {
         CHK(parse_char3(':', &str));
         CHK(parse_char3('0', &str));
         CHK(parse_char3('0', &str));
+        offset *= 60 * 60;
         seconds += (neg ? offset : -offset);
         break;
       case 'Z':
