@@ -17,3 +17,4 @@
 #undef _upb_snprintf
 #undef _upb_vsnprintf
 #undef _upb_va_copy
+#undef UPB_INFINITY

@@ -73,12 +73,15 @@
 
 #if __STDC_VERSION__ >= 199901L || __cplusplus >= 201103L
 /* C99/C++11 versions. */
+#include <math.h>
 #include <stdio.h>
 #define _upb_snprintf snprintf
 #define _upb_vsnprintf vsnprintf
 #define _upb_va_copy(a, b) va_copy(a, b)
+
+#define UPB_INFINITY INFINITY
 #elif defined __GNUC__
-/* A few hacky workarounds for functions not in C89.
+/* A few hacky workarounds for symbols not in C89.
  * For internal use only!
  * TODO(haberman): fix these by including our own implementations, or finding
  * another workaround.
@@ -86,8 +89,20 @@
 #define _upb_snprintf __builtin_snprintf
 #define _upb_vsnprintf __builtin_vsnprintf
 #define _upb_va_copy(a, b) __va_copy(a, b)
+
+/* C89 does not have an INFINITY macro. */
+#define UPB_INFINITY (1.0 / 0.0)
+#elif defined _MSC_VER && _MSC_VER >= 1900
+#include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
+#define _upb_snprintf snprintf
+#define _upb_vsnprintf vsnprintf
+#define _upb_va_copy(a, b) va_copy(a, b)
+
+#define UPB_INFINITY INFINITY
 #else
-#error Need implementations of [v]snprintf and va_copy
+#error Need implementations of [v]snprintf, va_copy, and INFINITY
 #endif
 
 #ifdef __cplusplus

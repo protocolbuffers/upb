@@ -947,7 +947,6 @@ static bool parse_number_from_buffer(upb_json_parser *p, const char *buf,
   upb_fieldtype_t type = upb_fielddef_type(p->top->f);
   double val;
   double dummy;
-  double inf = 1.0 / 0.0;  /* C89 does not have an INFINITY macro. */
 
   errno = 0;
 
@@ -1015,10 +1014,9 @@ static bool parse_number_from_buffer(upb_json_parser *p, const char *buf,
   }
 
   if (len == strlen("Infinity") && strcmp(buf, "Infinity") == 0) {
-    /* C89 does not have an INFINITY macro. */
-    val = inf;
+    val = UPB_INFINITY;
   } else if (len == strlen("-Infinity") && strcmp(buf, "-Infinity") == 0) {
-    val = -inf;
+    val = -UPB_INFINITY;
   } else {
     val = strtod(buf, &end);
     if (errno == ERANGE || end != bufend) {
@@ -1049,7 +1047,7 @@ static bool parse_number_from_buffer(upb_json_parser *p, const char *buf,
       upb_sink_putdouble(p->top->sink, parser_getsel(p), val);
       return true;
     case UPB_TYPE_FLOAT:
-      if ((val > FLT_MAX || val < -FLT_MAX) && val != inf && val != -inf) {
+      if ((val > FLT_MAX || val < -FLT_MAX) && val != UPB_INFINITY && val != -UPB_INFINITY) {
         return false;
       } else {
         upb_sink_putfloat(p->top->sink, parser_getsel(p), val);
