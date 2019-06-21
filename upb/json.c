@@ -720,6 +720,50 @@ static bool base64_decode(const upb_fielddef* f, upb_jsonparser* parser) {
   return true;
 }
 
+static const char* read_u64(const char* p, uint64_t* val) {
+  uint64_t x = 0;
+  while (true) {
+    unsigned c = *p++ - '0';
+    if (c >= 10) break;
+    if (x > ULONG_MAX / 10 || x * 10 > ULONG_MAX - c) {
+      return NULL;
+    }
+    x *= 10;
+    x += c;
+  }
+  *val = x;
+  return p;
+}
+
+static const char* read_u32(const char* ptr, uint32_t* val) {
+  uint64_t u64;
+  ptr = read_u64(ptr, &u64);
+  if (u64 > UINT32_MAX) return NULL;
+  *val = u64;
+  return ptr;
+}
+
+static const char* read_i64(const char* ptr, int64_t* val) {
+  bool neg = false;
+  uint64_t u64;
+  if (*ptr == '-') {
+    ptr++;
+    neg = true;
+  }
+  ptr = read_u64(ptr, &u64);
+  if (u64 > INT64_MAX + neg) return NULL;
+  *val = neg ? -u64 : u64;
+  return ptr;
+}
+
+static const char* read_i32(const char* ptr, int32_t* val) {
+  int64_t i64;
+  ptr = read_i64(ptr, &i64);
+  if (i64 > INT32_MAX || i64 < INT32_MIN) return NULL;
+  *val = i64;
+  return ptr;
+}
+
 #define READ_INT_BODY                                                     \
   switch (consume_char2(parser)) {                                        \
     case kNumber:                                                         \
@@ -760,18 +804,6 @@ static bool base64_decode(const upb_fielddef* f, upb_jsonparser* parser) {
       return false;                                                       \
   }                                                                       \
   UPB_UNREACHABLE();
-
-static bool read_int64(upb_jsonparser* parser, const upb_fielddef* f,
-                       int64_t* out) {
-  int64_t val = 0;
-  READ_INT_BODY
-}
-
-static bool read_uint64(upb_jsonparser* parser, const upb_fielddef* f,
-                        uint64_t* out) {
-  uint64_t val = 0;
-  READ_INT_BODY
-}
 
 #undef CONVERT_INT_BODY
 
@@ -940,7 +972,7 @@ static int64_t upb_timegm(const struct tm *tp) {
 
 static bool upb_isdigit(char ch) { return ch >= '0' && ch <= '9'; }
 
-static bool parse_number(int* num, upb_strview* str, int* digits) {
+static bool parse_int(int* num, upb_strview* str, int* digits) {
   *num = 0;
   *digits = 0;
   while (str->size > 0 && upb_isdigit(str->data[0])) {
@@ -953,9 +985,21 @@ static bool parse_number(int* num, upb_strview* str, int* digits) {
   return true;
 }
 
-static bool parse_number_digits(int* num, upb_strview* str, int digits) {
+static bool parse_int64(int64_t* num, upb_strview* str) {
+  *num = 0;
+  while (str->size > 0 && upb_isdigit(str->data[0])) {
+    *num *= 10;
+    *num += str->data[0] - '0';
+    str->data++;
+    str->size--;
+    *digits += 1;
+  }
+  return true;
+}
+
+static bool parse_int_digits(int* num, upb_strview* str, int digits) {
   int actual_digits;
-  CHK2(parse_number(num, str, &actual_digits));
+  CHK2(parse_int(num, str, &actual_digits));
   CHK2(digits == actual_digits);
   return true;
 }
@@ -980,17 +1024,17 @@ static bool convert_timestamp(upb_jsonparser* parser, const upb_fielddef *f) {
     struct tm time;
 
     /* 1972-01-01T01:00:00 */
-    CHK(parse_number_digits(&time.tm_year, &str, 4));
+    CHK(parse_int_digits(&time.tm_year, &str, 4));
     CHK(parse_char3('-', &str));
-    CHK(parse_number_digits(&time.tm_mon, &str, 2));
+    CHK(parse_int_digits(&time.tm_mon, &str, 2));
     CHK(parse_char3('-', &str));
-    CHK(parse_number_digits(&time.tm_mday, &str, 2));
+    CHK(parse_int_digits(&time.tm_mday, &str, 2));
     CHK(parse_char3('T', &str));
-    CHK(parse_number_digits(&time.tm_hour, &str, 2));
+    CHK(parse_int_digits(&time.tm_hour, &str, 2));
     CHK(parse_char3(':', &str));
-    CHK(parse_number_digits(&time.tm_min, &str, 2));
+    CHK(parse_int_digits(&time.tm_min, &str, 2));
     CHK(parse_char3(':', &str));
-    CHK(parse_number_digits(&time.tm_sec, &str, 2));
+    CHK(parse_int_digits(&time.tm_sec, &str, 2));
 
     seconds = upb_timegm(&time);
   }
@@ -1002,7 +1046,7 @@ static bool convert_timestamp(upb_jsonparser* parser, const upb_fielddef *f) {
     CHK(str.size > 0);
     if (str.data[0] == '.') {
       parse_char3('.', &str);
-      CHK(parse_number(&nanos, &str, &digits));
+      CHK(parse_int(&nanos, &str, &digits));
       switch (digits) {
         case 3:
           nanos *= 1000000;
@@ -1033,7 +1077,7 @@ static bool convert_timestamp(upb_jsonparser* parser, const upb_fielddef *f) {
         neg = true;
         /* Fallthrough. */
       case '+':
-        CHK(parse_number_digits(&offset, &str, 2));
+        CHK(parse_int_digits(&offset, &str, 2));
         CHK(parse_char3(':', &str));
         CHK(parse_char3('0', &str));
         CHK(parse_char3('0', &str));
@@ -1067,10 +1111,16 @@ static bool convert_timestamp(upb_jsonparser* parser, const upb_fielddef *f) {
 }
 
 static bool convert_duration(upb_jsonparser* parser, const upb_fielddef *f) {
-  upb_status_seterrf(parser->status,
-                     "Duration not yet implemented for field %f",
-                     upb_fielddef_name(f));
-  return false;
+  int64_t seconds;
+  int nanos = 0;
+  upb_strview str;
+
+  CHK(parse_char2(kString, parser));
+  str = read_str(parser);
+
+  /* int64 seconds = 1;
+   * int32 nanos = 2; */
+  return true;
 }
 
 static bool convert_fieldmask(upb_jsonparser* parser, const upb_fielddef *f) {
@@ -1185,7 +1235,11 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
     }
     case UPB_TYPE_INT64: {
       int64_t val;
-      CHK(read_int64(parser, f, &val));
+      if (try_parse_char2(kNumber, parser)) {
+        val = read_num(parser);
+      } else {
+        CHK(read_int64(parser, f, &val));
+      }
       switch (upb_fielddef_descriptortype(f)) {
         case UPB_DESCRIPTOR_TYPE_SFIXED64:
           return write_str(&val, 8, &parser->out);
