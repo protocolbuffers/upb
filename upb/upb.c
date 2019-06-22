@@ -17,7 +17,7 @@
  * this is safer and simpler. */
 static void nullz(upb_status *status) {
   const char *ellipsis = "...";
-  size_t len = strlen(ellipsis);
+  size_t len = strlen(ellipsis) + 1;
   UPB_ASSERT(sizeof(status->msg) > len);
   memcpy(status->msg + sizeof(status->msg) - len, ellipsis, len);
 }

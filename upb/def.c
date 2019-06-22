@@ -1539,7 +1539,8 @@ static bool build_filedef(
     } else if (streql_view(syntax, "proto3")) {
       file->syntax = UPB_SYNTAX_PROTO3;
     } else {
-      upb_status_seterrf(ctx->status, "Invalid syntax '%s'", syntax);
+      upb_status_seterrf(ctx->status, "Invalid syntax '" UPB_STRVIEW_FORMAT "'",
+                         UPB_STRVIEW_ARGS(syntax));
       return false;
     }
   } else {

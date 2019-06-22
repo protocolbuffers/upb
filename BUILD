@@ -499,7 +499,7 @@ cc_binary(
 make_shell_script(
     name = "gen_test_conformance_upb",
     out = "test_conformance_upb.sh",
-    contents = "external/com_google_protobuf/conformance_test_runner ./conformance_upb",
+    contents = "external/com_google_protobuf/conformance_test_runner --enforce_recommended ./conformance_upb",
 )
 
 sh_test(

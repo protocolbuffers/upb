@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <execinfo.h>
+#include <signal.h>
 
 #include "conformance/conformance.upb.h"
 #include "src/google/protobuf/test_messages_proto3.upb.h"
@@ -49,6 +51,16 @@ bool strview_eql(upb_strview view, const char *str) {
 #define SETERR(msg, err, str) \
   conformance_ConformanceResponse_set_##err(msg, upb_strview_makez(str))
 
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  size = backtrace(array, 10);
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 static const char *proto3_msg =
     "protobuf_test_messages.proto3.TestAllTypesProto3";
 
@@ -88,16 +100,21 @@ void DoTest(
 
     case conformance_ConformanceRequest_payload_json_payload: {
       upb_strview json = conformance_ConformanceRequest_json_payload(request);
+      int options = conformance_ConformanceRequest_test_category(request) ==
+                            conformance_JSON_IGNORE_UNKNOWN_PARSING_TEST
+                        ? UPB_JSON_IGNORE_UNKNOWN
+                        : 0;
       size_t bin_size;
       char *bin_buf;
       size_t i;
 
-      bin_buf = upb_jsontobinary(json.data, json.size, m, NULL, 0, 32, alloc,
-                                 &bin_size, &status);
-
       fprintf(stderr, "Parsing JSON %.*s\n", (int)json.size, json.data);
 
+      bin_buf = upb_jsontobinary(json.data, json.size, m, symtab, options, 32,
+                                 alloc, &bin_size, &status);
+
       if (!bin_buf) {
+        fprintf(stderr, "Parse error: '%s'\n", upb_status_errmsg(&status));
         SETERR(response, parse_error,
                upb_strdup(upb_status_errmsg(&status), alloc));
         return;
@@ -247,6 +264,7 @@ int main() {
   upb_symtab *symtab = upb_symtab_new();
 
   protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
+  signal(SIGSEGV, handler); 
 
   while (1) {
     if (!DoTestIo(symtab)) {
