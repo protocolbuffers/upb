@@ -7,14 +7,17 @@
 
 /* Data pertaining to the parse. */
 typedef struct {
+  /* Input side. */
   const char *ptr;           /* Current parsing position. */
   const char *field_start;   /* Start of this field. */
   const char *limit;         /* End of delimited region or end of buffer. */
+  int depth;
+  uint32_t end_group;  /* Set to field number of END_GROUP tag, if any. */
+
+  /* Output side. */
   char* msg;
   const upb_msglayout* layout;
   upb_arena *arena;
-  int depth;
-  uint32_t end_group;  /* Set to field number of END_GROUP tag, if any. */
 } upb_decoder;
 
 #define CHK(x) if (!(x)) { return 0; }

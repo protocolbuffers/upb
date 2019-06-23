@@ -12,9 +12,6 @@
 extern "C" {
 #endif
 
-struct upb_jsonparser;
-typedef struct upb_jsonparser upb_jsonparser;
-
 #define UPB_JSON_IGNORE_UNKNOWN 1
 
 char* upb_jsontobinary(const char* buf, size_t len, const upb_msgdef* m,
@@ -23,23 +20,6 @@ char* upb_jsontobinary(const char* buf, size_t len, const upb_msgdef* m,
 
 char* upb_binarytojson(const char* buf, size_t len, const upb_msgdef* m,
                        int options, upb_alloc* alloc, size_t* outlen);
-
-/* For internal use / testing only. *******************************************/
-
-enum {
-  /* 0 is reserved for errors. */
-  kEnd = 1,
-  kObject,
-  kArray,
-  kNumber,  /* kNumber <8 BYTE DOUBLE> */
-  kString,  /* kString <4 BYTE LENGTH> <STRING DATA> */
-  kTrue,
-  kFalse,
-  kNull
-};
-
-char* _parse_json_stage1(const char* buf, size_t len, int max_depth,
-                         upb_alloc* alloc, size_t* outlen, upb_status* s);
 
 #ifdef __cplusplus
 }  /* extern "C" */

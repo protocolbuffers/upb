@@ -49,18 +49,46 @@ static const uint8_t upb_desctype_to_wiretype[] = {
 
 /* Generic JSON parser ********************************************************/
 
+/* The first stage of parsing, this parses JSON text into an internal
+ * representation that can be processed by stage 2 (JsonValue below). */
+
+enum JsonValue {
+  /* 0 is reserved for errors. */
+  kEnd = 1,  /* Terminates kObject and kArray. */
+  kObject,   /* A sequence of pairs <kString, VALUE> follow. */
+  kArray,    /* A sequence of VALUEs follow. */
+  kNumber,   /* Followed by <8 BYTE DOUBLE> */
+  kString,   /* Followed by <4 BYTE LENGTH> <STRING DATA> */
+  kTrue,
+  kFalse,
+  kNull
+};
+
 typedef struct {
   const char* ptr;
   const char* end;
-  outbuf out;
   int depth;
+  outbuf out;
   upb_status* status;
 } jsonparser;
 
 static bool parse_json_object(jsonparser* parser);
 static bool parse_json_array(jsonparser* parser);
 
-/* Input buffer. */
+static bool insert_fixed_len(size_t ofs, jsonparser* parser) {
+  outbuf* out = &parser->out;
+  size_t len = buf_ofs(out) - ofs;
+  int intlen = len;
+  char* ptr = out->buf + ofs;
+
+  CHK(len <= INT_MAX);
+  CHK(reserve_bytes(4, out));
+  ptr = out->buf + ofs;
+  memmove(ptr + 4, ptr, len);
+  memcpy(ptr, &intlen, 4);
+  out->ptr += 4;
+  return true;
+}
 
 static bool is_whitespace(char ch) {
   switch (ch) {
@@ -289,7 +317,7 @@ static bool parse_json_string(jsonparser* parser) {
 done:
   CHK(write_str(span_start, parser->ptr - span_start, &parser->out));
   parser->ptr++;
-  CHK(insert_fixed_len(ofs, &parser->out));
+  CHK(insert_fixed_len(ofs, parser));
 
   return true;
 }
@@ -447,20 +475,33 @@ static bool parse_json_object(jsonparser* parser) {
  * properly terminated.
  */
 
-struct upb_jsonparser {
+typedef struct {
   const char* ptr;
   const char* end;
   outbuf out;
   const upb_symtab* any_msgs;
   upb_status *status;
   int options;
-};
+} upb_jsonparser;
 
 static bool convert_json_object(const upb_msgdef* m, upb_jsonparser* parser);
 static bool convert_json_field(const upb_msgdef* m, upb_jsonparser* parser);
 static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser);
 static bool convert_wellknown_value(upb_jsonparser* parser);
 static bool convert_wellknown(const upb_msgdef* m, upb_jsonparser* parser);
+
+static size_t encode_varint(uint64_t val, char *buf) {
+  size_t i;
+  if (val < 128) { buf[0] = val; return 1; }
+  i = 0;
+  while (val) {
+    uint8_t byte = val & 0x7fU;
+    val >>= 7;
+    if (val) byte |= 0x80U;
+    buf[i++] = byte;
+  }
+  return i;
+}
 
 static bool is_proto3(const upb_msgdef* m) {
   return upb_filedef_syntax(upb_msgdef_file(m)) == UPB_SYNTAX_PROTO3;
@@ -519,10 +560,46 @@ static double read_num(upb_jsonparser* parser) {
   return d;
 }
 
+static bool write_varint(uint64_t val, upb_jsonparser* parser) {
+  outbuf* out = &parser->out;
+  CHK(reserve_bytes(10, out));
+  out->ptr += encode_varint(val, out->ptr);
+  return true;
+}
+
+static bool write_known_tag(uint8_t wire_type, uint32_t fieldnum,
+                            upb_jsonparser* parser) {
+  UPB_ASSERT(wire_type <= 5 && wire_type >= 0);
+  return write_varint(wire_type | (fieldnum << 3), parser);
+}
+
+static bool write_string_field(uint32_t fieldnum, const char* buf,
+                               unsigned size, upb_jsonparser* parser) {
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, fieldnum, parser));
+  CHK(write_varint(size, parser));
+  return write_str(buf, size, &parser->out);
+}
+
 static bool write_tag(const upb_fielddef *f, upb_jsonparser* parser) {
   int wire_type = upb_desctype_to_wiretype[upb_fielddef_descriptortype(f)];
   int fieldnum = upb_fielddef_number(f);
-  return write_known_tag(wire_type, fieldnum, &parser->out);
+  return write_known_tag(wire_type, fieldnum, parser);
+}
+
+static bool insert_varint_len(size_t ofs, upb_jsonparser* parser) {
+  outbuf* out = &parser->out;
+  size_t len = buf_ofs(out) - ofs;
+  char varint[10];
+  size_t varint_len = encode_varint(len, varint);
+  char* ptr = out->buf + ofs;
+
+  CHK(len <= INT_MAX);
+  CHK(reserve_bytes(varint_len, out));
+  ptr = out->buf + ofs;
+  memmove(ptr + varint_len, ptr, len);
+  memcpy(ptr, varint, varint_len);
+  out->ptr += varint_len;
+  return true;
 }
 
 /* Base64 decoding. */
@@ -660,7 +737,7 @@ static bool base64_decode(const upb_fielddef* f, upb_jsonparser* parser) {
   }
 
 done:
-  insert_varint_len(ofs, &parser->out);
+  insert_varint_len(ofs, parser);
   return true;
 }
 
@@ -850,10 +927,10 @@ static bool convert_wellknown_listvalue(upb_jsonparser* parser) {
     }
 
     /* repeated Value values = 1; */
-    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
     ofs = buf_ofs(&parser->out);
     CHK(convert_wellknown_value(parser));
-    CHK(insert_varint_len(ofs, &parser->out));
+    CHK(insert_varint_len(ofs, parser));
   }
 }
 
@@ -864,12 +941,12 @@ static bool convert_wellknown_struct_entry(upb_jsonparser* parser) {
   /* map<string, Value> fields = 1; */
   CHK(parse_char2(kString, parser));
   key = read_str(parser);
-  CHK(write_string_field(1, key.data, key.size, &parser->out));
+  CHK(write_string_field(1, key.data, key.size, parser));
 
-  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, &parser->out));
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, parser));
   value_ofs = buf_ofs(&parser->out);
   CHK(convert_wellknown_value(parser));
-  CHK(insert_varint_len(value_ofs, &parser->out));
+  CHK(insert_varint_len(value_ofs, parser));
 
   return true;
 }
@@ -880,10 +957,10 @@ static bool convert_wellknown_struct(upb_jsonparser* parser) {
   while (!try_parse_char2(kEnd, parser)) {
     size_t entry_ofs;
     /* map<string, Value> fields = 1; */
-    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+    CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
     entry_ofs = buf_ofs(&parser->out);
     CHK(convert_wellknown_struct_entry(parser));
-    CHK(insert_varint_len(entry_ofs, &parser->out));
+    CHK(insert_varint_len(entry_ofs, parser));
   }
   return true;
 }
@@ -892,49 +969,49 @@ static bool convert_wellknown_value(upb_jsonparser* parser) {
   switch (consume_char2(parser)) {
     case kNull:
       /* NullValue null_value = 1; */
-      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 1, &parser->out));
-      CHK(write_varint(0, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 1, parser));
+      CHK(write_varint(0, parser));
       return true;
     case kNumber: {
       /* double number_value = 2; */
       double d = read_num(parser);
-      CHK(write_known_tag(UPB_WIRE_TYPE_64BIT, 2, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_64BIT, 2, parser));
       CHK(write_str(&d, 8, &parser->out));
       return true;
     }
     case kString: {
       /* string string_value = 3; */
       upb_strview str = read_str(parser);
-      CHK(write_string_field(3, str.data, str.size, &parser->out));
+      CHK(write_string_field(3, str.data, str.size, parser));
       return true;
     }
     case kTrue:
       /* bool bool_value = 4; */
-      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, &parser->out));
-      CHK(write_varint(1, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, parser));
+      CHK(write_varint(1, parser));
       return true;
     case kFalse:
-      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, &parser->out));
-      CHK(write_varint(0, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 4, parser));
+      CHK(write_varint(0, parser));
       return true;
     case kObject: {
       /* Struct struct_value = 5; */
       size_t ofs;
-      CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 5, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 5, parser));
       ofs = buf_ofs(&parser->out);
       parser->ptr--;
       CHK(convert_wellknown_struct(parser));
-      CHK(insert_varint_len(ofs, &parser->out));
+      CHK(insert_varint_len(ofs, parser));
       return true;
     }
     case kArray: {
       /* ListValue list_value = 6; */
       size_t ofs;
-      CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 6, &parser->out));
+      CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 6, parser));
       ofs = buf_ofs(&parser->out);
       parser->ptr--;
       CHK(convert_wellknown_listvalue(parser));
-      CHK(insert_varint_len(ofs, &parser->out));
+      CHK(insert_varint_len(ofs, parser));
       return true;
     }
   }
@@ -1067,10 +1144,10 @@ static bool convert_timestamp(upb_jsonparser* parser) {
 
   /* int64 seconds = 1;
    * int32 nanos = 2; */
-  write_known_tag(UPB_WIRE_TYPE_VARINT, 1, &parser->out);
-  write_varint(seconds, &parser->out);
-  write_known_tag(UPB_WIRE_TYPE_VARINT, 2, &parser->out);
-  write_varint(nanos, &parser->out);
+  write_known_tag(UPB_WIRE_TYPE_VARINT, 1, parser);
+  write_varint(seconds, parser);
+  write_known_tag(UPB_WIRE_TYPE_VARINT, 2, parser);
+  write_varint(nanos, parser);
   return true;
 }
 
@@ -1098,17 +1175,17 @@ static bool convert_duration(upb_jsonparser* parser) {
 
   /* int64 seconds = 1;
    * int32 nanos = 2; */
-  CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 1, &parser->out));
-  CHK(write_varint(seconds, &parser->out));
-  CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 2, &parser->out));
-  CHK(write_varint((int64_t)nanos, &parser->out));
+  CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 1, parser));
+  CHK(write_varint(seconds, parser));
+  CHK(write_known_tag(UPB_WIRE_TYPE_VARINT, 2, parser));
+  CHK(write_varint((int64_t)nanos, parser));
   return true;
 }
 
 static bool convert_fieldmask_field(const char* ptr, const char* end,
                                     upb_jsonparser* parser) {
   size_t ofs;
-  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, &parser->out));
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
   ofs = buf_ofs(&parser->out);
 
   /* fooBarBaz -> foo_bar_baz */
@@ -1122,7 +1199,7 @@ static bool convert_fieldmask_field(const char* ptr, const char* end,
     ptr++;
   }
 
-  return insert_varint_len(ofs, &parser->out);
+  return insert_varint_len(ofs, parser);
 }
 
 static bool convert_fieldmask(upb_jsonparser* parser) {
@@ -1173,7 +1250,7 @@ static const upb_msgdef* convert_any_typeurl(upb_jsonparser* parser) {
 
   CHK(parse_char2(kString, parser));
   ptr = read_str2(parser, &end);
-  CHK(write_string_field(1, ptr, end - ptr, &parser->out));
+  CHK(write_string_field(1, ptr, end - ptr, parser));
 
   /* type.googleapis.com/google.protobuf.Duration (we just strip to '/') */
   while (ptr < end && *ptr != '/') {
@@ -1211,7 +1288,7 @@ static bool convert_any(upb_jsonparser* parser) {
 
   /* string type_url = 1;
    * bytes value = 2; */
-  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, &parser->out));
+  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, parser));
   ofs = buf_ofs(&parser->out);
 
   /* Pick up fields before "@type" */
@@ -1227,7 +1304,7 @@ static bool convert_any(upb_jsonparser* parser) {
     CHK(convert_any_field(m, parser));
   }
 
-  CHK(insert_varint_len(ofs, &parser->out));
+  CHK(insert_varint_len(ofs, parser));
 
   return true;
 }
@@ -1283,7 +1360,7 @@ static bool convert_json_map(const upb_fielddef* f, upb_jsonparser* parser) {
     ofs = buf_ofs(&parser->out);
     CHK(convert_json_value(key, parser));
     CHK(convert_json_value(value, parser));
-    CHK(insert_varint_len(ofs, &parser->out));
+    CHK(insert_varint_len(ofs, parser));
   }
   return true;
 }
@@ -1355,7 +1432,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
           return write_str(&u32, 4, &parser->out);
         }
         case UPB_DESCRIPTOR_TYPE_UINT32:
-          return write_varint(u64, &parser->out);
+          return write_varint(u64, parser);
         default:
           UPB_UNREACHABLE();
       }
@@ -1367,7 +1444,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         case UPB_DESCRIPTOR_TYPE_FIXED64:
           return write_str(&u64, 8, &parser->out);
         case UPB_DESCRIPTOR_TYPE_UINT64:
-          return write_varint(u64, &parser->out);
+          return write_varint(u64, parser);
         default:
           UPB_UNREACHABLE();
       }
@@ -1383,9 +1460,9 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         }
         case UPB_DESCRIPTOR_TYPE_INT32:
         case UPB_DESCRIPTOR_TYPE_ENUM:
-          return write_varint(i64, &parser->out);
+          return write_varint(i64, parser);
         case UPB_DESCRIPTOR_TYPE_SINT32:
-          return write_varint(zzencode_32(i64), &parser->out);
+          return write_varint(zzencode_32(i64), parser);
         default:
           UPB_UNREACHABLE();
       }
@@ -1397,9 +1474,9 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         case UPB_DESCRIPTOR_TYPE_SFIXED64:
           return write_str(&i64, 8, &parser->out);
         case UPB_DESCRIPTOR_TYPE_INT64:
-          return write_varint(i64, &parser->out);
+          return write_varint(i64, parser);
         case UPB_DESCRIPTOR_TYPE_SINT64:
-          return write_varint(zzencode_64(i64), &parser->out);
+          return write_varint(zzencode_64(i64), parser);
         default:
           UPB_UNREACHABLE();
       }
@@ -1408,7 +1485,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
       upb_strview str;
       CHK(parse_char2(kString, parser));
       str = read_str(parser);
-      CHK(write_varint(str.size, &parser->out));
+      CHK(write_varint(str.size, parser));
       CHK(write_str(str.data, str.size, &parser->out));
       return true;
     }
@@ -1421,7 +1498,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         const upb_enumdef* e = upb_fielddef_enumsubdef(f);
         int32_t num;
         CHK(upb_enumdef_ntoi(e, str.data, str.size, &num));
-        CHK(write_varint(num, &parser->out));
+        CHK(write_varint(num, parser));
         return true;
       }
       goto int32_val;
@@ -1432,12 +1509,12 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
         CHK(convert_json_object(m, parser));
         if (upb_fielddef_descriptortype(f) == UPB_DESCRIPTOR_TYPE_GROUP) {
           return write_known_tag(UPB_WIRE_TYPE_END_GROUP,
-                                 upb_fielddef_number(f), &parser->out);
+                                 upb_fielddef_number(f), parser);
         }
       } else {
         CHK(convert_wellknown(m, parser));
       }
-      return insert_varint_len(ofs, &parser->out);
+      return insert_varint_len(ofs, parser);
     }
   }
 

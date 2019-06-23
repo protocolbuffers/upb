@@ -9,19 +9,6 @@
     return 0;               \
   }
 
-static size_t encode_varint(uint64_t val, char *buf) {
-  size_t i;
-  if (val < 128) { buf[0] = val; return 1; }
-  i = 0;
-  while (val) {
-    uint8_t byte = val & 0x7fU;
-    val >>= 7;
-    if (val) byte |= 0x80U;
-    buf[i++] = byte;
-  }
-  return i;
-}
-
 typedef struct {
   upb_alloc* alloc;
   char* ptr;
@@ -51,73 +38,30 @@ UPB_NOINLINE static char* realloc_buf(size_t bytes, outbuf* out) {
   return out->ptr;
 }
 
-static char* reserve_bytes(size_t bytes, outbuf* out) {
+UPB_INLINE char* reserve_bytes(size_t bytes, outbuf* out) {
   size_t have = out->end - out->ptr;
   return (have >= bytes) ? out->ptr : realloc_buf(bytes, out);
 }
 
-static bool write_str(const void* str, size_t n, outbuf* out) {
+UPB_INLINE bool write_str(const void* str, size_t n, outbuf* out) {
   CHK(reserve_bytes(n, out));
   memcpy(out->ptr, str, n);
   out->ptr += n;
   return true;
 }
 
-static bool write_char(char ch, outbuf* out) {
+UPB_INLINE bool write_strz(const void* str, outbuf* out) {
+  return write_str(str, strlen(str), out);
+}
+
+UPB_INLINE bool write_char(char ch, outbuf* out) {
   CHK(reserve_bytes(1, out));
   *out->ptr = ch;
   out->ptr++;
   return true;
 }
 
-static bool write_varint(uint64_t val, outbuf* out) {
-  CHK(reserve_bytes(10, out));
-  out->ptr += encode_varint(val, out->ptr);
-  return true;
-}
-
-static bool write_known_tag(uint8_t wire_type, uint32_t fieldnum, outbuf* out) {
-  UPB_ASSERT(wire_type <= 5 && wire_type >= 0);
-  return write_varint(wire_type | (fieldnum << 3), out);
-}
-
-static bool write_string_field(uint32_t fieldnum, const char* buf,
-                               unsigned size, outbuf* out) {
-  CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, fieldnum, out));
-  CHK(write_varint(size, out));
-  return write_str(buf, size, out);
-}
-
 static size_t buf_ofs(outbuf* out) { return out->ptr - out->buf; }
-
-static bool insert_fixed_len(size_t ofs, outbuf* out) {
-  size_t len = buf_ofs(out) - ofs;
-  int intlen = len;
-  char* ptr = out->buf + ofs;
-
-  CHK(len <= INT_MAX);
-  CHK(reserve_bytes(4, out));
-  ptr = out->buf + ofs;
-  memmove(ptr + 4, ptr, len);
-  memcpy(ptr, &intlen, 4);
-  out->ptr += 4;
-  return true;
-}
-
-static bool insert_varint_len(size_t ofs, outbuf* out) {
-  size_t len = buf_ofs(out) - ofs;
-  char varint[10];
-  size_t varint_len = encode_varint(len, varint);
-  char* ptr = out->buf + ofs;
-
-  CHK(len <= INT_MAX);
-  CHK(reserve_bytes(varint_len, out));
-  ptr = out->buf + ofs;
-  memmove(ptr + varint_len, ptr, len);
-  memcpy(ptr, varint, varint_len);
-  out->ptr += varint_len;
-  return true;
-}
 
 #undef CHK
 
