@@ -1315,10 +1315,7 @@ static bool convert_any(upb_jsonparser* parser) {
   CHK(parse_char2(kObject, parser));
   start = parser->ptr;
 
-  /* string type_url = 1;
-   * bytes value = 2; */
-
-  /* Scan looking for the message type, which is not necessarily first. */
+  /* Scan looking for "@type", which is not necessarily first. */
   while (true) {
     upb_strview str;
     type = parser->ptr;
@@ -1332,6 +1329,8 @@ static bool convert_any(upb_jsonparser* parser) {
     }
   }
 
+  /* string type_url = 1;
+   * bytes value = 2; */
   CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, &parser->out));
   ofs = buf_ofs(&parser->out);
 
@@ -1384,11 +1383,6 @@ static bool convert_wellknown(const upb_msgdef* m, upb_jsonparser* parser) {
   }
 }
 
-static bool is_map_key(const upb_fielddef* f) {
-  return upb_fielddef_number(f) == UPB_MAPENTRY_KEY &&
-         upb_msgdef_mapentry(upb_fielddef_containingtype(f));
-}
-
 static bool convert_json_array(const upb_fielddef* f, upb_jsonparser* parser) {
   CHK(parse_char2(kArray, parser));
   while (!try_parse_char2(kEnd, parser)) {
@@ -1414,46 +1408,50 @@ static bool convert_json_map(const upb_fielddef* f, upb_jsonparser* parser) {
   return true;
 }
 
-/* google.protobuf.Value is the only type that emits output for "null" */
-static bool is_value(const upb_fielddef* f) {
-  return upb_fielddef_issubmsg(f) &&
-         upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(f)) ==
-             UPB_WELLKNOWN_VALUE;
+static bool read_bool(const upb_fielddef* f, bool* b, upb_jsonparser* parser) {
+  bool is_map_key = upb_fielddef_number(f) == UPB_MAPENTRY_KEY &&
+                    upb_msgdef_mapentry(upb_fielddef_containingtype(f));
+  if (is_map_key) {
+    /* In map keys, bools are quoted strings. */
+    upb_strview str;
+    CHK(parse_char2(kString, parser));
+    str = read_str(parser);
+    if (upb_strview_eql(str, upb_strview_makez("false"))) {
+      *b = 0;
+      return true;
+    } else if (upb_strview_eql(str, upb_strview_makez("true"))) {
+      *b = 1;
+      return true;
+    } else {
+      upb_status_seterrf(parser->status, "Invalid key for bool map: %.*s",
+                         (int)str.size, str.data);
+      return false;
+    }
+  } else {
+    switch (consume_char2(parser)) {
+      case kFalse:
+        *b = 0;
+        return true;
+      case kTrue:
+        *b = 1;
+        return true;
+      default:
+        /* Should we accept 0/nonzero as true/false? */
+        upb_status_seterrf(parser->status, "Invalid value for bool field: %s",
+                           upb_fielddef_name(f));
+        return false;
+    }
+  }
 }
 
 static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
   CHK(write_tag(f, parser));
   switch (upb_fielddef_type(f)) {
-    case UPB_TYPE_BOOL:
-      if (is_map_key(f)) {
-        upb_strview str;
-        CHK(parse_char2(kString, parser));
-        str = read_str(parser);
-        if (upb_strview_eql(str, upb_strview_makez("false"))) {
-          return write_varint(0, &parser->out);
-        } else if (upb_strview_eql(str, upb_strview_makez("true"))) {
-          return write_varint(1, &parser->out);
-        } else {
-          upb_status_seterrf(parser->status, "Invalid key for bool map: %.*s",
-                             (int)str.size, str.data);
-          return false;
-        }
-      } else {
-        switch (consume_char2(parser)) {
-          case kFalse:
-            CHK(write_varint(0, &parser->out));
-            return true;
-          case kTrue:
-            CHK(write_varint(1, &parser->out));
-            return true;
-          default:
-            /* Should we accept 0/nonzero as true/false? */
-            upb_status_seterrf(parser->status,
-                               "Invalid value for bool field: %s",
-                               upb_fielddef_name(f));
-            return false;
-        }
-      }
+    case UPB_TYPE_BOOL: {
+      bool b;
+      CHK(read_bool(f, &b, parser));
+      return write_char(b, &parser->out);
+    }
     case UPB_TYPE_FLOAT:
     case UPB_TYPE_DOUBLE: {
       double d;
@@ -1561,6 +1559,13 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
   }
 
   UPB_UNREACHABLE();
+}
+
+/* google.protobuf.Value is the only type that emits output for "null" */
+static bool is_value(const upb_fielddef* f) {
+  return upb_fielddef_issubmsg(f) &&
+         upb_msgdef_wellknowntype(upb_fielddef_msgsubdef(f)) ==
+             UPB_WELLKNOWN_VALUE;
 }
 
 static bool convert_json_field(const upb_msgdef* m, upb_jsonparser* parser) {
