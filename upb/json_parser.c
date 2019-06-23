@@ -586,6 +586,11 @@ static bool write_tag(const upb_fielddef *f, upb_jsonparser* parser) {
   return write_known_tag(wire_type, fieldnum, parser);
 }
 
+static size_t prepare_varint_insert(upb_jsonparser* parser) {
+  /* API allows pre-reserving space here if we desire. */
+  return buf_ofs(&parser->out);
+}
+
 static bool insert_varint_len(size_t ofs, upb_jsonparser* parser) {
   outbuf* out = &parser->out;
   size_t len = buf_ofs(out) - ofs;
@@ -705,7 +710,7 @@ static bool handle_nonb64(const char* ptr, const char* end,
 
 static bool base64_decode(const upb_fielddef* f, upb_jsonparser* parser) {
   upb_strview str = read_str(parser);
-  size_t ofs = buf_ofs(&parser->out);
+  size_t ofs = prepare_varint_insert(parser);
   const char* ptr = str.data;
   const char *end = str.data + str.size;
 
@@ -928,7 +933,7 @@ static bool convert_wellknown_listvalue(upb_jsonparser* parser) {
 
     /* repeated Value values = 1; */
     CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
-    ofs = buf_ofs(&parser->out);
+    ofs = prepare_varint_insert(parser);
     CHK(convert_wellknown_value(parser));
     CHK(insert_varint_len(ofs, parser));
   }
@@ -998,7 +1003,7 @@ static bool convert_wellknown_value(upb_jsonparser* parser) {
       /* Struct struct_value = 5; */
       size_t ofs;
       CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 5, parser));
-      ofs = buf_ofs(&parser->out);
+      ofs = prepare_varint_insert(parser);
       parser->ptr--;
       CHK(convert_wellknown_struct(parser));
       CHK(insert_varint_len(ofs, parser));
@@ -1008,7 +1013,7 @@ static bool convert_wellknown_value(upb_jsonparser* parser) {
       /* ListValue list_value = 6; */
       size_t ofs;
       CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 6, parser));
-      ofs = buf_ofs(&parser->out);
+      ofs = prepare_varint_insert(parser);
       parser->ptr--;
       CHK(convert_wellknown_listvalue(parser));
       CHK(insert_varint_len(ofs, parser));
@@ -1186,7 +1191,7 @@ static bool convert_fieldmask_field(const char* ptr, const char* end,
                                     upb_jsonparser* parser) {
   size_t ofs;
   CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
-  ofs = buf_ofs(&parser->out);
+  ofs = prepare_varint_insert(parser);
 
   /* fooBarBaz -> foo_bar_baz */
   while (ptr < end) {
@@ -1289,7 +1294,7 @@ static bool convert_any(upb_jsonparser* parser) {
   /* string type_url = 1;
    * bytes value = 2; */
   CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 2, parser));
-  ofs = buf_ofs(&parser->out);
+  ofs = prepare_varint_insert(parser);
 
   /* Pick up fields before "@type" */
   after_type = parser->ptr;
@@ -1357,7 +1362,7 @@ static bool convert_json_map(const upb_fielddef* f, upb_jsonparser* parser) {
   while (!try_parse_char2(kEnd, parser)) {
     size_t ofs;
     CHK(write_tag(f, parser));
-    ofs = buf_ofs(&parser->out);
+    ofs = prepare_varint_insert(parser);
     CHK(convert_json_value(key, parser));
     CHK(convert_json_value(value, parser));
     CHK(insert_varint_len(ofs, parser));
@@ -1504,7 +1509,7 @@ static bool convert_json_value(const upb_fielddef* f, upb_jsonparser* parser) {
       goto int32_val;
     case UPB_TYPE_MESSAGE: {
       const upb_msgdef* m = upb_fielddef_msgsubdef(f);
-      size_t ofs = buf_ofs(&parser->out);
+      size_t ofs = prepare_varint_insert(parser);
       if (upb_msgdef_wellknowntype(m) == UPB_WELLKNOWN_UNSPECIFIED) {
         CHK(convert_json_object(m, parser));
         if (upb_fielddef_descriptortype(f) == UPB_DESCRIPTOR_TYPE_GROUP) {
