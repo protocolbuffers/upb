@@ -166,12 +166,9 @@ static char consume_char(jsonparser* parser) {
 
 static bool skip_digits(jsonparser* parser) {
   const char* start = parser->ptr;
+  unsigned ch;
 
-  while (true) {
-    char ch = peek_char(parser);
-    if (ch < '0' || ch > '9') {
-      break;
-    }
+  while (ch = peek_char(parser) - '0', ch < 10) {
     parser->ptr++;
   }
 
@@ -295,18 +292,19 @@ static bool parse_json_string(jsonparser* parser) {
   span_start = parser->ptr;
   ofs = buf_ofs(&parser->out);
 
-  while (true) {
+  while (!is_eof(parser)) {
     /* TODO: validate UTF-8. */
-    switch (peek_char(parser)) {
+    switch (*parser->ptr) {
       case '"':
-        goto done;
+        CHK(write_str(span_start, parser->ptr - span_start, &parser->out));
+        parser->ptr++;
+        CHK(insert_fixed_len(ofs, parser));
+        return true;
       case '\\':
         CHK(write_str(span_start, parser->ptr - span_start, &parser->out));
         CHK(parse_escape(parser));
         span_start = parser->ptr;
         break;
-      case 0:
-        return false;
       default:
         CHK((unsigned char)*parser->ptr >= 0x20);
         parser->ptr++;
@@ -314,12 +312,7 @@ static bool parse_json_string(jsonparser* parser) {
     }
   }
 
-done:
-  CHK(write_str(span_start, parser->ptr - span_start, &parser->out));
-  parser->ptr++;
-  CHK(insert_fixed_len(ofs, parser));
-
-  return true;
+  return false;
 }
 
 static bool parse_json_number(jsonparser* parser) {
@@ -925,11 +918,8 @@ static bool read_double(const upb_fielddef* f, double* d,
 static bool convert_wellknown_listvalue(upb_jsonparser* parser) {
   CHK(parse_char2(kArray, parser));
 
-  while (true) {
+  while (!try_parse_char2(kEnd, parser)) {
     size_t ofs;
-    if (try_parse_char2(kEnd, parser)) {
-      return true;
-    }
 
     /* repeated Value values = 1; */
     CHK(write_known_tag(UPB_WIRE_TYPE_DELIMITED, 1, parser));
@@ -937,6 +927,7 @@ static bool convert_wellknown_listvalue(upb_jsonparser* parser) {
     CHK(convert_wellknown_value(parser));
     CHK(insert_varint_len(ofs, parser));
   }
+  return true;
 }
 
 static bool convert_wellknown_struct_entry(upb_jsonparser* parser) {
@@ -1268,7 +1259,7 @@ static const upb_msgdef* convert_any_typeurl(upb_jsonparser* parser) {
 }
 
 static bool convert_any(upb_jsonparser* parser) {
-  const upb_msgdef *m;
+  const upb_msgdef *m = NULL;
   size_t ofs;
   const char* start;
   const char* type;
@@ -1278,14 +1269,20 @@ static bool convert_any(upb_jsonparser* parser) {
   start = parser->ptr;
 
   /* Scan looking for "@type", which is not necessarily first. */
-  while (true) {
+  while (!m) {
     upb_strview str;
     type = parser->ptr;
-    CHK(parse_char2(kString, parser));
+
+    if (!parse_char2(kString, parser)) {
+      upb_status_seterrf(parser->status,
+                         "Any message did not contain @type field");
+      return false;
+    }
     str = read_str(parser);
+
     if (upb_strview_eql(str, upb_strview_makez("@type"))) {
       m = convert_any_typeurl(parser);
-      break;
+      CHK(m);
     } else {
       skip_json_value(parser);
     }

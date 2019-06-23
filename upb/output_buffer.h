@@ -2,6 +2,10 @@
 #ifndef UPB_OUTPUT_BUFFER_H_
 #define UPB_OUTPUT_BUFFER_H_
 
+#include <limits.h>
+
+#include "upb/upb.h"
+
 #include "upb/port_def.inc"
 
 #define CHK(x)              \
