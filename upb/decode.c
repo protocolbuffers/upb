@@ -24,7 +24,7 @@ typedef struct {
 
 #define CHK(x) if (!(x)) { return 0; }
 
-static bool upb_skip_unknowngroup(upb_decstate *d, int field_number);
+static bool upb_skip_unknowngroup(upb_decstate *d, uint32_t field_number);
 static bool upb_decode_message(upb_decstate *d, char *msg,
                                const upb_msglayout *l);
 
@@ -102,8 +102,7 @@ static bool upb_append_unknown(upb_decstate *d, upb_decframe *frame) {
 }
 
 
-static bool upb_skip_unknownfielddata(upb_decstate *d, uint32_t tag,
-                                      uint32_t group_fieldnum) {
+static bool upb_skip_unknownfielddata(upb_decstate *d, uint32_t tag) {
   switch (tag & 7) {
     case UPB_WIRE_TYPE_VARINT: {
       uint64_t val;
@@ -126,16 +125,17 @@ static bool upb_skip_unknownfielddata(upb_decstate *d, uint32_t tag,
     case UPB_WIRE_TYPE_START_GROUP:
       return upb_skip_unknowngroup(d, tag >> 3);
     case UPB_WIRE_TYPE_END_GROUP:
-      return (tag >> 3) == group_fieldnum;
+      d->end_group = tag >> 3;
+      return true;
   }
   return false;
 }
 
-static bool upb_skip_unknowngroup(upb_decstate *d, int field_number) {
+static bool upb_skip_unknowngroup(upb_decstate *d, uint32_t field_number) {
   while (d->ptr < d->limit && d->end_group == 0) {
     uint32_t tag = 0;
     CHK(upb_decode_varint32(&d->ptr, d->limit, &tag));
-    CHK(upb_skip_unknownfielddata(d, tag, field_number));
+    CHK(upb_skip_unknownfielddata(d, tag));
   }
 
   CHK(d->end_group == field_number);
@@ -543,7 +543,7 @@ static bool upb_decode_field(upb_decstate *d, upb_decframe *frame) {
     }
   } else {
     CHK(field_number != 0);
-    CHK(upb_skip_unknownfielddata(d, tag, -1));
+    CHK(upb_skip_unknownfielddata(d, tag));
     CHK(upb_append_unknown(d, frame));
     return true;
   }
