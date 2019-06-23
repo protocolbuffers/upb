@@ -106,31 +106,15 @@ void DoTest(
                         : 0;
       size_t bin_size;
       char *bin_buf;
-      size_t i;
-
-      fprintf(stderr, "Parsing JSON %.*s\n", (int)json.size, json.data);
 
       bin_buf = upb_jsontobinary(json.data, json.size, m, symtab, options, 32,
                                  alloc, &bin_size, &status);
 
       if (!bin_buf) {
-        fprintf(stderr, "Parse error: '%s'\n", upb_status_errmsg(&status));
         SETERR(response, parse_error,
                upb_strdup(upb_status_errmsg(&status), alloc));
         return;
       }
-
-      fprintf(stderr, "Produced protobuf bytes: ");
-
-      for (i = 0; i < bin_size; i++) {
-        if (isprint(bin_buf[i])) {
-          fprintf(stderr, "%c ", bin_buf[i]);
-        } else {
-          fprintf(stderr, "\\x%02x ", (int)(unsigned char)bin_buf[i]);
-        }
-      }
-
-      fprintf(stderr, "\n");
 
       test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
           bin_buf, bin_size, arena);
