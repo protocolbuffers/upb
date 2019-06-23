@@ -151,8 +151,6 @@ static bool skip_digits(jsonparser* parser) {
   return parser->ptr != start;
 }
 
-/* Generic JSON parser. */
-
 static bool parse_hex_digit(char ch, int* digit) {
   if (ch >= '0' && ch <= '9') {
     *digit = (ch - '0');
