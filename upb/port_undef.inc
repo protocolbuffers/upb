@@ -14,6 +14,7 @@
 #undef UPB_ASSERT
 #undef UPB_ASSERT_DEBUGVAR
 #undef UPB_UNREACHABLE
+#undef UPB_ATTRIBUTE_FORMAT_PRINTF
 #undef _upb_snprintf
 #undef _upb_vsnprintf
 #undef _upb_va_copy

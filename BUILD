@@ -121,7 +121,7 @@ cc_library(
 
 cc_library(
     name = "json",
-    srcs = ["upb/json.c"],
+    srcs = ["upb/json_parser.c"],
     hdrs = ["upb/json.h"],
     deps = [
         ":upb",

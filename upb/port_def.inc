@@ -122,3 +122,9 @@
 #else
 #define UPB_UNREACHABLE() do { assert(0); } while(0)
 #endif
+
+#ifdef __GNUC__
+#define UPB_ATTRIBUTE_FORMAT_PRINTF(x, y) __attribute__((format(printf, x, y)))
+#else
+#define UPB_ATTRIBUTE_FORMAT_PRINTF(x, y)
+#endif
