@@ -14,8 +14,6 @@
 
 #include "upb/port_def.inc"
 
-#include <stdio.h>
-/* Maps descriptor type -> wire type.  */
 static const uint8_t upb_desctype_to_wiretype[] = {
   UPB_WIRE_TYPE_END_GROUP,      /* ENDGROUP */
   UPB_WIRE_TYPE_64BIT,          /* DOUBLE */
@@ -320,12 +318,11 @@ static bool parse_json_number(jsonparser* parser) {
   char* end;
   double d;
 
-  /* No need to check return. */
-  parse_char('-', parser);
-
-  if (!parse_char('0', parser)) {
-    CHK(skip_digits(parser));
+  if (peek_char(parser) == '-') {
+    parser->ptr++;
   }
+
+  CHK(parse_char('0', parser) || skip_digits(parser));
 
   if (is_eof(parser)) goto parse;
 
