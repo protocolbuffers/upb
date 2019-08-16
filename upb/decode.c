@@ -49,7 +49,7 @@ static bool upb_decode_varint32(const char **ptr, const char *limit,
                                 uint32_t *val) {
   uint64_t u64;
   CHK(upb_decode_varint(ptr, limit, &u64) && u64 <= UINT32_MAX);
-  *val = u64;
+  *val = (uint32_t)u64;
   return true;
 }
 
@@ -393,7 +393,10 @@ static bool upb_decode_toarray(upb_decoder *d, const upb_msglayout_field *field,
   upb_array *arr = upb_getorcreatearr(d, field);
   CHK(arr);
 
-#define VARINT_CASE(ctype, decode)                                     \
+#define VARINT_CASE(ctype, decode) \
+  VARINT_CASE_EX(ctype, decode, decode)
+
+#define VARINT_CASE_EX(ctype, decode, dtype)                           \
   {                                                                    \
     const char *ptr = d->ptr;                                          \
     const char *limit = ptr + len;                                     \
@@ -401,7 +404,7 @@ static bool upb_decode_toarray(upb_decoder *d, const upb_msglayout_field *field,
       uint64_t val;                                                    \
       ctype decoded;                                                   \
       CHK(upb_decode_varint(&ptr, limit, &val));                       \
-      decoded = (decode)(val);                                         \
+      decoded = (decode)((dtype)val);                                  \
       CHK(upb_array_add(arr, 1, sizeof(decoded), &decoded, d->arena)); \
     }                                                                  \
     d->ptr = ptr;                                                      \
@@ -432,9 +435,9 @@ static bool upb_decode_toarray(upb_decoder *d, const upb_msglayout_field *field,
     case UPB_DESCRIPTOR_TYPE_BOOL:
       VARINT_CASE(bool, bool);
     case UPB_DESCRIPTOR_TYPE_SINT32:
-      VARINT_CASE(int32_t, upb_zzdecode_32);
+      VARINT_CASE_EX(int32_t, upb_zzdecode_32, uint32_t);
     case UPB_DESCRIPTOR_TYPE_SINT64:
-      VARINT_CASE(int64_t, upb_zzdecode_64);
+      VARINT_CASE_EX(int64_t, upb_zzdecode_64, uint64_t);
     case UPB_DESCRIPTOR_TYPE_MESSAGE: {
       const upb_msglayout *subm;
       upb_msg *submsg = upb_addmsg(d, field, &subm);

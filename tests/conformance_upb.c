@@ -244,11 +244,11 @@ bool DoTestIo(upb_symtab *symtab) {
   return true;
 }
 
-int main() {
+int main(void) {
   upb_symtab *symtab = upb_symtab_new();
 
   protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
-  signal(SIGSEGV, handler); 
+  signal(SIGSEGV, handler);
 
   while (1) {
     if (!DoTestIo(symtab)) {

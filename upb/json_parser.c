@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include <execinfo.h>
-#include <unistd.h>
 
 #include "upb/upb.h"
 #include "upb/output_buffer.h"
@@ -642,7 +640,6 @@ static bool nonbase64(unsigned char ch) {
   return b64table[ch] == -1 && ch != '=';
 }
 
-/* Handles either padded ("XX==") or unpadded ("XX") trailing characters. */
 static bool decode_partialb64(const char* ptr, int n, upb_jsonparser* parser) {
   int32_t val;
   int outbytes;

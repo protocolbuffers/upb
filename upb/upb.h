@@ -166,7 +166,15 @@ UPB_INLINE char *upb_strdup(const char *s, upb_alloc *a) {
 
 /* The global allocator used by upb.  Uses the standard malloc()/free(). */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern upb_alloc upb_alloc_global;
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
 
 /* Functions that hard-code the global malloc.
  *
@@ -233,7 +241,7 @@ UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
   return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
 }
 
-UPB_INLINE upb_arena *upb_arena_new() {
+UPB_INLINE upb_arena *upb_arena_new(void) {
   return upb_arena_init(NULL, 0, &upb_alloc_global);
 }
 
@@ -298,7 +306,7 @@ template <int N> class upb::InlinedArena : public upb::Arena {
 /* Constants ******************************************************************/
 
 /* Generic function type. */
-typedef void upb_func();
+typedef void upb_func(void);
 
 /* A list of types as they are encoded on-the-wire. */
 typedef enum {
