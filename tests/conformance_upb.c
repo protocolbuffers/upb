@@ -159,33 +159,6 @@ void DoTest(
       break;
     }
 
-      /*
-    case conformance_JSON: {
-      char *json_buf;
-      size_t json_size;
-      size_t bin_len;
-      char *bin_buf;
-
-      bin_buf = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
-          test_message, arena, &bin_len);
-
-      if (!bin_buf) {
-        SETERR(response, serialize_error, "Error serializing to binary.");
-        return;
-      }
-
-      json_buf = upb_binarytojson(bin_buf, bin_len, m, 0, alloc, &json_size);
-
-      if (!json_buf) {
-        SETERR(response, serialize_error, "Error serializing to JSON.");
-        return;
-      }
-
-      conformance_ConformanceResponse_set_protobuf_payload(
-          response, upb_strview_make(json_buf, json_size));
-      break;
-    }*/
-
     default: {
       SETERR(response, skipped, "Unsupported output format.");
       return;
