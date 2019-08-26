@@ -1018,10 +1018,11 @@ static int epoch_days(int year, int month, int day) {
   static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
                                           181, 212, 243, 273, 304, 334};
   int febs_since_0 = month > 2 ? year + 1 : year;
-  int days_since_0 = 365 * year + month_yday[month - 1] + (day - 1) +
-                     div_round_up(febs_since_0, 4) -
-                     div_round_up(febs_since_0, 100) +
-                     div_round_up(febs_since_0, 400);
+  int leap_days_since_0 = div_round_up(febs_since_0, 4) -
+                          div_round_up(febs_since_0, 100) +
+                          div_round_up(febs_since_0, 400);
+  int days_since_0 =
+      365 * year + month_yday[month - 1] + (day - 1) + leap_days_since_0;
 
   /* Convert from 0-epoch (0001-01-01 BC) to Unix Epoch (1970-01-01 AD).
    * Since the "BC" system does not have a year zero, 1 BC == year zero. */
