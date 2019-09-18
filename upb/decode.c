@@ -567,12 +567,11 @@ static bool upb_decode_field(upb_decstate *d, upb_decframe *frame) {
       default:
         CHK(false);
     }
-  } else {
-    CHK(field_number != 0);
-    CHK(upb_skip_unknownfielddata(d, tag, -1));
-    CHK(upb_append_unknown(d, frame));
-    return true;
   }
+  CHK(field_number != 0);
+  CHK(upb_skip_unknownfielddata(d, tag, -1));
+  CHK(upb_append_unknown(d, frame));
+  return true;
 }
 
 static bool upb_decode_message(upb_decstate *d, char *msg, const upb_msglayout *l) {
