@@ -8,7 +8,6 @@ load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 # copybara:strip_for_google3_begin
 load("@bazel_skylib//lib:versions.bzl", "versions")
-load("@bazel_version//:bazel_version.bzl", "bazel_version")
 # copybara:strip_end
 
 # Generic support code #########################################################
@@ -80,7 +79,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, dep_ccinfos):
     )
 
     # copybara:strip_for_google3_begin
-    if bazel_version == "0.24.1":
+    if native.bazel_version == "0.24.1":
         # Compatibility code until gRPC is on 0.25.2 or later.
         compilation_info = cc_common.compile(
             ctx = ctx,
@@ -102,7 +101,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, dep_ccinfos):
             linking_context = linking_info.linking_context,
         )
 
-    if not versions.is_at_least("0.25.2", bazel_version):
+    if not versions.is_at_least("0.25.2", native.bazel_version):
         fail("upb requires Bazel >=0.25.2 or 0.24.1")
 
     # copybara:strip_end
