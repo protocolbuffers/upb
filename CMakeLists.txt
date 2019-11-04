@@ -13,6 +13,7 @@ cmake_policy(SET CMP0048 NEW)
 
 project(upb)
 
+set(upb_SOVERSION 0)
 
 # Prevent CMake from setting -rdynamic on Linux (!!).
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
@@ -75,17 +76,23 @@ add_library(upb
   upb/decode.h
   upb/encode.h
   upb/upb.h)
+set_target_properties(upb PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 add_library(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE)
 target_link_libraries(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE
   upb)
 add_library(descriptor_upbproto
   generated_for_cmake/google/protobuf/descriptor.upb.c
   generated_for_cmake/google/protobuf/descriptor.upb.h)
+set_target_properties(descriptor_upbproto PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 add_library(upb_reflection
   upb/def.c
   upb/msgfactory.c
   upb/def.h
   upb/msgfactory.h)
+set_target_properties(upb_reflection PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 target_link_libraries(upb_reflection
   descriptor_upbproto
   table
@@ -96,6 +103,8 @@ target_link_libraries(table INTERFACE
 add_library(upb_legacy_msg_reflection
   upb/legacy_msg_reflection.c
   upb/legacy_msg_reflection.h)
+set_target_properties(upb_legacy_msg_reflection PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 target_link_libraries(upb_legacy_msg_reflection
   table
   upb)
@@ -105,6 +114,8 @@ add_library(upb_handlers
   upb/sink.c
   upb/handlers.h
   upb/sink.h)
+set_target_properties(upb_handlers PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 target_link_libraries(upb_handlers
   upb_reflection
   table
@@ -120,6 +131,8 @@ add_library(upb_pb
   upb/pb/decoder.h
   upb/pb/encoder.h
   upb/pb/textprinter.h)
+set_target_properties(upb_pb PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 target_link_libraries(upb_pb
   descriptor_upbproto
   upb_handlers
@@ -131,6 +144,8 @@ add_library(upb_json
   upb/json/printer.c
   upb/json/parser.h
   upb/json/printer.h)
+set_target_properties(upb_json PROPERTIES
+  SOVERSION ${upb_SOVERSION})
 target_link_libraries(upb_json
   upb
   upb_pb)
