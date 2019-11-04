@@ -78,6 +78,9 @@ add_library(upb
 add_library(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE)
 target_link_libraries(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE
   upb)
+add_library(descriptor_upbproto
+  generated_for_cmake/google/protobuf/descriptor.upb.c
+  generated_for_cmake/google/protobuf/descriptor.upb.h)
 add_library(reflection
   upb/def.c
   upb/msgfactory.c
