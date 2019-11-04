@@ -81,32 +81,32 @@ target_link_libraries(generated_code_support__only_for_generated_code_do_not_use
 add_library(descriptor_upbproto
   generated_for_cmake/google/protobuf/descriptor.upb.c
   generated_for_cmake/google/protobuf/descriptor.upb.h)
-add_library(reflection
+add_library(upb_reflection
   upb/def.c
   upb/msgfactory.c
   upb/def.h
   upb/msgfactory.h)
-target_link_libraries(reflection
+target_link_libraries(upb_reflection
   descriptor_upbproto
   table
   upb)
 add_library(table INTERFACE)
 target_link_libraries(table INTERFACE
   upb)
-add_library(legacy_msg_reflection
+add_library(upb_legacy_msg_reflection
   upb/legacy_msg_reflection.c
   upb/legacy_msg_reflection.h)
-target_link_libraries(legacy_msg_reflection
+target_link_libraries(upb_legacy_msg_reflection
   table
   upb)
-add_library(handlers
+add_library(upb_handlers
   upb/handlers.c
   upb/handlers-inl.h
   upb/sink.c
   upb/handlers.h
   upb/sink.h)
-target_link_libraries(handlers
-  reflection
+target_link_libraries(upb_handlers
+  upb_reflection
   table
   upb)
 add_library(upb_pb
@@ -122,8 +122,8 @@ add_library(upb_pb
   upb/pb/textprinter.h)
 target_link_libraries(upb_pb
   descriptor_upbproto
-  handlers
-  reflection
+  upb_handlers
+  upb_reflection
   table
   upb)
 add_library(upb_json
@@ -137,14 +137,14 @@ target_link_libraries(upb_json
 add_library(upb_cc_bindings INTERFACE)
 target_link_libraries(upb_cc_bindings INTERFACE
   descriptor_upbproto
-  handlers
+  upb_handlers
   upb)
 add_library(upb_test
   tests/testmain.cc
   tests/test_util.h
   tests/upb_test.h)
 target_link_libraries(upb_test
-  handlers
+  upb_handlers
   upb)
 
 
