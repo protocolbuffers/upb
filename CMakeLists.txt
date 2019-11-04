@@ -13,6 +13,12 @@ cmake_policy(SET CMP0048 NEW)
 
 project(upb)
 
+include(GNUInstallDirs)
+
+if(NOT DEFINED CMAKE_INSTALL_CMAKEDIR)
+  set(CMAKE_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/upb")
+endif()
+
 set(upb_SOVERSION 0)
 
 # Prevent CMake from setting -rdynamic on Linux (!!).
@@ -78,6 +84,11 @@ add_library(upb
   upb/upb.h)
 set_target_properties(upb PROPERTIES
   SOVERSION ${upb_SOVERSION})
+install(TARGETS upb EXPORT upb-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE)
 target_link_libraries(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE
   upb)
@@ -86,6 +97,11 @@ add_library(descriptor_upbproto
   generated_for_cmake/google/protobuf/descriptor.upb.h)
 set_target_properties(descriptor_upbproto PROPERTIES
   SOVERSION ${upb_SOVERSION})
+install(TARGETS descriptor_upbproto EXPORT descriptor_upbproto-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(descriptor_upbproto INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(upb_reflection
   upb/def.c
   upb/msgfactory.c
@@ -97,6 +113,11 @@ target_link_libraries(upb_reflection
   descriptor_upbproto
   table
   upb)
+install(TARGETS upb_reflection EXPORT upb_reflection-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb_reflection INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(table INTERFACE)
 target_link_libraries(table INTERFACE
   upb)
@@ -108,6 +129,11 @@ set_target_properties(upb_legacy_msg_reflection PROPERTIES
 target_link_libraries(upb_legacy_msg_reflection
   table
   upb)
+install(TARGETS upb_legacy_msg_reflection EXPORT upb_legacy_msg_reflection-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb_legacy_msg_reflection INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(upb_handlers
   upb/handlers.c
   upb/handlers-inl.h
@@ -120,6 +146,11 @@ target_link_libraries(upb_handlers
   upb_reflection
   table
   upb)
+install(TARGETS upb_handlers EXPORT upb_handlers-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb_handlers INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(upb_pb
   upb/pb/compile_decoder.c
   upb/pb/decoder.c
@@ -139,6 +170,11 @@ target_link_libraries(upb_pb
   upb_reflection
   table
   upb)
+install(TARGETS upb_pb EXPORT upb_pb-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb_pb INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(upb_json
   generated_for_cmake/upb/json/parser.c
   upb/json/printer.c
@@ -149,6 +185,11 @@ set_target_properties(upb_json PROPERTIES
 target_link_libraries(upb_json
   upb
   upb_pb)
+install(TARGETS upb_json EXPORT upb_json-targets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+target_include_directories(upb_json INTERFACE
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 add_library(upb_cc_bindings INTERFACE)
 target_link_libraries(upb_cc_bindings INTERFACE
   descriptor_upbproto
