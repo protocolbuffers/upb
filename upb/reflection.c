@@ -157,8 +157,6 @@ void upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
   }
 }
 
-#undef DEREF
-
 /** upb_array *****************************************************************/
 
 upb_array *upb_array_new(upb_arena *a, upb_fieldtype_t type) {

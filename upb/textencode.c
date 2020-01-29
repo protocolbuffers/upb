@@ -5,7 +5,7 @@
  * string every time, and it allocates memory for every put.
  */
 
-#include "upb/pb/textprinter.h"
+#include "upb/textencode.h"
 
 #include <ctype.h>
 #include <float.h>
@@ -14,15 +14,15 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "upb/sink.h"
-
+#include "upb/reflection.h"
 #include "upb/port_def.inc"
 
 typedef struct {
-  upb_alloc *alloc;
   char *buf, *ptr, *end;
   int indent_depth;
-  bool single_line;
+  int options;
+  upb_alloc *alloc;
+  const upb_symtab *ext_pool;
 } txtenc;
 
 static bool txtenc_msg(txtenc *e, const upb_msg *msg, const upb_msgdef *m);
@@ -50,14 +50,12 @@ static bool txtenc_growbuf(txtenc *e, size_t bytes) {
   return true;
 }
 
-/* Call to ensure that at least "bytes" bytes are available for writing at
- * e->ptr.  Returns false if the bytes could not be allocated. */
 static bool txtenc_reserve(txtenc *e, size_t bytes) {
-  if (UPB_LIKELY((size_t)(e->ptr - e->buf) >= bytes)) return true;
+  size_t have = e->ptr - e->buf;
+  if (UPB_LIKELY(have >= bytes)) return true;
   return txtenc_growbuf(e, bytes);
 }
 
-/* Writes the given bytes to the buffer, handling reserve/advance. */
 static bool txtenc_putbytes(txtenc *e, const void *data, size_t len) {
   CHK(txtenc_reserve(e, len));
   memcpy(e->ptr, data, len);
@@ -69,8 +67,30 @@ static bool txtenc_putstr(txtenc *e, const char *str) {
   return txtenc_putbytes(e, str, strlen(str));
 }
 
+static bool txtenc_printf(txtenc *e, const char *fmt, ...) {
+  size_t n;
+  size_t have = e->ptr - e->buf;
+  va_list args;
+
+  va_start(args, fmt);
+  n = _upb_vsnprintf(e->ptr, have, fmt, args);
+  va_end(args);
+
+  if (n >= have) {
+    CHK(txtenc_reserve(e, n + 1));
+    have = e->ptr - e->buf;
+    va_start(args, fmt);
+    n = _upb_vsnprintf(e->ptr, have, fmt, args);
+    va_end(args);
+    UPB_ASSERT(n < have);
+  }
+
+  e->ptr += n;
+  return true;
+}
+
 static bool txtenc_indent(txtenc *e) {
-  if (!e->single_line) {
+  if ((e->options & UPB_TEXTENCODE_SINGLELINE) == 0) {
     int i = e->indent_depth;
     while (i-- > 0) {
       CHK(txtenc_putstr(e, "  "));
@@ -80,18 +100,18 @@ static bool txtenc_indent(txtenc *e) {
 }
 
 static bool txtenc_endfield(txtenc *e) {
-  return txtenc_putstr(e, e->single_line ? " " : "\n");
+  const char *str = (e->options & UPB_TEXTENCODE_SINGLELINE) ? " " : "\n";
+  return txtenc_putstr(e, str);
 }
 
-static bool txtenc_enum(int32_t val, const upb_fielddef *f,
-                                txtenc *e) {
-  const upb_enumdef *e = upb_fielddef_enumsubdef(f);
-  const char *name = upb_enumdef_iton(e, val.int32_val);
+static bool txtenc_enum(int32_t val, const upb_fielddef *f, txtenc *e) {
+  const upb_enumdef *e_def = upb_fielddef_enumsubdef(f);
+  const char *name = upb_enumdef_iton(e_def, val);
 
   if (name) {
     return txtenc_printf(e, "%s", name);
   } else {
-    return txtenc_printf(e, "%" PRId32, val.int32_val);
+    return txtenc_printf(e, "%" PRId32, val);
   }
 }
 
@@ -106,12 +126,7 @@ static bool txtenc_string(upb_strview str, txtenc *e) {
   return true;
 }
 
-static bool txtenc_value(txtenc *e, upb_msgval val,
-                                 const upb_fielddef *f) {
-}
-
-static bool txtenc_field(upb_msgval val, const upb_fielddef *f,
-                                 txtenc *e) {
+static bool txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
   CHK(txtenc_indent(e));
 
   switch (upb_fielddef_type(f)) {
@@ -167,9 +182,11 @@ static bool txtenc_array(txtenc *e, const upb_array *arr,
                                  const upb_fielddef *f) {
   size_t i;
   size_t size = upb_array_size(arr);
+
   for (i = 0; i < size; i++) {
     CHK(txtenc_field(e, upb_array_get(arr, i), f));
   }
+
   return true;
 }
 
@@ -185,10 +202,10 @@ static bool txtenc_array(txtenc *e, const upb_array *arr,
  *      value: 456
  *    }
  */
-static bool txtenc_map(txtenc *e, const upb_map *map,
-                               const upb_fielddef *f) {
-  const upb_fielddef *key_f = upb_fielddef_itof(f, 1);
-  const upb_fielddef *val_f = upb_fielddef_itof(f, 2);
+static bool txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
+  const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+  const upb_fielddef *key_f = upb_msgdef_itof(entry, 1);
+  const upb_fielddef *val_f = upb_msgdef_itof(entry, 2);
   size_t iter = UPB_MAP_BEGIN;
 
   while (upb_mapiter_next(map, &iter)) {
@@ -200,7 +217,7 @@ static bool txtenc_map(txtenc *e, const upb_map *map,
     CHK(txtenc_endfield(e));
     e->indent_depth++;
 
-    CHK(txtenc_field(e, val, val_f));
+    CHK(txtenc_field(e, key, key_f));
     CHK(txtenc_field(e, val, val_f));
 
     e->indent_depth++;
@@ -214,46 +231,47 @@ static bool txtenc_map(txtenc *e, const upb_map *map,
 
 static bool txtenc_msg(txtenc *e, const upb_msg *msg,
                        const upb_msgdef *m) {
-  upb_msg_field_iter i;
-  for(upb_msg_field_begin(&i, m);
-      !upb_msg_field_done(&i);
-      upb_msg_field_next(&i)) {
-    const upb_fielddef *f = upb_msg_iter_field(&i);
+  size_t iter = UPB_MSG_BEGIN;
+  const upb_fielddef *f;
+  upb_msgval val;
+
+  while (upb_msg_next(msg, m, e->ext_pool, &f, &val, &iter)) {
     if (upb_fielddef_ismap(f)) {
-      const upb_map *map = upb_msg_get(msg, f).map_val;
-      CHK(txtenc_map(e, map, f));
+      CHK(txtenc_map(e, val.map_val, f));
     } else if (upb_fielddef_isseq(f)) {
-      const upb_array *arr = upb_msg_get(msg, f).arr_val;
-      CHK(txtenc_array(e, map, f));
+      CHK(txtenc_array(e, val.array_val, f));
     } else if (upb_msg_has(msg, f)) {
-      upb_msgval value = upb_msg_get(msg, f);
-      CHK(txtenc_field(e, value, f));
+      CHK(txtenc_field(e, val, f));
     }
   }
+
   return true;
 }
 
-char *upb_encode(const void *msg, const upb_msglayout *m, upb_arena *arena,
-                 size_t *size) {
+char *upb_textencode(const upb_msg *msg, const upb_msgdef *m,
+                     const upb_symtab *ext_pool, upb_arena *arena, int options,
+                     size_t *size) {
   txtenc e;
-  e.alloc = upb_arena_alloc(arena);
   e.buf = NULL;
-  e.limit = NULL;
   e.ptr = NULL;
+  e.end = NULL;
+  e.options = options;
+  e.ext_pool = ext_pool;
+  e.alloc = upb_arena_alloc(arena);
 
-  if (!upb_encode_message(&e, msg, m, size)) {
+  if (!txtenc_msg(&e, msg, m)) {
     *size = 0;
     return NULL;
   }
 
-  *size = e.limit - e.ptr;
+  *size = e.ptr - e.buf;
 
   if (*size == 0) {
     static char ch;
     return &ch;
   } else {
     UPB_ASSERT(e.ptr);
-    return e.ptr;
+    return e.buf;
   }
 }
 
