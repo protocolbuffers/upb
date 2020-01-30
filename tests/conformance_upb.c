@@ -11,7 +11,10 @@
 #include "conformance/conformance.upb.h"
 #include "src/google/protobuf/test_messages_proto2.upbdefs.h"
 #include "src/google/protobuf/test_messages_proto3.upbdefs.h"
+#include "upb/decode.h"
+#include "upb/encode.h"
 #include "upb/reflection.h"
+#include "upb/textencode.h"
 
 int test_count = 0;
 
@@ -74,6 +77,24 @@ void serialize_proto(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
   }
 }
 
+void serialize_text(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
+  size_t len;
+  int opts = 0;
+  if (!conformance_ConformanceRequest_print_unknown_fields(c->request)) {
+    opts |= UPB_TXTENC_SKIPUNKNOWN;
+  }
+  char *data = upb_textencode(msg, m, c->symtab, c->arena, opts, &len);
+  if (data) {
+    fprintf(stderr, "Serialized text: %.*s\n", (int)len, data);
+    conformance_ConformanceResponse_set_text_payload(
+        c->response, upb_strview_make(data, len));
+  } else {
+    static const char msg[] = "Error serializing.";
+    conformance_ConformanceResponse_set_serialize_error(
+        c->response, upb_strview_make(msg, strlen(msg)));
+  }
+}
+
 bool parse_input(upb_msg *msg, const upb_msgdef *m, const ctx* c) {
   switch (conformance_ConformanceRequest_payload_case(c->request)) {
     case conformance_ConformanceRequest_payload_protobuf_payload:
@@ -97,6 +118,9 @@ void write_output(const upb_msg *msg, const upb_msgdef *m, const ctx* c) {
       exit(1);
     case conformance_PROTOBUF:
       serialize_proto(msg, m, c);
+      break;
+    case conformance_TEXT_FORMAT:
+      serialize_text(msg, m, c);
       break;
     default: {
       static const char msg[] = "Unsupported output format.";

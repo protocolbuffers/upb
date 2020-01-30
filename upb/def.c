@@ -707,6 +707,11 @@ const upb_msglayout *upb_msgdef_layout(const upb_msgdef *m) {
   return m->layout;
 }
 
+const upb_fielddef *_upb_msgdef_field(const upb_msgdef *m, int i) {
+  if (i >= m->field_count) return NULL;
+  return &m->fields[i];
+}
+
 bool upb_msgdef_mapentry(const upb_msgdef *m) {
   return m->map_entry;
 }
@@ -951,7 +956,9 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
     }
 
     if (upb_fielddef_haspresence(f) && !upb_fielddef_containingoneof(f)) {
-      field->presence = (hasbit++);
+      /* We don't use hasbit 0, so that 0 can indicate "no presence" in the
+       * table. This wastes one hasbit, but we don't worry about it for now. */
+      field->presence = ++hasbit;
     } else {
       field->presence = 0;
     }

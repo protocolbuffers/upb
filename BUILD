@@ -142,6 +142,20 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "textformat",
+    srcs = [
+        "upb/textencode.c",
+    ],
+    hdrs = [
+        "upb/textencode.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":reflection",
+    ],
+)
+
 # Internal C/C++ libraries #####################################################
 
 cc_library(
@@ -549,6 +563,7 @@ cc_binary(
         ":test_messages_proto2_upbdefs",
         ":test_messages_proto3_upbdefs",
         ":reflection",
+        ":textformat",
         ":upb",
     ],
 )
