@@ -215,7 +215,7 @@ static bool txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
  *    foo_field: 3
  */
 static bool txtenc_array(txtenc *e, const upb_array *arr,
-                                 const upb_fielddef *f) {
+                         const upb_fielddef *f) {
   size_t i;
   size_t size = upb_array_size(arr);
 
@@ -282,7 +282,18 @@ static const char *txtenc_parsevarint(const char *ptr, const char *limit,
   return ptr;
 }
 
-static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end) {
+/*
+ * Unknown fields are printed by number.
+ *
+ * 1001: 123
+ * 1002: "hello"
+ * 1006: 0xdeadbeef
+ * 1003: {
+ *   1: 111
+ * }
+ */
+static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
+                                  int groupnum) {
   while (ptr < end) {
     uint64_t tag_64;
     uint32_t tag;
@@ -292,6 +303,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end) {
 
     if ((tag & 7) == UPB_WIRE_TYPE_END_GROUP) {
       /* We assume/require that the unknown fields are valid/balanced. */
+      CHK((tag >> 3) == groupnum);
       return ptr;
     }
 
@@ -323,12 +335,26 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end) {
       }
       case UPB_WIRE_TYPE_DELIMITED: {
         uint64_t len;
-        upb_strview str;
+        size_t ofs = e->ptr - e->buf;
         CHK(ptr = txtenc_parsevarint(ptr, end, &len));
         CHK(end - ptr >= len);
-        str.data = ptr;
-        str.size = len;
-        CHK(txtenc_string(e, str, true));
+
+        /* Speculatively try to parse as message. */
+        CHK(txtenc_putstr(e, "{"));
+        CHK(txtenc_endfield(e));
+        e->indent_depth++;
+        if (txtenc_unknown(e, ptr, end, -1)) {
+          e->indent_depth--;
+          CHK(txtenc_indent(e));
+          txtenc_putstr(e, "}");
+        } else {
+          /* Didn't work out, print as string. */
+          UPB_ASSERT(e->end - e->buf >= ofs);
+          e->indent_depth--;
+          e->ptr = e->buf + ofs;
+          upb_strview str = {ptr, len};
+          CHK(txtenc_string(e, str, true));
+        }
         ptr += len;
         break;
       }
@@ -336,7 +362,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end) {
         CHK(txtenc_putstr(e, "{"));
         CHK(txtenc_endfield(e));
         e->indent_depth++;
-        CHK(ptr = txtenc_unknown(e, ptr, end));
+        CHK(ptr = txtenc_unknown(e, ptr, end, tag >> 3));
         e->indent_depth--;
         CHK(txtenc_indent(e));
         txtenc_putstr(e, "}");
@@ -368,7 +394,7 @@ static bool txtenc_msg(txtenc *e, const upb_msg *msg,
     size_t len;
     const char *ptr = upb_msg_getunknown(msg, &len);
     const char *end = ptr + len;
-    CHK(txtenc_unknown(e, ptr, end));
+    CHK(txtenc_unknown(e, ptr, end, -1));
   }
 
   return true;
