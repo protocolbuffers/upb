@@ -1,9 +1,3 @@
-/*
- * upb::pb::TextPrinter
- *
- * OPT: This is not optimized at all.  It uses printf() which parses the format
- * string every time, and it allocates memory for every put.
- */
 
 #include "upb/textencode.h"
 
@@ -19,56 +13,33 @@
 
 typedef struct {
   char *buf, *ptr, *end;
+  size_t overflow;
   int indent_depth;
   int options;
-  upb_alloc *alloc;
   const upb_symtab *ext_pool;
 } txtenc;
 
-static bool txtenc_msg(txtenc *e, const upb_msg *msg, const upb_msgdef *m);
+static void txtenc_msg(txtenc *e, const upb_msg *msg, const upb_msgdef *m);
 
 #define CHK(x) do { if (!(x)) { return false; } } while(0)
 
-static size_t txtenc_roundup(size_t bytes) {
-  size_t ret = 128;
-  while (ret < bytes) {
-    ret *= 2;
-  }
-  return ret;
-}
-
-static bool txtenc_growbuf(txtenc *e, size_t bytes) {
-  size_t ofs = e->ptr - e->buf;
-  size_t old_size = e->end - e->buf;
-  size_t new_size = txtenc_roundup(ofs + bytes);
-
-  e->buf = upb_realloc(e->alloc, e->buf, old_size, new_size);
-  CHK(e->buf);
-
-  e->ptr = e->buf + ofs;
-  e->end = e->buf + new_size;
-  UPB_ASSERT(e->end - e->ptr >= bytes);
-  return true;
-}
-
-static bool txtenc_reserve(txtenc *e, size_t bytes) {
+static void txtenc_putbytes(txtenc *e, const void *data, size_t len) {
   size_t have = e->end - e->ptr;
-  if (UPB_LIKELY(have >= bytes)) return true;
-  return txtenc_growbuf(e, bytes);
+  if (UPB_LIKELY(have >= len)) {
+    memcpy(e->ptr, data, len);
+    e->ptr += len;
+  } else {
+    memcpy(e->ptr, data, have);
+    e->ptr += have;
+    e->overflow += (len - have);
+  }
 }
 
-static bool txtenc_putbytes(txtenc *e, const void *data, size_t len) {
-  CHK(txtenc_reserve(e, len));
-  memcpy(e->ptr, data, len);
-  e->ptr += len;
-  return true;
+static void txtenc_putstr(txtenc *e, const char *str) {
+  txtenc_putbytes(e, str, strlen(str));
 }
 
-static bool txtenc_putstr(txtenc *e, const char *str) {
-  return txtenc_putbytes(e, str, strlen(str));
-}
-
-static bool txtenc_printf(txtenc *e, const char *fmt, ...) {
+static void txtenc_printf(txtenc *e, const char *fmt, ...) {
   size_t n;
   size_t have = e->end - e->ptr;
   va_list args;
@@ -77,52 +48,46 @@ static bool txtenc_printf(txtenc *e, const char *fmt, ...) {
   n = _upb_vsnprintf(e->ptr, have, fmt, args);
   va_end(args);
 
-  if (n >= have) {
-    CHK(txtenc_reserve(e, n + 1));
-    have = e->end - e->ptr;
-    va_start(args, fmt);
-    n = _upb_vsnprintf(e->ptr, have, fmt, args);
-    va_end(args);
+  if (UPB_LIKELY(have > n)) {
+    e->ptr += n;
+  } else {
+    e->ptr += have;
+    e->overflow += (n - have);
   }
-
-  UPB_ASSERT(e->end - e->ptr > n);
-  e->ptr += n;
-  return true;
 }
 
-static bool txtenc_indent(txtenc *e) {
+static void txtenc_indent(txtenc *e) {
   if ((e->options & UPB_TXTENC_SINGLELINE) == 0) {
     int i = e->indent_depth;
     while (i-- > 0) {
-      CHK(txtenc_putstr(e, "  "));
+      txtenc_putstr(e, "  ");
     }
   }
-  return true;
 }
 
-static bool txtenc_endfield(txtenc *e) {
+static void txtenc_endfield(txtenc *e) {
   if (e->options & UPB_TXTENC_SINGLELINE) {
-    return txtenc_putstr(e, " ");
+    txtenc_putstr(e, " ");
   } else {
-    return txtenc_putstr(e, "\n");
+    txtenc_putstr(e, "\n");
   }
 }
 
-static bool txtenc_enum(int32_t val, const upb_fielddef *f, txtenc *e) {
+static void txtenc_enum(int32_t val, const upb_fielddef *f, txtenc *e) {
   const upb_enumdef *e_def = upb_fielddef_enumsubdef(f);
   const char *name = upb_enumdef_iton(e_def, val);
 
   if (name) {
-    return txtenc_printf(e, "%s", name);
+    txtenc_printf(e, "%s", name);
   } else {
-    return txtenc_printf(e, "%" PRId32, val);
+    txtenc_printf(e, "%" PRId32, val);
   }
 }
 
-static bool txtenc_string(txtenc *e, upb_strview str, bool bytes) {
+static void txtenc_string(txtenc *e, upb_strview str, bool bytes) {
   const char *ptr = str.data;
   const char *end = ptr + str.size;
-  CHK(txtenc_putstr(e, "\""));
+  txtenc_putstr(e, "\"");
 
   while (ptr < end) {
     switch (*ptr) {
@@ -154,57 +119,55 @@ static bool txtenc_string(txtenc *e, upb_strview str, bool bytes) {
     ptr++;
   }
 
-  CHK(txtenc_putstr(e, "\""));
-  return true;
+  txtenc_putstr(e, "\"");
 }
 
-static bool txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
-  CHK(txtenc_indent(e));
-  CHK(txtenc_printf(e, "%s: ", upb_fielddef_name(f)));
+static void txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
+  txtenc_indent(e);
+  txtenc_printf(e, "%s: ", upb_fielddef_name(f));
 
   switch (upb_fielddef_type(f)) {
     case UPB_TYPE_BOOL:
-      CHK(txtenc_putstr(e, val.bool_val ? "true" : "false"));
+      txtenc_putstr(e, val.bool_val ? "true" : "false");
       break;
     case UPB_TYPE_FLOAT:
-      CHK(txtenc_printf(e, "%f", val.float_val));
+      txtenc_printf(e, "%f", val.float_val);
       break;
     case UPB_TYPE_DOUBLE:
-      CHK(txtenc_printf(e, "%f", val.double_val));
+      txtenc_printf(e, "%f", val.double_val);
       break;
     case UPB_TYPE_INT32:
-      CHK(txtenc_printf(e, "%" PRId32, val.int32_val));
+      txtenc_printf(e, "%" PRId32, val.int32_val);
       break;
     case UPB_TYPE_UINT32:
-      CHK(txtenc_printf(e, "%" PRIu32, val.uint32_val));
+      txtenc_printf(e, "%" PRIu32, val.uint32_val);
       break;
     case UPB_TYPE_INT64:
-      CHK(txtenc_printf(e, "%" PRId64, val.int64_val));
+      txtenc_printf(e, "%" PRId64, val.int64_val);
       break;
     case UPB_TYPE_UINT64:
-      CHK(txtenc_printf(e, "%" PRIu64, val.uint64_val));
+      txtenc_printf(e, "%" PRIu64, val.uint64_val);
       break;
     case UPB_TYPE_STRING:
-      CHK(txtenc_string(e, val.str_val, false));
+      txtenc_string(e, val.str_val, false);
       break;
     case UPB_TYPE_BYTES:
-      CHK(txtenc_string(e, val.str_val, true));
+      txtenc_string(e, val.str_val, true);
       break;
     case UPB_TYPE_ENUM:
-      CHK(txtenc_enum(val.int32_val, f, e));
+      txtenc_enum(val.int32_val, f, e);
       break;
     case UPB_TYPE_MESSAGE:
-      CHK(txtenc_putstr(e, "{"));
+      txtenc_putstr(e, "{");
       e->indent_depth++;
-      CHK(txtenc_msg(e, val.msg_val, upb_fielddef_msgsubdef(f)));
+      txtenc_msg(e, val.msg_val, upb_fielddef_msgsubdef(f));
       e->indent_depth--;
-      CHK(txtenc_indent(e));
-      CHK(txtenc_putstr(e, "}"));
+      txtenc_indent(e);
+      txtenc_putstr(e, "}");
       break;
   }
 
-  CHK(txtenc_endfield(e));
-  return true;
+  txtenc_endfield(e);
 }
 
 /*
@@ -214,16 +177,14 @@ static bool txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
  *    foo_field: 2
  *    foo_field: 3
  */
-static bool txtenc_array(txtenc *e, const upb_array *arr,
+static void txtenc_array(txtenc *e, const upb_array *arr,
                          const upb_fielddef *f) {
   size_t i;
   size_t size = upb_array_size(arr);
 
   for (i = 0; i < size; i++) {
-    CHK(txtenc_field(e, upb_array_get(arr, i), f));
+    txtenc_field(e, upb_array_get(arr, i), f);
   }
-
-  return true;
 }
 
 /*
@@ -238,7 +199,7 @@ static bool txtenc_array(txtenc *e, const upb_array *arr,
  *      value: 456
  *    }
  */
-static bool txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
+static void txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
   const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
   const upb_fielddef *key_f = upb_msgdef_itof(entry, 1);
   const upb_fielddef *val_f = upb_msgdef_itof(entry, 2);
@@ -248,21 +209,19 @@ static bool txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
     upb_msgval key = upb_mapiter_key(map, iter);
     upb_msgval val = upb_mapiter_value(map, iter);
 
-    CHK(txtenc_indent(e));
-    CHK(txtenc_printf(e, "%s: {", upb_fielddef_name(f)));
-    CHK(txtenc_endfield(e));
+    txtenc_indent(e);
+    txtenc_printf(e, "%s: {", upb_fielddef_name(f));
+    txtenc_endfield(e);
     e->indent_depth++;
 
-    CHK(txtenc_field(e, key, key_f));
-    CHK(txtenc_field(e, val, val_f));
+    txtenc_field(e, key, key_f);
+    txtenc_field(e, val, val_f);
 
     e->indent_depth++;
-    CHK(txtenc_indent(e));
-    CHK(txtenc_putstr(e, "}"));
-    CHK(txtenc_endfield(e));
+    txtenc_indent(e);
+    txtenc_putstr(e, "}");
+    txtenc_endfield(e);
   }
-
-  return true;
 }
 
 static const char *txtenc_parsevarint(const char *ptr, const char *limit,
@@ -302,19 +261,18 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
     tag = tag_64;
 
     if ((tag & 7) == UPB_WIRE_TYPE_END_GROUP) {
-      /* We assume/require that the unknown fields are valid/balanced. */
       CHK((tag >> 3) == groupnum);
       return ptr;
     }
 
-    CHK(txtenc_indent(e));
-    CHK(txtenc_printf(e, "%d: ", (int)(tag >> 3)));
+    txtenc_indent(e);
+    txtenc_printf(e, "%d: ", (int)(tag >> 3));
 
     switch (tag & 7) {
       case UPB_WIRE_TYPE_VARINT: {
         uint64_t val;
         CHK(ptr = txtenc_parsevarint(ptr, end, &val));
-        CHK(txtenc_printf(e, "%" PRIu64, val));
+        txtenc_printf(e, "%" PRIu64, val);
         break;
       }
       case UPB_WIRE_TYPE_32BIT: {
@@ -322,7 +280,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
         CHK(end - ptr >= 4);
         memcpy(&val, ptr, 4);
         ptr += 4;
-        CHK(txtenc_printf(e, "0x%08" PRIu32, val));
+        txtenc_printf(e, "0x%08" PRIu32, val);
         break;
       }
       case UPB_WIRE_TYPE_64BIT: {
@@ -330,51 +288,52 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
         CHK(end - ptr >= 8);
         memcpy(&val, ptr, 8);
         ptr += 8;
-        CHK(txtenc_printf(e, "0x%016" PRIu64, val));
+        txtenc_printf(e, "0x%016" PRIu64, val);
         break;
       }
       case UPB_WIRE_TYPE_DELIMITED: {
         uint64_t len;
-        size_t ofs = e->ptr - e->buf;
+        char *start = e->ptr;
+        size_t start_overflow = e->overflow;
         CHK(ptr = txtenc_parsevarint(ptr, end, &len));
         CHK(end - ptr >= len);
 
         /* Speculatively try to parse as message. */
-        CHK(txtenc_putstr(e, "{"));
-        CHK(txtenc_endfield(e));
+        txtenc_putstr(e, "{");
+        txtenc_endfield(e);
         e->indent_depth++;
         if (txtenc_unknown(e, ptr, end, -1)) {
           e->indent_depth--;
-          CHK(txtenc_indent(e));
+          txtenc_indent(e);
           txtenc_putstr(e, "}");
         } else {
-          /* Didn't work out, print as string. */
-          UPB_ASSERT(e->end - e->buf >= ofs);
+          /* Didn't work out, print as raw bytes. */
           e->indent_depth--;
-          e->ptr = e->buf + ofs;
+          e->ptr = start;
+          e->overflow = start_overflow;
           upb_strview str = {ptr, len};
-          CHK(txtenc_string(e, str, true));
+          txtenc_string(e, str, true);
         }
         ptr += len;
         break;
       }
       case UPB_WIRE_TYPE_START_GROUP:
-        CHK(txtenc_putstr(e, "{"));
-        CHK(txtenc_endfield(e));
+        txtenc_putstr(e, "{");
+        txtenc_endfield(e);
         e->indent_depth++;
         CHK(ptr = txtenc_unknown(e, ptr, end, tag >> 3));
         e->indent_depth--;
-        CHK(txtenc_indent(e));
+        txtenc_indent(e);
         txtenc_putstr(e, "}");
         break;
     }
-    CHK(txtenc_endfield(e));
+    txtenc_endfield(e);
   }
 
-  return ptr;
+  return groupnum == -1 ? ptr : NULL;
 }
 
-static bool txtenc_msg(txtenc *e, const upb_msg *msg,
+static void txtenc_msg(txtenc *e, const upb_msg *msg,
                        const upb_msgdef *m) {
   size_t iter = UPB_MSG_BEGIN;
   const upb_fielddef *f;
@@ -382,50 +341,53 @@ static bool txtenc_msg(txtenc *e, const upb_msg *msg,
 
   while (upb_msg_next(msg, m, e->ext_pool, &f, &val, &iter)) {
     if (upb_fielddef_ismap(f)) {
-      CHK(txtenc_map(e, val.map_val, f));
+      txtenc_map(e, val.map_val, f);
     } else if (upb_fielddef_isseq(f)) {
-      CHK(txtenc_array(e, val.array_val, f));
+      txtenc_array(e, val.array_val, f);
     } else {
-      CHK(txtenc_field(e, val, f));
+      txtenc_field(e, val, f);
     }
   }
 
   if ((e->options & UPB_TXTENC_SKIPUNKNOWN) == 0) {
     size_t len;
     const char *ptr = upb_msg_getunknown(msg, &len);
-    const char *end = ptr + len;
-    CHK(txtenc_unknown(e, ptr, end, -1));
+    char *start = e->ptr;
+    if (ptr) {
+      if (!txtenc_unknown(e, ptr, ptr + len, -1)) {
+        /* Unknown failed to parse, back up and don't print it at all. */
+        e->ptr = start;
+      }
+    }
   }
-
-  return true;
 }
 
-char *upb_textencode(const upb_msg *msg, const upb_msgdef *m,
-                     const upb_symtab *ext_pool, upb_arena *arena, int options,
-                     size_t *size) {
+size_t txtenc_nullz(txtenc *e, size_t size) {
+  size_t ret = e->ptr - e->buf + e->overflow;
+
+  if (size > 0) {
+    if (e->ptr == e->end) e->ptr--;
+    *e->ptr = '\0';
+  }
+
+  return ret;
+}
+
+size_t upb_textencode(const upb_msg *msg, const upb_msgdef *m,
+                      const upb_symtab *ext_pool, int options, char *buf,
+                      size_t size) {
   txtenc e;
-  e.buf = NULL;
-  e.ptr = NULL;
-  e.end = NULL;
+
+  e.buf = buf;
+  e.ptr = buf;
+  e.end = buf + size;
+  e.overflow = 0;
   e.indent_depth = 0;
   e.options = options;
   e.ext_pool = ext_pool;
-  e.alloc = upb_arena_alloc(arena);
 
-  if (!txtenc_msg(&e, msg, m)) {
-    *size = 0;
-    return NULL;
-  }
-
-  *size = e.ptr - e.buf;
-
-  if (*size == 0) {
-    static char ch;
-    return &ch;
-  } else {
-    UPB_ASSERT(e.ptr);
-    return e.buf;
-  }
+  txtenc_msg(&e, msg, m);
+  return txtenc_nullz(&e, size);
 }
 
 #undef CHK

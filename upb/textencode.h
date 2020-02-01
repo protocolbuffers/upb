@@ -12,8 +12,16 @@ enum {
   UPB_TXTENC_SKIPUNKNOWN = 2,
 };
 
-char *upb_textencode(const upb_msg *msg, const upb_msgdef *m,
-                     const upb_symtab *symtab, upb_arena *arena, int options,
-                     size_t *size);
+/* Encodes the given |msg| to text format.  The message's reflection is given in
+ * |m|.  The symtab in |symtab| is used to find extensions (if NULL, extensions
+ * will not be printed).
+ *
+ * Output is placed in the given buffer, and always NULL-terminated.  The output
+ * size (excluding NULL) is returned.  This means that a return value >= |size|
+ * implies that the output was truncated.  (These are the same semantics as
+ * snprintf()). */
+size_t upb_textencode(const upb_msg *msg, const upb_msgdef *m,
+                      const upb_symtab *ext_pool, int options, char *buf,
+                      size_t size);
 
 #endif  /* UPB_TEXTENCODE_H_ */

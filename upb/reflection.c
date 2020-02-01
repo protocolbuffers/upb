@@ -179,12 +179,13 @@ bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
     if (upb_fielddef_haspresence(f)) {
       if (!upb_msg_has(msg, f)) continue;
     } else {
+      upb_msgval test = val;
       if (upb_fielddef_isstring(f) && !upb_fielddef_isseq(f)) {
         /* Clear string pointer, only size matters (ptr could be non-NULL). */
-        val.str_val.data = NULL;
+        test.str_val.data = NULL;
       }
       /* Continue if NULL or 0. */
-      if (memcmp(&val, &zero, sizeof(val)) == 0) continue;
+      if (memcmp(&test, &zero, sizeof(test)) == 0) continue;
     }
 
     *out_val = val;

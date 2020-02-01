@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "conformance/conformance.upb.h"
+#include "conformance/conformance.upbdefs.h"
 #include "src/google/protobuf/test_messages_proto2.upbdefs.h"
 #include "src/google/protobuf/test_messages_proto3.upbdefs.h"
 #include "upb/decode.h"
@@ -17,6 +18,7 @@
 #include "upb/textencode.h"
 
 int test_count = 0;
+bool verbose = false;  /* Set to true to get req/resp printed on stderr. */
 
 bool CheckedRead(int fd, void *buf, size_t len) {
   size_t ofs = 0;
@@ -79,20 +81,18 @@ void serialize_proto(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
 
 void serialize_text(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
   size_t len;
+  size_t len2;
   int opts = 0;
+  char *data;
   if (!conformance_ConformanceRequest_print_unknown_fields(c->request)) {
     opts |= UPB_TXTENC_SKIPUNKNOWN;
   }
-  char *data = upb_textencode(msg, m, c->symtab, c->arena, opts, &len);
-  if (data) {
-    fprintf(stderr, "Serialized text: %.*s\n", (int)len, data);
-    conformance_ConformanceResponse_set_text_payload(
-        c->response, upb_strview_make(data, len));
-  } else {
-    static const char msg[] = "Error serializing.";
-    conformance_ConformanceResponse_set_serialize_error(
-        c->response, upb_strview_make(msg, strlen(msg)));
-  }
+  len = upb_textencode(msg, m, c->symtab, opts, NULL, 0);
+  data = upb_arena_malloc(c->arena, len + 1);
+  len2 = upb_textencode(msg, m, c->symtab, opts, data, len + 1);
+  assert(len == len2);
+  conformance_ConformanceResponse_set_text_payload(
+      c->response, upb_strview_make(data, len));
 }
 
 bool parse_input(upb_msg *msg, const upb_msgdef *m, const ctx* c) {
@@ -150,7 +150,14 @@ void DoTest(const ctx* c) {
   }
 }
 
-bool DoTestIo(const upb_symtab *symtab) {
+void debug_print(const char *label, const upb_msg *msg, const upb_msgdef *m,
+                 const ctx *c) {
+  char buf[512];
+  upb_textencode(msg, m, c->symtab, UPB_TXTENC_SINGLELINE, buf, sizeof(buf));
+  fprintf(stderr, "%s: %s\n", label, buf);
+}
+
+bool DoTestIo(upb_symtab *symtab) {
   upb_status status;
   char *input;
   char *output;
@@ -189,6 +196,14 @@ bool DoTestIo(const upb_symtab *symtab) {
   CheckedWrite(STDOUT_FILENO, output, output_size);
 
   test_count++;
+
+  if (verbose) {
+    debug_print("Request", c.request,
+                conformance_ConformanceRequest_getmsgdef(symtab), &c);
+    debug_print("Response", c.response,
+                conformance_ConformanceResponse_getmsgdef(symtab), &c);
+    fprintf(stderr, "\n");
+  }
 
   upb_arena_free(c.arena);
 
