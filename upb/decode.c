@@ -79,16 +79,17 @@ static const char *decode_varint64(const char *ptr, const char *limit,
                                    uint64_t *val) {
   uint8_t byte;
   int bitpos = 0;
-  *val = 0;
+  uint64_t out = 0;
 
   do {
     CHK(bitpos < 70 && ptr < limit);
     byte = *ptr;
-    *val |= (uint64_t)(byte & 0x7F) << bitpos;
+    out |= (uint64_t)(byte & 0x7F) << bitpos;
     ptr++;
     bitpos += 7;
   } while (byte & 0x80);
 
+  *val = out;
   return ptr;
 }
 
@@ -106,12 +107,16 @@ static void decode_munge(int type, wireval* val) {
     case UPB_DESCRIPTOR_TYPE_BOOL:
       val->bool_val = val->uint64_val != 0;
       break;
-    case UPB_DESCRIPTOR_TYPE_SINT32:
-      val->int32_val = (val->uint32_val >> 1) ^ -(int32_t)(val->uint32_val & 1);
+    case UPB_DESCRIPTOR_TYPE_SINT32: {
+      uint32_t n = val->uint32_val;
+      val->int32_val = (n >> 1) ^ -(int32_t)(n & 1);
       break;
-    case UPB_DESCRIPTOR_TYPE_SINT64:
-      val->int64_val = (val->uint64_val >> 1) ^ -(int64_t)(val->uint64_val & 1);
+    }
+    case UPB_DESCRIPTOR_TYPE_SINT64: {
+      uint64_t n = val->uint32_val;
+      val->int64_val = (n >> 1) ^ -(int64_t)(n & 1);
       break;
+    }
   }
 }
 
@@ -238,6 +243,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
         decode_munge(field->descriptortype, &elem);
         if (arr->len == arr->size) {
           CHK(_upb_array_realloc(arr, arr->len + 1, d->arena));
+          out = PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
         }
         arr->len++;
         memcpy(out, &elem, scale);
@@ -339,10 +345,10 @@ static const int8_t varint_actions[19] = {
     -1, /* GROUP */
     -1, /* MESSAGE */
     -1, /* BYTES */
-    3,  /* UINT32 */
-    3,  /* ENUM */
+    2,  /* UINT32 */
+    2,  /* ENUM */
     -1, /* SFIXED32 */
-    3,  /* SFIXED64 */
+    -1,  /* SFIXED64 */
     2,  /* SINT32 */
     3,  /* SINT64 */
 };
