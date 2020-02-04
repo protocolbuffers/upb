@@ -79,18 +79,21 @@ upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a) {
   return msg;
 }
 
-void upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
+bool upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
                         upb_arena *arena) {
   upb_msg_internal *in = upb_msg_getinternal(msg);
   if (len > in->unknown_size - in->unknown_len) {
     upb_alloc *alloc = upb_arena_alloc(arena);
     size_t need = in->unknown_size + len;
     size_t newsize = UPB_MAX(in->unknown_size * 2, need);
-    in->unknown = upb_realloc(alloc, in->unknown, in->unknown_size, newsize);
+    void *mem = upb_realloc(alloc, in->unknown, in->unknown_size, newsize);
+    if (!mem) return false;
+    in->unknown = mem;
     in->unknown_size = newsize;
   }
   memcpy(in->unknown + in->unknown_len, data, len);
   in->unknown_len += len;
+  return true;
 }
 
 const char *upb_msg_getunknown(const upb_msg *msg, size_t *len) {

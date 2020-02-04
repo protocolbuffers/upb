@@ -326,7 +326,7 @@ typedef enum {
   UPB_TYPE_UINT64   = 9,
   /* Types stored as upb_strview (2 * void*) (probably 8 or 16 bytes). */
   UPB_TYPE_STRING   = 10,
-  UPB_TYPE_BYTES    = 11
+  UPB_TYPE_BYTES    = 11,
 } upb_fieldtype_t;
 
 /* The repeated-ness of each field; this matches descriptor.proto. */
@@ -338,6 +338,7 @@ typedef enum {
 
 /* Descriptor types, as defined in descriptor.proto. */
 typedef enum {
+  /* Old (long) names.  TODO(haberman): remove */
   UPB_DESCRIPTOR_TYPE_DOUBLE   = 1,
   UPB_DESCRIPTOR_TYPE_FLOAT    = 2,
   UPB_DESCRIPTOR_TYPE_INT64    = 3,
@@ -355,7 +356,26 @@ typedef enum {
   UPB_DESCRIPTOR_TYPE_SFIXED32 = 15,
   UPB_DESCRIPTOR_TYPE_SFIXED64 = 16,
   UPB_DESCRIPTOR_TYPE_SINT32   = 17,
-  UPB_DESCRIPTOR_TYPE_SINT64   = 18
+  UPB_DESCRIPTOR_TYPE_SINT64   = 18,
+
+  UPB_DTYPE_DOUBLE   = 1,
+  UPB_DTYPE_FLOAT    = 2,
+  UPB_DTYPE_INT64    = 3,
+  UPB_DTYPE_UINT64   = 4,
+  UPB_DTYPE_INT32    = 5,
+  UPB_DTYPE_FIXED64  = 6,
+  UPB_DTYPE_FIXED32  = 7,
+  UPB_DTYPE_BOOL     = 8,
+  UPB_DTYPE_STRING   = 9,
+  UPB_DTYPE_GROUP    = 10,
+  UPB_DTYPE_MESSAGE  = 11,
+  UPB_DTYPE_BYTES    = 12,
+  UPB_DTYPE_UINT32   = 13,
+  UPB_DTYPE_ENUM     = 14,
+  UPB_DTYPE_SFIXED32 = 15,
+  UPB_DTYPE_SFIXED64 = 16,
+  UPB_DTYPE_SINT32   = 17,
+  UPB_DTYPE_SINT64   = 18
 } upb_descriptortype_t;
 
 #define UPB_MAP_BEGIN -1
