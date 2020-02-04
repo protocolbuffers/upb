@@ -217,7 +217,7 @@ static void txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
     txtenc_field(e, key, key_f);
     txtenc_field(e, val, val_f);
 
-    e->indent_depth++;
+    e->indent_depth--;
     txtenc_indent(e);
     txtenc_putstr(e, "}");
     txtenc_endfield(e);
