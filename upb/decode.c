@@ -75,8 +75,9 @@ typedef union {
 static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
                               const upb_msglayout *layout);
 
-static const char *decode_varint64(const char *ptr, const char *limit,
-                                   uint64_t *val) {
+UPB_NOINLINE
+static const char *decode_longvarint64(const char *ptr, const char *limit,
+                                       uint64_t *val) {
   uint8_t byte;
   int bitpos = 0;
   uint64_t out = 0;
@@ -91,6 +92,17 @@ static const char *decode_varint64(const char *ptr, const char *limit,
 
   *val = out;
   return ptr;
+}
+
+UPB_FORCEINLINE
+static const char *decode_varint64(const char *ptr, const char *limit,
+                                   uint64_t *val) {
+  if (UPB_LIKELY(ptr < limit && (*ptr & 0x80) == 0)) {
+    *val = (uint8_t)*ptr;
+    return ptr + 1;
+  } else {
+    return decode_longvarint64(ptr, limit, val);
+  }
 }
 
 static const char *decode_varint32(const char *ptr, const char *limit,
@@ -291,16 +303,18 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
                                 const upb_msglayout_field *field, wireval val,
                                 int action) {
   void *mem = PTR_AT(msg, field->offset, void);
+  int presence = field->presence;
+  int type = field->descriptortype;
 
   /* Set presence if necessary. */
-  if (field->presence < 0) {
-    *PTR_AT(msg, ~field->presence, int32_t) = field->number;  /* Oneof case */
-  } else if (field->presence > 0) {
-    int hasbit = field->presence;
-    *PTR_AT(msg, hasbit / 8, char) |= (1 << (hasbit % 8));  /* Hasbit */
+  if (presence < 0) {
+    *PTR_AT(msg, presence, int32_t) = field->number;  /* Oneof case */
+  } else if (presence > 0) {
+    uint32_t hasbit = presence;
+    *PTR_AT(msg, hasbit / 32, uint32_t) |= (1 << (hasbit % 32));  /* Hasbit */
   }
 
-  decode_munge(field->descriptortype, &val);
+  decode_munge(type, &val);
 
   /* Store into message. */
   switch (action) {
@@ -311,7 +325,7 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
         submsg = decode_newsubmsg(d, layout, field);
         *submsgp = submsg;
       }
-      if (UPB_UNLIKELY(field->descriptortype == UPB_DTYPE_GROUP)) {
+      if (UPB_UNLIKELY(type == UPB_DTYPE_GROUP)) {
         CHK(ptr = decode_togroup(d, ptr, submsg, layout, field));
       } else {
         CHK(decode_tosubmsg(d, submsg, layout, field, val.str_val));
