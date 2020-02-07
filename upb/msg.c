@@ -52,8 +52,7 @@ static upb_msg_internal_withext *upb_msg_getinternalwithext(
 }
 
 upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a) {
-  upb_alloc *alloc = upb_arena_alloc(a);
-  void *mem = upb_malloc(alloc, upb_msg_sizeof(l));
+  void *mem = upb_arena_malloc(a, upb_msg_sizeof(l));
   upb_msg_internal *in;
   upb_msg *msg;
 

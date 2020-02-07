@@ -336,9 +336,13 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
       memcpy(mem, &val, sizeof(upb_strview));
       return ptr;
     case 3:
+      memcpy(mem, &val, 8);
+      return ptr;
     case 2:
+      memcpy(mem, &val, 4);
+      return ptr;
     case 0:
-      memcpy(mem, &val, 1 << action);
+      memcpy(mem, &val, 1);
       return ptr;
     default:
       UPB_UNREACHABLE();

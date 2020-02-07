@@ -209,6 +209,19 @@ typedef struct upb_arena upb_arena;
 extern "C" {
 #endif
 
+typedef struct {
+  /* We implement the allocator interface.
+   * This must be the first member of upb_arena! */
+  upb_alloc alloc;
+
+  char *ptr, *end;
+} _upb_arena_head;
+
+UPB_INLINE size_t _upb_arena_alignup(size_t size) {
+  const size_t maxalign = 16;
+  return ((size + maxalign - 1) / maxalign) * maxalign;
+}
+
 /* Creates an arena from the given initial block (if any -- n may be 0).
  * Additional blocks will be allocated from |alloc|.  If |alloc| is NULL, this
  * is a fixed-size arena and cannot grow. */
@@ -216,18 +229,29 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc);
 void upb_arena_free(upb_arena *a);
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func);
 size_t upb_arena_bytesallocated(const upb_arena *a);
+void *_upb_arena_slowmalloc(upb_arena *a, size_t size);
 
 UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 
-/* Convenience wrappers around upb_alloc functions. */
-
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
-  return upb_malloc(upb_arena_alloc(a), size);
+  _upb_arena_head *h = (_upb_arena_head*)a;
+  size = _upb_arena_alignup(size);
+  if (UPB_LIKELY(h->end - h->ptr >= size)) {
+    void* ret = h->ptr;
+    h->ptr += size;
+    return ret;
+  } else {
+    return _upb_arena_slowmalloc(a, size);
+  }
 }
 
 UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
                                    size_t size) {
-  return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
+  if (oldsize == 0) {
+    return upb_arena_malloc(a, size);
+  } else {
+    return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
+  }
 }
 
 UPB_INLINE upb_arena *upb_arena_new(void) {
