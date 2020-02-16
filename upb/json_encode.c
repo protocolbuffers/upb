@@ -575,15 +575,12 @@ static void jsonenc_map(jsonenc *e, const upb_map *map, const upb_fielddef *f) {
 
 static void jsonenc_fieldval(jsonenc *e, const upb_fielddef *f,
                              upb_msgval val, bool *first) {
-  char buf[128];
   const char *name;
 
   if (e->options & UPB_JSONENC_PROTONAMES) {
     name = upb_fielddef_name(f);
   } else {
-    /* TODO(haberman): we need a better JSON name API. */
-    upb_fielddef_getjsonname(f, buf, sizeof(buf));
-    name = buf;
+    name = upb_fielddef_jsonname(f);
   }
 
   jsonenc_putsep(e, ", ", first);

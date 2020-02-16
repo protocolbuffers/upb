@@ -375,14 +375,14 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "test_json_generic",
-    srcs = ["tests/test_json_generic.c"],
-    copts = COPTS,
-    deps = [
-        ":json",
-    ],
-)
+#cc_test(
+#    name = "test_json_generic",
+#    srcs = ["tests/test_json_generic.c"],
+#    copts = COPTS,
+#    deps = [
+#        ":json",
+#    ],
+#)
 
 proto_library(
     name = "test_proto",
@@ -580,14 +580,20 @@ upb_proto_library(
     deps = ["@com_google_protobuf//:conformance_proto"],
 )
 
-upb_proto_library(
-    name = "test_messages_proto3_upbproto",
+upb_proto_reflection_library(
+    name = "conformance_proto_upbdefs",
     testonly = 1,
-    deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
+    deps = ["@com_google_protobuf//:conformance_proto"],
 )
 
 upb_proto_reflection_library(
-    name = "test_messages_proto3_upbreflection",
+    name = "test_messages_proto2_upbdefs",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:test_messages_proto2_proto"],
+)
+
+upb_proto_reflection_library(
+    name = "test_messages_proto3_upbdefs",
     testonly = 1,
     deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
 )
@@ -604,8 +610,9 @@ cc_binary(
     }) + ["-Ibazel-out/k8-fastbuild/bin"],
     deps = [
         ":conformance_proto_upb",
-        ":test_messages_proto3_upbproto",
-        ":test_messages_proto3_upbreflection",
+        ":conformance_proto_upbdefs",
+        ":test_messages_proto2_upbdefs",
+        ":test_messages_proto3_upbdefs",
         ":reflection",
         ":textformat",
         ":json",

@@ -1403,6 +1403,7 @@ static bool create_fielddef(
 
     if (strcmp(shortname, json_name) != 0) {
       upb_strtable_insert3(&m->ntof, json_name, json_size, json_v, alloc);
+    }
 
     if (ctx->layouts) {
       const upb_msglayout_field *fields = m->layout->fields;
