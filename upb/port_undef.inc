@@ -13,6 +13,8 @@
 #undef UPB_MIN
 #undef UPB_UNUSED
 #undef UPB_ASSUME
+#undef UPB_LIKELY
+#undef UPB_UNLIKELY
 #undef UPB_ASSERT
 #undef UPB_ASSERT_DEBUGVAR
 #undef UPB_UNREACHABLE

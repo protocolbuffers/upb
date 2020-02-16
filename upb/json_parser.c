@@ -6,16 +6,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include <execinfo.h>
-#include <unistd.h>
 
 #include "upb/upb.h"
 #include "upb/output_buffer.h"
 
 #include "upb/port_def.inc"
 
-#include <stdio.h>
-/* Maps descriptor type -> wire type.  */
 static const uint8_t upb_desctype_to_wiretype[] = {
   UPB_WIRE_TYPE_END_GROUP,      /* ENDGROUP */
   UPB_WIRE_TYPE_64BIT,          /* DOUBLE */
@@ -320,12 +316,11 @@ static bool parse_json_number(jsonparser* parser) {
   char* end;
   double d;
 
-  /* No need to check return. */
-  parse_char('-', parser);
-
-  if (!parse_char('0', parser)) {
-    CHK(skip_digits(parser));
+  if (peek_char(parser) == '-') {
+    parser->ptr++;
   }
+
+  CHK(parse_char('0', parser) || skip_digits(parser));
 
   if (is_eof(parser)) goto parse;
 
@@ -645,7 +640,6 @@ static bool nonbase64(unsigned char ch) {
   return b64table[ch] == -1 && ch != '=';
 }
 
-/* Handles either padded ("XX==") or unpadded ("XX") trailing characters. */
 static bool decode_partialb64(const char* ptr, int n, upb_jsonparser* parser) {
   int32_t val;
   int outbytes;
@@ -1024,10 +1018,11 @@ static int epoch_days(int year, int month, int day) {
   static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
                                           181, 212, 243, 273, 304, 334};
   int febs_since_0 = month > 2 ? year + 1 : year;
-  int days_since_0 = 365 * year + month_yday[month - 1] + (day - 1) +
-                     div_round_up(febs_since_0, 4) -
-                     div_round_up(febs_since_0, 100) +
-                     div_round_up(febs_since_0, 400);
+  int leap_days_since_0 = div_round_up(febs_since_0, 4) -
+                          div_round_up(febs_since_0, 100) +
+                          div_round_up(febs_since_0, 400);
+  int days_since_0 =
+      365 * year + month_yday[month - 1] + (day - 1) + leap_days_since_0;
 
   /* Convert from 0-epoch (0001-01-01 BC) to Unix Epoch (1970-01-01 AD).
    * Since the "BC" system does not have a year zero, 1 BC == year zero. */
