@@ -8,7 +8,7 @@ load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 # copybara:strip_for_google3_begin
 load("@bazel_skylib//lib:versions.bzl", "versions")
-load("@bazel_version//:bazel_version.bzl", "bazel_version")
+load("@upb_bazel_version//:bazel_version.bzl", "bazel_version")
 # copybara:strip_end
 
 # Generic support code #########################################################
@@ -22,6 +22,11 @@ def _get_real_short_path(file):
     if short_path.startswith("../"):
         second_slash = short_path.index("/", 3)
         short_path = short_path[second_slash + 1:]
+    # Sometimes it has another few prefixes like:
+    #   _virtual_imports/any_proto/google/protobuf/any.proto
+    # We want just google/protobuf/any.proto.
+    if short_path.startswith("_virtual_imports"):
+        short_path = short_path.split("/", 2)[-1]
     return short_path
 
 def _get_real_root(file):
@@ -134,15 +139,17 @@ def _cc_library_func(ctx, name, hdrs, srcs, dep_ccinfos):
 
 # upb_proto_library / upb_proto_reflection_library shared code #################
 
-GeneratedSrcs = provider(
+GeneratedSrcsInfo = provider(
     fields = {
         "srcs": "list of srcs",
         "hdrs": "list of hdrs",
     },
 )
 
-_WrappedCcInfo = provider(fields = ["cc_info"])
-_WrappedGeneratedSrcs = provider(fields = ["srcs"])
+_UpbWrappedCcInfo = provider(fields = ["cc_info"])
+_UpbDefsWrappedCcInfo = provider(fields = ["cc_info"])
+_WrappedGeneratedSrcsInfo = provider(fields = ["srcs"])
+_WrappedDefsGeneratedSrcsInfo = provider(fields = ["srcs"])
 
 def _compile_upb_protos(ctx, proto_info, proto_sources, ext):
     srcs = [_generate_output_file(ctx, name, ext + ".c") for name in proto_sources]
@@ -159,23 +166,38 @@ def _compile_upb_protos(ctx, proto_info, proto_sources, ext):
         arguments = [
                         "--upb_out=" + _get_real_root(srcs[0]),
                         "--plugin=protoc-gen-upb=" + ctx.executable._upbc.path,
-                        "--descriptor_set_in=" + ":".join([f.path for f in transitive_sets]),
+                        "--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]),
                     ] +
                     [_get_real_short_path(file) for file in proto_sources],
         progress_message = "Generating upb protos for :" + ctx.label.name,
     )
-    return GeneratedSrcs(srcs = srcs, hdrs = hdrs)
+    return GeneratedSrcsInfo(srcs = srcs, hdrs = hdrs)
 
 def _upb_proto_rule_impl(ctx):
     if len(ctx.attr.deps) != 1:
         fail("only one deps dependency allowed.")
     dep = ctx.attr.deps[0]
-    if _WrappedCcInfo not in dep or _WrappedGeneratedSrcs not in dep:
-        fail("proto_library rule must generate _WrappedCcInfo and " +
-             "_WrappedGeneratedSrcs (aspect should have handled this).")
-    cc_info = dep[_WrappedCcInfo].cc_info
-    srcs = dep[_WrappedGeneratedSrcs].srcs
-    lib = cc_info.linking_context.libraries_to_link.to_list()[0]
+
+    if _WrappedDefsGeneratedSrcsInfo in dep:
+        srcs = dep[_WrappedDefsGeneratedSrcsInfo].srcs
+    elif _WrappedGeneratedSrcsInfo in dep:
+        srcs = dep[_WrappedGeneratedSrcsInfo].srcs
+    else:
+        fail("proto_library rule must generate _WrappedGeneratedSrcsInfo or " +
+             "_WrappedDefsGeneratedSrcsInfo (aspect should have handled this).")
+
+    if _UpbDefsWrappedCcInfo in dep:
+        cc_info = dep[_UpbDefsWrappedCcInfo].cc_info
+    elif _UpbWrappedCcInfo in dep:
+        cc_info = dep[_UpbWrappedCcInfo].cc_info
+    else:
+        fail("proto_library rule must generate _UpbWrappedCcInfo or " +
+             "_UpbDefsWrappedCcInfo (aspect should have handled this).")
+
+    if type(cc_info.linking_context.libraries_to_link) == "list":
+        lib = cc_info.linking_context.libraries_to_link[0]
+    else:
+        lib = cc_info.linking_context.libraries_to_link.to_list()[0]
     files = _filter_none([
         lib.static_library,
         lib.pic_static_library,
@@ -187,12 +209,19 @@ def _upb_proto_rule_impl(ctx):
         cc_info,
     ]
 
-def _upb_proto_aspect_impl(target, ctx):
+def _upb_proto_aspect_impl(target, ctx, cc_provider, file_provider):
     proto_info = target[ProtoInfo]
     files = _compile_upb_protos(ctx, proto_info, proto_info.direct_sources, ctx.attr._ext)
     deps = ctx.rule.attr.deps + ctx.attr._upb
+    if cc_provider == _UpbDefsWrappedCcInfo:
+        deps += ctx.attr._upb_reflection
     dep_ccinfos = [dep[CcInfo] for dep in deps if CcInfo in dep]
-    dep_ccinfos += [dep[_WrappedCcInfo].cc_info for dep in deps if _WrappedCcInfo in dep]
+    dep_ccinfos += [dep[_UpbWrappedCcInfo].cc_info for dep in deps if _UpbWrappedCcInfo in dep]
+    dep_ccinfos += [dep[_UpbDefsWrappedCcInfo].cc_info for dep in deps if _UpbDefsWrappedCcInfo in dep]
+    if cc_provider == _UpbDefsWrappedCcInfo:
+        if _UpbWrappedCcInfo not in target:
+            fail("Target should have _UpbDefsWrappedCcInfo provider")
+        dep_ccinfos += [target[_UpbWrappedCcInfo].cc_info]
     cc_info = _cc_library_func(
         ctx = ctx,
         name = ctx.rule.attr.name + ctx.attr._ext,
@@ -200,7 +229,13 @@ def _upb_proto_aspect_impl(target, ctx):
         srcs = files.srcs,
         dep_ccinfos = dep_ccinfos,
     )
-    return [_WrappedCcInfo(cc_info = cc_info), _WrappedGeneratedSrcs(srcs = files)]
+    return [cc_provider(cc_info = cc_info), file_provider(srcs = files)]
+
+def _upb_proto_library_aspect_impl(target, ctx):
+    return _upb_proto_aspect_impl(target, ctx, _UpbWrappedCcInfo, _WrappedGeneratedSrcsInfo)
+
+def _upb_proto_reflection_library_aspect_impl(target, ctx):
+    return _upb_proto_aspect_impl(target, ctx, _UpbDefsWrappedCcInfo, _WrappedDefsGeneratedSrcsInfo)
 
 def _maybe_add(d):
     if not _is_bazel:
@@ -230,11 +265,15 @@ _upb_proto_library_aspect = aspect(
         ),
         "_upb": attr.label_list(default = [
             "//:generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
-            "//:upb"
+            "//:upb",
         ]),
         "_ext": attr.string(default = ".upb"),
     }),
-    implementation = _upb_proto_aspect_impl,
+    implementation = _upb_proto_library_aspect_impl,
+    provides = [
+        _UpbWrappedCcInfo,
+        _WrappedGeneratedSrcsInfo,
+    ],
     attr_aspects = ["deps"],
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
@@ -269,7 +308,15 @@ _upb_proto_reflection_library_aspect = aspect(
         "_cc_toolchain": attr.label(
             default = "@bazel_tools//tools/cpp:current_cc_toolchain",
         ),
+        # For unknown reasons, this gets overwritten.
         "_upb": attr.label_list(
+            default = [
+                "//:generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
+                "//:upb",
+                "//:reflection",
+            ],
+        ),
+        "_upb_reflection": attr.label_list(
             default = [
                 "//:upb",
                 "//:reflection",
@@ -277,7 +324,15 @@ _upb_proto_reflection_library_aspect = aspect(
         ),
         "_ext": attr.string(default = ".upbdefs"),
     }),
-    implementation = _upb_proto_aspect_impl,
+    implementation = _upb_proto_reflection_library_aspect_impl,
+    provides = [
+        _UpbDefsWrappedCcInfo,
+        _WrappedDefsGeneratedSrcsInfo,
+    ],
+    required_aspect_providers = [
+        _UpbWrappedCcInfo,
+        _WrappedGeneratedSrcsInfo,
+    ],
     attr_aspects = ["deps"],
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
@@ -288,7 +343,10 @@ upb_proto_reflection_library = rule(
     implementation = _upb_proto_rule_impl,
     attrs = {
         "deps": attr.label_list(
-            aspects = [_upb_proto_reflection_library_aspect],
+            aspects = [
+                _upb_proto_library_aspect,
+                _upb_proto_reflection_library_aspect,
+            ],
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
         ),

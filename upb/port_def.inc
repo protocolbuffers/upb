@@ -20,9 +20,7 @@
 *
 * This file is private and must not be included by users!
 */
-#ifndef UINTPTR_MAX
-#error must include stdint.h first
-#endif
+#include <stdint.h>
 
 #if UINTPTR_MAX == 0xffffffff
 #define UPB_SIZE(size32, size64) size32
@@ -30,6 +28,9 @@
 #define UPB_SIZE(size32, size64) size64
 #endif
 
+/* These macros aren't really "port", they are helper macros that we don't want
+ * to leak.
+ */
 #define UPB_FIELD_AT(msg, fieldtype, offset) \
   *(fieldtype*)((const char*)(msg) + offset)
 
@@ -42,18 +43,25 @@
   UPB_FIELD_AT(msg, int, case_offset) = case_val;                             \
   UPB_FIELD_AT(msg, fieldtype, offset) = value;
 
+#define UPB_MAPTYPE_STRING 0
+
 /* UPB_INLINE: inline if possible, emit standalone code if required. */
 #ifdef __cplusplus
 #define UPB_INLINE inline
-#elif defined (__GNUC__)
+#elif defined (__GNUC__) || defined(__clang__)
 #define UPB_INLINE static __inline__
 #else
 #define UPB_INLINE static
 #endif
 
 /* Hints to the compiler about likely/unlikely branches. */
+#if defined (__GNUC__) || defined(__clang__)
 #define UPB_LIKELY(x) __builtin_expect((x),1)
 #define UPB_UNLIKELY(x) __builtin_expect((x),0)
+#else
+#define UPB_LIKELY(x) (x)
+#define UPB_UNLIKELY(x) (x)
+#endif
 
 /* Define UPB_BIG_ENDIAN manually if you're on big endian and your compiler
  * doesn't provide these preprocessor symbols. */
@@ -78,6 +86,21 @@
 #define _upb_snprintf snprintf
 #define _upb_vsnprintf vsnprintf
 #define _upb_va_copy(a, b) va_copy(a, b)
+#elif defined(_MSC_VER)
+/* Microsoft C/C++ versions. */
+#include <stdarg.h>
+#include <stdio.h>
+#if _MSC_VER < 1900
+int msvc_snprintf(char* s, size_t n, const char* format, ...);
+int msvc_vsnprintf(char* s, size_t n, const char* format, va_list arg);
+#define UPB_MSVC_VSNPRINTF
+#define _upb_snprintf msvc_snprintf
+#define _upb_vsnprintf msvc_vsnprintf
+#else
+#define _upb_snprintf snprintf
+#define _upb_vsnprintf vsnprintf
+#endif
+#define _upb_va_copy(a, b) va_copy(a, b)
 #elif defined __GNUC__
 /* A few hacky workarounds for functions not in C89.
  * For internal use only!
@@ -94,7 +117,7 @@
 #ifdef __cplusplus
 #if __cplusplus >= 201103L || defined(__GXX_EXPERIMENTAL_CXX0X__) || \
     (defined(_MSC_VER) && _MSC_VER >= 1900)
-// C++11 is present
+/* C++11 is present */
 #else
 #error upb requires C++11 for C++ support
 #endif
@@ -104,6 +127,18 @@
 #define UPB_MIN(x, y) ((x) < (y) ? (x) : (y))
 
 #define UPB_UNUSED(var) (void)var
+
+/* UPB_ASSUME(): in release mode, we tell the compiler to assume this is true.
+ */
+#ifdef NDEBUG
+#ifdef __GNUC__
+#define UPB_ASSUME(expr) if (!(expr)) __builtin_unreachable()
+#else
+#define UPB_ASSUME(expr) do {} if (false && (expr))
+#endif
+#else
+#define UPB_ASSUME(expr) assert(expr)
+#endif
 
 /* UPB_ASSERT(): in release mode, we use the expression without letting it be
  * evaluated.  This prevents "unused variable" warnings. */
@@ -117,7 +152,7 @@
  * exist in debug mode.  This turns into regular assert. */
 #define UPB_ASSERT_DEBUGVAR(expr) assert(expr)
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #define UPB_UNREACHABLE() do { assert(0); __builtin_unreachable(); } while(0)
 #else
 #define UPB_UNREACHABLE() do { assert(0); } while(0)
@@ -127,4 +162,12 @@
 #define UPB_ATTRIBUTE_FORMAT_PRINTF(x, y) __attribute__((format(printf, x, y)))
 #else
 #define UPB_ATTRIBUTE_FORMAT_PRINTF(x, y)
+#endif
+
+/* UPB_INFINITY representing floating-point positive infinity. */
+#include <math.h>
+#ifdef INFINITY
+#define UPB_INFINITY INFINITY
+#else
+#define UPB_INFINITY (1.0 / 0.0)
 #endif

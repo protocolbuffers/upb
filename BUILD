@@ -2,18 +2,17 @@ load(
     "//bazel:build_defs.bzl",
     "generated_file_staleness_test",
     "licenses",  # copybara:strip_for_google3
-    "lua_binary",
-    "lua_cclibrary",
-    "lua_library",
-    "lua_test",
     "make_shell_script",
     "upb_amalgamation",
 )
-
 load(
     "//bazel:upb_proto_library.bzl",
     "upb_proto_library",
     "upb_proto_reflection_library",
+)
+load(
+    "//:upb/bindings/lua/lua_proto_library.bzl",
+    "lua_proto_library",
 )
 
 licenses(["notice"])  # BSD (Google-authored w/ possible external contributions)
@@ -33,7 +32,8 @@ CPPOPTS = [
 COPTS = CPPOPTS + [
     # copybara:strip_for_google3_begin
     "-pedantic",
-    "-std=c89",
+    "-Werror=pedantic",
+    "-Wstrict-prototypes",
     # copybara:strip_end
 ]
 
@@ -44,6 +44,11 @@ config_setting(
 )
 
 config_setting(
+    name = "windows",
+    constraint_values = ["@bazel_tools//platforms:windows"],
+)
+
+config_setting(
     name = "fuzz",
     values = {"define": "fuzz=true"},
 )
@@ -51,15 +56,23 @@ config_setting(
 # Public C/C++ libraries #######################################################
 
 cc_library(
+    name = "port",
+    textual_hdrs = [
+        "upb/port_def.inc",
+        "upb/port_undef.inc",
+    ],
+    srcs = [
+        "upb/port.c",
+    ],
+)
+
+cc_library(
     name = "upb",
     srcs = [
         "upb/decode.c",
         "upb/encode.c",
-        "upb/generated_util.h",
         "upb/msg.c",
         "upb/msg.h",
-        "upb/port_def.inc",
-        "upb/port_undef.inc",
         "upb/table.c",
         "upb/table.int.h",
         "upb/upb.c",
@@ -69,8 +82,12 @@ cc_library(
         "upb/encode.h",
         "upb/upb.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     visibility = ["//visibility:public"],
+    deps = [":port"],
 )
 
 # Common support routines used by generated code.  This library has no
@@ -81,55 +98,81 @@ cc_library(
 # give up any backward compatibility guarantees.
 cc_library(
     name = "generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
-    textual_hdrs = [
+    hdrs = [
+        "upb/msg.h",
         "upb/port_def.inc",
         "upb/port_undef.inc",
     ],
-    hdrs = [
-        "upb/generated_util.h",
-        "upb/msg.h",
-    ],
-    deps = [":upb"],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     visibility = ["//visibility:public"],
+    deps = [
+        ":upb",
+    ],
 )
 
 upb_proto_library(
     name = "descriptor_upbproto",
-    deps = ["@com_google_protobuf//:descriptor_proto"],
     visibility = ["//visibility:public"],
+    deps = ["@com_google_protobuf//:descriptor_proto"],
 )
 
 cc_library(
     name = "reflection",
     srcs = [
         "upb/def.c",
-        "upb/msgfactory.c",
+        "upb/reflection.c",
     ],
     hdrs = [
         "upb/def.h",
-        "upb/msgfactory.h",
+        "upb/reflection.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     visibility = ["//visibility:public"],
     deps = [
         ":descriptor_upbproto",
+        ":port",
         ":table",
         ":upb",
     ],
 )
 
+# Internal C/C++ libraries #####################################################
+
+cc_library(
+    name = "textformat",
+    srcs = [
+        "upb/text_encode.c",
+    ],
+    hdrs = [
+        "upb/text_encode.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":reflection",
+    ],
+    copts = COPTS,
+)
+
 cc_library(
     name = "json",
     srcs = [
+        "upb/json_encode.c",
         "upb/json_parser.c",
-        #"upb/json_serialize.c",
         "upb/output_buffer.h",
     ],
-    hdrs = ["upb/json.h"],
+    hdrs = [
+        "upb/json_encode.h",
+        "upb/json.h",
+    ],
     deps = [
         ":upb",
-        ":reflection"
+        ":reflection",
     ],
     copts = COPTS,
 )
@@ -139,23 +182,13 @@ cc_library(
 cc_library(
     name = "table",
     hdrs = ["upb/table.int.h"],
-    deps = [":upb"],
-)
-
-# Legacy C/C++ Libraries (not recommended for new code) ########################
-
-cc_library(
-    name = "legacy_msg_reflection",
-    srcs = [
-        "upb/legacy_msg_reflection.c",
-    ],
-    hdrs = ["upb/legacy_msg_reflection.h"],
-    copts = COPTS,
     deps = [
-        ":table",
+        ":port",
         ":upb",
     ],
 )
+
+# Legacy C/C++ Libraries (not recommended for new code) ########################
 
 cc_library(
     name = "handlers",
@@ -168,9 +201,13 @@ cc_library(
         "upb/handlers.h",
         "upb/sink.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     deps = [
         ":reflection",
+        ":port",
         ":table",
         ":upb",
     ],
@@ -192,11 +229,15 @@ cc_library(
         "upb/pb/encoder.h",
         "upb/pb/textprinter.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     deps = [
         ":descriptor_upbproto",
         ":handlers",
         ":reflection",
+        ":port",
         ":table",
         ":upb",
     ],
@@ -213,7 +254,10 @@ cc_library(
         "upb/json/parser.h",
         "upb/json/printer.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     deps = [
         ":upb",
         ":upb_pb",
@@ -229,6 +273,7 @@ cc_library(
     deps = [
         ":descriptor_upbproto",
         ":handlers",
+        ":port",
         ":upb",
     ],
 )
@@ -243,11 +288,14 @@ cc_library(
         "upbc/message_layout.h",
     ],
     hdrs = ["upbc/generator.h"],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
-        "@absl//absl/base:core_headers",
-        "@absl//absl/container:flat_hash_map",
-        "@absl//absl/strings",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@com_google_protobuf//:protoc_lib",
     ],
@@ -256,7 +304,10 @@ cc_library(
 cc_binary(
     name = "protoc-gen-upb",
     srcs = ["upbc/main.cc"],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     visibility = ["//visibility:public"],
     deps = [
         ":upbc_generator",
@@ -268,6 +319,11 @@ cc_binary(
 # and upb_proto_reflection_library() rules are fixed.
 
 # C/C++ tests ##################################################################
+
+upb_proto_reflection_library(
+    name = "descriptor_upbreflection",
+    deps = ["@com_google_protobuf//:descriptor_proto"],
+)
 
 cc_binary(
     name = "benchmark",
@@ -290,9 +346,13 @@ cc_library(
         "tests/test_util.h",
         "tests/upb_test.h",
     ],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
         ":handlers",
+        ":port",
         ":upb",
     ],
 )
@@ -303,8 +363,12 @@ cc_test(
         "tests/pb/test_varint.c",
         "upb/pb/varint.int.h",
     ],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
     deps = [
+        ":port",
         ":upb",
         ":upb_pb",
         ":upb_test",
@@ -318,6 +382,34 @@ cc_test(
     deps = [
         ":json",
     ],
+)
+
+proto_library(
+    name = "test_proto",
+    testonly = 1,
+    srcs = ["tests/test.proto"],
+)
+
+upb_proto_library(
+    name = "test_upbproto",
+    testonly = 1,
+    deps = [":test_proto"],
+)
+
+cc_test(
+    name = "test_generated_code",
+    srcs = ["tests/test_generated_code.c"],
+    deps = [
+        ":test_messages_proto3_proto_upb",
+        ":test_upbproto",
+        ":upb_test",
+    ],
+)
+
+upb_proto_reflection_library(
+    name = "test_messages_proto3_proto_upb",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
 )
 
 proto_library(
@@ -338,9 +430,13 @@ cc_test(
         "tests/pb/test_decoder.cc",
         "upb/pb/varint.int.h",
     ],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
         ":handlers",
+        ":port",
         ":test_decoder_upbproto",
         ":upb",
         ":upb_pb",
@@ -363,9 +459,13 @@ upb_proto_reflection_library(
 cc_test(
     name = "test_cpp",
     srcs = ["tests/test_cpp.cc"],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
         ":handlers",
+        ":port",
         ":reflection",
         ":test_cpp_upbproto",
         ":upb",
@@ -377,8 +477,12 @@ cc_test(
 cc_test(
     name = "test_table",
     srcs = ["tests/test_table.cc"],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
+        ":port",
         ":table",
         ":upb",
         ":upb_test",
@@ -387,12 +491,15 @@ cc_test(
 
 # OSS-Fuzz test
 cc_binary(
-    testonly = 1,
     name = "file_descriptor_parsenew_fuzzer",
+    testonly = 1,
     srcs = ["tests/file_descriptor_parsenew_fuzzer.cc"],
-    copts = CPPOPTS + select({
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }) + select({
         "//conditions:default": [],
-        ":fuzz": ["-fsanitizer=fuzzer,address"],
+        ":fuzz": ["-fsanitize=fuzzer,address"],
     }),
     defines = select({
         "//conditions:default": [],
@@ -405,15 +512,13 @@ cc_binary(
 )
 
 # copybara:strip_for_google3_begin
-upb_proto_reflection_library(
-    name = "descriptor_upbreflection",
-    deps = ["@com_google_protobuf//:descriptor_proto"],
-)
-
 cc_test(
     name = "test_encoder",
     srcs = ["tests/pb/test_encoder.cc"],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
         ":descriptor_upbproto",
         ":descriptor_upbreflection",
@@ -455,7 +560,10 @@ cc_test(
     srcs = [
         "tests/json/test_json.cc",
     ],
-    copts = CPPOPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
     deps = [
         ":test_json_upbproto",
         ":test_json_upbprotoreflection",
@@ -490,12 +598,17 @@ cc_binary(
     srcs = [
         "tests/conformance_upb.c",
     ],
-    copts = COPTS + ["-Ibazel-out/k8-fastbuild/bin"],
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }) + ["-Ibazel-out/k8-fastbuild/bin"],
     deps = [
         ":conformance_proto_upb",
-        ":json",
         ":test_messages_proto3_upbproto",
         ":test_messages_proto3_upbreflection",
+        ":reflection",
+        ":textformat",
+        ":json",
         ":upb",
     ],
 )
@@ -514,6 +627,7 @@ sh_test(
         ":conformance_upb",
         "@com_google_protobuf//:conformance_test_runner",
     ],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
 )
 
 # copybara:strip_for_google3_begin
@@ -537,6 +651,7 @@ upb_amalgamation(
         ":descriptor_upbproto",
         ":reflection",
         ":handlers",
+        ":port",
         ":upb_pb",
         ":upb_json",
     ],
@@ -546,13 +661,16 @@ cc_library(
     name = "amalgamation",
     srcs = ["upb.c"],
     hdrs = ["upb.h"],
-    copts = COPTS,
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS
+    }),
 )
 
-# Lua libraries. ###############################################################
+# Lua ##########################################################################
 
-lua_cclibrary(
-    name = "lua/upb_c",
+cc_library(
+    name = "lupb",
     srcs = [
         "upb/bindings/lua/def.c",
         "upb/bindings/lua/msg.c",
@@ -562,48 +680,63 @@ lua_cclibrary(
         "upb/bindings/lua/upb.h",
     ],
     deps = [
-        "legacy_msg_reflection",
-        "upb",
-        "upb_pb",
+        ":reflection",
+        ":textformat",
+        ":upb",
+        "@lua//:liblua",
     ],
 )
 
-lua_library(
-    name = "lua/upb",
-    srcs = ["upb/bindings/lua/upb.lua"],
-    luadeps = ["lua/upb_c"],
-    strip_prefix = "upb/bindings/lua",
-)
-
-lua_cclibrary(
-    name = "lua/upb/pb_c",
-    srcs = ["upb/bindings/lua/upb/pb.c"],
-    luadeps = ["lua/upb_c"],
-    deps = ["upb_pb"],
-)
-
-lua_library(
-    name = "lua/upb/pb",
-    srcs = ["upb/bindings/lua/upb/pb.lua"],
-    luadeps = [
-        "lua/upb",
-        "lua/upb/pb_c",
+cc_test(
+    name = "test_lua",
+    linkstatic = 1,
+    srcs = ["tests/bindings/lua/main.c"],
+    data = [
+        "@com_google_protobuf//:conformance_proto",
+        "@com_google_protobuf//:descriptor_proto",
+        ":descriptor_proto_lua",
+        ":test_messages_proto3_proto_lua",
+        ":test_proto_lua",
+        "tests/bindings/lua/test_upb.lua",
+        "third_party/lunit/console.lua",
+        "third_party/lunit/lunit.lua",
+        "upb/bindings/lua/upb.lua",
     ],
-    strip_prefix = "upb/bindings/lua",
+    deps = [
+        ":lupb",
+        "@lua//:liblua",
+    ]
 )
 
-# Lua tests. ###################################################################
-
-lua_test(
-    name = "lua/test_upb",
-    luadeps = ["lua/upb"],
-    luamain = "tests/bindings/lua/test_upb.lua",
+cc_binary(
+    name = "protoc-gen-lua",
+    srcs = ["upb/bindings/lua/upbc.cc"],
+    copts = select({
+        ":windows": [],
+        "//conditions:default": CPPOPTS
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protoc_lib"
+    ],
 )
 
-lua_test(
-    name = "lua/test_upb_pb",
-    luadeps = ["lua/upb/pb"],
-    luamain = "tests/bindings/lua/test_upb.pb.lua",
+lua_proto_library(
+    name = "test_proto_lua",
+    testonly = 1,
+    deps = [":test_proto"],
+)
+
+lua_proto_library(
+    name = "descriptor_proto_lua",
+    deps = ["@com_google_protobuf//:descriptor_proto"],
+)
+
+lua_proto_library(
+    name = "test_messages_proto3_proto_lua",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
 )
 
 # Test the CMake build #########################################################
@@ -630,6 +763,7 @@ sh_test(
     name = "cmake_build",
     srcs = ["run_cmake_build.sh"],
     data = [":cmake_files"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
 )
 
 # Generated files ##############################################################

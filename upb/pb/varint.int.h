@@ -26,16 +26,16 @@ extern "C" {
  * descriptor type (upb_descriptortype_t). */
 extern const uint8_t upb_pb_native_wire_types[];
 
-UPB_INLINE uint64_t byteswap64(uint64_t val)
-{
-  return ((((val) & 0xff00000000000000ull) >> 56)
-    | (((val) & 0x00ff000000000000ull) >> 40)
-    | (((val) & 0x0000ff0000000000ull) >> 24)
-    | (((val) & 0x000000ff00000000ull) >> 8)
-    | (((val) & 0x00000000ff000000ull) << 8)
-    | (((val) & 0x0000000000ff0000ull) << 24)
-    | (((val) & 0x000000000000ff00ull) << 40)
-    | (((val) & 0x00000000000000ffull) << 56));
+UPB_INLINE uint64_t byteswap64(uint64_t val) {
+  uint64_t byte = 0xff;
+  return (val & (byte << 56) >> 56)
+    | (val & (byte << 48) >> 40)
+    | (val & (byte << 40) >> 24)
+    | (val & (byte << 32) >> 8)
+    | (val & (byte << 24) << 8)
+    | (val & (byte << 16) << 24)
+    | (val & (byte <<  8) << 40)
+    | (val & (byte <<  0) << 56);
 }
 
 /* Zig-zag encoding/decoding **************************************************/
@@ -46,8 +46,12 @@ UPB_INLINE int32_t upb_zzdec_32(uint32_t n) {
 UPB_INLINE int64_t upb_zzdec_64(uint64_t n) {
   return (n >> 1) ^ -(int64_t)(n & 1);
 }
-UPB_INLINE uint32_t upb_zzenc_32(int32_t n) { return (n << 1) ^ (n >> 31); }
-UPB_INLINE uint64_t upb_zzenc_64(int64_t n) { return (n << 1) ^ (n >> 63); }
+UPB_INLINE uint32_t upb_zzenc_32(int32_t n) {
+  return ((uint32_t)n << 1) ^ (n >> 31);
+}
+UPB_INLINE uint64_t upb_zzenc_64(int64_t n) {
+  return ((uint64_t)n << 1) ^ (n >> 63);
+}
 
 /* Decoding *******************************************************************/
 

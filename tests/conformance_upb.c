@@ -7,15 +7,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <execinfo.h>
-#include <signal.h>
 
 #include "conformance/conformance.upb.h"
-#include "src/google/protobuf/test_messages_proto3.upb.h"
+#include "conformance/conformance.upbdefs.h"
+#include "src/google/protobuf/test_messages_proto2.upbdefs.h"
 #include "src/google/protobuf/test_messages_proto3.upbdefs.h"
-#include "upb/json.h"
+#include "upb/decode.h"
+#include "upb/encode.h"
+#include "upb/reflection.h"
+#include "upb/text_encode.h"
 
 int test_count = 0;
+bool verbose = false;  /* Set to true to get req/resp printed on stderr. */
 
 bool CheckedRead(int fd, void *buf, size_t len) {
   size_t ofs = 0;
@@ -43,221 +46,181 @@ void CheckedWrite(int fd, const void *buf, size_t len) {
   }
 }
 
-bool strview_eql(upb_strview view, const char *str) {
-  return view.size == strlen(str) && memcmp(view.data, str, view.size) == 0;
-}
+typedef struct {
+  const conformance_ConformanceRequest *request;
+  conformance_ConformanceResponse *response;
+  upb_arena *arena;
+  const upb_symtab *symtab;
+} ctx;
 
-/* Stringify "str" to ensure it is static storage duration and will outlive. */
-#define SETERR(msg, err, str) \
-  conformance_ConformanceResponse_set_##err(msg, upb_strview_makez(str))
-
-void handler(int sig) {
-  void *array[10];
-  size_t size;
-
-  size = backtrace(array, 10);
-  fprintf(stderr, "Error: signal %d:\n", sig);
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-  exit(1);
-}
-
-static const char *proto3_msg =
-    "protobuf_test_messages.proto3.TestAllTypesProto3";
-
-#include <ctype.h>
-void DoTest(
-    const conformance_ConformanceRequest* request,
-    conformance_ConformanceResponse *response,
-    upb_symtab *symtab,
-    upb_arena *arena) {
-  protobuf_test_messages_proto3_TestAllTypesProto3 *test_message;
-  upb_strview name = conformance_ConformanceRequest_message_type(request);
-  const upb_msgdef *m = upb_symtab_lookupmsg2(symtab, name.data, name.size);
-  upb_alloc *alloc = upb_arena_alloc(arena);
-  upb_status status;
-
-  upb_status_clear(&status);
-
-  if (!m || !strview_eql(name, proto3_msg)) {
-    SETERR(response, skipped, "Only proto3 for now.");
-    return;
+bool parse_proto(upb_msg *msg, const upb_msgdef *m, const ctx* c) {
+  upb_strview proto =
+      conformance_ConformanceRequest_protobuf_payload(c->request);
+  if (upb_decode(proto.data, proto.size, msg, upb_msgdef_layout(m), c->arena)) {
+    return true;
+  } else {
+    static const char msg[] = "Parse error";
+    conformance_ConformanceResponse_set_parse_error(
+        c->response, upb_strview_make(msg, strlen(msg)));
+    return false;
   }
+}
 
-  switch (conformance_ConformanceRequest_payload_case(request)) {
-    case conformance_ConformanceRequest_payload_protobuf_payload: {
-      upb_strview payload;
+void serialize_proto(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
+  size_t len;
+  char *data = upb_encode(msg, upb_msgdef_layout(m), c->arena, &len);
+  if (data) {
+    conformance_ConformanceResponse_set_protobuf_payload(
+        c->response, upb_strview_make(data, len));
+  } else {
+    static const char msg[] = "Error serializing.";
+    conformance_ConformanceResponse_set_serialize_error(
+        c->response, upb_strview_make(msg, strlen(msg)));
+  }
+}
 
-      payload = conformance_ConformanceRequest_protobuf_payload(request);
-      test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
-          payload.data, payload.size, arena);
+void serialize_text(const upb_msg *msg, const upb_msgdef *m, const ctx *c) {
+  size_t len;
+  size_t len2;
+  int opts = 0;
+  char *data;
+  if (!conformance_ConformanceRequest_print_unknown_fields(c->request)) {
+    opts |= UPB_TXTENC_SKIPUNKNOWN;
+  }
+  len = upb_text_encode(msg, m, c->symtab, opts, NULL, 0);
+  data = upb_arena_malloc(c->arena, len + 1);
+  len2 = upb_text_encode(msg, m, c->symtab, opts, data, len + 1);
+  assert(len == len2);
+  conformance_ConformanceResponse_set_text_payload(
+      c->response, upb_strview_make(data, len));
+}
 
-      if (!test_message) {
-        SETERR(response, parse_error, "Error parsing proto input.");
-        return;
-      }
-      break;
-    }
-
-    case conformance_ConformanceRequest_payload_json_payload: {
-      upb_strview json = conformance_ConformanceRequest_json_payload(request);
-      int options = conformance_ConformanceRequest_test_category(request) ==
-                            conformance_JSON_IGNORE_UNKNOWN_PARSING_TEST
-                        ? UPB_JSON_IGNORE_UNKNOWN
-                        : 0;
-      size_t bin_size;
-      char *bin_buf;
-
-      bin_buf = upb_jsontobinary(json.data, json.size, m, symtab, options, 32,
-                                 alloc, &bin_size, &status);
-
-      if (!bin_buf) {
-        SETERR(response, parse_error,
-               upb_strdup(upb_status_errmsg(&status), alloc));
-        return;
-      }
-
-      test_message = protobuf_test_messages_proto3_TestAllTypesProto3_parse(
-          bin_buf, bin_size, arena);
-
-      if (!test_message) {
-        SETERR(response, parse_error, "Error parsing protobuf from JSON.");
-        return;
-      }
-
-      break;
-    }
-
+bool parse_input(upb_msg *msg, const upb_msgdef *m, const ctx* c) {
+  switch (conformance_ConformanceRequest_payload_case(c->request)) {
+    case conformance_ConformanceRequest_payload_protobuf_payload:
+      return parse_proto(msg, m, c);
     case conformance_ConformanceRequest_payload_NOT_SET:
       fprintf(stderr, "conformance_upb: Request didn't have payload.\n");
-      return;
-
+      return false;
     default: {
-      SETERR(response, skipped, "Unsupported input format.");
-      return;
+      static const char msg[] = "Unsupported input format.";
+      conformance_ConformanceResponse_set_skipped(
+          c->response, upb_strview_make(msg, strlen(msg)));
+      return false;
     }
   }
+}
 
-  switch (conformance_ConformanceRequest_requested_output_format(request)) {
+void write_output(const upb_msg *msg, const upb_msgdef *m, const ctx* c) {
+  switch (conformance_ConformanceRequest_requested_output_format(c->request)) {
     case conformance_UNSPECIFIED:
       fprintf(stderr, "conformance_upb: Unspecified output format.\n");
       exit(1);
-
-    case conformance_PROTOBUF: {
-      size_t bin_len;
-      char *bin_buf;
-
-      bin_buf = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
-          test_message, arena, &bin_len);
-
-      if (!bin_buf) {
-        SETERR(response, serialize_error, "Error serializing to binary.");
-        return;
-      }
-
-      conformance_ConformanceResponse_set_protobuf_payload(
-          response, upb_strview_make(bin_buf, bin_len));
+    case conformance_PROTOBUF:
+      serialize_proto(msg, m, c);
       break;
-    }
-
-      /*
-    case conformance_JSON: {
-      char *json_buf;
-      size_t json_size;
-      size_t bin_len;
-      char *bin_buf;
-
-      bin_buf = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
-          test_message, arena, &bin_len);
-
-      if (!bin_buf) {
-        SETERR(response, serialize_error, "Error serializing to binary.");
-        return;
-      }
-
-      json_buf = upb_binarytojson(bin_buf, bin_len, m, 0, alloc, &json_size);
-
-      if (!json_buf) {
-        SETERR(response, serialize_error, "Error serializing to JSON.");
-        return;
-      }
-
-      conformance_ConformanceResponse_set_protobuf_payload(
-          response, upb_strview_make(json_buf, json_size));
+    case conformance_TEXT_FORMAT:
+      serialize_text(msg, m, c);
       break;
-    }*/
-
     default: {
-      SETERR(response, skipped, "Unsupported output format.");
-      return;
+      static const char msg[] = "Unsupported output format.";
+      conformance_ConformanceResponse_set_skipped(
+          c->response, upb_strview_make(msg, strlen(msg)));
+      break;
     }
   }
+}
 
-  return;
+void DoTest(const ctx* c) {
+  upb_msg *msg;
+  upb_strview name = conformance_ConformanceRequest_message_type(c->request);
+  const upb_msgdef *m = upb_symtab_lookupmsg2(c->symtab, name.data, name.size);
+
+  if (!m) {
+    static const char msg[] = "Unknown message type.";
+    conformance_ConformanceResponse_set_skipped(
+        c->response, upb_strview_make(msg, strlen(msg)));
+    return;
+  }
+
+  msg = upb_msg_new(m, c->arena);
+
+  if (parse_input(msg, m, c)) {
+    write_output(msg, m, c);
+  }
+}
+
+void debug_print(const char *label, const upb_msg *msg, const upb_msgdef *m,
+                 const ctx *c) {
+  char buf[512];
+  upb_text_encode(msg, m, c->symtab, UPB_TXTENC_SINGLELINE, buf, sizeof(buf));
+  fprintf(stderr, "%s: %s\n", label, buf);
 }
 
 bool DoTestIo(upb_symtab *symtab) {
-  upb_arena *arena;
-  upb_alloc *alloc;
   upb_status status;
-  char *serialized_input;
-  char *serialized_output;
+  char *input;
+  char *output;
   uint32_t input_size;
   size_t output_size;
-  conformance_ConformanceRequest *request;
-  conformance_ConformanceResponse *response;
+  ctx c;
 
   if (!CheckedRead(STDIN_FILENO, &input_size, sizeof(uint32_t))) {
     /* EOF. */
     return false;
   }
 
-  arena = upb_arena_new();
-  alloc = upb_arena_alloc(arena);
-  serialized_input = upb_malloc(alloc, input_size);
+  c.symtab = symtab;
+  c.arena = upb_arena_new();
+  input = upb_arena_malloc(c.arena, input_size);
 
-  if (!CheckedRead(STDIN_FILENO, serialized_input, input_size)) {
+  if (!CheckedRead(STDIN_FILENO, input, input_size)) {
     fprintf(stderr, "conformance_upb: unexpected EOF on stdin.\n");
     exit(1);
   }
 
-  request =
-      conformance_ConformanceRequest_parse(serialized_input, input_size, arena);
-  response = conformance_ConformanceResponse_new(arena);
+  c.request = conformance_ConformanceRequest_parse(input, input_size, c.arena);
+  c.response = conformance_ConformanceResponse_new(c.arena);
 
-  if (request) {
-    DoTest(request, response, symtab, arena);
+  if (c.request) {
+    DoTest(&c);
   } else {
     fprintf(stderr, "conformance_upb: parse of ConformanceRequest failed: %s\n",
             upb_status_errmsg(&status));
   }
 
-  serialized_output = conformance_ConformanceResponse_serialize(
-      response, arena, &output_size);
+  output = conformance_ConformanceResponse_serialize(c.response, c.arena,
+                                                     &output_size);
 
   CheckedWrite(STDOUT_FILENO, &output_size, sizeof(uint32_t));
-  CheckedWrite(STDOUT_FILENO, serialized_output, output_size);
+  CheckedWrite(STDOUT_FILENO, output, output_size);
 
   test_count++;
 
-  upb_arena_free(arena);
+  if (verbose) {
+    debug_print("Request", c.request,
+                conformance_ConformanceRequest_getmsgdef(symtab), &c);
+    debug_print("Response", c.response,
+                conformance_ConformanceResponse_getmsgdef(symtab), &c);
+    fprintf(stderr, "\n");
+  }
+
+  upb_arena_free(c.arena);
 
   return true;
 }
 
-int main() {
+int main(void) {
   upb_symtab *symtab = upb_symtab_new();
 
+  protobuf_test_messages_proto2_TestAllTypesProto2_getmsgdef(symtab);
   protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
-  signal(SIGSEGV, handler); 
 
   while (1) {
     if (!DoTestIo(symtab)) {
       fprintf(stderr, "conformance_upb: received EOF from test runner "
                       "after %d tests, exiting\n", test_count);
-      break;
+      return 0;
     }
   }
-
-  upb_symtab_free(symtab);
-  return 0;
 }

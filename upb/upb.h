@@ -166,7 +166,15 @@ UPB_INLINE char *upb_strdup(const char *s, upb_alloc *a) {
 
 /* The global allocator used by upb.  Uses the standard malloc()/free(). */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern upb_alloc upb_alloc_global;
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
 
 /* Functions that hard-code the global malloc.
  *
@@ -233,7 +241,7 @@ UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
   return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
 }
 
-UPB_INLINE upb_arena *upb_arena_new() {
+UPB_INLINE upb_arena *upb_arena_new(void) {
   return upb_arena_init(NULL, 0, &upb_alloc_global);
 }
 
@@ -298,7 +306,7 @@ template <int N> class upb::InlinedArena : public upb::Arena {
 /* Constants ******************************************************************/
 
 /* Generic function type. */
-typedef void upb_func();
+typedef void upb_func(void);
 
 /* A list of types as they are encoded on-the-wire. */
 typedef enum {
@@ -321,14 +329,15 @@ typedef enum {
   UPB_TYPE_INT32    = 3,
   UPB_TYPE_UINT32   = 4,
   UPB_TYPE_ENUM     = 5,  /* Enum values are int32. */
-  /* Types stored as pointers (probably 4 or 8 bytes). */
-  UPB_TYPE_STRING   = 6,
-  UPB_TYPE_BYTES    = 7,
-  UPB_TYPE_MESSAGE  = 8,
+  /* Types stored as void* (probably 4 or 8 bytes). */
+  UPB_TYPE_MESSAGE  = 6,
   /* Types stored as 8 bytes. */
-  UPB_TYPE_DOUBLE   = 9,
-  UPB_TYPE_INT64    = 10,
-  UPB_TYPE_UINT64   = 11
+  UPB_TYPE_DOUBLE   = 7,
+  UPB_TYPE_INT64    = 8,
+  UPB_TYPE_UINT64   = 9,
+  /* Types stored as upb_strview (2 * void*) (probably 8 or 16 bytes). */
+  UPB_TYPE_STRING   = 10,
+  UPB_TYPE_BYTES    = 11
 } upb_fieldtype_t;
 
 /* The repeated-ness of each field; this matches descriptor.proto. */
@@ -360,7 +369,7 @@ typedef enum {
   UPB_DESCRIPTOR_TYPE_SINT64   = 18
 } upb_descriptortype_t;
 
-extern const uint8_t upb_desctype_to_fieldtype[];
+#define UPB_MAP_BEGIN -1
 
 #include "upb/port_undef.inc"
 
