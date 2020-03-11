@@ -25,7 +25,7 @@ static const char _upb_fieldtype_to_sizelg2[12] = {
 };
 
 static uintptr_t tag_arrptr(void* ptr, int elem_size_lg2) {
-  UPB_ASSERT(elem_size_lg2 <= 4);
+  UPB_ASSERT(elem_size_lg2 <= 7);
   return (uintptr_t)ptr | elem_size_lg2;
 }
 
