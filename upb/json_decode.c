@@ -888,7 +888,8 @@ static void jsondec_field(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 
   if (jsondec_peek(d) == JD_NULL && !jsondec_isvalue(f)) {
     /* JSON "null" indicates a default value, so no need to set anything. */
-    return jsondec_null(d);
+    jsondec_null(d);
+    return;
   }
 
   preserved = d->debug_field;

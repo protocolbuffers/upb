@@ -675,6 +675,33 @@ cc_library(
     }),
 )
 
+upb_amalgamation(
+    name = "gen_lite_amalgamation",
+    prefix = "lite-",
+    outs = [
+        "lite-upb.c",
+        "lite-upb.h",
+    ],
+    amalgamator = ":amalgamate",
+    libs = [
+        ":upb",
+        ":descriptor_upbproto",
+        ":reflection",
+        ":port",
+        ":json",
+    ],
+)
+
+cc_library(
+    name = "lite_amalgamation",
+    srcs = ["lite-upb.c"],
+    hdrs = ["lite-upb.h"],
+    copts = select({
+        ":windows": [],
+        "//conditions:default": COPTS,
+    }),
+)
+
 # Lua ##########################################################################
 
 cc_library(
