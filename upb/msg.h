@@ -315,21 +315,21 @@ UPB_INLINE void _upb_map_clear(upb_map *map) {
 /* Message map operations, these get the map from the message first. */
 
 UPB_INLINE size_t _upb_msg_map_size(const upb_msg *msg, size_t ofs) {
-  upb_map *map = UPB_FIELD_AT(msg, upb_map *, ofs);
+  upb_map *map = *UPB_PTR_AT(msg, ofs, upb_map *);
   return map ? _upb_map_size(map) : 0;
 }
 
 UPB_INLINE bool _upb_msg_map_get(const upb_msg *msg, size_t ofs,
                                  const void *key, size_t key_size, void *val,
                                  size_t val_size) {
-  upb_map *map = UPB_FIELD_AT(msg, upb_map *, ofs);
+  upb_map *map = *UPB_PTR_AT(msg, ofs, upb_map *);
   if (!map) return false;
   return _upb_map_get(map, key, key_size, val, val_size);
 }
 
 UPB_INLINE void *_upb_msg_map_next(const upb_msg *msg, size_t ofs,
                                    size_t *iter) {
-  upb_map *map = UPB_FIELD_AT(msg, upb_map *, ofs);
+  upb_map *map = *UPB_PTR_AT(msg, ofs, upb_map *);
   if (!map) return NULL;
   return _upb_map_next(map, iter);
 }
@@ -346,13 +346,13 @@ UPB_INLINE bool _upb_msg_map_set(upb_msg *msg, size_t ofs, const void *key,
 
 UPB_INLINE bool _upb_msg_map_delete(upb_msg *msg, size_t ofs, const void *key,
                                     size_t key_size) {
-  upb_map *map = UPB_FIELD_AT(msg, upb_map *, ofs);
+  upb_map *map = *UPB_PTR_AT(msg, ofs, upb_map *);
   if (!map) return false;
   return _upb_map_delete(map, key, key_size);
 }
 
 UPB_INLINE void _upb_msg_map_clear(upb_msg *msg, size_t ofs) {
-  upb_map *map = UPB_FIELD_AT(msg, upb_map *, ofs);
+  upb_map *map = *UPB_PTR_AT(msg, ofs, upb_map *);
   if (!map) return;
   _upb_map_clear(map);
 }

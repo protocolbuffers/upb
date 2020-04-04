@@ -128,7 +128,7 @@ static const int8_t delim_ops[37] = {
     OP_STRING,  /* REPEATED BYTES */
     OP_VARPCK_LG2(2), /* REPEATED UINT32 */
     OP_VARPCK_LG2(2), /* REPEATED ENUM */
-    OP_VARPCK_LG2(2),  /* REPEATED SFIXED32 */
+    OP_FIXPCK_LG2(2),  /* REPEATED SFIXED32 */
     OP_FIXPCK_LG2(3),  /* REPEATED SFIXED64 */
     OP_VARPCK_LG2(2), /* REPEATED SINT32 */
     OP_VARPCK_LG2(3), /* REPEATED SINT64 */
@@ -152,8 +152,6 @@ typedef union {
   uint64_t uint64_val;
   upb_strview str_val;
 } wireval;
-
-#define PTR_AT(msg, ofs, type) (type*)((const char*)(msg) + (ofs))
 
 static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
                               const upb_msglayout *layout);
@@ -264,22 +262,29 @@ static void decode_tosubmsg(upb_decstate *d, upb_msg *submsg,
   d->depth++;
 }
 
+static const char *decode_group(upb_decstate *d, const char *ptr,
+                                upb_msg *submsg, const upb_msglayout *subl,
+                                uint32_t number) {
+  if (--d->depth < 0) decode_err(d);
+  ptr = decode_msg(d, ptr, submsg, subl);
+  if (d->end_group != number) decode_err(d);
+  d->end_group = 0;
+  d->depth++;
+  return ptr;
+}
+
 static const char *decode_togroup(upb_decstate *d, const char *ptr,
                                   upb_msg *submsg, const upb_msglayout *layout,
                                   const upb_msglayout_field *field) {
   const upb_msglayout *subl = layout->submsgs[field->submsg_index];
-  if (--d->depth < 0) decode_err(d);
-  ptr = decode_msg(d, ptr, submsg, subl);
-  if (d->end_group != field->number) decode_err(d);
-  d->depth++;
-  return ptr;
+  return decode_group(d, ptr, submsg, subl, field->number);
 }
 
 static const char *decode_toarray(upb_decstate *d, const char *ptr,
                                   upb_msg *msg, const upb_msglayout *layout,
                                   const upb_msglayout_field *field, wireval val,
                                   int op) {
-  upb_array **arrp = PTR_AT(msg, field->offset, void);
+  upb_array **arrp = UPB_PTR_AT(msg, field->offset, void);
   upb_array *arr = *arrp;
   void *mem;
 
@@ -297,20 +302,20 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
     case OP_SCALAR_LG2(2):
     case OP_SCALAR_LG2(3):
       /* Append scalar value. */
-      mem = PTR_AT(_upb_array_ptr(arr), arr->len << op, void);
+      mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << op, void);
       arr->len++;
       memcpy(mem, &val, 1 << op);
       return ptr;
     case OP_STRING:
       /* Append string. */
-      mem = PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(upb_strview), void);
+      mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(upb_strview), void);
       arr->len++;
       memcpy(mem, &val, sizeof(upb_strview));
       return ptr;
     case OP_SUBMSG: {
       /* Append submessage / group. */
       upb_msg *submsg = decode_newsubmsg(d, layout, field);
-      *PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(void*), upb_msg*) = submsg;
+      *UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(void*), upb_msg*) = submsg;
       arr->len++;
       if (UPB_UNLIKELY(field->descriptortype == UPB_DTYPE_GROUP)) {
         ptr = decode_togroup(d, ptr, submsg, layout, field);
@@ -329,7 +334,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
         decode_err(d);  /* Length isn't a round multiple of elem size. */
       }
       decode_reserve(d, arr, count);
-      mem = PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+      mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
       arr->len += count;
       memcpy(mem, &val, count << op);
       return ptr;
@@ -342,13 +347,13 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       int scale = 1 << lg2;
       const char *ptr = val.str_val.data;
       const char *end = ptr + val.str_val.size;
-      char *out = PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+      char *out = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
       while (ptr < end) {
         wireval elem;
         ptr = decode_varint64(d, ptr, end, &elem.uint64_val);
         decode_munge(field->descriptortype, &elem);
         if (decode_reserve(d, arr, 1)) {
-          out = PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+          out = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
         }
         arr->len++;
         memcpy(out, &elem, scale);
@@ -365,7 +370,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
 static void decode_tomap(upb_decstate *d, upb_msg *msg,
                          const upb_msglayout *layout,
                          const upb_msglayout_field *field, wireval val) {
-  upb_map **map_p = PTR_AT(msg, field->offset, upb_map*);
+  upb_map **map_p = UPB_PTR_AT(msg, field->offset, upb_map*);
   upb_map *map = *map_p;
   upb_map_entry ent;
 
@@ -394,15 +399,17 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
                                 const upb_msglayout *layout,
                                 const upb_msglayout_field *field, wireval val,
                                 int op) {
-  void *mem = PTR_AT(msg, field->offset, void);
+  void *mem = UPB_PTR_AT(msg, field->offset, void);
   int type = field->descriptortype;
 
   /* Set presence if necessary. */
   if (field->presence < 0) {
-    *PTR_AT(msg, -field->presence, int32_t) = field->number;  /* Oneof case */
+    /* Oneof case */
+    *UPB_PTR_AT(msg, -field->presence, int32_t) = field->number;
   } else if (field->presence > 0) {
+    /* Hasbit */
     uint32_t hasbit = field->presence;
-    *PTR_AT(msg, hasbit / 32, uint32_t) |= (1 << (hasbit % 32));  /* Hasbit */
+    *UPB_PTR_AT(msg, hasbit / 8, uint8_t) |= (1 << (hasbit % 8));  /* Hasbit */
   }
 
   /* Store into message. */
@@ -419,23 +426,25 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
       } else {
         decode_tosubmsg(d, submsg, layout, field, val.str_val);
       }
-      return ptr;
+      break;
     }
     case OP_STRING:
       memcpy(mem, &val, sizeof(upb_strview));
-      return ptr;
+      break;
     case OP_SCALAR_LG2(3):
       memcpy(mem, &val, 8);
-      return ptr;
+      break;
     case OP_SCALAR_LG2(2):
       memcpy(mem, &val, 4);
-      return ptr;
+      break;
     case OP_SCALAR_LG2(0):
       memcpy(mem, &val, 1);
-      return ptr;
+      break;
     default:
       UPB_UNREACHABLE();
   }
+
+  return ptr;
 }
 
 static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
@@ -491,7 +500,8 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
       }
       case UPB_WIRE_TYPE_START_GROUP:
         val.int32_val = field_number;
-        op = field->descriptortype == UPB_DTYPE_GROUP ? 5 : -1;
+        op = OP_SUBMSG;
+        if (field->descriptortype != UPB_DTYPE_GROUP) goto unknown;
         break;
       case UPB_WIRE_TYPE_END_GROUP:
         d->end_group = field_number;
@@ -518,7 +528,7 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
       /* Skip unknown field. */
       if (field_number == 0) decode_err(d);
       if (wire_type == UPB_WIRE_TYPE_START_GROUP) {
-        ptr = decode_msg(d, ptr, NULL, NULL);
+        ptr = decode_group(d, ptr, NULL, NULL, field_number);
       }
       if (msg) {
         if (!_upb_msg_addunknown(msg, field_start, ptr - field_start, d->arena)) {
@@ -548,7 +558,6 @@ bool upb_decode(const char *buf, size_t size, void *msg, const upb_msglayout *l,
   return state.end_group == 0;
 }
 
-#undef PTR_AT
 #undef OP_SCALAR_LG2
 #undef OP_FIXPCK_LG2
 #undef OP_VARPCK_LG2

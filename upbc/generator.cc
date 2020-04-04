@@ -364,7 +364,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
         fullname);
     output(
         "UPB_INLINE $0_oneofcases $1_$2_case(const $1* msg) { "
-        "return ($0_oneofcases)UPB_FIELD_AT(msg, int32_t, $3); }\n"
+        "return ($0_oneofcases)*UPB_PTR_AT(msg, $3, int32_t); }\n"
         "\n",
         fullname, msgname, oneof->name(),
         GetSizeInit(layout.GetOneofCaseOffset(oneof)));
@@ -441,7 +441,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
     } else {
       output(
           "UPB_INLINE $0 $1_$2(const $1 *msg) { "
-          "return UPB_FIELD_AT(msg, $0, $3); }\n",
+          "return *UPB_PTR_AT(msg, $3, $0); }\n",
           CTypeConst(field), msgname, field->name(),
           GetSizeInit(layout.GetFieldOffset(field)));
     }
@@ -556,7 +556,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           output("  _upb_sethas(msg, $0);\n", layout.GetHasbitIndex(field));
         }
         output(
-            "  UPB_FIELD_AT(msg, $0, $1) = value;\n"
+            "  *UPB_PTR_AT(msg, $1, $0) = value;\n"
             "}\n",
             CType(field), GetSizeInit(layout.GetFieldOffset(field)));
       }
