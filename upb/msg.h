@@ -82,8 +82,8 @@ upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a);
 
 /* Adds unknown data (serialized protobuf data) to the given message.  The data
  * is copied into the message instance. */
-bool upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                        upb_arena *arena);
+bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
+                         upb_arena *arena);
 
 /* Returns a reference to the message's unknown data. */
 const char *upb_msg_getunknown(const upb_msg *msg, size_t *len);

@@ -78,8 +78,8 @@ upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a) {
   return msg;
 }
 
-bool upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                        upb_arena *arena) {
+bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
+                         upb_arena *arena) {
   upb_msg_internal *in = upb_msg_getinternal(msg);
   if (len > in->unknown_size - in->unknown_len) {
     upb_alloc *alloc = upb_arena_alloc(arena);
