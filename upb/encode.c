@@ -113,8 +113,7 @@ static bool upb_put_float(upb_encstate *e, float d) {
 
 static uint32_t upb_readcase(const char *msg, const upb_msglayout_field *f) {
   uint32_t ret;
-  uint32_t offset = ~f->presence;
-  memcpy(&ret, msg + offset, sizeof(ret));
+  memcpy(&ret, msg - f->presence, sizeof(ret));
   return ret;
 }
 

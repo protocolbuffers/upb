@@ -63,7 +63,7 @@ static bool in_oneof(const upb_msglayout_field *field) {
 static uint32_t *oneofcase(const upb_msg *msg,
                            const upb_msglayout_field *field) {
   UPB_ASSERT(in_oneof(field));
-  return PTR_AT(msg, ~field->presence, uint32_t);
+  return PTR_AT(msg, -field->presence, uint32_t);
 }
 
 static upb_msgval _upb_msg_getraw(const upb_msg *msg, const upb_fielddef *f) {

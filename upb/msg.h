@@ -39,7 +39,7 @@ enum {
 typedef struct {
   uint32_t number;
   uint16_t offset;
-  int16_t presence;      /* If >0, hasbit_index+1.  If <0, oneof_index+1. */
+  int16_t presence;      /* If >0, hasbit_index.  If <0, -oneof_index. */
   uint16_t submsg_index;  /* undefined if descriptortype != MESSAGE or GROUP. */
   uint8_t descriptortype;
   uint8_t label;

@@ -699,7 +699,6 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
     std::string msgname = ToCIdent(message->full_name());
     std::string fields_array_ref = "NULL";
     std::string submsgs_array_ref = "NULL";
-    std::string oneofs_array_ref = "NULL";
     absl::flat_hash_map<const protobuf::Descriptor*, int> submsg_indexes;
     MessageLayout layout(message);
     std::vector<const protobuf::FieldDescriptor*> sorted_submsgs =
@@ -742,14 +741,18 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
         }
 
         if (MessageLayout::HasHasbit(field)) {
-          presence = absl::StrCat(layout.GetHasbitIndex(field));
+          int index = layout.GetHasbitIndex(field);
+          assert(index != 0);
+          presence = absl::StrCat(index);
         } else if (field->containing_oneof()) {
           MessageLayout::Size case_offset =
               layout.GetOneofCaseOffset(field->containing_oneof());
 
-          // Our encoding that distinguishes oneofs from presence-having fields.
-          case_offset.size32 = -case_offset.size32 - 1;
-          case_offset.size64 = -case_offset.size64 - 1;
+          // We encode as negative to distinguish from hasbits.
+          case_offset.size32 = -case_offset.size32;
+          case_offset.size64 = -case_offset.size64;
+          assert(case_offset.size32 != 0);
+          assert(case_offset.size64 != 0);
           presence = GetSizeInit(case_offset);
         }
         // Sync '4' with UPB_LABEL_MAP in upb/msg.h.
