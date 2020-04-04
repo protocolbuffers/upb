@@ -77,9 +77,11 @@ target_link_libraries(upb
   port)
 add_library(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE)
 target_link_libraries(generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me INTERFACE
+  table
   upb)
 add_library(reflection
   upb/def.c
+  upb/msg.h
   upb/reflection.c
   upb/def.h
   upb/reflection.h)
@@ -87,6 +89,21 @@ target_link_libraries(reflection
   descriptor_upbproto
   port
   table
+  upb)
+add_library(textformat
+  upb/text_encode.c
+  upb/text_encode.h)
+target_link_libraries(textformat
+  port
+  reflection)
+add_library(json
+  upb/json_decode.c
+  upb/json_encode.c
+  upb/json_decode.h
+  upb/json_encode.h)
+target_link_libraries(json
+  port
+  reflection
   upb)
 add_library(table INTERFACE)
 target_link_libraries(table INTERFACE
@@ -99,8 +116,8 @@ add_library(handlers
   upb/handlers.h
   upb/sink.h)
 target_link_libraries(handlers
-  reflection
   port
+  reflection
   table
   upb)
 add_library(upb_pb
@@ -117,8 +134,8 @@ add_library(upb_pb
 target_link_libraries(upb_pb
   descriptor_upbproto
   handlers
-  reflection
   port
+  reflection
   table
   upb)
 add_library(upb_json

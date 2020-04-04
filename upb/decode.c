@@ -506,6 +506,8 @@ bool upb_decode(const char *buf, size_t size, void *msg, const upb_msglayout *l,
   state.end_group = 0;
 
   CHK(decode_msg(&state, buf, msg, l));
+  if (size == 0) return true;
+
   return state.end_group == 0;
 }
 

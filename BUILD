@@ -57,12 +57,12 @@ config_setting(
 
 cc_library(
     name = "port",
+    srcs = [
+        "upb/port.c",
+    ],
     textual_hdrs = [
         "upb/port_def.inc",
         "upb/port_undef.inc",
-    ],
-    srcs = [
-        "upb/port.c",
     ],
 )
 
@@ -84,7 +84,7 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     visibility = ["//visibility:public"],
     deps = [":port"],
@@ -105,10 +105,11 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     visibility = ["//visibility:public"],
     deps = [
+        ":table",
         ":upb",
     ],
 )
@@ -123,6 +124,7 @@ cc_library(
     name = "reflection",
     srcs = [
         "upb/def.c",
+        "upb/msg.h",
         "upb/reflection.c",
     ],
     hdrs = [
@@ -131,13 +133,45 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     visibility = ["//visibility:public"],
     deps = [
         ":descriptor_upbproto",
         ":port",
         ":table",
+        ":upb",
+    ],
+)
+
+cc_library(
+    name = "textformat",
+    srcs = [
+        "upb/text_encode.c",
+    ],
+    hdrs = [
+        "upb/text_encode.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":port",
+        ":reflection",
+    ],
+)
+
+cc_library(
+    name = "json",
+    srcs = [
+        "upb/json_decode.c",
+        "upb/json_encode.c",
+    ],
+    hdrs = [
+        "upb/json_decode.h",
+        "upb/json_encode.h",
+    ],
+    deps = [
+        ":port",
+        ":reflection",
         ":upb",
     ],
 )
@@ -168,11 +202,11 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     deps = [
-        ":reflection",
         ":port",
+        ":reflection",
         ":table",
         ":upb",
     ],
@@ -196,13 +230,13 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     deps = [
         ":descriptor_upbproto",
         ":handlers",
-        ":reflection",
         ":port",
+        ":reflection",
         ":table",
         ":upb",
     ],
@@ -221,7 +255,7 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     deps = [
         ":upb",
@@ -255,7 +289,7 @@ cc_library(
     hdrs = ["upbc/generator.h"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         "@com_google_absl//absl/base:core_headers",
@@ -271,7 +305,7 @@ cc_binary(
     srcs = ["upbc/main.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     visibility = ["//visibility:public"],
     deps = [
@@ -313,7 +347,7 @@ cc_library(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":handlers",
@@ -330,7 +364,7 @@ cc_test(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
     deps = [
         ":port",
@@ -340,16 +374,41 @@ cc_test(
     ],
 )
 
+proto_library(
+    name = "test_proto",
+    testonly = 1,
+    srcs = ["tests/test.proto"],
+)
+
+upb_proto_library(
+    name = "test_upbproto",
+    testonly = 1,
+    deps = [":test_proto"],
+)
+
 cc_test(
     name = "test_generated_code",
     srcs = ["tests/test_generated_code.c"],
     deps = [
         ":test_messages_proto3_proto_upb",
+        ":empty_upbdefs_proto",
+        ":test_upbproto",
         ":upb_test",
     ],
 )
 
+proto_library(
+    name = "empty_proto",
+    srcs = ["tests/empty.proto"],
+)
+
 upb_proto_reflection_library(
+    name = "empty_upbdefs_proto",
+    testonly = 1,
+    deps = [":empty_proto"],
+)
+
+upb_proto_library(
     name = "test_messages_proto3_proto_upb",
     testonly = 1,
     deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
@@ -375,7 +434,7 @@ cc_test(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":handlers",
@@ -404,7 +463,7 @@ cc_test(
     srcs = ["tests/test_cpp.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":handlers",
@@ -422,7 +481,7 @@ cc_test(
     srcs = ["tests/test_table.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":port",
@@ -439,7 +498,7 @@ cc_binary(
     srcs = ["tests/file_descriptor_parsenew_fuzzer.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }) + select({
         "//conditions:default": [],
         ":fuzz": ["-fsanitize=fuzzer,address"],
@@ -460,7 +519,7 @@ cc_test(
     srcs = ["tests/pb/test_encoder.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":descriptor_upbproto",
@@ -505,7 +564,7 @@ cc_test(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     deps = [
         ":test_json_upbproto",
@@ -518,6 +577,12 @@ cc_test(
 
 upb_proto_library(
     name = "conformance_proto_upb",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:conformance_proto"],
+)
+
+upb_proto_reflection_library(
+    name = "conformance_proto_upbdefs",
     testonly = 1,
     deps = ["@com_google_protobuf//:conformance_proto"],
 )
@@ -542,13 +607,16 @@ cc_binary(
     ],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }) + ["-Ibazel-out/k8-fastbuild/bin"],
     deps = [
         ":conformance_proto_upb",
+        ":conformance_proto_upbdefs",
+        ":json",
+        ":reflection",
         ":test_messages_proto2_upbdefs",
         ":test_messages_proto3_upbdefs",
-        ":reflection",
+        ":textformat",
         ":upb",
     ],
 )
@@ -603,7 +671,7 @@ cc_library(
     hdrs = ["upb.h"],
     copts = select({
         ":windows": [],
-        "//conditions:default": COPTS
+        "//conditions:default": COPTS,
     }),
 )
 
@@ -621,6 +689,7 @@ cc_library(
     ],
     deps = [
         ":reflection",
+        ":textformat",
         ":upb",
         "@lua//:liblua",
     ],
@@ -628,22 +697,23 @@ cc_library(
 
 cc_test(
     name = "test_lua",
-    linkstatic = 1,
     srcs = ["tests/bindings/lua/main.c"],
     data = [
-        "@com_google_protobuf//:conformance_proto",
-        "@com_google_protobuf//:descriptor_proto",
-        ":descriptor_proto_lua",
-        ":test_messages_proto3_proto_lua",
         "tests/bindings/lua/test_upb.lua",
         "third_party/lunit/console.lua",
         "third_party/lunit/lunit.lua",
         "upb/bindings/lua/upb.lua",
+        ":descriptor_proto_lua",
+        ":test_messages_proto3_proto_lua",
+        ":test_proto_lua",
+        "@com_google_protobuf//:conformance_proto",
+        "@com_google_protobuf//:descriptor_proto",
     ],
+    linkstatic = 1,
     deps = [
         ":lupb",
         "@lua//:liblua",
-    ]
+    ],
 )
 
 cc_binary(
@@ -651,18 +721,23 @@ cc_binary(
     srcs = ["upb/bindings/lua/upbc.cc"],
     copts = select({
         ":windows": [],
-        "//conditions:default": CPPOPTS
+        "//conditions:default": CPPOPTS,
     }),
     visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protoc_lib"
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 
 lua_proto_library(
+    name = "test_proto_lua",
+    testonly = 1,
+    deps = [":test_proto"],
+)
+
+lua_proto_library(
     name = "descriptor_proto_lua",
-    visibility = ["//visibility:public"],
     deps = ["@com_google_protobuf//:descriptor_proto"],
 )
 

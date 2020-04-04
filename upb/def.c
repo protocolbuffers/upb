@@ -27,6 +27,7 @@ struct upb_fielddef {
   const upb_filedef *file;
   const upb_msgdef *msgdef;
   const char *full_name;
+  const char *json_name;
   union {
     int64_t sint;
     uint64_t uint;
@@ -117,10 +118,15 @@ struct upb_symtab {
 
 /* Inside a symtab we store tagged pointers to specific def types. */
 typedef enum {
-  UPB_DEFTYPE_MSG = 0,
-  UPB_DEFTYPE_ENUM = 1,
-  UPB_DEFTYPE_FIELD = 2,
-  UPB_DEFTYPE_ONEOF = 3
+  UPB_DEFTYPE_FIELD = 0,
+
+  /* Only inside symtab table. */
+  UPB_DEFTYPE_MSG = 1,
+  UPB_DEFTYPE_ENUM = 2,
+
+  /* Only inside message table. */
+  UPB_DEFTYPE_ONEOF = 1,
+  UPB_DEFTYPE_FIELD_JSONNAME = 2
 } upb_deftype_t;
 
 static const void *unpack_def(upb_value v, upb_deftype_t type) {
@@ -353,7 +359,7 @@ int32_t upb_enumdef_default(const upb_enumdef *e) {
 }
 
 int upb_enumdef_numvals(const upb_enumdef *e) {
-  return upb_strtable_count(&e->ntoi);
+  return (int)upb_strtable_count(&e->ntoi);
 }
 
 void upb_enum_begin(upb_enum_iter *i, const upb_enumdef *e) {
@@ -462,47 +468,12 @@ const char *upb_fielddef_name(const upb_fielddef *f) {
   return shortdefname(f->full_name);
 }
 
-uint32_t upb_fielddef_selectorbase(const upb_fielddef *f) {
-  return f->selector_base;
+const char *upb_fielddef_jsonname(const upb_fielddef *f) {
+  return f->json_name;
 }
 
-size_t upb_fielddef_getjsonname(const upb_fielddef *f, char *buf, size_t len) {
-  const char *name = upb_fielddef_name(f);
-  size_t src, dst = 0;
-  bool ucase_next = false;
-
-#define WRITE(byte) \
-  ++dst; \
-  if (dst < len) buf[dst - 1] = byte; \
-  else if (dst == len) buf[dst - 1] = '\0'
-
-  if (!name) {
-    WRITE('\0');
-    return 0;
-  }
-
-  /* Implement the transformation as described in the spec:
-   *   1. upper case all letters after an underscore.
-   *   2. remove all underscores.
-   */
-  for (src = 0; name[src]; src++) {
-    if (name[src] == '_') {
-      ucase_next = true;
-      continue;
-    }
-
-    if (ucase_next) {
-      WRITE(toupper(name[src]));
-      ucase_next = false;
-    } else {
-      WRITE(name[src]);
-    }
-  }
-
-  WRITE('\0');
-  return dst;
-
-#undef WRITE
+uint32_t upb_fielddef_selectorbase(const upb_fielddef *f) {
+  return f->selector_base;
 }
 
 const upb_msgdef *upb_fielddef_containingtype(const upb_fielddef *f) {
@@ -525,7 +496,7 @@ int64_t upb_fielddef_defaultint64(const upb_fielddef *f) {
 
 int32_t upb_fielddef_defaultint32(const upb_fielddef *f) {
   chkdefaulttype(f, UPB_TYPE_INT32);
-  return f->defaultval.sint;
+  return (int32_t)f->defaultval.sint;
 }
 
 uint64_t upb_fielddef_defaultuint64(const upb_fielddef *f) {
@@ -535,7 +506,7 @@ uint64_t upb_fielddef_defaultuint64(const upb_fielddef *f) {
 
 uint32_t upb_fielddef_defaultuint32(const upb_fielddef *f) {
   chkdefaulttype(f, UPB_TYPE_UINT32);
-  return f->defaultval.uint;
+  return (uint32_t)f->defaultval.uint;
 }
 
 bool upb_fielddef_defaultbool(const upb_fielddef *f) {
@@ -610,6 +581,7 @@ bool upb_fielddef_hassubdef(const upb_fielddef *f) {
 bool upb_fielddef_haspresence(const upb_fielddef *f) {
   if (upb_fielddef_isseq(f)) return false;
   if (upb_fielddef_issubmsg(f)) return true;
+  if (upb_fielddef_containingoneof(f)) return true;
   return f->file->syntax == UPB_SYNTAX_PROTO2;
 }
 
@@ -689,22 +661,39 @@ bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
 
   *o = unpack_def(val, UPB_DEFTYPE_ONEOF);
   *f = unpack_def(val, UPB_DEFTYPE_FIELD);
-  UPB_ASSERT((*o != NULL) ^ (*f != NULL));  /* Exactly one of the two should be set. */
-  return true;
+  return *o || *f;  /* False if this was a JSON name. */
+}
+
+const upb_fielddef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
+                                              const char *name, size_t len) {
+  upb_value val;
+  const upb_fielddef* f;
+
+  if (!upb_strtable_lookup2(&m->ntof, name, len, &val)) {
+    return NULL;
+  }
+
+  f = unpack_def(val, UPB_DEFTYPE_FIELD);
+  if (!f) f = unpack_def(val, UPB_DEFTYPE_FIELD_JSONNAME);
+
+  return f;
 }
 
 int upb_msgdef_numfields(const upb_msgdef *m) {
-  /* The number table contains only fields. */
-  return upb_inttable_count(&m->itof);
+  return m->field_count;
 }
 
 int upb_msgdef_numoneofs(const upb_msgdef *m) {
-  /* The name table includes oneofs, and the number table does not. */
-  return upb_strtable_count(&m->ntof) - upb_inttable_count(&m->itof);
+  return m->oneof_count;
 }
 
 const upb_msglayout *upb_msgdef_layout(const upb_msgdef *m) {
   return m->layout;
+}
+
+const upb_fielddef *_upb_msgdef_field(const upb_msgdef *m, int i) {
+  if (i >= m->field_count) return NULL;
+  return &m->fields[i];
 }
 
 bool upb_msgdef_mapentry(const upb_msgdef *m) {
@@ -789,7 +778,7 @@ const upb_msgdef *upb_oneofdef_containingtype(const upb_oneofdef *o) {
 }
 
 int upb_oneofdef_numfields(const upb_oneofdef *o) {
-  return upb_strtable_count(&o->ntof);
+  return (int)upb_strtable_count(&o->ntof);
 }
 
 uint32_t upb_oneofdef_index(const upb_oneofdef *o) {
@@ -879,8 +868,8 @@ static uint8_t upb_msg_fielddefsize(const upb_fielddef *f) {
   }
 }
 
-static size_t upb_msglayout_place(upb_msglayout *l, size_t size) {
-  size_t ret;
+static uint32_t upb_msglayout_place(upb_msglayout *l, size_t size) {
+  uint32_t ret;
 
   l->size = align_up(l->size, size);
   ret = l->size;
@@ -914,6 +903,32 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
   l->field_count = upb_msgdef_numfields(m);
   l->fields = fields;
   l->submsgs = submsgs;
+
+  if (upb_msgdef_mapentry(m)) {
+    /* TODO(haberman): refactor this method so this special case is more
+     * elegant. */
+    const upb_fielddef *key = upb_msgdef_itof(m, 1);
+    const upb_fielddef *val = upb_msgdef_itof(m, 2);
+    fields[0].number = 1;
+    fields[1].number = 2;
+    fields[0].label = UPB_LABEL_OPTIONAL;
+    fields[1].label = UPB_LABEL_OPTIONAL;
+    fields[0].presence = 0;
+    fields[1].presence = 0;
+    fields[0].descriptortype = upb_fielddef_descriptortype(key);
+    fields[1].descriptortype = upb_fielddef_descriptortype(val);
+    fields[0].offset = 0;
+    fields[1].offset = sizeof(upb_strview);
+    fields[1].submsg_index = 0;
+
+    if (upb_fielddef_type(val) == UPB_TYPE_MESSAGE) {
+      submsgs[0] = upb_fielddef_msgsubdef(val)->layout;
+    }
+
+    l->field_count = 2;
+    l->size = 2 * sizeof(upb_strview);align_up(l->size, 8);
+    return true;
+  }
 
   /* Allocate data offsets in three stages:
    *
@@ -951,7 +966,9 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
     }
 
     if (upb_fielddef_haspresence(f) && !upb_fielddef_containingoneof(f)) {
-      field->presence = (hasbit++);
+      /* We don't use hasbit 0, so that 0 can indicate "no presence" in the
+       * table. This wastes one hasbit, but we don't worry about it for now. */
+      field->presence = ++hasbit;
     } else {
       field->presence = 0;
     }
@@ -1062,6 +1079,51 @@ static const char *makefullname(const symtab_addctx *ctx, const char *prefix,
   } else {
     return strviewdup(ctx, name);
   }
+}
+
+size_t getjsonname(const char *name, char *buf, size_t len) {
+  size_t src, dst = 0;
+  bool ucase_next = false;
+
+#define WRITE(byte) \
+  ++dst; \
+  if (dst < len) buf[dst - 1] = byte; \
+  else if (dst == len) buf[dst - 1] = '\0'
+
+  if (!name) {
+    WRITE('\0');
+    return 0;
+  }
+
+  /* Implement the transformation as described in the spec:
+   *   1. upper case all letters after an underscore.
+   *   2. remove all underscores.
+   */
+  for (src = 0; name[src]; src++) {
+    if (name[src] == '_') {
+      ucase_next = true;
+      continue;
+    }
+
+    if (ucase_next) {
+      WRITE(toupper(name[src]));
+      ucase_next = false;
+    } else {
+      WRITE(name[src]);
+    }
+  }
+
+  WRITE('\0');
+  return dst;
+
+#undef WRITE
+}
+
+static char* makejsonname(const char* name, upb_alloc *alloc) {
+  size_t size = getjsonname(name, NULL, 0);
+  char* json_name = upb_malloc(alloc, size);
+  getjsonname(name, json_name, size);
+  return json_name;
 }
 
 static bool symtab_add(const symtab_addctx *ctx, const char *name,
@@ -1277,6 +1339,7 @@ static bool create_fielddef(
   const google_protobuf_FieldOptions *options;
   upb_strview name;
   const char *full_name;
+  const char *json_name;
   const char *shortname;
   uint32_t field_number;
 
@@ -1290,6 +1353,13 @@ static bool create_fielddef(
   full_name = makefullname(ctx, prefix, name);
   shortname = shortdefname(full_name);
 
+  if (google_protobuf_FieldDescriptorProto_has_json_name(field_proto)) {
+    json_name = strviewdup(
+        ctx, google_protobuf_FieldDescriptorProto_json_name(field_proto));
+  } else {
+    json_name = makejsonname(shortname, ctx->alloc);
+  }
+
   field_number = google_protobuf_FieldDescriptorProto_number(field_proto);
 
   if (field_number == 0 || field_number > UPB_MAX_FIELDNUMBER) {
@@ -1299,24 +1369,40 @@ static bool create_fielddef(
 
   if (m) {
     /* direct message field. */
-    upb_value v, packed_v;
+    upb_value v, field_v, json_v;
+    size_t json_size;
 
     f = (upb_fielddef*)&m->fields[m->field_count++];
     f->msgdef = m;
     f->is_extension_ = false;
 
-    packed_v = pack_def(f, UPB_DEFTYPE_FIELD);
-    v = upb_value_constptr(f);
-
-    if (!upb_strtable_insert3(&m->ntof, name.data, name.size, packed_v, alloc)) {
+    if (upb_strtable_lookup(&m->ntof, shortname, NULL)) {
       upb_status_seterrf(ctx->status, "duplicate field name (%s)", shortname);
       return false;
     }
 
-    if (!upb_inttable_insert2(&m->itof, field_number, v, alloc)) {
+    if (upb_strtable_lookup(&m->ntof, json_name, NULL)) {
+      upb_status_seterrf(ctx->status, "duplicate json_name (%s)", json_name);
+      return false;
+    }
+
+    if (upb_inttable_lookup(&m->itof, field_number, NULL)) {
       upb_status_seterrf(ctx->status, "duplicate field number (%u)",
                          field_number);
       return false;
+    }
+
+    field_v = pack_def(f, UPB_DEFTYPE_FIELD);
+    json_v = pack_def(f, UPB_DEFTYPE_FIELD_JSONNAME);
+    v = upb_value_constptr(f);
+    json_size = strlen(json_name);
+
+    CHK_OOM(
+        upb_strtable_insert3(&m->ntof, name.data, name.size, field_v, alloc));
+    CHK_OOM(upb_inttable_insert2(&m->itof, field_number, v, alloc));
+
+    if (strcmp(shortname, json_name) != 0) {
+      upb_strtable_insert3(&m->ntof, json_name, json_size, json_v, alloc);
     }
 
     if (ctx->layouts) {
@@ -1335,12 +1421,13 @@ static bool create_fielddef(
     }
   } else {
     /* extension field. */
-    f = (upb_fielddef*)&ctx->file->exts[ctx->file->ext_count];
+    f = (upb_fielddef*)&ctx->file->exts[ctx->file->ext_count++];
     f->is_extension_ = true;
     CHK_OOM(symtab_add(ctx, full_name, pack_def(f, UPB_DEFTYPE_FIELD)));
   }
 
   f->full_name = full_name;
+  f->json_name = json_name;
   f->file = ctx->file;
   f->type_ = (int)google_protobuf_FieldDescriptorProto_type(field_proto);
   f->label_ = (int)google_protobuf_FieldDescriptorProto_label(field_proto);
@@ -1707,7 +1794,8 @@ static bool build_filedef(
     } else if (streql_view(syntax, "proto3")) {
       file->syntax = UPB_SYNTAX_PROTO3;
     } else {
-      upb_status_seterrf(ctx->status, "Invalid syntax '%s'", syntax);
+      upb_status_seterrf(ctx->status, "Invalid syntax '" UPB_STRVIEW_FORMAT "'",
+                         UPB_STRVIEW_ARGS(syntax));
       return false;
     }
   } else {
@@ -1906,7 +1994,7 @@ const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s, const char *name) 
 }
 
 int upb_symtab_filecount(const upb_symtab *s) {
-  return upb_strtable_count(&s->files);
+  return (int)upb_strtable_count(&s->files);
 }
 
 static const upb_filedef *_upb_symtab_addfile(

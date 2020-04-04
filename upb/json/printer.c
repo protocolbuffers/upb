@@ -65,12 +65,8 @@ strpc *newstrpc(upb_handlers *h, const upb_fielddef *f,
     ret->ptr = upb_gstrdup(upb_fielddef_name(f));
     ret->len = strlen(ret->ptr);
   } else {
-    size_t len;
-    ret->len = upb_fielddef_getjsonname(f, NULL, 0);
-    ret->ptr = upb_gmalloc(ret->len);
-    len = upb_fielddef_getjsonname(f, ret->ptr, ret->len);
-    UPB_ASSERT(len == ret->len);
-    ret->len--;  /* NULL */
+    ret->ptr = upb_gstrdup(upb_fielddef_jsonname(f));
+    ret->len = strlen(ret->ptr);
   }
 
   upb_handlers_addcleanup(h, ret, freestrpc);
@@ -89,7 +85,7 @@ strpc *newstrpc_str(upb_handlers *h, const char * str) {
 /* ------------ JSON string printing: values, maps, arrays ------------------ */
 
 static void print_data(
-    upb_json_printer *p, const char *buf, unsigned int len) {
+    upb_json_printer *p, const char *buf, size_t len) {
   /* TODO: Will need to change if we support pushback from the sink. */
   size_t n = upb_bytessink_putbuf(p->output_, p->subc_, buf, len, NULL);
   UPB_ASSERT(n == len);
@@ -129,7 +125,7 @@ UPB_INLINE const char* json_nice_escape(char c) {
 /* Write a properly escaped string chunk. The surrounding quotes are *not*
  * printed; this is so that the caller has the option of emitting the string
  * content in chunks. */
-static void putstring(upb_json_printer *p, const char *buf, unsigned int len) {
+static void putstring(upb_json_printer *p, const char *buf, size_t len) {
   const char* unescaped_run = NULL;
   unsigned int i;
   for (i = 0; i < len; i++) {
