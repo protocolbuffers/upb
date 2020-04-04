@@ -2,8 +2,8 @@
 #include <setjmp.h>
 #include <string.h>
 
-#include "upb/upb.h"
 #include "upb/decode.h"
+#include "upb/upb.h"
 
 #include "upb/port_def.inc"
 
@@ -53,15 +53,13 @@ static const uint8_t desctype_to_mapsize[] = {
     8,                  /* SINT64 */
 };
 
-static const unsigned fixed32_ok =
-    (1 << UPB_DTYPE_FLOAT) |
-    (1 << UPB_DTYPE_FIXED32) |
-    (1 << UPB_DTYPE_SFIXED32);
+static const unsigned fixed32_ok = (1 << UPB_DTYPE_FLOAT) |
+                                   (1 << UPB_DTYPE_FIXED32) |
+                                   (1 << UPB_DTYPE_SFIXED32);
 
-static const unsigned fixed64_ok =
-    (1 << UPB_DTYPE_DOUBLE) |
-    (1 << UPB_DTYPE_FIXED64) |
-    (1 << UPB_DTYPE_SFIXED64);
+static const unsigned fixed64_ok = (1 << UPB_DTYPE_DOUBLE) |
+                                   (1 << UPB_DTYPE_FIXED64) |
+                                   (1 << UPB_DTYPE_SFIXED64);
 
 /* Op: an action to be performed for a wire-type/field-type combination. */
 #define OP_SCALAR_LG2(n) n
@@ -71,76 +69,76 @@ static const unsigned fixed64_ok =
 #define OP_SUBMSG 5
 
 static const int8_t varint_ops[19] = {
-    -1, /* field not found */
-    -1, /* DOUBLE */
-    -1, /* FLOAT */
-    OP_SCALAR_LG2(3),  /* INT64 */
-    OP_SCALAR_LG2(3),  /* UINT64 */
-    OP_SCALAR_LG2(2),  /* INT32 */
-    -1, /* FIXED64 */
-    -1, /* FIXED32 */
-    OP_SCALAR_LG2(0),  /* BOOL */
-    -1, /* STRING */
-    -1, /* GROUP */
-    -1, /* MESSAGE */
-    -1, /* BYTES */
-    OP_SCALAR_LG2(2),  /* UINT32 */
-    OP_SCALAR_LG2(2),  /* ENUM */
-    -1, /* SFIXED32 */
-    -1,  /* SFIXED64 */
-    OP_SCALAR_LG2(2),  /* SINT32 */
-    OP_SCALAR_LG2(3),  /* SINT64 */
+    -1,               /* field not found */
+    -1,               /* DOUBLE */
+    -1,               /* FLOAT */
+    OP_SCALAR_LG2(3), /* INT64 */
+    OP_SCALAR_LG2(3), /* UINT64 */
+    OP_SCALAR_LG2(2), /* INT32 */
+    -1,               /* FIXED64 */
+    -1,               /* FIXED32 */
+    OP_SCALAR_LG2(0), /* BOOL */
+    -1,               /* STRING */
+    -1,               /* GROUP */
+    -1,               /* MESSAGE */
+    -1,               /* BYTES */
+    OP_SCALAR_LG2(2), /* UINT32 */
+    OP_SCALAR_LG2(2), /* ENUM */
+    -1,               /* SFIXED32 */
+    -1,               /* SFIXED64 */
+    OP_SCALAR_LG2(2), /* SINT32 */
+    OP_SCALAR_LG2(3), /* SINT64 */
 };
 
 static const int8_t delim_ops[37] = {
     /* For non-repeated field type. */
-    -1, /* field not found */
-    -1, /* DOUBLE */
-    -1, /* FLOAT */
-    -1, /* INT64 */
-    -1, /* UINT64 */
-    -1, /* INT32 */
-    -1, /* FIXED64 */
-    -1, /* FIXED32 */
-    -1, /* BOOL */
-    OP_STRING,  /* STRING */
-    -1, /* GROUP */
-    OP_SUBMSG,  /* MESSAGE */
-    OP_STRING,  /* BYTES */
-    -1, /* UINT32 */
-    -1, /* ENUM */
-    -1, /* SFIXED32 */
-    -1, /* SFIXED64 */
-    -1, /* SINT32 */
-    -1, /* SINT64 */
+    -1,        /* field not found */
+    -1,        /* DOUBLE */
+    -1,        /* FLOAT */
+    -1,        /* INT64 */
+    -1,        /* UINT64 */
+    -1,        /* INT32 */
+    -1,        /* FIXED64 */
+    -1,        /* FIXED32 */
+    -1,        /* BOOL */
+    OP_STRING, /* STRING */
+    -1,        /* GROUP */
+    OP_SUBMSG, /* MESSAGE */
+    OP_STRING, /* BYTES */
+    -1,        /* UINT32 */
+    -1,        /* ENUM */
+    -1,        /* SFIXED32 */
+    -1,        /* SFIXED64 */
+    -1,        /* SINT32 */
+    -1,        /* SINT64 */
     /* For repeated field type. */
-    OP_FIXPCK_LG2(3),  /* REPEATED DOUBLE */
-    OP_FIXPCK_LG2(2),  /* REPEATED FLOAT */
+    OP_FIXPCK_LG2(3), /* REPEATED DOUBLE */
+    OP_FIXPCK_LG2(2), /* REPEATED FLOAT */
     OP_VARPCK_LG2(3), /* REPEATED INT64 */
     OP_VARPCK_LG2(3), /* REPEATED UINT64 */
     OP_VARPCK_LG2(2), /* REPEATED INT32 */
-    OP_FIXPCK_LG2(3),  /* REPEATED FIXED64 */
-    OP_FIXPCK_LG2(2),  /* REPEATED FIXED32 */
-    OP_VARPCK_LG2(0),  /* REPEATED BOOL */
-    OP_STRING,  /* REPEATED STRING */
-    OP_SUBMSG,  /* REPEATED GROUP */
-    OP_SUBMSG,  /* REPEATED MESSAGE */
-    OP_STRING,  /* REPEATED BYTES */
+    OP_FIXPCK_LG2(3), /* REPEATED FIXED64 */
+    OP_FIXPCK_LG2(2), /* REPEATED FIXED32 */
+    OP_VARPCK_LG2(0), /* REPEATED BOOL */
+    OP_STRING,        /* REPEATED STRING */
+    OP_SUBMSG,        /* REPEATED GROUP */
+    OP_SUBMSG,        /* REPEATED MESSAGE */
+    OP_STRING,        /* REPEATED BYTES */
     OP_VARPCK_LG2(2), /* REPEATED UINT32 */
     OP_VARPCK_LG2(2), /* REPEATED ENUM */
-    OP_FIXPCK_LG2(2),  /* REPEATED SFIXED32 */
-    OP_FIXPCK_LG2(3),  /* REPEATED SFIXED64 */
+    OP_FIXPCK_LG2(2), /* REPEATED SFIXED32 */
+    OP_FIXPCK_LG2(3), /* REPEATED SFIXED64 */
     OP_VARPCK_LG2(2), /* REPEATED SINT32 */
     OP_VARPCK_LG2(3), /* REPEATED SINT64 */
 };
 
 /* Data pertaining to the parse. */
 typedef struct {
-  const char *field_start;   /* Start of this field. */
-  const char *limit;         /* End of delimited region or end of buffer. */
+  const char *field_start; /* Start of this field. */
+  const char *limit;       /* End of delimited region or end of buffer. */
   upb_arena *arena;
   int depth;
-  uint32_t end_group;  /* Set to field number of END_GROUP tag, if any. */
+  uint32_t end_group; /* Set to field number of END_GROUP tag, if any. */
   jmp_buf err;
 } upb_decstate;
 
@@ -156,9 +154,7 @@ typedef union {
 static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
                               const upb_msglayout *layout);
 
-UPB_NORETURN static void decode_err(upb_decstate *d) {
-  longjmp(d->err, 1);
-}
+UPB_NORETURN static void decode_err(upb_decstate *d) { longjmp(d->err, 1); }
 
 static bool decode_reserve(upb_decstate *d, upb_array *arr, int elem) {
   if (arr->size - arr->len < elem) {
@@ -209,7 +205,7 @@ static const char *decode_varint32(upb_decstate *d, const char *ptr,
   return ptr;
 }
 
-static void decode_munge(int type, wireval* val) {
+static void decode_munge(int type, wireval *val) {
   switch (type) {
     case UPB_DESCRIPTOR_TYPE_BOOL:
       val->bool_val = val->uint64_val != 0;
@@ -240,7 +236,7 @@ static const upb_msglayout_field *upb_find_field(const upb_msglayout *l,
     }
   }
 
-  return &none;  /* Unknown field. */
+  return &none; /* Unknown field. */
 }
 
 static upb_msg *decode_newsubmsg(upb_decstate *d, const upb_msglayout *layout,
@@ -253,7 +249,7 @@ static void decode_tosubmsg(upb_decstate *d, upb_msg *submsg,
                             const upb_msglayout *layout,
                             const upb_msglayout_field *field, upb_strview val) {
   const upb_msglayout *subl = layout->submsgs[field->submsg_index];
-  const char* saved_limit = d->limit;
+  const char *saved_limit = d->limit;
   if (--d->depth < 0) decode_err(d);
   d->limit = val.data + val.size;
   decode_msg(d, val.data, submsg, subl);
@@ -297,7 +293,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
 
   decode_reserve(d, arr, 1);
 
-    switch (op) {
+  switch (op) {
     case OP_SCALAR_LG2(0):
     case OP_SCALAR_LG2(2):
     case OP_SCALAR_LG2(3):
@@ -308,14 +304,16 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       return ptr;
     case OP_STRING:
       /* Append string. */
-      mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(upb_strview), void);
+      mem =
+          UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(upb_strview), void);
       arr->len++;
       memcpy(mem, &val, sizeof(upb_strview));
       return ptr;
     case OP_SUBMSG: {
       /* Append submessage / group. */
       upb_msg *submsg = decode_newsubmsg(d, layout, field);
-      *UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(void*), upb_msg*) = submsg;
+      *UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(void *), upb_msg *) =
+          submsg;
       arr->len++;
       if (UPB_UNLIKELY(field->descriptortype == UPB_DTYPE_GROUP)) {
         ptr = decode_togroup(d, ptr, submsg, layout, field);
@@ -331,7 +329,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       int mask = (1 << lg2) - 1;
       int count = val.str_val.size >> lg2;
       if ((val.str_val.size & mask) != 0) {
-        decode_err(d);  /* Length isn't a round multiple of elem size. */
+        decode_err(d); /* Length isn't a round multiple of elem size. */
       }
       decode_reserve(d, arr, count);
       mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
@@ -370,7 +368,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
 static void decode_tomap(upb_decstate *d, upb_msg *msg,
                          const upb_msglayout *layout,
                          const upb_msglayout_field *field, wireval val) {
-  upb_map **map_p = UPB_PTR_AT(msg, field->offset, upb_map*);
+  upb_map **map_p = UPB_PTR_AT(msg, field->offset, upb_map *);
   upb_map *map = *map_p;
   upb_map_entry ent;
 
@@ -409,7 +407,7 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
   } else if (field->presence > 0) {
     /* Hasbit */
     uint32_t hasbit = field->presence;
-    *UPB_PTR_AT(msg, hasbit / 8, uint8_t) |= (1 << (hasbit % 8));  /* Hasbit */
+    *UPB_PTR_AT(msg, hasbit / 8, uint8_t) |= (1 << (hasbit % 8));
   }
 
   /* Store into message. */
@@ -490,7 +488,7 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
         if (field->label == UPB_LABEL_REPEATED) ndx += 18;
         ptr = decode_varint32(d, ptr, d->limit, &size);
         if (size >= INT32_MAX || (size_t)(d->limit - ptr) < size) {
-          decode_err(d);  /* Length overflow. */
+          decode_err(d); /* Length overflow. */
         }
         val.str_val.data = ptr;
         val.str_val.size = size;
@@ -524,14 +522,15 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
           break;
       }
     } else {
-      unknown:
+    unknown:
       /* Skip unknown field. */
       if (field_number == 0) decode_err(d);
       if (wire_type == UPB_WIRE_TYPE_START_GROUP) {
         ptr = decode_group(d, ptr, NULL, NULL, field_number);
       }
       if (msg) {
-        if (!_upb_msg_addunknown(msg, field_start, ptr - field_start, d->arena)) {
+        if (!_upb_msg_addunknown(msg, field_start, ptr - field_start,
+                                 d->arena)) {
           decode_err(d);
         }
       }
