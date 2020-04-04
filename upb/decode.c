@@ -346,6 +346,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       const char *ptr = val.str_val.data;
       const char *end = ptr + val.str_val.size;
       char *out = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+      UPB_ASSUME(lg2 <= 3);
       while (ptr < end) {
         wireval elem;
         ptr = decode_varint64(d, ptr, end, &elem.uint64_val);

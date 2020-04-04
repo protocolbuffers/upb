@@ -236,7 +236,7 @@ UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   _upb_arena_head *h = (_upb_arena_head*)a;
   size = _upb_arena_alignup(size);
-  if (UPB_LIKELY(h->end - h->ptr >= size)) {
+  if (UPB_LIKELY((size_t)(h->end - h->ptr) >= size)) {
     void* ret = h->ptr;
     h->ptr += size;
     return ret;
