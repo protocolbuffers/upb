@@ -53,6 +53,87 @@ static const uint8_t desctype_to_mapsize[] = {
     8,                  /* SINT64 */
 };
 
+static const unsigned fixed32_ok =
+    (1 << UPB_DTYPE_FLOAT) |
+    (1 << UPB_DTYPE_FIXED32) |
+    (1 << UPB_DTYPE_SFIXED32);
+
+static const unsigned fixed64_ok =
+    (1 << UPB_DTYPE_DOUBLE) |
+    (1 << UPB_DTYPE_FIXED64) |
+    (1 << UPB_DTYPE_SFIXED64);
+
+/* Op: an action to be performed for a wire-type/field-type combination. */
+#define OP_SCALAR_LG2(n) n
+#define OP_FIXPCK_LG2(n) n + 4
+#define OP_VARPCK_LG2(n) n + 8
+#define OP_STRING 4
+#define OP_SUBMSG 5
+
+static const int8_t varint_ops[19] = {
+    -1, /* field not found */
+    -1, /* DOUBLE */
+    -1, /* FLOAT */
+    OP_SCALAR_LG2(3),  /* INT64 */
+    OP_SCALAR_LG2(3),  /* UINT64 */
+    OP_SCALAR_LG2(2),  /* INT32 */
+    -1, /* FIXED64 */
+    -1, /* FIXED32 */
+    OP_SCALAR_LG2(0),  /* BOOL */
+    -1, /* STRING */
+    -1, /* GROUP */
+    -1, /* MESSAGE */
+    -1, /* BYTES */
+    OP_SCALAR_LG2(2),  /* UINT32 */
+    OP_SCALAR_LG2(2),  /* ENUM */
+    -1, /* SFIXED32 */
+    -1,  /* SFIXED64 */
+    OP_SCALAR_LG2(2),  /* SINT32 */
+    OP_SCALAR_LG2(3),  /* SINT64 */
+};
+
+static const int8_t delim_ops[37] = {
+    /* For non-repeated field type. */
+    -1, /* field not found */
+    -1, /* DOUBLE */
+    -1, /* FLOAT */
+    -1, /* INT64 */
+    -1, /* UINT64 */
+    -1, /* INT32 */
+    -1, /* FIXED64 */
+    -1, /* FIXED32 */
+    -1, /* BOOL */
+    OP_STRING,  /* STRING */
+    -1, /* GROUP */
+    OP_SUBMSG,  /* MESSAGE */
+    OP_STRING,  /* BYTES */
+    -1, /* UINT32 */
+    -1, /* ENUM */
+    -1, /* SFIXED32 */
+    -1, /* SFIXED64 */
+    -1, /* SINT32 */
+    -1, /* SINT64 */
+    /* For repeated field type. */
+    OP_FIXPCK_LG2(3),  /* REPEATED DOUBLE */
+    OP_FIXPCK_LG2(2),  /* REPEATED FLOAT */
+    OP_VARPCK_LG2(3), /* REPEATED INT64 */
+    OP_VARPCK_LG2(3), /* REPEATED UINT64 */
+    OP_VARPCK_LG2(2), /* REPEATED INT32 */
+    OP_FIXPCK_LG2(3),  /* REPEATED FIXED64 */
+    OP_FIXPCK_LG2(2),  /* REPEATED FIXED32 */
+    OP_VARPCK_LG2(0),  /* REPEATED BOOL */
+    OP_STRING,  /* REPEATED STRING */
+    OP_SUBMSG,  /* REPEATED GROUP */
+    OP_SUBMSG,  /* REPEATED MESSAGE */
+    OP_STRING,  /* REPEATED BYTES */
+    OP_VARPCK_LG2(2), /* REPEATED UINT32 */
+    OP_VARPCK_LG2(2), /* REPEATED ENUM */
+    OP_VARPCK_LG2(2),  /* REPEATED SFIXED32 */
+    OP_FIXPCK_LG2(3),  /* REPEATED SFIXED64 */
+    OP_VARPCK_LG2(2), /* REPEATED SINT32 */
+    OP_VARPCK_LG2(3), /* REPEATED SINT64 */
+};
+
 /* Data pertaining to the parse. */
 typedef struct {
   const char *field_start;   /* Start of this field. */
@@ -141,7 +222,7 @@ static void decode_munge(int type, wireval* val) {
       break;
     }
     case UPB_DESCRIPTOR_TYPE_SINT64: {
-      uint64_t n = val->uint32_val;
+      uint64_t n = val->uint64_val;
       val->int64_val = (n >> 1) ^ -(int64_t)(n & 1);
       break;
     }
@@ -193,13 +274,6 @@ static const char *decode_togroup(upb_decstate *d, const char *ptr,
   d->depth++;
   return ptr;
 }
-
-/* Op: an action to be performed for a wire-type/field-type combination. */
-#define OP_SCALAR_LG2(n) n
-#define OP_FIXPCK_LG2(n) n + 4
-#define OP_VARPCK_LG2(n) n + 8
-#define OP_STRING 4
-#define OP_SUBMSG 5
 
 static const char *decode_toarray(upb_decstate *d, const char *ptr,
                                   upb_msg *msg, const upb_msglayout *layout,
@@ -310,7 +384,7 @@ static void decode_tomap(upb_decstate *d, upb_msg *msg,
 
   /* Parse map entry. */
   memset(&ent, 0, sizeof(ent));
-  decode_tosubmsg(d, &ent, layout, field, val.str_val);
+  decode_tosubmsg(d, &ent.k, layout, field, val.str_val);
 
   /* Insert into map. */
   _upb_map_set(map, &ent.k, map->key_size, &ent.v, map->val_size, d->arena);
@@ -364,70 +438,6 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
   }
 }
 
-static const int8_t varint_ops[19] = {
-    -1, /* field not found */
-    -1, /* DOUBLE */
-    -1, /* FLOAT */
-    OP_SCALAR_LG2(3),  /* INT64 */
-    OP_SCALAR_LG2(3),  /* UINT64 */
-    OP_SCALAR_LG2(2),  /* INT32 */
-    -1, /* FIXED64 */
-    -1, /* FIXED32 */
-    OP_SCALAR_LG2(0),  /* BOOL */
-    -1, /* STRING */
-    -1, /* GROUP */
-    -1, /* MESSAGE */
-    -1, /* BYTES */
-    OP_SCALAR_LG2(2),  /* UINT32 */
-    OP_SCALAR_LG2(2),  /* ENUM */
-    -1, /* SFIXED32 */
-    -1,  /* SFIXED64 */
-    OP_SCALAR_LG2(2),  /* SINT32 */
-    OP_SCALAR_LG2(3),  /* SINT64 */
-};
-
-static const int8_t delim_ops[37] = {
-    /* For non-repeated field type. */
-    -1, /* field not found */
-    -1, /* DOUBLE */
-    -1, /* FLOAT */
-    -1, /* INT64 */
-    -1, /* UINT64 */
-    -1, /* INT32 */
-    -1, /* FIXED64 */
-    -1, /* FIXED32 */
-    -1, /* BOOL */
-    OP_STRING,  /* STRING */
-    -1, /* GROUP */
-    OP_SUBMSG,  /* MESSAGE */
-    OP_STRING,  /* BYTES */
-    -1, /* UINT32 */
-    -1, /* ENUM */
-    -1, /* SFIXED32 */
-    -1, /* SFIXED64 */
-    -1, /* SINT32 */
-    -1, /* SINT64 */
-    /* For repeated field type. */
-    OP_FIXPCK_LG2(3),  /* REPEATED DOUBLE */
-    OP_FIXPCK_LG2(2),  /* REPEATED FLOAT */
-    OP_VARPCK_LG2(3), /* REPEATED INT64 */
-    OP_VARPCK_LG2(3), /* REPEATED UINT64 */
-    OP_VARPCK_LG2(2), /* REPEATED INT32 */
-    OP_FIXPCK_LG2(3),  /* REPEATED FIXED64 */
-    OP_FIXPCK_LG2(2),  /* REPEATED FIXED32 */
-    OP_VARPCK_LG2(0),  /* REPEATED BOOL */
-    OP_STRING,  /* REPEATED STRING */
-    OP_SUBMSG,  /* REPEATED GROUP */
-    OP_SUBMSG,  /* REPEATED MESSAGE */
-    OP_STRING,  /* REPEATED BYTES */
-    OP_VARPCK_LG2(2), /* REPEATED UINT32 */
-    OP_VARPCK_LG2(2), /* REPEATED ENUM */
-    OP_VARPCK_LG2(2),  /* REPEATED SFIXED32 */
-    OP_FIXPCK_LG2(3),  /* REPEATED SFIXED64 */
-    OP_VARPCK_LG2(2), /* REPEATED SINT32 */
-    OP_VARPCK_LG2(3), /* REPEATED SINT64 */
-};
-
 static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
                               const upb_msglayout *layout) {
   while (ptr < d->limit) {
@@ -455,13 +465,15 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
         if (d->limit - ptr < 4) decode_err(d);
         memcpy(&val, ptr, 4);
         ptr += 4;
-        op = (1 << field->descriptortype) & 0x8084 ? OP_SCALAR_LG2(2) : -1;
+        op = OP_SCALAR_LG2(2);
+        if (((1 << field->descriptortype) & fixed32_ok) == 0) goto unknown;
         break;
       case UPB_WIRE_TYPE_64BIT:
         if (d->limit - ptr < 8) decode_err(d);
         memcpy(&val, ptr, 8);
         ptr += 8;
-        op = (1 << field->descriptortype) & 0x10042 ? OP_SCALAR_LG2(3) : -1;
+        op = OP_SCALAR_LG2(3);
+        if (((1 << field->descriptortype) & fixed64_ok) == 0) goto unknown;
         break;
       case UPB_WIRE_TYPE_DELIMITED: {
         uint32_t size;
@@ -502,6 +514,7 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
           break;
       }
     } else {
+      unknown:
       /* Skip unknown field. */
       if (field_number == 0) decode_err(d);
       if (wire_type == UPB_WIRE_TYPE_START_GROUP) {
