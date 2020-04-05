@@ -499,6 +499,13 @@ static const char *upb_decode_mapfield(const char *ptr,
 
   /* Parse map entry. */
   memset(&ent, 0, sizeof(ent));
+
+  if (entry->fields[1].descriptortype == UPB_DESCRIPTOR_TYPE_MESSAGE ||
+      entry->fields[1].descriptortype == UPB_DESCRIPTOR_TYPE_GROUP) {
+    /* Create proactively to handle the case where it doesn't appear. */
+    ent.v.val.val = (uint64_t)_upb_msg_new(layout->submsgs[0], d->arena);
+  }
+
   CHK(ptr = upb_decode_msgfield(ptr, entry, len, &ent.k, d));
 
   /* Insert into map. */
