@@ -129,10 +129,13 @@ static bool upb_put_tag(upb_encstate *e, int field_number, int wire_type) {
 }
 
 static bool upb_put_fixedarray(upb_encstate *e, const upb_array *arr,
-                               size_t size) {
+                               size_t elem_size, bool packed) {
   size_t bytes = arr->len * size;
   const void* data = _upb_array_constptr(arr);
-  return upb_put_bytes(e, data, bytes) && upb_put_varint(e, bytes);
+  if (packed) {
+    return upb_put_bytes(e, data, bytes) && upb_put_varint(e, bytes);
+  } else {
+  }
 }
 
 bool upb_encode_message(upb_encstate *e, const char *msg,
@@ -362,9 +365,9 @@ bool upb_encode_message(upb_encstate *e, const char *msg,
   for (i = m->field_count - 1; i >= 0; i--) {
     const upb_msglayout_field *f = &m->fields[i];
 
-    if (f->label == UPB_LABEL_REPEATED) {
+    if (_upb_isrepeated(f)) {
       CHK(upb_encode_array(e, msg + f->offset, m, f));
-    } else if (f->label == UPB_LABEL_MAP) {
+    } else if (f->label == _UPB_LABEL_MAP) {
       CHK(upb_encode_map(e, msg + f->offset, m, f));
     } else {
       bool skip_empty = false;

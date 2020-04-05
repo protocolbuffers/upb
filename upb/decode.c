@@ -194,7 +194,7 @@ bool upb_array_add(upb_array *arr, size_t elements, size_t elem_size,
 }
 
 static upb_array *upb_getarr(upb_msg *msg, const upb_msglayout_field *field) {
-  UPB_ASSERT(field->label == UPB_LABEL_REPEATED);
+  UPB_ASSERT(_upb_isrepeated(field));
   return *PTR_AT(msg, field->offset, upb_array*);
 }
 
@@ -219,7 +219,7 @@ static upb_msg *upb_getorcreatemsg(upb_msg *msg,
                                    upb_decstate *d) {
   upb_msg **submsg = PTR_AT(msg, field->offset, upb_msg*);
 
-  UPB_ASSERT(field->label != UPB_LABEL_REPEATED);
+  UPB_ASSERT(!_upb_isrepeated(field));
 
   if (!*submsg) {
     *submsg = _upb_msg_new(layout, d->arena);
@@ -236,7 +236,7 @@ static upb_msg *upb_addmsg(upb_msg *msg,
   upb_msg *submsg;
   upb_array *arr = upb_getorcreatearr(msg, field, d);
 
-  UPB_ASSERT(field->label == UPB_LABEL_REPEATED);
+  UPB_ASSERT(_upb_isrepeated(field));
   UPB_ASSERT(field->descriptortype == UPB_DESCRIPTOR_TYPE_MESSAGE ||
              field->descriptortype == UPB_DESCRIPTOR_TYPE_GROUP);
 
@@ -263,7 +263,7 @@ static bool upb_decode_addval(upb_msg *msg, const upb_msglayout_field *field,
   char *field_mem = PTR_AT(msg, field->offset, char);
   upb_array *arr;
 
-  if (field->label == UPB_LABEL_REPEATED) {
+  if (_upb_isrepeated(field)) {
     arr = upb_getorcreatearr(msg, field, d);
     CHK(arr);
     field_mem = upb_array_reserve(arr, 1, size, d->arena);
@@ -276,7 +276,7 @@ static bool upb_decode_addval(upb_msg *msg, const upb_msglayout_field *field,
 
 static void upb_decode_setpresent(upb_msg *msg,
                                   const upb_msglayout_field *field) {
-  if (field->label == UPB_LABEL_REPEATED) {
+  if (_upb_isrepeated(field)) {
    upb_array *arr = upb_getarr(msg, field);
    UPB_ASSERT(arr->len < arr->size);
    arr->len++;
@@ -514,9 +514,9 @@ static const char *upb_decode_delimitedfield(const char *ptr,
 
   CHK(ptr = upb_decode_string(ptr, d->limit, &len));
 
-  if (field->label == UPB_LABEL_REPEATED) {
+  if (_upb_isrepeated(field)) {
     return upb_decode_toarray(ptr, layout, field, len, msg, d);
-  } else if (field->label == UPB_LABEL_MAP) {
+  } else if (field->label == _UPB_LABEL_MAP) {
     return upb_decode_mapfield(ptr, layout, field, len, msg, d);
   } else {
     switch (field->descriptortype) {
@@ -582,7 +582,7 @@ static const char *upb_decode_field(const char *ptr,
         const upb_msglayout *subl = layout->submsgs[field->submsg_index];
         upb_msg *group;
 
-        if (field->label == UPB_LABEL_REPEATED) {
+        if (_upb_isrepeated(field)) {
           group = upb_addmsg(msg, field, subl, d);
         } else {
           group = upb_getorcreatemsg(msg, field, subl, d);
