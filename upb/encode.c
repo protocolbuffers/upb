@@ -121,7 +121,6 @@ static bool upb_readhasbit(const char *msg, const upb_msglayout_field *f) {
   uint32_t hasbit = f->presence;
   UPB_ASSERT(f->presence > 0);
   return (*UPB_PTR_AT(msg, hasbit / 8, uint8_t)) & (1 << (hasbit % 8));
-  //return msg[hasbit / 8] & (1 << (hasbit % 8));
 }
 
 static bool upb_put_tag(upb_encstate *e, int field_number, int wire_type) {
