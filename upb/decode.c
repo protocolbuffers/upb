@@ -134,7 +134,6 @@ static const int8_t delim_ops[37] = {
 
 /* Data pertaining to the parse. */
 typedef struct {
-  const char *field_start; /* Start of this field. */
   const char *limit;       /* End of delimited region or end of buffer. */
   upb_arena *arena;
   int depth;
@@ -157,13 +156,11 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
 UPB_NORETURN static void decode_err(upb_decstate *d) { longjmp(d->err, 1); }
 
 static bool decode_reserve(upb_decstate *d, upb_array *arr, int elem) {
-  if (arr->size - arr->len < elem) {
-    if (!_upb_array_realloc(arr, arr->len + elem, d->arena)) {
-      decode_err(d);
-    }
-    return true;
+  bool need_realloc = arr->size - arr->len < elem;
+  if (need_realloc && !_upb_array_realloc(arr, arr->len + elem, d->arena)) {
+    decode_err(d);
   }
-  return false;
+  return need_realloc;
 }
 
 UPB_NOINLINE
