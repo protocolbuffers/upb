@@ -62,9 +62,9 @@ static const unsigned fixed64_ok = (1 << UPB_DTYPE_DOUBLE) |
                                    (1 << UPB_DTYPE_SFIXED64);
 
 /* Op: an action to be performed for a wire-type/field-type combination. */
-#define OP_SCALAR_LG2(n) n
-#define OP_FIXPCK_LG2(n) n + 4
-#define OP_VARPCK_LG2(n) n + 8
+#define OP_SCALAR_LG2(n) (n)
+#define OP_FIXPCK_LG2(n) (n + 4)
+#define OP_VARPCK_LG2(n) (n + 8)
 #define OP_STRING 4
 #define OP_SUBMSG 5
 
@@ -346,7 +346,6 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       const char *ptr = val.str_val.data;
       const char *end = ptr + val.str_val.size;
       char *out = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
-      UPB_ASSUME(lg2 <= 3);
       while (ptr < end) {
         wireval elem;
         ptr = decode_varint64(d, ptr, end, &elem.uint64_val);
