@@ -372,6 +372,7 @@ static void decode_tomap(upb_decstate *d, upb_msg *msg,
 
   if (!map) {
     /* Lazily create map. */
+    const upb_msglayout *entry = layout->submsgs[field->submsg_index];
     const upb_msglayout_field *key_field = &entry->fields[0];
     const upb_msglayout_field *val_field = &entry->fields[1];
     char key_size = desctype_to_mapsize[key_field->descriptortype];
