@@ -49,6 +49,7 @@ struct upb_fielddef {
   bool is_extension_;
   bool lazy_;
   bool packed_;
+  bool proto3_optional_;
   upb_descriptortype_t type_;
   upb_label_t label_;
 };
@@ -585,7 +586,9 @@ bool upb_fielddef_hassubdef(const upb_fielddef *f) {
 bool upb_fielddef_haspresence(const upb_fielddef *f) {
   if (upb_fielddef_isseq(f)) return false;
   if (upb_fielddef_issubmsg(f)) return true;
-  if (upb_fielddef_containingoneof(f)) return true;
+  /* In due time:
+   * if (upb_fielddef_containingoneof(f)) return true; */
+  if (f->proto3_optional_) return true;
   return f->file->syntax == UPB_SYNTAX_PROTO2;
 }
 
@@ -787,6 +790,16 @@ int upb_oneofdef_numfields(const upb_oneofdef *o) {
 
 uint32_t upb_oneofdef_index(const upb_oneofdef *o) {
   return o->index;
+}
+
+bool upb_oneofdef_synthetic(const upb_oneofdef *o) {
+  upb_inttable_iter iter;
+  const upb_fielddef *f;
+  upb_inttable_begin(&iter, &o->itof);
+  if (upb_oneofdef_numfields(o) != 1) return false;
+  f = upb_value_getptr(upb_inttable_iter_value(&iter));
+  UPB_ASSERT(f);
+  return f->proto3_optional_;
 }
 
 const upb_fielddef *upb_oneofdef_ntof(const upb_oneofdef *o,
@@ -1439,6 +1452,8 @@ static bool create_fielddef(
   f->label_ = (int)google_protobuf_FieldDescriptorProto_label(field_proto);
   f->number_ = field_number;
   f->oneof = NULL;
+  f->proto3_optional_ =
+      google_protobuf_FieldDescriptorProto_proto3_optional(field_proto);
 
   /* We can't resolve the subdef or (in the case of extensions) the containing
    * message yet, because it may not have been defined yet.  We stash a pointer

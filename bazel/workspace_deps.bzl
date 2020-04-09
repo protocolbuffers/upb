@@ -13,14 +13,10 @@ def upb_deps():
     )
 
     maybe(
-        http_archive,
+        git_repository,
         name = "com_google_protobuf",
-        sha256 = "a79d19dcdf9139fa4b81206e318e33d245c4c9da1ffed21c87288ed4380426f9",
-        strip_prefix = "protobuf-3.11.4",
-        urls = [
-            "https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.11.4.tar.gz",
-            "https://github.com/protocolbuffers/protobuf/archive/v3.11.4.tar.gz",
-        ],
+        remote = "https://github.com/protocolbuffers/protobuf.git",
+        commit = "c91ab40081b1916b286c6c9a4ce7fce4c1125a87",  # Need to use Git until proto3 optional is released
     )
 
     maybe(
