@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "upb/def.h"
+#include "upb/upb.hpp"
 
 namespace upb {
 

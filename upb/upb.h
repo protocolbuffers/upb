@@ -276,7 +276,6 @@ typedef enum {
 
 #ifdef __cplusplus
 }  /* extern "C" */
-#include "upb/upb.hpp"  /* C++ Wrappers. */
 #endif
 
 #endif  /* UPB_H_ */

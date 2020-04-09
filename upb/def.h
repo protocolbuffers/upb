@@ -320,7 +320,6 @@ bool _upb_symtab_loaddefinit(upb_symtab *s, const upb_def_init *init);
 
 #ifdef __cplusplus
 }  /* extern "C" */
-#include "upb/def.hpp"
 #endif  /* __cplusplus */
 
 #endif /* UPB_DEF_H_ */
