@@ -65,10 +65,10 @@ class Arena {
   std::unique_ptr<upb_arena, decltype(&upb_arena_free)> ptr_;
 };
 
-// upb::InlinedArena seeds the arenas with a predefined amount of memory.  No
+// InlinedArena seeds the arenas with a predefined amount of memory.  No
 // heap memory will be allocated until the initial block is exceeded.
 template <int N>
-class InlinedArena : public upb::Arena {
+class InlinedArena : public Arena {
  public:
   InlinedArena() : ptr_(upb_arena_new(&initial_block_, N, &upb_alloc_global)) {}
 
