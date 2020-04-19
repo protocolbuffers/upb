@@ -489,6 +489,11 @@ const upb_oneofdef *upb_fielddef_containingoneof(const upb_fielddef *f) {
   return f->oneof;
 }
 
+const upb_oneofdef *upb_fielddef_realcontainingoneof(const upb_fielddef *f) {
+  if (!f->oneof || upb_oneofdef_issynthetic(f->oneof)) return NULL;
+  return f->oneof;
+}
+
 static void chkdefaulttype(const upb_fielddef *f, int ctype) {
   UPB_UNUSED(f);
   UPB_UNUSED(ctype);
@@ -585,11 +590,8 @@ bool upb_fielddef_hassubdef(const upb_fielddef *f) {
 
 bool upb_fielddef_haspresence(const upb_fielddef *f) {
   if (upb_fielddef_isseq(f)) return false;
-  if (upb_fielddef_issubmsg(f)) return true;
-  /* In due time:
-   * if (upb_fielddef_containingoneof(f)) return true; */
-  if (f->proto3_optional_) return true;
-  return f->file->syntax == UPB_SYNTAX_PROTO2;
+  return upb_fielddef_issubmsg(f) || upb_fielddef_containingoneof(f) ||
+         f->file->syntax == UPB_SYNTAX_PROTO2;
 }
 
 static bool between(int32_t x, int32_t low, int32_t high) {
@@ -792,7 +794,7 @@ uint32_t upb_oneofdef_index(const upb_oneofdef *o) {
   return o->index;
 }
 
-bool upb_oneofdef_synthetic(const upb_oneofdef *o) {
+bool upb_oneofdef_issynthetic(const upb_oneofdef *o) {
   upb_inttable_iter iter;
   const upb_fielddef *f;
   upb_inttable_begin(&iter, &o->itof);
@@ -984,7 +986,7 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
       submsgs[field->submsg_index] = subm->layout;
     }
 
-    if (upb_fielddef_haspresence(f) && !upb_fielddef_containingoneof(f)) {
+    if (upb_fielddef_haspresence(f) && !upb_fielddef_realcontainingoneof(f)) {
       /* We don't use hasbit 0, so that 0 can indicate "no presence" in the
        * table. This wastes one hasbit, but we don't worry about it for now. */
       field->presence = ++hasbit;
@@ -1003,7 +1005,7 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
     size_t field_size = upb_msg_fielddefsize(f);
     size_t index = upb_fielddef_index(f);
 
-    if (upb_fielddef_containingoneof(f)) {
+    if (upb_fielddef_realcontainingoneof(f)) {
       /* Oneofs are handled separately below. */
       continue;
     }
@@ -1017,6 +1019,8 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
        upb_msg_oneof_next(&oit)) {
     const upb_oneofdef* o = upb_msg_iter_oneof(&oit);
     upb_oneof_iter fit;
+
+    if (upb_oneofdef_issynthetic(o)) continue;
 
     size_t case_size = sizeof(uint32_t);  /* Could potentially optimize this. */
     size_t field_size = 0;

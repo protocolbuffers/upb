@@ -86,6 +86,7 @@ bool upb_fielddef_lazy(const upb_fielddef *f);
 bool upb_fielddef_packed(const upb_fielddef *f);
 const upb_msgdef *upb_fielddef_containingtype(const upb_fielddef *f);
 const upb_oneofdef *upb_fielddef_containingoneof(const upb_fielddef *f);
+const upb_oneofdef *upb_fielddef_realcontainingoneof(const upb_fielddef *f);
 uint32_t upb_fielddef_index(const upb_fielddef *f);
 bool upb_fielddef_issubmsg(const upb_fielddef *f);
 bool upb_fielddef_isstring(const upb_fielddef *f);
@@ -117,7 +118,7 @@ const char *upb_oneofdef_name(const upb_oneofdef *o);
 const upb_msgdef *upb_oneofdef_containingtype(const upb_oneofdef *o);
 int upb_oneofdef_numfields(const upb_oneofdef *o);
 uint32_t upb_oneofdef_index(const upb_oneofdef *o);
-bool upb_oneofdef_synthetic(const upb_oneofdef *o);
+bool upb_oneofdef_issynthetic(const upb_oneofdef *o);
 
 /* Oneof lookups:
  * - ntof:  look up a field by name.
