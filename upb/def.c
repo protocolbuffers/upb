@@ -250,10 +250,8 @@ static bool assign_msg_indices(upb_msgdef *m, upb_status *s) {
    * lowest indexes, but we do not publicly guarantee this. */
   upb_msg_field_iter j;
   int i;
-  int first_synthetic = -1;
   uint32_t selector;
   int n = upb_msgdef_numfields(m);
-  upb_oneofdef *mutable_oneofs = (upb_oneofdef*)m->oneofs;
   upb_fielddef **fields;
 
   if (n == 0) {
@@ -291,6 +289,15 @@ static bool assign_msg_indices(upb_msgdef *m, upb_status *s) {
   }
   m->selector_count = selector;
 
+  upb_gfree(fields);
+  return true;
+}
+
+static bool check_oneofs(upb_msgdef *m, upb_status *s) {
+  int i;
+  int first_synthetic = -1;
+  upb_oneofdef *mutable_oneofs = (upb_oneofdef*)m->oneofs;
+
   for (i = 0; i < m->oneof_count; i++) {
     mutable_oneofs[i].index = i;
 
@@ -314,7 +321,6 @@ static bool assign_msg_indices(upb_msgdef *m, upb_status *s) {
     m->real_oneof_count = first_synthetic;
   }
 
-  upb_gfree(fields);
   return true;
 }
 
@@ -1660,6 +1666,7 @@ static bool create_msgdef(symtab_addctx *ctx, const char *prefix,
   }
 
   CHK(assign_msg_indices(m, ctx->status));
+  CHK(check_oneofs(m, ctx->status));
   assign_msg_wellknowntype(m);
   upb_inttable_compact2(&m->itof, ctx->alloc);
 
