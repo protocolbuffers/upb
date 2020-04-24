@@ -1052,12 +1052,12 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
     const upb_oneofdef* o = upb_msg_iter_oneof(&oit);
     upb_oneof_iter fit;
 
-    if (upb_oneofdef_issynthetic(o)) continue;
-
     size_t case_size = sizeof(uint32_t);  /* Could potentially optimize this. */
     size_t field_size = 0;
     uint32_t case_offset;
     uint32_t data_offset;
+
+    if (upb_oneofdef_issynthetic(o)) continue;
 
     /* Calculate field size: the max of all field sizes. */
     for (upb_oneof_begin(&fit, o);
