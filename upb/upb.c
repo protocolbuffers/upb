@@ -214,7 +214,7 @@ bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
   }
 
   a->head.end -= sizeof(cleanup_ent);
-  *ent = (cleanup_ent*)a->head.end;
+  ent = (cleanup_ent*)a->head.end;
   (*a->cleanups)++;
 
   ent->cleanup = func;
