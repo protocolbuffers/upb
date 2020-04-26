@@ -152,11 +152,9 @@ static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
   }
 
   ret = upb_arena_malloc(a, size);
-  if (!ret) return NULL;
 
-  /* TODO(haberman): special-case if this is a realloc of the last alloc? */
-
-  if (oldsize > 0) {
+  if (ret && oldsize > 0) {
+    /* TODO(haberman): special-case if this is a realloc of the last alloc? */
     memcpy(ret, ptr, oldsize);  /* Preserve existing data. */
   }
 
@@ -206,11 +204,14 @@ void upb_arena_free(upb_arena *a) {
   while (block) {
     /* Load first since we are deleting block. */
     mem_block *next = block->next;
-    cleanup_ent *end = UPB_PTR_AT(block, block->size, void);
-    cleanup_ent *ptr = end - block->cleanups;
 
-    for (; ptr < end; ptr++) {
-      ptr->cleanup(ptr->ud);
+    if (block->cleanups > 0) {
+      cleanup_ent *end = UPB_PTR_AT(block, block->size, void);
+      cleanup_ent *ptr = end - block->cleanups;
+
+      for (; ptr < end; ptr++) {
+        ptr->cleanup(ptr->ud);
+      }
     }
 
     if (block->owned) {
