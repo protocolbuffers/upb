@@ -206,9 +206,9 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 }
 
 static void arena_dofree(upb_arena *a) {
+  mem_block *block = a->freelist;
   UPB_ASSERT(a->parent == a);
   UPB_ASSERT(a->refcount == 0);
-  mem_block *block = a->freelist;
 
   while (block) {
     /* Load first since we are deleting block. */
