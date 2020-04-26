@@ -53,6 +53,9 @@
 #define UPB_INLINE static
 #endif
 
+#define UPB_ALIGN_UP(size, align) ((((size) + (align) - 1) / (align)) * (align))
+#define UPB_ALIGN_MALLOC(size) UPB_ALIGN_UP(size, 16)
+
 /* Hints to the compiler about likely/unlikely branches. */
 #if defined (__GNUC__) || defined(__clang__)
 #define UPB_LIKELY(x) __builtin_expect((x),1)

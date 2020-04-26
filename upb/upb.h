@@ -149,11 +149,6 @@ typedef struct {
   char *ptr, *end;
 } _upb_arena_head;
 
-UPB_INLINE size_t _upb_arena_alignup(size_t size) {
-  const size_t maxalign = 16;
-  return ((size + maxalign - 1) / maxalign) * maxalign;
-}
-
 /* Creates an arena from the given initial block (if any -- n may be 0).
  * Additional blocks will be allocated from |alloc|.  If |alloc| is NULL, this
  * is a fixed-size arena and cannot grow. */
@@ -171,7 +166,7 @@ UPB_INLINE bool _upb_arena_has(upb_arena *a, size_t size) {
 }
 
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
-  size = _upb_arena_alignup(size);
+  size = UPB_ALIGN_MALLOC(size);
   if (_upb_arena_has(a, size)) {
     _upb_arena_head *h = (_upb_arena_head*)a;
     void* ret = h->ptr;

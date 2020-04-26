@@ -94,16 +94,20 @@ struct upb_arena {
   } group;
 };
 
+static const size_t memblock_reserve = UPB_ALIGN_UP(sizeof(mem_block), 16);
+
 static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size,
                                bool owned) {
   mem_block *block = ptr;
 
   block->next = a->freelist;
+  block->size = size;
+  block->cleanups = 0;
   a->freelist = block;
   block->owned = owned;
 
-  a->head.ptr = (char*)block + _upb_arena_alignup(sizeof(mem_block));
-  a->head.end = (char*)block + size;
+  a->head.ptr = UPB_PTR_AT(block, memblock_reserve, char);
+  a->head.end = UPB_PTR_AT(block, size, char);
   a->cleanups = &block->cleanups;
 
   /* TODO(haberman): ASAN poison. */
@@ -111,7 +115,7 @@ static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size,
 
 static mem_block *upb_arena_allocblock(upb_arena *a, size_t size) {
   size_t last_size = a->freelist ? a->freelist->size : 128;
-  size_t block_size = UPB_MAX(size, last_size * 2) + sizeof(mem_block);
+  size_t block_size = UPB_MAX(size, last_size * 2) + memblock_reserve;
   mem_block *block = upb_malloc(a->block_alloc, block_size);
 
   if (!block) {
@@ -126,6 +130,7 @@ static mem_block *upb_arena_allocblock(upb_arena *a, size_t size) {
 void *_upb_arena_slowmalloc(upb_arena *a, size_t size) {
   mem_block *block = upb_arena_allocblock(a, size);
   if (!block) return NULL;  /* Out of memory. */
+  UPB_ASSERT(_upb_arena_has(a, size));
   return upb_arena_malloc(a, size);
 }
 
@@ -159,7 +164,7 @@ static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
 #define upb_alignof(type) offsetof (struct { char c; type member; }, member)
 
 upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
-  const size_t first_block_overhead = sizeof(upb_arena) + sizeof(mem_block);
+  const size_t first_block_overhead = sizeof(upb_arena) + memblock_reserve;
   upb_arena *a;
   bool owned = false;
 
@@ -176,14 +181,12 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
     }
   }
 
-  a = (void*)((char*)mem + n - sizeof(*a));
+  a = UPB_PTR_AT(mem, n - sizeof(*a), upb_arena);
   n -= sizeof(*a);
 
   a->head.alloc.func = &upb_arena_doalloc;
-  a->head.ptr = NULL;
-  a->head.end = NULL;
-  a->freelist = NULL;
   a->block_alloc = alloc;
+  a->freelist = NULL;
 
   upb_arena_addblock(a, mem, n, owned);
 
@@ -222,7 +225,7 @@ bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
 
   a->head.end -= sizeof(cleanup_ent);
   cleanup_ent *ent = (cleanup_ent*)a->head.end;
-  a->cleanups++;
+  (*a->cleanups)++;
 
   ent->cleanup = func;
   ent->ud = ud;
