@@ -90,7 +90,6 @@ struct upb_arena {
 };
 
 static const size_t memblock_reserve = UPB_ALIGN_UP(sizeof(mem_block), 16);
-static const size_t first_block_overhead = sizeof(upb_arena) + memblock_reserve;
 
 static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size) {
   mem_block *block = ptr;
@@ -137,6 +136,7 @@ static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
 /* Public Arena API ***********************************************************/
 
 upb_arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
+  const size_t first_block_overhead = sizeof(upb_arena) + memblock_reserve;
   upb_arena *a;
 
   /* We need to malloc the initial block. */
@@ -206,13 +206,15 @@ void upb_arena_free(upb_arena *a) {
 }
 
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
+  cleanup_ent *ent;
+
   if (!a->cleanups || !arena_has(a, sizeof(cleanup_ent))) {
     if (!upb_arena_allocblock(a, 128)) return false;  /* Out of memory. */
     UPB_ASSERT(arena_has(a, sizeof(cleanup_ent)));
   }
 
   a->head.end -= sizeof(cleanup_ent);
-  cleanup_ent *ent = (cleanup_ent*)a->head.end;
+  *ent = (cleanup_ent*)a->head.end;
   (*a->cleanups)++;
 
   ent->cleanup = func;
