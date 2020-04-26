@@ -2925,7 +2925,6 @@ upb_json_parser *upb_json_parser_create(upb_arena *arena,
   }
   set_name_table(p, p->top);
   p->symtab = symtab;
-
   p->ignore_json_unknown = ignore_json_unknown;
   return p;
 }
