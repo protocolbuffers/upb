@@ -164,9 +164,11 @@ UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   size = UPB_ALIGN_MALLOC(size);
   _upb_arena_head *h = (_upb_arena_head*)a;
   void* ret;
+
   if (UPB_UNLIKELY((size_t)(h->end - h->ptr) < size)) {
     return _upb_arena_slowmalloc(a, size);
   }
+
   ret = h->ptr;
   h->ptr += size;
   return ret;
@@ -175,9 +177,11 @@ UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
 UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
                                    size_t size) {
   void *ret = upb_arena_malloc(a, size);
+
   if (ret && oldsize > 0) {
     memcpy(ret, ptr, oldsize);
   }
+
   return ret;
 }
 
