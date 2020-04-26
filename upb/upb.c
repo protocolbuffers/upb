@@ -86,11 +86,6 @@ struct upb_arena {
 
   /* Linked list of blocks to free/cleanup. */
   mem_block *freelist;
-
-  union {
-    size_t refcount;    /* count << 1 when low bit is set. */
-    upb_arena *parent;  /* when low bit is clear. */
-  } group;
 };
 
 static const size_t memblock_reserve = UPB_ALIGN_UP(sizeof(mem_block), 16);
@@ -111,18 +106,14 @@ static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size) {
   /* TODO(haberman): ASAN poison. */
 }
 
-static mem_block *upb_arena_allocblock(upb_arena *a, size_t size) {
+static bool upb_arena_allocblock(upb_arena *a, size_t size) {
   size_t last_size = a->freelist ? a->freelist->size : 128;
   size_t block_size = UPB_MAX(size, last_size * 2) + memblock_reserve;
   mem_block *block = upb_malloc(a->block_alloc, block_size);
 
-  if (!block) {
-    return NULL;
-  }
-
+  if (!block) return false;
   upb_arena_addblock(a, block, block_size);
-
-  return block;
+  return true;
 }
 
 static bool arena_has(upb_arena *a, size_t size) {
@@ -131,8 +122,7 @@ static bool arena_has(upb_arena *a, size_t size) {
 }
 
 void *_upb_arena_slowmalloc(upb_arena *a, size_t size) {
-  mem_block *block = upb_arena_allocblock(a, size);
-  if (!block) return NULL;  /* Out of memory. */
+  if (!upb_arena_allocblock(a, size)) return NULL;  /* Out of memory. */
   UPB_ASSERT(arena_has(a, size));
   return upb_arena_malloc(a, size);
 }
@@ -178,7 +168,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
    * itself at the end. */
   n &= ~(upb_alignof(upb_arena) - 1);
 
-  if (UPB_UNLIKELY(n < first_block_overhead)) {
+  if (UPB_UNLIKELY(n < sizeof(upb_arena))) {
     return arena_initslow(mem, n, alloc);
   }
 
@@ -187,7 +177,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 
   a->head.alloc.func = &upb_arena_doalloc;
   a->block_alloc = alloc;
-  a->head.ptr = UPB_PTR_AT(mem, memblock_reserve, char);
+  a->head.ptr = mem;
   a->head.end = UPB_PTR_AT(mem, n, char);
   a->freelist = NULL;
   a->cleanups = NULL;
@@ -220,8 +210,7 @@ void upb_arena_free(upb_arena *a) {
 
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
   if (!a->cleanups || !arena_has(a, sizeof(cleanup_ent))) {
-    mem_block *block = upb_arena_allocblock(a, 128);
-    if (!block) return NULL;  /* Out of memory. */
+    if (!upb_arena_allocblock(a, 128)) return false;  /* Out of memory. */
     UPB_ASSERT(arena_has(a, sizeof(cleanup_ent)));
   }
 

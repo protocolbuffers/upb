@@ -161,9 +161,9 @@ void upb_arena_fuse(upb_arena *a, upb_arena *b);
 UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
-  size = UPB_ALIGN_MALLOC(size);
   _upb_arena_head *h = (_upb_arena_head*)a;
   void* ret;
+  size = UPB_ALIGN_MALLOC(size);
 
   if (UPB_UNLIKELY((size_t)(h->end - h->ptr) < size)) {
     return _upb_arena_slowmalloc(a, size);
