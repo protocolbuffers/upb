@@ -65,9 +65,10 @@ upb_alloc upb_alloc_global = {&upb_global_allocfunc};
 /* Be conservative and choose 16 in case anyone is using SSE. */
 
 typedef struct mem_block {
-  struct mem_block *next;  /* Low bit: is the current block owned? */
+  struct mem_block *next;
   uint32_t size;
   uint32_t cleanups;
+  bool owned;  /* TODO(haberman): pack this into "next" to save space. */
   /* Data follows. */
 } mem_block;
 
@@ -78,6 +79,7 @@ typedef struct cleanup_ent {
 
 struct upb_arena {
   _upb_arena_head head;
+  uint32_t *cleanups;
 
   /* Allocator to allocate arena blocks.  We are responsible for freeing these
    * when we are destroyed. */
@@ -89,25 +91,26 @@ struct upb_arena {
   union {
     size_t refcount;    /* count << 1 when low bit is set. */
     upb_arena *parent;  /* when low bit is clear. */
-  }
+  } group;
 };
 
 static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size,
                                bool owned) {
   mem_block *block = ptr;
 
-  block->next = a->block_head;
+  block->next = a->freelist;
+  a->freelist = block;
   block->owned = owned;
 
-  a->block_head = block;
   a->head.ptr = (char*)block + _upb_arena_alignup(sizeof(mem_block));
   a->head.end = (char*)block + size;
+  a->cleanups = &block->cleanups;
 
   /* TODO(haberman): ASAN poison. */
 }
 
 static mem_block *upb_arena_allocblock(upb_arena *a, size_t size) {
-  size_t last_size = a->block_head ? a->block_head->size : 128;
+  size_t last_size = a->freelist ? a->freelist->size : 128;
   size_t block_size = UPB_MAX(size, last_size * 2) + sizeof(mem_block);
   mem_block *block = upb_malloc(a->block_alloc, block_size);
 
@@ -116,7 +119,6 @@ static mem_block *upb_arena_allocblock(upb_arena *a, size_t size) {
   }
 
   upb_arena_addblock(a, block, block_size, true);
-  a->next_block_size = UPB_MIN(block_size * 2, 16384);
 
   return block;
 }
@@ -180,10 +182,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
   a->head.alloc.func = &upb_arena_doalloc;
   a->head.ptr = NULL;
   a->head.end = NULL;
-  a->block_alloc = &upb_alloc_global;
-  a->next_block_size = 256;
-  a->cleanup_head = NULL;
-  a->block_head = NULL;
+  a->freelist = NULL;
   a->block_alloc = alloc;
 
   upb_arena_addblock(a, mem, n, owned);
@@ -194,19 +193,17 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 #undef upb_alignof
 
 void upb_arena_free(upb_arena *a) {
-  cleanup_ent *ent = a->cleanup_head;
-  mem_block *block = a->block_head;
+  mem_block *block = a->freelist;
 
-  while (ent) {
-    ent->cleanup(ent->ud);
-    ent = ent->next;
-  }
-
-  /* Must do this after running cleanup functions, because this will delete
-   * the memory we store our cleanup entries in! */
   while (block) {
     /* Load first since we are deleting block. */
     mem_block *next = block->next;
+    cleanup_ent *end = UPB_PTR_AT(block, block->size, void);
+    cleanup_ent *ptr = end - block->cleanups;
+
+    for (; ptr < end; ptr++) {
+      ptr->cleanup(ptr->ud);
+    }
 
     if (block->owned) {
       upb_free(a->block_alloc, block);
@@ -217,15 +214,18 @@ void upb_arena_free(upb_arena *a) {
 }
 
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
-  cleanup_ent *ent = upb_malloc(&a->head.alloc, sizeof(cleanup_ent));
-  if (!ent) {
-    return false;  /* Out of memory. */
+  if (!_upb_arena_has(a, sizeof(cleanup_ent))) {
+    mem_block *block = upb_arena_allocblock(a, 128);
+    if (!block) return NULL;  /* Out of memory. */
+    UPB_ASSERT(_upb_arena_has(a, sizeof(cleanup_ent)));
   }
+
+  a->head.end -= sizeof(cleanup_ent);
+  cleanup_ent *ent = (cleanup_ent*)a->head.end;
+  a->cleanups++;
 
   ent->cleanup = func;
   ent->ud = ud;
-  ent->next = a->cleanup_head;
-  a->cleanup_head = ent;
 
   return true;
 }

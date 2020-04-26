@@ -165,10 +165,15 @@ void upb_arena_fuse(upb_arena *a, upb_arena *b);
 
 UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 
-UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
+UPB_INLINE bool _upb_arena_has(upb_arena *a, size_t size) {
   _upb_arena_head *h = (_upb_arena_head*)a;
+  return UPB_LIKELY((size_t)(h->end - h->ptr) >= size);
+}
+
+UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   size = _upb_arena_alignup(size);
-  if (UPB_LIKELY((size_t)(h->end - h->ptr) >= size)) {
+  if (_upb_arena_has(a, size)) {
+    _upb_arena_head *h = (_upb_arena_head*)a;
     void* ret = h->ptr;
     h->ptr += size;
     return ret;
