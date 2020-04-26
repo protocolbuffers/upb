@@ -163,22 +163,22 @@ UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   size = UPB_ALIGN_MALLOC(size);
   _upb_arena_head *h = (_upb_arena_head*)a;
-  if (UPB_LIKELY((size_t)(h->end - h->ptr) >= size)) {
-    void* ret = h->ptr;
-    h->ptr += size;
-    return ret;
-  } else {
+  void* ret;
+  if (UPB_UNLIKELY((size_t)(h->end - h->ptr) < size)) {
     return _upb_arena_slowmalloc(a, size);
   }
+  ret = h->ptr;
+  h->ptr += size;
+  return ret;
 }
 
 UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
                                    size_t size) {
-  if (oldsize == 0) {
-    return upb_arena_malloc(a, size);
-  } else {
-    return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
+  void *ret = upb_arena_malloc(a, size);
+  if (ret && oldsize > 0) {
+    memcpy(ret, ptr, oldsize);
   }
+  return ret;
 }
 
 UPB_INLINE upb_arena *upb_arena_new(void) {

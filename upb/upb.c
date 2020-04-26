@@ -145,21 +145,7 @@ void upb_arena_fuse(upb_arena *a, upb_arena *b) {
 static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
                                size_t size) {
   upb_arena *a = (upb_arena*)alloc;  /* upb_alloc is initial member. */
-  void *ret;
-
-  if (size == 0) {
-    return NULL;  /* We are an arena, don't need individual frees. */
-  }
-
-  ret = upb_arena_malloc(a, size);
-
-  if (ret && oldsize > 0) {
-    /* TODO(haberman): special-case if this is a realloc of the last alloc? */
-    memcpy(ret, ptr, oldsize);  /* Preserve existing data. */
-  }
-
-  /* TODO(haberman): ASAN unpoison. */
-  return ret;
+  return upb_arena_realloc(a, ptr, oldsize, size);
 }
 
 /* Public Arena API ***********************************************************/
