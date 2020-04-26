@@ -83,6 +83,7 @@ struct upb_arena {
   /* Allocator to allocate arena blocks.  We are responsible for freeing these
    * when we are destroyed. */
   upb_alloc *block_alloc;
+  size_t last_size;
 
   /* Linked list of blocks to free/cleanup. */
   mem_block *freelist;
@@ -98,6 +99,7 @@ static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size) {
   block->size = size;
   block->cleanups = 0;
   a->freelist = block;
+  a->last_size = size;
 
   a->head.ptr = UPB_PTR_AT(block, memblock_reserve, char);
   a->head.end = UPB_PTR_AT(block, size, char);
@@ -107,8 +109,7 @@ static void upb_arena_addblock(upb_arena *a, void *ptr, size_t size) {
 }
 
 static bool upb_arena_allocblock(upb_arena *a, size_t size) {
-  size_t last_size = a->freelist ? a->freelist->size : 128;
-  size_t block_size = UPB_MAX(size, last_size * 2) + memblock_reserve;
+  size_t block_size = UPB_MAX(size, a->last_size * 2) + memblock_reserve;
   mem_block *block = upb_malloc(a->block_alloc, block_size);
 
   if (!block) return false;
@@ -134,8 +135,6 @@ static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
 }
 
 /* Public Arena API ***********************************************************/
-
-#define upb_alignof(type) offsetof (struct { char c; type member; }, member)
 
 upb_arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
   upb_arena *a;
@@ -163,7 +162,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 
   /* Round block size down to alignof(*a) since we will allocate the arena
    * itself at the end. */
-  n &= ~(upb_alignof(upb_arena) - 1);
+  n = UPB_ALIGN_DOWN(n, UPB_ALIGN_OF(upb_arena));
 
   if (UPB_UNLIKELY(n < sizeof(upb_arena))) {
     return arena_initslow(mem, n, alloc);
@@ -174,6 +173,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 
   a->head.alloc.func = &upb_arena_doalloc;
   a->block_alloc = alloc;
+  a->last_size = 128;
   a->head.ptr = mem;
   a->head.end = UPB_PTR_AT(mem, n, char);
   a->freelist = NULL;
