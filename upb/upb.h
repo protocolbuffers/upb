@@ -142,7 +142,8 @@ typedef struct upb_arena upb_arena;
 
 typedef struct {
   /* We implement the allocator interface.
-   * This must be the first member of upb_arena! */
+   * This must be the first member of upb_arena!
+   * TODO(haberman): remove once handlers are gone. */
   upb_alloc alloc;
 
   char *ptr, *end;
@@ -159,8 +160,8 @@ UPB_INLINE size_t _upb_arena_alignup(size_t size) {
 upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc);
 void upb_arena_free(upb_arena *a);
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func);
-size_t upb_arena_bytesallocated(const upb_arena *a);
 void *_upb_arena_slowmalloc(upb_arena *a, size_t size);
+void upb_arena_fuse(upb_arena *a, upb_arena *b);
 
 UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 
