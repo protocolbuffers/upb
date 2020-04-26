@@ -815,7 +815,7 @@ static int lupb_msg_newindex(lua_State *L) {
   if (merge_arenas) {
     lua_getiuservalue(L, 1, LUPB_ARENA_INDEX);
     lua_getiuservalue(L, 3, LUPB_ARENA_INDEX);
-    lupb_arena_merge(L, lua_absindex(L, -2), lua_absindex(L, -1));
+    lupb_arena_fuse(L, lua_absindex(L, -2), lua_absindex(L, -1));
     lua_pop(L, 2);
   }
 
@@ -891,6 +891,7 @@ static int lupb_decode(lua_State *L) {
 
   lua_getiuservalue(L, -1, LUPB_ARENA_INDEX);
   arena = lupb_arena_check(L, -1);
+  lua_pop(L, 1);
 
   /* Copy input data to arena, message will reference it. */
   buf = upb_arena_malloc(arena, len);
