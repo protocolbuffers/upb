@@ -127,9 +127,6 @@ void *_upb_arena_slowmalloc(upb_arena *a, size_t size) {
   return upb_arena_malloc(a, size);
 }
 
-void upb_arena_fuse(upb_arena *a, upb_arena *b) {
-}
-
 static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
                                size_t size) {
   upb_arena *a = (upb_arena*)alloc;  /* upb_alloc is initial member. */
