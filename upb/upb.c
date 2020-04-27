@@ -230,9 +230,7 @@ static void arena_dofree(upb_arena *a) {
 
 void upb_arena_free(upb_arena *a) {
   a = arena_findroot(a);
-  if (--a->refcount == 0) {
-    arena_dofree(a);
-  }
+  if (--a->refcount == 0) arena_dofree(a);
 }
 
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
@@ -259,19 +257,20 @@ void upb_arena_fuse(upb_arena *a1, upb_arena *a2) {
 
   if (r1 == r2) return;  /* Already fused. */
 
-  /* Join the smaller tree to the larger tree. */
+  /* We want to join the smaller tree to the larger tree.
+   * So swap first if they are backwards. */
   if (r1->refcount < r2->refcount) {
-    /* Swap. */
     upb_arena *tmp = r1;
     r1 = r2;
     r2 = tmp;
   }
 
+  /* r1 takes over r2's freelist and refcount. */
   r1->refcount += r2->refcount;
-  r2->parent = r1;
   if (r2->freelist_tail) {
     UPB_ASSERT(r2->freelist_tail->next == NULL);
     r2->freelist_tail->next = r1->freelist;
     r1->freelist = r2->freelist;
   }
+  r2->parent = r1;
 }
