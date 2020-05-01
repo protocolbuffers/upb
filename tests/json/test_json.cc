@@ -291,7 +291,7 @@ void test_json_parse_failure(const char* json_src,
   upb::json::ParserPtr parser = upb::json::ParserPtr::Create(
       env.arena(), parser_method, NULL, printer.input(), env.status(), false);
   env.ResetBytesSink(parser.input());
-  env.Reset(json_src, strlen(json_src), false, false);
+  env.Reset(json_src, strlen(json_src), false, true);
 
   bool ok = env.Start() &&
             env.ParseBuffer(seam) &&
@@ -299,7 +299,7 @@ void test_json_parse_failure(const char* json_src,
             env.End();
 
   ASSERT(!ok);
-  // ASSERT(env.CheckConsistency());
+  ASSERT(env.CheckConsistency());
 }
 
 // Starts with a proto message in JSON format, parses and expects failre.
