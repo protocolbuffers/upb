@@ -1372,7 +1372,7 @@ static bool end_stringval_nontop(upb_json_parser *p) {
       } else {
         if (p->ignore_json_unknown) {
           ok = true;
-          // TODO(teboring): Should also clean this field.
+          /* TODO(teboring): Should also clean this field. */
         } else {
           upb_status_seterrf(p->status, "Enum value unknown: '%.*s'", len, buf);
         }
