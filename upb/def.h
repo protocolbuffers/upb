@@ -303,7 +303,7 @@ const upb_msgdef *upb_symtab_lookupmsg2(
     const upb_symtab *s, const char *sym, size_t len);
 const upb_enumdef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
 const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
-onst upb_filedef *upb_symtab_lookupfile2(
+const upb_filedef *upb_symtab_lookupfile2(
     const upb_symtab *s, const char *name, size_t len);
 int upb_symtab_filecount(const upb_symtab *s);
 const upb_filedef *upb_symtab_addfile(
