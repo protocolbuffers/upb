@@ -548,19 +548,9 @@ proto_library(
     srcs = ["tests/json/test.proto"],
 )
 
-proto_library(
-    name = "test_json_proto2_proto",
-    srcs = ["tests/json/test_proto2.proto"],
-)
-
 upb_proto_reflection_library(
     name = "test_json_upbprotoreflection",
     deps = ["test_json_proto"],
-)
-
-upb_proto_reflection_library(
-    name = "test_json_proto2_upbprotoreflection",
-    deps = ["test_json_proto2_proto"],
 )
 
 upb_proto_library(
@@ -573,11 +563,6 @@ upb_proto_library(
     deps = [":test_json_proto"],
 )
 
-upb_proto_library(
-    name = "test_json_proto2_upbproto",
-    deps = [":test_json_proto2_proto"],
-)
-
 cc_test(
     name = "test_json",
     srcs = [
@@ -588,8 +573,6 @@ cc_test(
         "//conditions:default": CPPOPTS,
     }),
     deps = [
-        ":test_json_proto2_upbproto",
-        ":test_json_proto2_upbprotoreflection",
         ":test_json_upbproto",
         ":test_json_upbprotoreflection",
         ":upb_json",

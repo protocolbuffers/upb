@@ -7,8 +7,6 @@
 
 #include "tests/json/test.upb.h"  // Test that it compiles for C++.
 #include "tests/json/test.upbdefs.h"
-#include "tests/json/test_proto2.upb.h"
-#include "tests/json/test_proto2.upbdefs.h"
 #include "tests/test_util.h"
 #include "tests/upb_test.h"
 #include "upb/def.hpp"
@@ -140,29 +138,19 @@ static TestCase kTestRoundtripMessagesPreserve[] = {
   TEST_SENTINEL
 };
 
-static TestCase kTestProto2SkipUnknown[] = {
-  // {
-  //   TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
-  //   EXPECT(""),
-  // },
+static TestCase kTestSkipUnknown[] = {
+  {
+    TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
+    EXPECT("{}"),
+  },
+  TEST_SENTINEL
 };
 
-static TestCase kTestProto2Failure[] = {
+static TestCase kTestFailure[] = {
   {
     TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
   },
-  // {
-  //   TEST("{\"optionalEnum\":42}"),
-  // },
-};
-
-static TestCase kTestProto3Failure[] = {
-  {
-    TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
-  },
-  // {
-  //   TEST("{\"optionalEnum\":42}"),
-  // },
+  TEST_SENTINEL
 };
 
 class StringSink {
@@ -225,8 +213,8 @@ void test_json_roundtrip_message(const char* json_src,
              data_sink.Data().size())) {
     fprintf(stderr,
             "JSON parse/serialize roundtrip result differs:\n"
-            "Original:\n%s\nParsed/Serialized:\n%s\n",
-            json_src, data_sink.Data().c_str());
+            "Expected:\n%s\nParsed/Serialized:\n%s\n",
+            json_expected, data_sink.Data().c_str());
     abort();
   }
 }
@@ -239,66 +227,55 @@ void test_json_roundtrip() {
       upb::json::PrinterPtr::NewCache(false));
   upb::json::CodeCache parse_codecache;
 
-  {
-    upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
-    ASSERT(md);
-    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
-    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
-    ASSERT(serialize_handlers);
+  upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
+  ASSERT(md);
+  const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+  const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+  ASSERT(serialize_handlers);
 
-    for (const TestCase* test_case = kTestRoundtripMessages;
-         test_case->input != NULL; test_case++) {
-      const char *expected =
-          (test_case->expected == EXPECT_SAME) ?
-          test_case->input :
-          test_case->expected;
+  for (const TestCase* test_case = kTestRoundtripMessages;
+       test_case->input != NULL; test_case++) {
+    const char *expected =
+        (test_case->expected == EXPECT_SAME) ?
+        test_case->input :
+        test_case->expected;
 
-      for (size_t i = 0; i < strlen(test_case->input); i++) {
-        test_json_roundtrip_message(test_case->input, expected,
-                                    serialize_handlers, parser_method, i,
-                                    false);
-      }
-    }
-
-    serialize_handlercache = upb::json::PrinterPtr::NewCache(true);
-    serialize_handlers = serialize_handlercache.Get(md);
-
-    for (const TestCase* test_case = kTestRoundtripMessagesPreserve;
-         test_case->input != NULL; test_case++) {
-      const char *expected =
-          (test_case->expected == EXPECT_SAME) ?
-          test_case->input :
-          test_case->expected;
-
-      for (size_t i = 0; i < strlen(test_case->input); i++) {
-        test_json_roundtrip_message(test_case->input, expected,
-                                    serialize_handlers, parser_method, i,
-                                    false);
-      }
+    for (size_t i = 0; i < strlen(test_case->input); i++) {
+      test_json_roundtrip_message(test_case->input, expected,
+                                  serialize_handlers, parser_method, i,
+                                  false);
     }
   }
 
-  {
-    // Tests ignore unknown in proto2.
-    upb::MessageDefPtr md(
-        upb_test_json_proto2_TestMessage_getmsgdef(symtab.ptr()));
-    ASSERT(md);
-    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
-    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
-    ASSERT(serialize_handlers);
+  // Tests ignore unknown.
+  for (const TestCase* test_case = kTestSkipUnknown;
+       test_case->input != NULL; test_case++) {
+    const char *expected =
+        (test_case->expected == EXPECT_SAME) ?
+        test_case->input :
+        test_case->expected;
 
-    for (const TestCase* test_case = kTestProto2SkipUnknown;
-         test_case->input != NULL; test_case++) {
-      const char *expected =
-          (test_case->expected == EXPECT_SAME) ?
-          test_case->input :
-          test_case->expected;
+    for (size_t i = 0; i < strlen(test_case->input); i++) {
+      test_json_roundtrip_message(test_case->input, expected,
+                                  serialize_handlers, parser_method, i,
+                                  true);
+    }
+  }
 
-      for (size_t i = 0; i < strlen(test_case->input); i++) {
-        test_json_roundtrip_message(test_case->input, expected,
-                                    serialize_handlers, parser_method, i,
-                                    true);
-      }
+  serialize_handlercache = upb::json::PrinterPtr::NewCache(true);
+  serialize_handlers = serialize_handlercache.Get(md);
+
+  for (const TestCase* test_case = kTestRoundtripMessagesPreserve;
+       test_case->input != NULL; test_case++) {
+    const char *expected =
+        (test_case->expected == EXPECT_SAME) ?
+        test_case->input :
+        test_case->expected;
+
+    for (size_t i = 0; i < strlen(test_case->input); i++) {
+      test_json_roundtrip_message(test_case->input, expected,
+                                  serialize_handlers, parser_method, i,
+                                  false);
     }
   }
 }
@@ -332,36 +309,17 @@ void test_json_failure() {
       upb::json::PrinterPtr::NewCache(false));
   upb::json::CodeCache parse_codecache;
 
-  {
-    upb::MessageDefPtr md(
-        upb_test_json_proto2_TestMessage_getmsgdef(symtab.ptr()));
-    ASSERT(md);
-    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
-    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
-    ASSERT(serialize_handlers);
+  upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
+  ASSERT(md);
+  const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+  const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+  ASSERT(serialize_handlers);
 
-    for (const TestCase* test_case = kTestProto2Failure;
-         test_case->input != NULL; test_case++) {
-      for (size_t i = 0; i < strlen(test_case->input); i++) {
-        test_json_parse_failure(test_case->input, serialize_handlers,
-                                parser_method, i);
-      }
-    }
-  }
-
-  {
-    upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
-    ASSERT(md);
-    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
-    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
-    ASSERT(serialize_handlers);
-
-    for (const TestCase* test_case = kTestProto3Failure;
-         test_case->input != NULL; test_case++) {
-      for (size_t i = 0; i < strlen(test_case->input); i++) {
-        test_json_parse_failure(test_case->input, serialize_handlers,
-                                parser_method, i);
-      }
+  for (const TestCase* test_case = kTestFailure;
+       test_case->input != NULL; test_case++) {
+    for (size_t i = 0; i < strlen(test_case->input); i++) {
+      test_json_parse_failure(test_case->input, serialize_handlers,
+                              parser_method, i);
     }
   }
 }
