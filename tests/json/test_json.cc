@@ -7,6 +7,8 @@
 
 #include "tests/json/test.upb.h"  // Test that it compiles for C++.
 #include "tests/json/test.upbdefs.h"
+#include "tests/json/test_proto2.upb.h"
+#include "tests/json/test_proto2.upbdefs.h"
 #include "tests/test_util.h"
 #include "tests/upb_test.h"
 #include "upb/def.hpp"
@@ -138,6 +140,31 @@ static TestCase kTestRoundtripMessagesPreserve[] = {
   TEST_SENTINEL
 };
 
+static TestCase kTestProto2SkipUnknown[] = {
+  // {
+  //   TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
+  //   EXPECT(""),
+  // },
+};
+
+static TestCase kTestProto2Failure[] = {
+  {
+    TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
+  },
+  // {
+  //   TEST("{\"optionalEnum\":42}"),
+  // },
+};
+
+static TestCase kTestProto3Failure[] = {
+  {
+    TEST("{\"optionalEnum\":\"UNKNOWN_ENUM_VALUE\"}"),
+  },
+  // {
+  //   TEST("{\"optionalEnum\":42}"),
+  // },
+};
+
 class StringSink {
  public:
   StringSink() {
@@ -173,13 +200,15 @@ void test_json_roundtrip_message(const char* json_src,
                                  const char* json_expected,
                                  const upb::Handlers* serialize_handlers,
                                  const upb::json::ParserMethodPtr parser_method,
-                                 int seam) {
+                                 int seam,
+                                 bool ignore_unknown) {
   VerboseParserEnvironment env(verbose);
   StringSink data_sink;
   upb::json::PrinterPtr printer = upb::json::PrinterPtr::Create(
       env.arena(), serialize_handlers, data_sink.Sink());
   upb::json::ParserPtr parser = upb::json::ParserPtr::Create(
-      env.arena(), parser_method, NULL, printer.input(), env.status(), false);
+      env.arena(), parser_method, NULL, printer.input(),
+      env.status(), ignore_unknown);
   env.ResetBytesSink(parser.input());
   env.Reset(json_src, strlen(json_src), false, false);
 
@@ -210,38 +239,129 @@ void test_json_roundtrip() {
       upb::json::PrinterPtr::NewCache(false));
   upb::json::CodeCache parse_codecache;
 
-  upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
-  ASSERT(md);
-  const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
-  const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
-  ASSERT(serialize_handlers);
+  {
+    upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
+    ASSERT(md);
+    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+    ASSERT(serialize_handlers);
 
-  for (const TestCase* test_case = kTestRoundtripMessages;
-       test_case->input != NULL; test_case++) {
-    const char *expected =
-        (test_case->expected == EXPECT_SAME) ?
-        test_case->input :
-        test_case->expected;
+    for (const TestCase* test_case = kTestRoundtripMessages;
+         test_case->input != NULL; test_case++) {
+      const char *expected =
+          (test_case->expected == EXPECT_SAME) ?
+          test_case->input :
+          test_case->expected;
 
-    for (size_t i = 0; i < strlen(test_case->input); i++) {
-      test_json_roundtrip_message(test_case->input, expected,
-                                  serialize_handlers, parser_method, i);
+      for (size_t i = 0; i < strlen(test_case->input); i++) {
+        test_json_roundtrip_message(test_case->input, expected,
+                                    serialize_handlers, parser_method, i,
+                                    false);
+      }
+    }
+
+    serialize_handlercache = upb::json::PrinterPtr::NewCache(true);
+    serialize_handlers = serialize_handlercache.Get(md);
+
+    for (const TestCase* test_case = kTestRoundtripMessagesPreserve;
+         test_case->input != NULL; test_case++) {
+      const char *expected =
+          (test_case->expected == EXPECT_SAME) ?
+          test_case->input :
+          test_case->expected;
+
+      for (size_t i = 0; i < strlen(test_case->input); i++) {
+        test_json_roundtrip_message(test_case->input, expected,
+                                    serialize_handlers, parser_method, i,
+                                    false);
+      }
     }
   }
 
-  serialize_handlercache = upb::json::PrinterPtr::NewCache(true);
-  serialize_handlers = serialize_handlercache.Get(md);
+  {
+    // Tests ignore unknown in proto2.
+    upb::MessageDefPtr md(
+        upb_test_json_proto2_TestMessage_getmsgdef(symtab.ptr()));
+    ASSERT(md);
+    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+    ASSERT(serialize_handlers);
 
-  for (const TestCase* test_case = kTestRoundtripMessagesPreserve;
-       test_case->input != NULL; test_case++) {
-    const char *expected =
-        (test_case->expected == EXPECT_SAME) ?
-        test_case->input :
-        test_case->expected;
+    for (const TestCase* test_case = kTestProto2SkipUnknown;
+         test_case->input != NULL; test_case++) {
+      const char *expected =
+          (test_case->expected == EXPECT_SAME) ?
+          test_case->input :
+          test_case->expected;
 
-    for (size_t i = 0; i < strlen(test_case->input); i++) {
-      test_json_roundtrip_message(test_case->input, expected,
-                                  serialize_handlers, parser_method, i);
+      for (size_t i = 0; i < strlen(test_case->input); i++) {
+        test_json_roundtrip_message(test_case->input, expected,
+                                    serialize_handlers, parser_method, i,
+                                    true);
+      }
+    }
+  }
+}
+
+void test_json_parse_failure(const char* json_src,
+                             const upb::Handlers* serialize_handlers,
+                             const upb::json::ParserMethodPtr parser_method,
+                             int seam) {
+  VerboseParserEnvironment env(verbose);
+  StringSink data_sink;
+  upb::json::PrinterPtr printer = upb::json::PrinterPtr::Create(
+      env.arena(), serialize_handlers, data_sink.Sink());
+  upb::json::ParserPtr parser = upb::json::ParserPtr::Create(
+      env.arena(), parser_method, NULL, printer.input(), env.status(), false);
+  env.ResetBytesSink(parser.input());
+  env.Reset(json_src, strlen(json_src), false, false);
+
+  bool ok = env.Start() &&
+            env.ParseBuffer(seam) &&
+            env.ParseBuffer(-1) &&
+            env.End();
+
+  ASSERT(!ok);
+  // ASSERT(env.CheckConsistency());
+}
+
+// Starts with a proto message in JSON format, parses and expects failre.
+void test_json_failure() {
+  upb::SymbolTable symtab;
+  upb::HandlerCache serialize_handlercache(
+      upb::json::PrinterPtr::NewCache(false));
+  upb::json::CodeCache parse_codecache;
+
+  {
+    upb::MessageDefPtr md(
+        upb_test_json_proto2_TestMessage_getmsgdef(symtab.ptr()));
+    ASSERT(md);
+    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+    ASSERT(serialize_handlers);
+
+    for (const TestCase* test_case = kTestProto2Failure;
+         test_case->input != NULL; test_case++) {
+      for (size_t i = 0; i < strlen(test_case->input); i++) {
+        test_json_parse_failure(test_case->input, serialize_handlers,
+                                parser_method, i);
+      }
+    }
+  }
+
+  {
+    upb::MessageDefPtr md(upb_test_json_TestMessage_getmsgdef(symtab.ptr()));
+    ASSERT(md);
+    const upb::Handlers* serialize_handlers = serialize_handlercache.Get(md);
+    const upb::json::ParserMethodPtr parser_method = parse_codecache.Get(md);
+    ASSERT(serialize_handlers);
+
+    for (const TestCase* test_case = kTestProto3Failure;
+         test_case->input != NULL; test_case++) {
+      for (size_t i = 0; i < strlen(test_case->input); i++) {
+        test_json_parse_failure(test_case->input, serialize_handlers,
+                                parser_method, i);
+      }
     }
   }
 }
@@ -251,6 +371,7 @@ int run_tests(int argc, char *argv[]) {
   UPB_UNUSED(argc);
   UPB_UNUSED(argv);
   test_json_roundtrip();
+  test_json_failure();
   return 0;
 }
 }
