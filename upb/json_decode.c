@@ -979,18 +979,15 @@ static int jsondec_nanos(jsondec *d, const char **ptr, const char *end) {
   return nanos;
 }
 
-// jsondec_epochdays(1970, 1, 1) == 1970-01-01 == 0
-static int jsondec_epochdays(int y, int m, int d) {
-  unsigned year_base = 4800;  /* Before minimum year, divisible by 100 & 400 */
-  unsigned epoch = 2472632;   /* Days between year_base and 1970 (Unix epoch) */
-  unsigned carry = (unsigned)m - 3 > m;
-  unsigned m_adj = m - 3 + (carry ? 12 : 0);   /* Month, counting from March */
-  unsigned y_adj = y + year_base - carry;  /* Year, positive and March-based */
-  unsigned base_days = (365 * 4 + 1) * y_adj / 4;    /* Approx days for year */
-  unsigned centuries = y_adj / 100;
-  unsigned extra_leap_days = (3 * centuries + 3) / 4; /* base_days correction */
-  unsigned year_days = (367 * (m_adj + 1)) / 12 - 30;  /* Counting from March */
-  return base_days - extra_leap_days + year_days + (d - 1) - epoch;
+/* jsondec_epochdays(1970, 1, 1) == 1970-01-01 == 0. */
+static int jsondec_epochdays(int year, int month, int day) {
+  static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
+                                          181, 212, 243, 273, 304, 334};
+  uint32_t year_adj = year + 4800;  /* Ensure positive year, multiple of 400. */
+  uint32_t febs = year_adj - (month <= 2 ? 1 : 0);
+  uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
+  uint32_t days = 365 * year_adj + month_yday[month - 1] + (day - 1) + leap_days;
+  return days - 2472692;  /* Adjust to Unix epoch. */
 }
 
 static int64_t jsondec_unixtime(int y, int m, int d, int h, int min, int s) {
