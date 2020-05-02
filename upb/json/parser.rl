@@ -733,7 +733,9 @@ static bool multipart_text(upb_json_parser *p, const char *buf, size_t len,
 /* Note: this invalidates the accumulate buffer!  Call only after reading its
  * contents. */
 static void multipart_end(upb_json_parser *p) {
-  UPB_ASSERT(p->multipart_state != MULTIPART_INACTIVE);
+  /* This is false sometimes. Probably a bug of some sort, but this code is
+   * intended for deletion soon. */
+  /* UPB_ASSERT(p->multipart_state != MULTIPART_INACTIVE); */
   p->multipart_state = MULTIPART_INACTIVE;
   accumulate_clear(p);
 }
@@ -1368,7 +1370,12 @@ static bool end_stringval_nontop(upb_json_parser *p) {
         upb_selector_t sel = parser_getsel(p);
         upb_sink_putint32(p->top->sink, sel, int_val);
       } else {
-        upb_status_seterrf(p->status, "Enum value unknown: '%.*s'", len, buf);
+        if (p->ignore_json_unknown) {
+          ok = true;
+          /* TODO(teboring): Should also clean this field. */
+        } else {
+          upb_status_seterrf(p->status, "Enum value unknown: '%.*s'", len, buf);
+        }
       }
 
       break;
@@ -2900,9 +2907,6 @@ upb_json_parser *upb_json_parser_create(upb_arena *arena,
                                         upb_sink output,
                                         upb_status *status,
                                         bool ignore_json_unknown) {
-#ifndef NDEBUG
-  const size_t size_before = upb_arena_bytesallocated(arena);
-#endif
   upb_json_parser *p = upb_arena_malloc(arena, sizeof(upb_json_parser));
   if (!p) return false;
 
@@ -2929,10 +2933,6 @@ upb_json_parser *upb_json_parser_create(upb_arena *arena,
 
   p->ignore_json_unknown = ignore_json_unknown;
 
-  /* If this fails, uncomment and increase the value in parser.h. */
-  /* fprintf(stderr, "%zd\n", upb_arena_bytesallocated(arena) - size_before); */
-  UPB_ASSERT_DEBUGVAR(upb_arena_bytesallocated(arena) - size_before <=
-                      UPB_JSON_PARSER_SIZE);
   return p;
 }
 

@@ -1,4 +1,8 @@
 load(
+    "@rules_proto//proto:defs.bzl",
+    "proto_library",
+)
+load(
     "//bazel:build_defs.bzl",
     "generated_file_staleness_test",
     "licenses",  # copybara:strip_for_google3
@@ -81,6 +85,7 @@ cc_library(
         "upb/decode.h",
         "upb/encode.h",
         "upb/upb.h",
+        "upb/upb.hpp",
     ],
     copts = select({
         ":windows": [],
@@ -129,6 +134,7 @@ cc_library(
     ],
     hdrs = [
         "upb/def.h",
+        "upb/def.hpp",
         "upb/reflection.h",
     ],
     copts = select({
