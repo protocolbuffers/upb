@@ -980,14 +980,14 @@ static int jsondec_nanos(jsondec *d, const char **ptr, const char *end) {
 }
 
 /* jsondec_epochdays(1970, 1, 1) == 1970-01-01 == 0. */
-static int jsondec_epochdays(int year, int month, int day) {
-  static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
-                                          181, 212, 243, 273, 304, 334};
-  uint32_t year_adj = year + 4800;  /* Ensure positive year, multiple of 400. */
-  uint32_t febs = year_adj - (month <= 2 ? 1 : 0);
-  uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
-  uint32_t days = 365 * year_adj + month_yday[month - 1] + (day - 1) + leap_days;
-  return days - 2472692;  /* Adjust to Unix epoch. */
+int jsondec_epochdays(int y, int m, int d) {
+  const uint32_t year_base = 4800;    /* Before min year, multiple of 400. */
+  const uint32_t m_adj = m - 3;       /* March-based month. */
+  const uint32_t adjust = m_adj > m ? 12 : 0;
+  const uint32_t y_adj = y + year_base - (m_adj > m);
+  const uint32_t month_days = ((m_adj + adjust) * 62719 + 769) / 2048;
+  const uint32_t leap_days = y_adj / 4 - y_adj / 100 + y_adj / 400;
+  return y_adj * 365 + leap_days + month_days + (d - 1) - 2472632;
 }
 
 static int64_t jsondec_unixtime(int y, int m, int d, int h, int min, int s) {
