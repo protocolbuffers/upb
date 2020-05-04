@@ -984,7 +984,7 @@ int jsondec_epochdays(int y, int m, int d) {
   const uint32_t year_base = 4800;    /* Before min year, multiple of 400. */
   const uint32_t m_adj = m - 3;       /* March-based month. */
   const uint32_t adjust = m_adj > m ? 12 : 0;
-  const uint32_t y_adj = y + year_base - (m_adj > m);
+  const uint32_t y_adj = y + year_base - (m_adj > m ? 1 : 0);
   const uint32_t month_days = ((m_adj + adjust) * 62719 + 769) / 2048;
   const uint32_t leap_days = y_adj / 4 - y_adj / 100 + y_adj / 400;
   return y_adj * 365 + leap_days + month_days + (d - 1) - 2472632;
