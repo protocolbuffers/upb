@@ -683,10 +683,10 @@ cc_library(
 
 upb_amalgamation(
     name = "gen_lite_amalgamation",
-    prefix = "lite-",
+    prefix = "core-",
     outs = [
-        "lite-upb.c",
-        "lite-upb.h",
+        "core-upb.c",
+        "core-upb.h",
     ],
     amalgamator = ":amalgamate",
     libs = [
@@ -699,9 +699,9 @@ upb_amalgamation(
 )
 
 cc_library(
-    name = "lite_amalgamation",
-    srcs = ["lite-upb.c"],
-    hdrs = ["lite-upb.h"],
+    name = "core_amalgamation",
+    srcs = ["core-upb.c"],
+    hdrs = ["core-upb.h"],
     copts = select({
         ":windows": [],
         "//conditions:default": COPTS,
