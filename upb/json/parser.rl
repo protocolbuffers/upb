@@ -1699,9 +1699,9 @@ static int epoch_days(int year, int month, int day) {
   static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
                                           181, 212, 243, 273, 304, 334};
   uint32_t year_adj = year + 4800;  /* Ensure positive year, multiple of 400. */
-  uint32_t febs = year_adj - (month <= 2 ? 1 : 0);
+  uint32_t febs = year_adj - (month <= 2 ? 1 : 0);  /* Februaries since base. */
   uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
-  uint32_t days = 365 * year_adj + month_yday[month - 1] + (day - 1) + leap_days;
+  uint32_t days = 365 * year_adj + leap_days + month_yday[month - 1] + (day - 1)
   return days - 2472692;  /* Adjust to Unix epoch. */
 }
 
