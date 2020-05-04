@@ -254,10 +254,8 @@ bool upb_array_append(upb_array *arr, upb_msgval val, upb_arena *arena) {
   return true;
 }
 
-/* Resizes the array to the given size, reallocating if necessary, and returns a
- * pointer to the new array elements. */
 bool upb_array_resize(upb_array *arr, size_t size, upb_arena *arena) {
-  return _upb_array_realloc(arr, size, arena);
+  return _upb_array_resize(arr, size, arena);
 }
 
 /** upb_map *******************************************************************/

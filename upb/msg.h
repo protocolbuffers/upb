@@ -142,6 +142,19 @@ void *_upb_array_resize_fallback(upb_array **arr_ptr, size_t size,
 bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
                                 upb_fieldtype_t type, upb_arena *arena);
 
+UPB_INLINE bool _upb_array_reserve(upb_array *arr, size_t size,
+                                   upb_arena *arena) {
+  if (arr->size < size) return _upb_array_realloc(arr, size, arena);
+  return true;
+}
+
+UPB_INLINE bool _upb_array_resize(upb_array *arr, size_t size,
+                                  upb_arena *arena) {
+  if (!_upb_array_reserve(arr, size, arena)) return false;
+  arr->len = size;
+  return true;
+}
+
 UPB_INLINE const void *_upb_array_accessor(const void *msg, size_t ofs,
                                            size_t *size) {
   const upb_array *arr = *PTR_AT(msg, ofs, const upb_array*);
