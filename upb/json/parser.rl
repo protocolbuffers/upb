@@ -1701,7 +1701,7 @@ static int epoch_days(int year, int month, int day) {
   uint32_t year_adj = year + 4800;  /* Ensure positive year, multiple of 400. */
   uint32_t febs = year_adj - (month <= 2 ? 1 : 0);  /* Februaries since base. */
   uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
-  uint32_t days = 365 * year_adj + leap_days + month_yday[month - 1] + (day - 1)
+  uint32_t days = 365 * year_adj + leap_days + month_yday[month - 1] + day - 1;
   return days - 2472692;  /* Adjust to Unix epoch. */
 }
 
