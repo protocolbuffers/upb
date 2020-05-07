@@ -405,7 +405,9 @@ static upb_strview jsondec_string(jsondec *d) {
 
     switch (ch) {
       case '"': {
-        upb_strview ret = {buf, end - buf};
+        upb_strview ret;
+        ret.data = buf;
+        ret.size = end - buf;
         return ret;
       }
       case '\\':
@@ -413,7 +415,7 @@ static upb_strview jsondec_string(jsondec *d) {
         if (*d->ptr == 'u') {
           d->ptr++;
           if (buf_end - end < 4) {
-            // Allow space for maximum-sized code point (4 bytes).
+            /* Allow space for maximum-sized code point (4 bytes). */
             jsondec_resize(d, &buf, &end, &buf_end);
           }
           end += jsondec_unicode(d, end);
@@ -1314,10 +1316,10 @@ static void jsondec_any(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   if (pre_type_data) {
     size_t len = pre_type_end - pre_type_data + 1;
     char *tmp = upb_arena_malloc(d->arena, len);
-    memcpy(tmp, pre_type_data, len - 1);
-    tmp[len - 1] = '}';
     const char *saved_ptr = d->ptr;
     const char *saved_end = d->end;
+    memcpy(tmp, pre_type_data, len - 1);
+    tmp[len - 1] = '}';
     d->ptr = tmp;
     d->end = tmp + len;
     d->is_first = true;
