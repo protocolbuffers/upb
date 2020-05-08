@@ -982,7 +982,7 @@ static int jsondec_nanos(jsondec *d, const char **ptr, const char *end) {
   return nanos;
 }
 
-// jsondec_epochdays(1970, 1, 1) == 1970-01-01 == 0
+/* jsondec_epochdays(1970, 1, 1) == 1970-01-01 == 0 */
 static int jsondec_epochdays(int y, int m, int d) {
   unsigned year_base = 4800;  /* Before minimum year, divisible by 100 & 400 */
   unsigned epoch = 2472632;   /* Days between year_base and 1970 (Unix epoch) */
@@ -1010,7 +1010,7 @@ static void jsondec_timestamp(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   if (str.size < 20) goto malformed;
 
   {
-    // 1972-01-01T01:00:00
+    /* 1972-01-01T01:00:00 */
     int year = jsondec_tsdigits(d, &ptr, 4, "-");
     int mon = jsondec_tsdigits(d, &ptr, 2, "-");
     int day = jsondec_tsdigits(d, &ptr, 2, "T");
@@ -1024,7 +1024,7 @@ static void jsondec_timestamp(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   nanos.int32_val = jsondec_nanos(d, &ptr, end);
 
   {
-    // [+-]08:00 or Z
+    /* [+-]08:00 or Z */
     int ofs = 0;
     bool neg = false;
 
@@ -1067,7 +1067,7 @@ static void jsondec_duration(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   const char *ptr = str.data;
   const char *end = ptr + str.size;
 
-  // "3.000000001s", "3s", etc.
+  /* "3.000000001s", "3s", etc. */
   ptr = jsondec_buftoint64(d, ptr, end, &seconds.int64_val);
   nanos.int32_val = jsondec_nanos(d, &ptr, end);
 

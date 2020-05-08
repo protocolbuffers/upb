@@ -298,7 +298,7 @@ UPB_INLINE bool _upb_map_get(const upb_map *map, const void *key,
   upb_value tabval;
   upb_strview k = _upb_map_tokey(key, key_size);
   bool ret = upb_strtable_lookup2(&map->table, k.data, k.size, &tabval);
-  if (ret) {
+  if (ret && val) {
     _upb_map_fromvalue(tabval, val, val_size);
   }
   return ret;
@@ -309,8 +309,8 @@ UPB_INLINE void* _upb_map_next(const upb_map *map, size_t *iter) {
   it.t = &map->table;
   it.index = *iter;
   upb_strtable_next(&it);
-  if (upb_strtable_done(&it)) return NULL;
   *iter = it.index;
+  if (upb_strtable_done(&it)) return NULL;
   return (void*)str_tabent(&it);
 }
 

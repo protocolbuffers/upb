@@ -682,7 +682,7 @@ cc_library(
 )
 
 upb_amalgamation(
-    name = "gen_lite_amalgamation",
+    name = "gen_core_amalgamation",
     prefix = "core-",
     outs = [
         "core-upb.c",

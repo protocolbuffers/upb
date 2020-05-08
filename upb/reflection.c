@@ -287,6 +287,14 @@ bool upb_mapiter_next(const upb_map *map, size_t *iter) {
   return _upb_map_next(map, iter);
 }
 
+bool upb_mapiter_done(const upb_map *map, size_t iter) {
+  UPB_ASSERT(iter != UPB_MAP_BEGIN);
+  upb_strtable_iter i;
+  i.t = &map->table;
+  i.index = iter;
+  return upb_strtable_done(&i);
+}
+
 /* Returns the key and value for this entry of the map. */
 upb_msgval upb_mapiter_key(const upb_map *map, size_t iter) {
   upb_strtable_iter i;
