@@ -288,8 +288,8 @@ bool upb_mapiter_next(const upb_map *map, size_t *iter) {
 }
 
 bool upb_mapiter_done(const upb_map *map, size_t iter) {
-  UPB_ASSERT(iter != UPB_MAP_BEGIN);
   upb_strtable_iter i;
+  UPB_ASSERT(iter != UPB_MAP_BEGIN);
   i.t = &map->table;
   i.index = iter;
   return upb_strtable_done(&i);
