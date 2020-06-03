@@ -29,7 +29,7 @@ exports_files([
 CPPOPTS = [
     # copybara:strip_for_google3_begin
     "-Wextra",
-    "-Wshorten-64-to-32",
+    # "-Wshorten-64-to-32",  # not in GCC (and my Kokoro images doesn't have Clang)
     "-Werror",
     "-Wno-long-long",
     # copybara:strip_end
