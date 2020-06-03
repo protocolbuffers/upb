@@ -295,10 +295,11 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
       }
       case UPB_WIRE_TYPE_DELIMITED: {
         uint64_t len;
+        size_t avail = end - ptr;
         char *start = e->ptr;
         size_t start_overflow = e->overflow;
         CHK(ptr = txtenc_parsevarint(ptr, end, &len));
-        CHK(end - ptr >= len);
+        CHK(avail >= len);
 
         /* Speculatively try to parse as message. */
         txtenc_putstr(e, "{");

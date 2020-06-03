@@ -173,6 +173,7 @@ upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_fielddef *f,
 
 void upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
                  upb_arena *a) {
+  UPB_UNUSED(a);  /* We reserve the right to make set insert into a map. */
   const upb_msglayout_field *field = upb_fielddef_layout(f);
   char *mem = UPB_PTR_AT(msg, field->offset, char);
   int size = upb_fielddef_isseq(f) ? sizeof(void *)
@@ -194,7 +195,7 @@ void upb_msg_clearfield(upb_msg *msg, const upb_fielddef *f) {
   if (field->presence > 0) {
     _upb_clearhas_field(msg, field);
   } else if (in_oneof(field)) {
-    int32_t *oneof_case = _upb_oneofcase_field(msg, field);
+    uint32_t *oneof_case = _upb_oneofcase_field(msg, field);
     if (*oneof_case != field->number) return;
     *oneof_case = 0;
   }
@@ -212,6 +213,7 @@ bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
   size_t i = *iter;
   const upb_msgval zero = {0};
   const upb_fielddef *f;
+  UPB_UNUSED(ext_pool);
   while ((f = _upb_msgdef_field(m, (int)++i)) != NULL) {
     upb_msgval val = _upb_msg_getraw(msg, f);
 

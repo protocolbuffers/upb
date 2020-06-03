@@ -281,6 +281,7 @@ static bool streql(upb_tabkey k1, lookupkey_t k2) {
 }
 
 bool upb_strtable_init2(upb_strtable *t, upb_ctype_t ctype, upb_alloc *a) {
+  UPB_UNUSED(ctype);  /* TODO(haberman): rm */
   return init(&t->t, 2, a);
 }
 
@@ -473,6 +474,7 @@ bool upb_inttable_sizedinit(upb_inttable *t, size_t asize, int hsize_lg2,
 }
 
 bool upb_inttable_init2(upb_inttable *t, upb_ctype_t ctype, upb_alloc *a) {
+  UPB_UNUSED(ctype);  /* TODO(haberman): rm */
   return upb_inttable_sizedinit(t, 0, 4, a);
 }
 

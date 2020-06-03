@@ -131,12 +131,12 @@ UPB_INLINE void _upb_clearhas_field(const upb_msg *msg,
 
 /** Oneof case access *********************************************************/
 
-UPB_INLINE int32_t *_upb_oneofcase(upb_msg *msg, size_t case_ofs) {
-  return PTR_AT(msg, case_ofs, int32_t);
+UPB_INLINE uint32_t *_upb_oneofcase(upb_msg *msg, size_t case_ofs) {
+  return PTR_AT(msg, case_ofs, uint32_t);
 }
 
-UPB_INLINE int32_t _upb_getoneofcase(const void *msg, size_t case_ofs) {
-  return *PTR_AT(msg, case_ofs, int32_t);
+UPB_INLINE uint32_t _upb_getoneofcase(const void *msg, size_t case_ofs) {
+  return *PTR_AT(msg, case_ofs, uint32_t);
 }
 
 UPB_INLINE size_t _upb_oneofcase_ofs(const upb_msglayout_field *f) {
@@ -144,13 +144,13 @@ UPB_INLINE size_t _upb_oneofcase_ofs(const upb_msglayout_field *f) {
   return ~(int64_t)f->presence;
 }
 
-UPB_INLINE int32_t *_upb_oneofcase_field(upb_msg *msg,
-                                         const upb_msglayout_field *f) {
+UPB_INLINE uint32_t *_upb_oneofcase_field(upb_msg *msg,
+                                          const upb_msglayout_field *f) {
   return _upb_oneofcase(msg, _upb_oneofcase_ofs(f));
 }
 
-UPB_INLINE int32_t _upb_getoneofcase_field(const upb_msg *msg,
-                                           const upb_msglayout_field *f) {
+UPB_INLINE uint32_t _upb_getoneofcase_field(const upb_msg *msg,
+                                            const upb_msglayout_field *f) {
   return _upb_getoneofcase(msg, _upb_oneofcase_ofs(f));
 }
 
