@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -ex
+
 # Install the latest version of Bazel.
 use_bazel.sh latest
 
@@ -7,6 +9,8 @@ use_bazel.sh latest
 echo PATH=$PATH
 ls -l `which cmake`
 cmake --version
+echo CC=$CC
+$CC --version
 
 # Log the bazel path and version.
 which bazel

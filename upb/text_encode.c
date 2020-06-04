@@ -311,10 +311,12 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
           txtenc_putstr(e, "}");
         } else {
           /* Didn't work out, print as raw bytes. */
+          upb_strview str;
           e->indent_depth--;
           e->ptr = start;
           e->overflow = start_overflow;
-          upb_strview str = {ptr, len};
+          str.ptr = ptr;
+          str.size = len;
           txtenc_string(e, str, true);
         }
         ptr += len;
