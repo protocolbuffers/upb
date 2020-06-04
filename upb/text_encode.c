@@ -315,7 +315,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
           e->indent_depth--;
           e->ptr = start;
           e->overflow = start_overflow;
-          str.ptr = ptr;
+          str.data = ptr;
           str.size = len;
           txtenc_string(e, str, true);
         }

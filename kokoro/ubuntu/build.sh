@@ -3,14 +3,16 @@
 set -ex
 
 # Install the latest version of Bazel.
-use_bazel.sh latest
+if [ -x "$(use_bazel.sh -v foo)" ]; then
+  use_bazel.sh latest
+fi
 
 # Verify/query CMake
 echo PATH=$PATH
 ls -l `which cmake`
 cmake --version
-echo CC=$CC
-$CC --version
+echo CC=${CC:-cc}
+${CC:-cc} --version
 
 # Log the bazel path and version.
 which bazel
