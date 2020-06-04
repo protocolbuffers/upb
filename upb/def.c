@@ -18,7 +18,7 @@ static str_t *newstr(upb_alloc *alloc, const char *data, size_t len) {
   str_t *ret = upb_malloc(alloc, sizeof(*ret) + len);
   if (!ret) return NULL;
   ret->len = len;
-  memcpy(ret->str, data, len);
+  if (len) memcpy(ret->str, data, len);
   ret->str[len] = '\0';
   return ret;
 }
@@ -577,13 +577,11 @@ const char *upb_fielddef_defaultstr(const upb_fielddef *f, size_t *len) {
 }
 
 const upb_msgdef *upb_fielddef_msgsubdef(const upb_fielddef *f) {
-  UPB_ASSERT(upb_fielddef_type(f) == UPB_TYPE_MESSAGE);
-  return f->sub.msgdef;
+  return upb_fielddef_type(f) == UPB_TYPE_MESSAGE ? f->sub.msgdef : NULL;
 }
 
 const upb_enumdef *upb_fielddef_enumsubdef(const upb_fielddef *f) {
-  UPB_ASSERT(upb_fielddef_type(f) == UPB_TYPE_ENUM);
-  return f->sub.enumdef;
+  return upb_fielddef_type(f) == UPB_TYPE_ENUM ? f->sub.enumdef : NULL;
 }
 
 const upb_msglayout_field *upb_fielddef_layout(const upb_fielddef *f) {
@@ -751,6 +749,12 @@ bool upb_msgdef_isnumberwrapper(const upb_msgdef *m) {
          type <= UPB_WELLKNOWN_UINT32VALUE;
 }
 
+bool upb_msgdef_iswrapper(const upb_msgdef *m) {
+  upb_wellknowntype_t type = upb_msgdef_wellknowntype(m);
+  return type >= UPB_WELLKNOWN_DOUBLEVALUE &&
+         type <= UPB_WELLKNOWN_BOOLVALUE;
+}
+
 void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m) {
   upb_inttable_begin(iter, &m->itof);
 }
@@ -871,16 +875,6 @@ void upb_oneof_iter_setdone(upb_oneof_iter *iter) {
 
 /* Dynamic Layout Generation. *************************************************/
 
-static bool is_power_of_two(size_t val) {
-  return (val & (val - 1)) == 0;
-}
-
-/* Align up to the given power of 2. */
-static size_t align_up(size_t val, size_t align) {
-  UPB_ASSERT(is_power_of_two(align));
-  return (val + align - 1) & ~(align - 1);
-}
-
 static size_t div_round_up(size_t n, size_t d) {
   return (n + d - 1) / d;
 }
@@ -922,7 +916,7 @@ static uint8_t upb_msg_fielddefsize(const upb_fielddef *f) {
 static uint32_t upb_msglayout_place(upb_msglayout *l, size_t size) {
   uint32_t ret;
 
-  l->size = align_up(l->size, size);
+  l->size = UPB_ALIGN_UP(l->size, size);
   ret = l->size;
   l->size += size;
   return ret;
@@ -977,7 +971,8 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
     }
 
     l->field_count = 2;
-    l->size = 2 * sizeof(upb_strview);align_up(l->size, 8);
+    l->size = 2 * sizeof(upb_strview);
+    l->size = UPB_ALIGN_UP(l->size, 8);
     return true;
   }
 
@@ -1082,7 +1077,7 @@ static bool make_layout(const upb_symtab *symtab, const upb_msgdef *m) {
 
   /* Size of the entire structure should be a multiple of its greatest
    * alignment.  TODO: track overall alignment for real? */
-  l->size = align_up(l->size, 8);
+  l->size = UPB_ALIGN_UP(l->size, 8);
 
   return true;
 }
@@ -1200,7 +1195,7 @@ static bool resolvename(const upb_strtable *t, const upb_fielddef *f,
                         const char *base, upb_strview sym,
                         upb_deftype_t type, upb_status *status,
                         const void **def) {
-  if(sym.size == 0) return NULL;
+  if(sym.size == 0) return false;
   if(sym.data[0] == '.') {
     /* Symbols starting with '.' are absolute, so we do a single lookup.
      * Slice to omit the leading '.' */
@@ -1914,11 +1909,11 @@ static bool build_filedef(
   }
 
   /* Now that all names are in the table, build layouts and resolve refs. */
-  for (i = 0; i < file->ext_count; i++) {
+  for (i = 0; i < (size_t)file->ext_count; i++) {
     CHK(resolve_fielddef(ctx, file->package, (upb_fielddef*)&file->exts[i]));
   }
 
-  for (i = 0; i < file->msg_count; i++) {
+  for (i = 0; i < (size_t)file->msg_count; i++) {
     const upb_msgdef *m = &file->msgs[i];
     int j;
     for (j = 0; j < m->field_count; j++) {
@@ -1927,7 +1922,7 @@ static bool build_filedef(
   }
 
   if (!ctx->layouts) {
-    for (i = 0; i < file->msg_count; i++) {
+    for (i = 0; i < (size_t)file->msg_count; i++) {
       const upb_msgdef *m = &file->msgs[i];
       make_layout(ctx->symtab, m);
     }
@@ -1936,8 +1931,7 @@ static bool build_filedef(
   return true;
  }
 
-static bool upb_symtab_addtotabs(upb_symtab *s, symtab_addctx *ctx,
-                                 upb_status *status) {
+static bool upb_symtab_addtotabs(upb_symtab *s, symtab_addctx *ctx) {
   const upb_filedef *file = ctx->file;
   upb_alloc *alloc = upb_arena_alloc(s->arena);
   upb_strtable_iter iter;
@@ -2051,6 +2045,13 @@ const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s, const char *name) 
                                                   : NULL;
 }
 
+const upb_filedef *upb_symtab_lookupfile2(
+    const upb_symtab *s, const char *name, size_t len) {
+  upb_value v;
+  return upb_strtable_lookup2(&s->files, name, len, &v) ?
+      upb_value_getconstptr(v) : NULL;
+}
+
 int upb_symtab_filecount(const upb_symtab *s) {
   return (int)upb_strtable_count(&s->files);
 }
@@ -2073,10 +2074,8 @@ static const upb_filedef *_upb_symtab_addfile(
   ctx.layouts = layouts;
   ctx.status = status;
 
-  ok = file &&
-      upb_strtable_init2(&addtab, UPB_CTYPE_CONSTPTR, ctx.tmp) &&
-      build_filedef(&ctx, file, file_proto) &&
-      upb_symtab_addtotabs(s, &ctx, status);
+  ok = file && upb_strtable_init2(&addtab, UPB_CTYPE_CONSTPTR, ctx.tmp) &&
+       build_filedef(&ctx, file, file_proto) && upb_symtab_addtotabs(s, &ctx);
 
   upb_arena_free(tmparena);
   return ok ? file : NULL;

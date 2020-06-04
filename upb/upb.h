@@ -35,6 +35,7 @@ void upb_status_clear(upb_status *status);
 void upb_status_seterrmsg(upb_status *status, const char *msg);
 void upb_status_seterrf(upb_status *status, const char *fmt, ...);
 void upb_status_vseterrf(upb_status *status, const char *fmt, va_list args);
+void upb_status_vappenderrf(upb_status *status, const char *fmt, va_list args);
 
 /** upb_strview ************************************************************/
 
@@ -142,16 +143,12 @@ typedef struct upb_arena upb_arena;
 
 typedef struct {
   /* We implement the allocator interface.
-   * This must be the first member of upb_arena! */
+   * This must be the first member of upb_arena!
+   * TODO(haberman): remove once handlers are gone. */
   upb_alloc alloc;
 
   char *ptr, *end;
 } _upb_arena_head;
-
-UPB_INLINE size_t _upb_arena_alignup(size_t size) {
-  const size_t maxalign = 16;
-  return ((size + maxalign - 1) / maxalign) * maxalign;
-}
 
 /* Creates an arena from the given initial block (if any -- n may be 0).
  * Additional blocks will be allocated from |alloc|.  If |alloc| is NULL, this
@@ -159,29 +156,34 @@ UPB_INLINE size_t _upb_arena_alignup(size_t size) {
 upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc);
 void upb_arena_free(upb_arena *a);
 bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func);
+void upb_arena_fuse(upb_arena *a, upb_arena *b);
 void *_upb_arena_slowmalloc(upb_arena *a, size_t size);
 
 UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
 
 UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   _upb_arena_head *h = (_upb_arena_head*)a;
-  size = _upb_arena_alignup(size);
-  if (UPB_LIKELY((size_t)(h->end - h->ptr) >= size)) {
-    void* ret = h->ptr;
-    h->ptr += size;
-    return ret;
-  } else {
+  void* ret;
+  size = UPB_ALIGN_MALLOC(size);
+
+  if (UPB_UNLIKELY((size_t)(h->end - h->ptr) < size)) {
     return _upb_arena_slowmalloc(a, size);
   }
+
+  ret = h->ptr;
+  h->ptr += size;
+  return ret;
 }
 
 UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
                                    size_t size) {
-  if (oldsize == 0) {
-    return upb_arena_malloc(a, size);
-  } else {
-    return upb_realloc(upb_arena_alloc(a), ptr, oldsize, size);
+  void *ret = upb_arena_malloc(a, size);
+
+  if (ret && oldsize > 0) {
+    memcpy(ret, ptr, oldsize);
   }
+
+  return ret;
 }
 
 UPB_INLINE upb_arena *upb_arena_new(void) {
@@ -269,7 +271,7 @@ typedef enum {
   UPB_DTYPE_SINT64   = 18
 } upb_descriptortype_t;
 
-#define UPB_MAP_BEGIN -1
+#define UPB_MAP_BEGIN ((size_t)-1)
 
 #include "upb/port_undef.inc"
 
