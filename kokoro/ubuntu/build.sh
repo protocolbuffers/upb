@@ -1,11 +1,11 @@
 #!/bin/bash
 
-set -ex
-
 # Install the latest version of Bazel.
 if [ -x "$(use_bazel.sh -v foo)" ]; then
   use_bazel.sh latest
 fi
+
+set -ex
 
 # Verify/query CMake
 echo PATH=$PATH
