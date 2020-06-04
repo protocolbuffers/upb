@@ -1,8 +1,4 @@
 load(
-    "@rules_proto//proto:defs.bzl",
-    "proto_library",
-)
-load(
     "//bazel:build_defs.bzl",
     "generated_file_staleness_test",
     "licenses",  # copybara:strip_for_google3
@@ -14,10 +10,17 @@ load(
     "upb_proto_library",
     "upb_proto_reflection_library",
 )
+
+# copybara:strip_for_google3_begin
+load(
+    "@rules_proto//proto:defs.bzl",
+    "proto_library",
+)
 load(
     "//:upb/bindings/lua/lua_proto_library.bzl",
     "lua_proto_library",
 )
+# copybara:strip_end
 
 licenses(["notice"])  # BSD (Google-authored w/ possible external contributions)
 
@@ -616,6 +619,7 @@ cc_binary(
         "//conditions:default": COPTS,
     }) + ["-Ibazel-out/k8-fastbuild/bin"],
     deps = [
+        ":port",
         ":conformance_proto_upb",
         ":conformance_proto_upbdefs",
         ":json",
