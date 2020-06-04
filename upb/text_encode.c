@@ -263,7 +263,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
     tag = (uint32_t)tag_64;
 
     if ((tag & 7) == UPB_WIRE_TYPE_END_GROUP) {
-      CHK((tag >> 3) == groupnum);
+      CHK((tag >> 3) == (uint32_t)groupnum);
       return ptr;
     }
 

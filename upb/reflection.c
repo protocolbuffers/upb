@@ -7,27 +7,30 @@
 
 #include "upb/port_def.inc"
 
-static char field_size[] = {
-  0,/* 0 */
-  8, /* UPB_DESCRIPTOR_TYPE_DOUBLE */
-  4, /* UPB_DESCRIPTOR_TYPE_FLOAT */
-  8, /* UPB_DESCRIPTOR_TYPE_INT64 */
-  8, /* UPB_DESCRIPTOR_TYPE_UINT64 */
-  4, /* UPB_DESCRIPTOR_TYPE_INT32 */
-  8, /* UPB_DESCRIPTOR_TYPE_FIXED64 */
-  4, /* UPB_DESCRIPTOR_TYPE_FIXED32 */
-  1, /* UPB_DESCRIPTOR_TYPE_BOOL */
-  sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_STRING */
-  sizeof(void*), /* UPB_DESCRIPTOR_TYPE_GROUP */
-  sizeof(void*), /* UPB_DESCRIPTOR_TYPE_MESSAGE */
-  sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_BYTES */
-  4, /* UPB_DESCRIPTOR_TYPE_UINT32 */
-  4, /* UPB_DESCRIPTOR_TYPE_ENUM */
-  4, /* UPB_DESCRIPTOR_TYPE_SFIXED32 */
-  8, /* UPB_DESCRIPTOR_TYPE_SFIXED64 */
-  4, /* UPB_DESCRIPTOR_TYPE_SINT32 */
-  8, /* UPB_DESCRIPTOR_TYPE_SINT64 */
-};
+static size_t get_field_size(const upb_msglayout_field *f) {
+  static unsigned char sizes[] = {
+    0,/* 0 */
+    8, /* UPB_DESCRIPTOR_TYPE_DOUBLE */
+    4, /* UPB_DESCRIPTOR_TYPE_FLOAT */
+    8, /* UPB_DESCRIPTOR_TYPE_INT64 */
+    8, /* UPB_DESCRIPTOR_TYPE_UINT64 */
+    4, /* UPB_DESCRIPTOR_TYPE_INT32 */
+    8, /* UPB_DESCRIPTOR_TYPE_FIXED64 */
+    4, /* UPB_DESCRIPTOR_TYPE_FIXED32 */
+    1, /* UPB_DESCRIPTOR_TYPE_BOOL */
+    sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_STRING */
+    sizeof(void*), /* UPB_DESCRIPTOR_TYPE_GROUP */
+    sizeof(void*), /* UPB_DESCRIPTOR_TYPE_MESSAGE */
+    sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_BYTES */
+    4, /* UPB_DESCRIPTOR_TYPE_UINT32 */
+    4, /* UPB_DESCRIPTOR_TYPE_ENUM */
+    4, /* UPB_DESCRIPTOR_TYPE_SFIXED32 */
+    8, /* UPB_DESCRIPTOR_TYPE_SFIXED64 */
+    4, /* UPB_DESCRIPTOR_TYPE_SINT32 */
+    8, /* UPB_DESCRIPTOR_TYPE_SINT64 */
+  };
+  return _upb_repeated_or_map(f) ? sizeof(void *) : sizes[f->descriptortype];
+}
 
 /* Strings/bytes are special-cased in maps. */
 static char _upb_fieldtype_to_mapsize[12] = {
@@ -59,9 +62,7 @@ static upb_msgval _upb_msg_getraw(const upb_msg *msg, const upb_fielddef *f) {
   const upb_msglayout_field *field = upb_fielddef_layout(f);
   const char *mem = UPB_PTR_AT(msg, field->offset, char);
   upb_msgval val = {0};
-  int size = upb_fielddef_isseq(f) ? sizeof(void *)
-                                   : field_size[field->descriptortype];
-  memcpy(&val, mem, size);
+  memcpy(&val, mem, get_field_size(field));
   return val;
 }
 
@@ -176,9 +177,7 @@ void upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
   UPB_UNUSED(a);  /* We reserve the right to make set insert into a map. */
   const upb_msglayout_field *field = upb_fielddef_layout(f);
   char *mem = UPB_PTR_AT(msg, field->offset, char);
-  int size = upb_fielddef_isseq(f) ? sizeof(void *)
-                                   : field_size[field->descriptortype];
-  memcpy(mem, &val, size);
+  memcpy(mem, &val, get_field_size(field));
   if (field->presence > 0) {
     _upb_sethas_field(msg, field);
   } else if (in_oneof(field)) {
@@ -189,8 +188,6 @@ void upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
 void upb_msg_clearfield(upb_msg *msg, const upb_fielddef *f) {
   const upb_msglayout_field *field = upb_fielddef_layout(f);
   char *mem = UPB_PTR_AT(msg, field->offset, char);
-  int size = upb_fielddef_isseq(f) ? sizeof(void *)
-                                   : field_size[field->descriptortype];
 
   if (field->presence > 0) {
     _upb_clearhas_field(msg, field);
@@ -200,7 +197,7 @@ void upb_msg_clearfield(upb_msg *msg, const upb_fielddef *f) {
     *oneof_case = 0;
   }
 
-  memset(mem, 0, size);
+  memset(mem, 0, get_field_size(field));
 }
 
 void upb_msg_clear(upb_msg *msg, const upb_msgdef *m) {

@@ -1044,7 +1044,7 @@ static void jsondec_timestamp(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
     switch (*ptr++) {
       case '-':
         neg = true;
-        /* Fallthrough intended. */
+        /* fallthrough */
       case '+':
         if ((end - ptr) != 5) goto malformed;
         ofs = jsondec_tsdigits(d, &ptr, 2, ":00");
