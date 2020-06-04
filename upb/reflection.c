@@ -174,9 +174,9 @@ upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_fielddef *f,
 
 void upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
                  upb_arena *a) {
-  UPB_UNUSED(a);  /* We reserve the right to make set insert into a map. */
   const upb_msglayout_field *field = upb_fielddef_layout(f);
   char *mem = UPB_PTR_AT(msg, field->offset, char);
+  UPB_UNUSED(a);  /* We reserve the right to make set insert into a map. */
   memcpy(mem, &val, get_field_size(field));
   if (field->presence > 0) {
     _upb_sethas_field(msg, field);
