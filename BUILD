@@ -655,7 +655,7 @@ make_shell_script(
     out = "test_conformance_upb.sh",
     contents = "external/com_google_protobuf/conformance_test_runner " +
                " --enforce_recommended " +
-               " --failure_list tests/conformance_upb_failures.txt" +
+               " --failure_list ./tests/conformance_upb_failures.txt" +
                " ./conformance_upb",
 )
 
