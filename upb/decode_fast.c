@@ -1,10 +1,14 @@
 
-#include "upb/decode.h"
+#include "upb/decode_fast.h"
 
+#include "upb/decode.h"
+#include "upb/decode.int.h"
+
+/* Must be last. */
 #include "upb/port_def.inc"
 
-#define UPB_PARSE_PARAMS                                                      \
-  upb_decstate *d, const char *ptr, upb_msg *msg, const upb_msglayout *table, \
+#define UPB_PARSE_PARAMS                                          \
+  upb_decstate *d, const char *ptr, upb_msg *msg, intptr_t table, \
       uint64_t hasbits, uint64_t data
 
 #define UPB_PARSE_ARGS d, ptr, msg, table, hasbits, data
@@ -20,13 +24,17 @@ typedef enum {
 } upb_card;
 
 UPB_FORCEINLINE
-const char *fastdecode_tag_dispatch(upb_decstate *d, const char *ptr, upb_msg *msg,
-                                const upb_msglayout *table, uint64_t hasbits, uint32_t tag) {
+const char *fastdecode_tag_dispatch(upb_decstate *d, const char *ptr,
+                                    upb_msg *msg, intptr_t table,
+                                    uint64_t hasbits, uint32_t tag) {
+  const upb_msglayout *table_p = decode_totablep(table);
+  uint8_t mask = table;
   uint64_t data;
-  size_t idx;
-  idx = (tag & 0xf8) >> 3;
-  data = table->field_data[idx] ^ tag;
-  return table->field_parser[idx](UPB_PARSE_ARGS);
+  size_t idx = tag & mask;
+  __builtin_assume((idx & 7) == 0);
+  idx >>= 3;
+  data = table_p->fasttable[idx].field_data ^ tag;
+  return table_p->fasttable[idx].field_parser(UPB_PARSE_ARGS);
 }
 
 UPB_FORCEINLINE
@@ -38,7 +46,7 @@ uint32_t fastdecode_load_tag(const char* ptr) {
 
 UPB_FORCEINLINE
 const char *fastdecode_dispatch(upb_decstate *d, const char *ptr, upb_msg *msg,
-                                const upb_msglayout *table, uint64_t hasbits) {
+                                intptr_t table, uint64_t hasbits) {
   if (UPB_UNLIKELY(ptr >= d->fastlimit)) {
     if (UPB_LIKELY(ptr == d->limit)) {
       *(uint32_t*)msg |= hasbits >> 16;  /* Sync hasbits. */
@@ -86,16 +94,15 @@ static void *fastdecode_getfield_ofs(upb_decstate *d, const char *ptr,
       if (UPB_LIKELY(!*arr_p)) {
         const size_t initial_len = 8;
         size_t need = (valbytes * initial_len) + sizeof(upb_array);
-        if (UPB_UNLIKELY((size_t)(d->arena_end - d->arena_ptr) < need)) {
+        if (!hasbit_is_idx && UPB_UNLIKELY(!_upb_arenahas(&d->arena, need))) {
           return NULL;
         }
-        arr = (void*)d->arena_ptr;
+        arr = upb_arena_malloc(&d->arena, need);
         field = arr + 1;
         arr->data = _upb_array_tagptr(field, elem_size_lg2);
         *arr_p = arr;
         arr->size = initial_len;
         *end = (char*)field + (arr->size * valbytes);
-        d->arena_ptr += need;
       } else {
         arr = *arr_p;
         field = _upb_array_ptr(arr);
@@ -153,7 +160,8 @@ static const char *fastdecode_varint(UPB_PARSE_PARAMS, int tagbytes,
   ptr += tagbytes + 1;
   val = (uint8_t)ptr[-1];
   if (UPB_UNLIKELY(val & 0x80)) {
-    for (int i = 0; i < 8; i++) {
+    int i;
+    for (i = 0; i < 8; i++) {
       ptr++;
       uint64_t byte = (uint8_t)ptr[-1];
       val += (byte - 1) << (7 + 7 * i);
@@ -259,12 +267,13 @@ const char *upb_pos_2bt(UPB_PARSE_PARAMS) {
 
 /* message fields *************************************************************/
 
-UPB_NOINLINE static
-const char *fastdecode_lendelim_submsg(upb_decstate *d, const char *ptr, upb_msg *msg,
-                                const upb_msglayout *table, uint64_t hasbits, const char* saved_limit) {
+UPB_NOINLINE static const char *fastdecode_lendelim_submsg(
+    upb_decstate *d, const char *ptr, upb_msg *msg, intptr_t table,
+    uint64_t hasbits, const char *saved_limit) {
   size_t len = (uint8_t)ptr[-1];
   if (UPB_UNLIKELY(len & 0x80)) {
-    for (int i = 0; i < 3; i++) {
+    int i;
+    for (i = 0; i < 3; i++) {
       ptr++;
       size_t byte = (uint8_t)ptr[-1];
       len += (byte - 1) << (7 + 7 * i);
@@ -301,9 +310,23 @@ static const char *fastdecode_submsg(UPB_PARSE_PARAMS, int tagbytes,
   void *end;
   uint32_t submsg_idx = data;
   submsg_idx >>= 16;
+<<<<<<< HEAD
   const upb_msglayout *subl = table->submsgs[submsg_idx];
   submsg = fastdecode_getfield_ofs(d, ptr, msg, &data, &hasbits, &arr, &end,
                                    sizeof(upb_msg *), card, true);
+=======
+  const upb_msglayout *table_p = decode_totablep(table);
+  const upb_msglayout *subl = table_p->submsgs[submsg_idx];
+  intptr_t subt = decode_totable(subl);
+  size_t submsg_size = subl->size + sizeof(upb_msg_internal);
+  submsg = fastdecode_getfield_ofs(d, ptr, msg, &data, &hasbits, &arr, &end,
+                                   sizeof(upb_msg *), card, true);
+
+  if (card == CARD_s) {
+    *(uint32_t*)msg |= hasbits >> 16;
+    hasbits = 0;
+  }
+>>>>>>> 1c8c16b9b121d4338f124cb59981e7a3328c4190
 
   if (card == CARD_r) {
     if (UPB_UNLIKELY(!submsg)) {
@@ -326,27 +349,25 @@ again:
       size_t new_size = old_size * 2;
       size_t new_bytes = new_size * sizeof(upb_msg*);
       char *old_ptr = _upb_array_ptr(arr);
-      if (UPB_UNLIKELY((size_t)(d->arena_end - d->arena_ptr) < new_bytes)) {
-        goto repeated_generic;
-      }
-      memcpy(d->arena_ptr, old_ptr, old_bytes);
+      char *new_ptr = upb_arena_realloc(&d->arena, old_ptr, old_bytes, new_bytes);
       arr->size = new_size;
-      arr->data = _upb_array_tagptr(d->arena_ptr, 3);
-      submsg = (void*)(d->arena_ptr + (old_size * sizeof(upb_msg*)));
-      end = (void*)(d->arena_ptr + (new_size * sizeof(upb_msg*)));
-      d->arena_ptr += new_bytes;
+      arr->data = _upb_array_tagptr(new_ptr, 3);
+      submsg = (void*)(new_ptr + (old_size * sizeof(upb_msg*)));
+      end = (void*)(new_ptr + (new_size * sizeof(upb_msg*)));
     }
   }
   
   upb_msg* child = *submsg;
 
+  upb_msg* child = *submsg;
+
   if (card == CARD_r || UPB_LIKELY(!child)) {
-    *submsg = child = decode_newmsg_ceil(d, subl, msg_ceil_bytes);
+    *submsg = child = decode_newmsg_ceil(d, submsg_size, msg_ceil_bytes);
   }
-  
+
   ptr += tagbytes + 1;
-  
-  ptr = fastdecode_lendelim_submsg(d, ptr, child, subl, 0, saved_limit);
+
+  ptr = fastdecode_lendelim_submsg(d, ptr, child, subt, 0, saved_limit);
 
   if (UPB_UNLIKELY(ptr != d->limit || d->end_group != 0)) {
     return fastdecode_err(d);
@@ -383,7 +404,6 @@ again:
   d->depth++;
 
   return fastdecode_dispatch(d, ptr, msg, table, hasbits);
-  
 repeated_generic:
   arr->len = submsg - (upb_msg**)_upb_array_ptr(arr);
   d->limit = saved_limit;

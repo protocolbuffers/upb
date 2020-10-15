@@ -231,28 +231,28 @@ std::string CTypeInternal(const protobuf::FieldDescriptor* field,
   }
 }
 
-std::string UpbType(const protobuf::FieldDescriptor* field) {
+std::string SizeLg2(const protobuf::FieldDescriptor* field) {
   switch (field->cpp_type()) {
     case protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      return "UPB_TYPE_MESSAGE";
+      return "UPB_SIZE(2, 3)";
     case protobuf::FieldDescriptor::CPPTYPE_ENUM:
-      return "UPB_TYPE_ENUM";
+      return std::to_string(2);
     case protobuf::FieldDescriptor::CPPTYPE_BOOL:
-      return "UPB_TYPE_BOOL";
+      return std::to_string(1);
     case protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-      return "UPB_TYPE_FLOAT";
+      return std::to_string(2);
     case protobuf::FieldDescriptor::CPPTYPE_INT32:
-      return "UPB_TYPE_INT32";
+      return std::to_string(2);
     case protobuf::FieldDescriptor::CPPTYPE_UINT32:
-      return "UPB_TYPE_UINT32";
+      return std::to_string(2);
     case protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-      return "UPB_TYPE_DOUBLE";
+      return std::to_string(3);
     case protobuf::FieldDescriptor::CPPTYPE_INT64:
-      return "UPB_TYPE_INT64";
+      return std::to_string(3);
     case protobuf::FieldDescriptor::CPPTYPE_UINT64:
-      return "UPB_TYPE_UINT64";
+      return std::to_string(3);
     case protobuf::FieldDescriptor::CPPTYPE_STRING:
-      return "UPB_TYPE_STRING";
+      return "UPB_SIZE(3, 4)";
     default:
       fprintf(stderr, "Unexpected type");
       abort();
@@ -509,7 +509,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           "}\n",
           CType(field), msgname, field->name(),
           GetSizeInit(layout.GetFieldOffset(field)),
-          UpbType(field));
+          SizeLg2(field));
       if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
         output(
             "UPB_INLINE struct $0* $1_add_$2($1 *msg, upb_arena *arena) {\n"
@@ -523,7 +523,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
             MessageInit(field->message_type()),
             GetSizeInit(layout.GetFieldOffset(field)),
             GetSizeInit(MessageLayout::SizeOfUnwrapped(field).size),
-            UpbType(field));
+            SizeLg2(field));
       } else {
         output(
             "UPB_INLINE bool $1_add_$2($1 *msg, $0 val, upb_arena *arena) {\n"
@@ -533,7 +533,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
             CType(field), msgname, field->name(),
             GetSizeInit(layout.GetFieldOffset(field)),
             GetSizeInit(MessageLayout::SizeOfUnwrapped(field).size),
-            UpbType(field));
+            SizeLg2(field));
       }
     } else {
       // Non-repeated field.
@@ -600,6 +600,7 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
       "#define $0_UPB_H_\n\n"
       "#include \"upb/msg.h\"\n"
       "#include \"upb/decode.h\"\n"
+      "#include \"upb/decode_fast.h\"\n"
       "#include \"upb/encode.h\"\n\n",
       ToPreproc(file->name()));
 
@@ -704,25 +705,38 @@ int TableDescriptorType(const protobuf::FieldDescriptor* field) {
 }
 
 struct SubmsgArray {
-  std::vector<const protobuf::Descriptor*> messages;
-  absl::flat_hash_map<const protobuf::Descriptor*, int> indexes;
-};
-
-SubmsgArray GetSubmsgArray(const protobuf::Descriptor* message) {
-  SubmsgArray ret;
-  MessageLayout layout(message);
-  std::vector<const protobuf::FieldDescriptor*> sorted_submsgs =
-      SortedSubmessages(message);
-  int i = 0;
-  for (auto submsg : sorted_submsgs) {
-    if (ret.indexes.find(submsg->message_type()) != ret.indexes.end()) {
-      continue;
+ public:
+  SubmsgArray(const protobuf::Descriptor* message) : message_(message) {
+    MessageLayout layout(message);
+    std::vector<const protobuf::FieldDescriptor*> sorted_submsgs =
+        SortedSubmessages(message);
+    int i = 0;
+    for (auto submsg : sorted_submsgs) {
+      if (indexes_.find(submsg->message_type()) != indexes_.end()) {
+        continue;
+      }
+      submsgs_.push_back(submsg->message_type());
+      indexes_[submsg->message_type()] = i++;
     }
-    ret.messages.push_back(submsg->message_type());
-    ret.indexes[submsg->message_type()] = i++;
   }
-  return ret;
-}
+
+  const std::vector<const protobuf::Descriptor*>& submsgs() const {
+    return submsgs_;
+  }
+
+  int GetIndex(const protobuf::FieldDescriptor* field) {
+    (void)message_;
+    assert(field->containing_type() == message_);
+    auto it = indexes_.find(field->message_type());
+    assert(it != indexes_.end());
+    return it->second;
+  }
+
+ private:
+  const protobuf::Descriptor* message_;
+  std::vector<const protobuf::Descriptor*> submsgs_;
+  absl::flat_hash_map<const protobuf::Descriptor*, int> indexes_;
+};
 
 typedef std::pair<std::string, MessageLayout::Size> TableEntry;
 
@@ -806,8 +820,8 @@ void TryFillTableEntry(const protobuf::Descriptor* message,
   data.size64 = ((uint64_t)offset.size64 << 48) | expected_tag;
 
   if (field->type() == protobuf::FieldDescriptor::TYPE_MESSAGE) {
-    SubmsgArray submsg_array = GetSubmsgArray(message);
-    uint64_t idx = submsg_array.indexes[field->message_type()];
+    SubmsgArray submsg_array(message);
+    uint64_t idx = submsg_array.GetIndex(field);
     data.size32 |= idx << 16 | hasbit_index << 32;
     data.size64 |= idx << 16 | hasbit_index << 32;
   } else {
@@ -843,11 +857,19 @@ void TryFillTableEntry(const protobuf::Descriptor* message,
 
 std::vector<TableEntry> FastDecodeTable(const protobuf::Descriptor* message,
                                         const MessageLayout& layout) {
+  int table_size = 1;
+  for (int i = 0; i < message->field_count(); i++) {
+    int num = message->field(i)->number();
+    while (num >= table_size && num < 32) {
+      table_size *= 2;
+    }
+  }
+
   std::vector<TableEntry> table;
   MessageLayout::Size empty_size;
   empty_size.size32 = 0;
   empty_size.size64 = 0;
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < table_size; i++) {
     table.emplace_back(TableEntry{"fastdecode_generic", empty_size});
     TryFillTableEntry(message, layout, i, table.back());
   }
@@ -878,17 +900,17 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
     std::string fields_array_ref = "NULL";
     std::string submsgs_array_ref = "NULL";
     MessageLayout layout(message);
-    SubmsgArray submsg_array = GetSubmsgArray(message);
+    SubmsgArray submsg_array(message);
 
-    if (!submsg_array.messages.empty()) {
+    if (!submsg_array.submsgs().empty()) {
       // TODO(haberman): could save a little bit of space by only generating a
       // "submsgs" array for every strongly-connected component.
       std::string submsgs_array_name = msgname + "_submsgs";
       submsgs_array_ref = "&" + submsgs_array_name + "[0]";
       output("static const upb_msglayout *const $0[$1] = {\n",
-             submsgs_array_name, submsg_array.messages.size());
+             submsgs_array_name, submsg_array.submsgs().size());
 
-      for (auto submsg : submsg_array.messages) {
+      for (auto submsg : submsg_array.submsgs()) {
         output("  &$0,\n", MessageInit(submsg));
       }
 
@@ -907,7 +929,7 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
         std::string presence = "0";
 
         if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
-          submsg_index = submsg_array.indexes[field->message_type()];
+          submsg_index = submsg_array.GetIndex(field);
         }
 
         if (MessageLayout::HasHasbit(field)) {
@@ -949,22 +971,18 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
     std::vector<TableEntry> table = FastDecodeTable(message, layout);
 
     output("const upb_msglayout $0 = {\n", MessageInit(message));
-    output("  {\n");
-    for (const auto& ent : table) {
-      output("    &$0,\n", ent.first);
-    }
-    output("  },\n");
-    output("  {\n");
-    for (const auto& ent : table) {
-      output("    $0,\n", GetSizeInit(ent.second));
-    }
-    output("  },\n");
     output("  $0,\n", submsgs_array_ref);
     output("  $0,\n", fields_array_ref);
-    output("  $0, $1, $2,\n", GetSizeInit(layout.message_size()),
+    output("  $0, $1, $2, $3,\n", GetSizeInit(layout.message_size()),
            field_number_order.size(),
-           "false"  // TODO: extendable
+           "false",  // TODO: extendable
+           (table.size() - 1) << 3
     );
+    output("  {\n");
+    for (const auto& ent : table) {
+      output("    {&$0, $1},\n", ent.first, GetSizeInit(ent.second));
+    }
+    output("  },\n");
 
     output("};\n\n");
   }

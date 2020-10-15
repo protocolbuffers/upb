@@ -167,12 +167,17 @@ static void jsonenc_duration(jsonenc *e, const upb_msg *msg, const upb_msgdef *m
 
 static void jsonenc_enum(int32_t val, const upb_fielddef *f, jsonenc *e) {
   const upb_enumdef *e_def = upb_fielddef_enumsubdef(f);
-  const char *name = upb_enumdef_iton(e_def, val);
 
-  if (name) {
-    jsonenc_printf(e, "\"%s\"", name);
+  if (strcmp(upb_enumdef_fullname(e_def), "google.protobuf.NullValue") == 0) {
+    jsonenc_putstr(e, "null");
   } else {
-    jsonenc_printf(e, "%" PRId32, val);
+    const char *name = upb_enumdef_iton(e_def, val);
+
+    if (name) {
+      jsonenc_printf(e, "\"%s\"", name);
+    } else {
+      jsonenc_printf(e, "%" PRId32, val);
+    }
   }
 }
 
@@ -648,10 +653,10 @@ static void jsonenc_msgfields(jsonenc *e, const upb_msg *msg,
 
   if (e->options & UPB_JSONENC_EMITDEFAULTS) {
     /* Iterate over all fields. */
-    upb_msg_field_iter i;
-    for (upb_msg_field_begin(&i, m); !upb_msg_field_done(&i);
-         upb_msg_field_next(&i)) {
-      f = upb_msg_iter_field(&i);
+    int i = 0;
+    int n = upb_msgdef_fieldcount(m);
+    for (i = 0; i < n; i++) {
+      f = upb_msgdef_field(m, i);
       jsonenc_fieldval(e, f, upb_msg_get(msg, f), &first);
     }
   } else {
