@@ -18,6 +18,9 @@ extern "C" {
 bool upb_decode(const char *buf, size_t size, upb_msg *msg,
                 const upb_msglayout *l, upb_arena *arena);
 
+const char *fastdecode_generic(struct upb_decstate *d, const char *ptr,
+                               upb_msg *msg, intptr_t table, uint64_t hasbits,
+                               uint64_t data);
 
 #ifdef __cplusplus
 }  /* extern "C" */
