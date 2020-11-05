@@ -903,7 +903,7 @@ bool TryFillTableEntry(const protobuf::Descriptor* message,
 
 std::vector<TableEntry> FastDecodeTable(const protobuf::Descriptor* message,
                                         const MessageLayout& layout) {
-  std::vector<TableEntry> table;
+  std::vector<TableEntry> table(32, {"fastdecode_generic", 0});
   for (const auto field : FieldHotnessOrder(message)) {
     TableEntry ent;
     int slot = GetTableSlot(field);
@@ -929,8 +929,7 @@ std::vector<TableEntry> FastDecodeTable(const protobuf::Descriptor* message,
   return table;
 }
 
-void WriteSource(const protobuf::FileDescriptor* file, Output& output,
-                 bool fasttable_enabled) {
+void WriteSource(const protobuf::FileDescriptor* file, Output& output) {
   EmitFileWarning(file, output);
 
   output(
@@ -1023,33 +1022,21 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output,
     }
 
     std::vector<TableEntry> table;
-    uint8_t table_mask = -1;
-
-    if (fasttable_enabled) {
-      table = FastDecodeTable(message, layout);
-    }
-
-    if (table.size() > 1) {
-      assert((table.size() & (table.size() - 1)) == 0);
-      table_mask = (table.size() - 1) << 3;
-    }
+    table = FastDecodeTable(message, layout);
 
     output("const upb_msglayout $0 = {\n", MessageInit(message));
+    output("  {\n");
+    for (const auto& ent : table) {
+      output("    {0x$1, &$0},\n", ent.first,
+             absl::StrCat(absl::Hex(ent.second, absl::kZeroPad16)));
+    }
+    output("  },\n");
     output("  $0,\n", submsgs_array_ref);
     output("  $0,\n", fields_array_ref);
-    output("  $0, $1, $2, $3,\n", GetSizeInit(layout.message_size()),
+    output("  $0, $1, $2,\n", GetSizeInit(layout.message_size()),
            field_number_order.size(),
-           "false",  // TODO: extendable
-           table_mask
+           "false"  // TODO: extendable
     );
-    if (!table.empty()) {
-      output("  UPB_FASTTABLE_INIT({\n");
-      for (const auto& ent : table) {
-        output("    {0x$1, &$0},\n", ent.first,
-               absl::StrCat(absl::Hex(ent.second, absl::kZeroPad16)));
-      }
-      output("  }),\n");
-    }
     output("};\n\n");
   }
 
@@ -1179,15 +1166,14 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
 }
 
 bool Generator::Generate(const protobuf::FileDescriptor* file,
-                         const std::string& parameter,
+                         const std::string& /* parameter */,
                          protoc::GeneratorContext* context,
                          std::string* /* error */) const {
-  bool fasttable_enabled = parameter == "fasttable";
   Output h_output(context->Open(HeaderFilename(file->name())));
   WriteHeader(file, h_output);
 
   Output c_output(context->Open(SourceFilename(file->name())));
-  WriteSource(file, c_output, fasttable_enabled);
+  WriteSource(file, c_output);
 
   Output h_def_output(context->Open(DefHeaderFilename(file->name())));
   WriteDefHeader(file, h_def_output);

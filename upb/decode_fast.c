@@ -19,8 +19,8 @@
 
 // The standard set of arguments passed to each parsing function.
 // Thanks to x86-64 calling conventions, these will stay in registers.
-#define UPB_PARSE_PARAMS                                          \
-  upb_decstate *d, const char *ptr, upb_msg *msg, intptr_t table, \
+#define UPB_PARSE_PARAMS                                                      \
+  upb_decstate *d, const char *ptr, upb_msg *msg, const upb_msglayout *table, \
       uint64_t hasbits, uint64_t data
 
 #define UPB_PARSE_ARGS d, ptr, msg, table, hasbits, data
@@ -38,7 +38,8 @@ typedef enum {
 
 UPB_NOINLINE
 static const char *fastdecode_isdonefallback(upb_decstate *d, const char *ptr,
-                                             upb_msg *msg, intptr_t table,
+                                             upb_msg *msg,
+                                             const upb_msglayout *table,
                                              uint64_t hasbits, int overrun) {
   ptr = decode_isdonefallback_inl(d, ptr, overrun);
   if (ptr == NULL) {
@@ -50,7 +51,7 @@ static const char *fastdecode_isdonefallback(upb_decstate *d, const char *ptr,
 
 UPB_FORCEINLINE
 static const char *fastdecode_dispatch(upb_decstate *d, const char *ptr,
-                                       upb_msg *msg, intptr_t table,
+                                       upb_msg *msg, const upb_msglayout *table,
                                        uint64_t hasbits) {
   if (UPB_UNLIKELY(ptr >= d->limit_ptr)) {
     int overrun = ptr - d->end;
@@ -651,7 +652,8 @@ typedef const char *fastdecode_copystr_func(struct upb_decstate *d,
 
 UPB_NOINLINE
 static const char *fastdecode_verifyutf8(upb_decstate *d, const char *ptr,
-                                         upb_msg *msg, intptr_t table,
+                                         upb_msg *msg,
+                                         const upb_msglayout * table,
                                          uint64_t hasbits, upb_strview *dst) {
   if (!decode_verifyutf8_inl(dst->data, dst->size)) {
     return fastdecode_err(d);
@@ -662,7 +664,8 @@ static const char *fastdecode_verifyutf8(upb_decstate *d, const char *ptr,
 UPB_FORCEINLINE
 static const char *fastdecode_longstring(struct upb_decstate *d,
                                          const char *ptr, upb_msg *msg,
-                                         intptr_t table, uint64_t hasbits,
+                                         const upb_msglayout *table,
+                                         uint64_t hasbits,
                                          upb_strview *dst,
                                          bool validate_utf8) {
   int size = (uint8_t)ptr[0];  // Could plumb through hasbits.
@@ -699,7 +702,8 @@ static const char *fastdecode_longstring(struct upb_decstate *d,
 UPB_NOINLINE
 static const char *fastdecode_longstring_utf8(struct upb_decstate *d,
                                          const char *ptr, upb_msg *msg,
-                                         intptr_t table, uint64_t hasbits,
+                                         const upb_msglayout *table,
+                                         uint64_t hasbits,
                                          upb_strview *dst) {
   return fastdecode_longstring(d, ptr, msg, table, hasbits, dst, true);
 }
@@ -707,7 +711,7 @@ static const char *fastdecode_longstring_utf8(struct upb_decstate *d,
 UPB_NOINLINE
 static const char *fastdecode_longstring_noutf8(struct upb_decstate *d,
                                                 const char *ptr, upb_msg *msg,
-                                                intptr_t table,
+                                                const upb_msglayout *table,
                                                 uint64_t hasbits,
                                                 upb_strview *dst) {
   return fastdecode_longstring(d, ptr, msg, table, hasbits, dst, false);
@@ -932,7 +936,7 @@ upb_msg *decode_newmsg_ceil(upb_decstate *d, const upb_msglayout *l,
 }
 
 typedef struct {
-  intptr_t table;
+  const upb_msglayout *table;
   upb_msg *msg;
 } fastdecode_submsgdata;
 
@@ -957,12 +961,11 @@ static const char *fastdecode_submsg(UPB_PARSE_PARAMS, int tagbytes,
 
   upb_msg **dst;
   uint32_t submsg_idx = (data >> 16) & 0xff;
-  const upb_msglayout *tablep = decode_totablep(table);
-  const upb_msglayout *subtablep = tablep->submsgs[submsg_idx];
-  fastdecode_submsgdata submsg = {decode_totable(subtablep)};
+  const upb_msglayout *substable = table->submsgs[submsg_idx];
+  fastdecode_submsgdata submsg = {substable};
   fastdecode_arr farr;
 
-  if (subtablep->table_mask == (uint8_t)-1) {
+  if (substable->table_mask == (uint8_t)-1) {
     RETURN_GENERIC("submessage doesn't have fast tables.");
   }
 
@@ -982,7 +985,7 @@ again:
   submsg.msg = *dst;
 
   if (card == CARD_r || UPB_LIKELY(!submsg.msg)) {
-    *dst = submsg.msg = decode_newmsg_ceil(d, subtablep, msg_ceil_bytes);
+    *dst = submsg.msg = decode_newmsg_ceil(d, substable, msg_ceil_bytes);
   }
 
   ptr += tagbytes;

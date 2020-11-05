@@ -524,8 +524,7 @@ static bool decode_tryfastdispatch(upb_decstate *d, const char **ptr,
 #if UPB_FASTTABLE
   if (layout && layout->table_mask != (unsigned char)-1) {
     uint16_t tag = fastdecode_loadtag(*ptr);
-    intptr_t table = decode_totable(layout);
-    *ptr = fastdecode_tagdispatch(d, *ptr, msg, table, 0, tag);
+    *ptr = fastdecode_tagdispatch(d, *ptr, msg, layout, 0, tag);
     return true;
   }
 #endif
@@ -636,11 +635,11 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
 }
 
 const char *fastdecode_generic(struct upb_decstate *d, const char *ptr,
-                               upb_msg *msg, intptr_t table, uint64_t hasbits,
-                               uint64_t data) {
+                               upb_msg *msg, const upb_msglayout *table,
+                               uint64_t hasbits, uint64_t data) {
   (void)data;
   *(uint32_t*)msg |= hasbits;
-  return decode_msg(d, ptr, msg, decode_totablep(table));
+  return decode_msg(d, ptr, msg, table);
 }
 
 bool upb_decode(const char *buf, size_t size, void *msg, const upb_msglayout *l,

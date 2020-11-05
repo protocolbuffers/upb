@@ -10,7 +10,6 @@
 
 #include "upb/msg.h"
 #include "upb/upb.int.h"
-#include "upb/decode_fast.h"
 
 /* Must be last. */
 #include "upb/port_def.inc"
@@ -61,16 +60,6 @@ bool decode_verifyutf8_inl(const char *buf, int len) {
   return i == len;
 }
 
-/* x86-64 pointers always have the high 16 bits matching. So we can shift
- * left 8 and right 8 without loss of information. */
-UPB_INLINE intptr_t decode_totable(const upb_msglayout *tablep) {
-  return ((intptr_t)tablep << 8) | tablep->table_mask;
-}
-
-UPB_INLINE const upb_msglayout *decode_totablep(intptr_t table) {
-  return (void*)(table >> 8);
-}
-
 UPB_INLINE
 const char *decode_isdonefallback_inl(upb_decstate *d, const char *ptr,
                                       int overrun) {
@@ -116,16 +105,11 @@ bool decode_isdone(upb_decstate *d, const char **ptr) {
 
 UPB_INLINE
 const char *fastdecode_tagdispatch(upb_decstate *d, const char *ptr,
-                                    upb_msg *msg, intptr_t table,
+                                    upb_msg *msg, const upb_msglayout *table,
                                     uint64_t hasbits, uint32_t tag) {
-  const upb_msglayout *table_p = decode_totablep(table);
-  uint8_t mask = table;
-  uint64_t data;
-  size_t idx = tag & mask;
-  UPB_ASSUME((idx & 7) == 0);
-  idx >>= 3;
-  data = table_p->fasttable[idx].field_data ^ tag;
-  return table_p->fasttable[idx].field_parser(d, ptr, msg, table, hasbits, data);
+  size_t idx = (tag & 0xf8) >> 3;
+  uint64_t data = table->fasttable[idx].field_data ^ tag;
+  return table->fasttable[idx].field_parser(d, ptr, msg, table, hasbits, data);
 }
 
 UPB_INLINE uint32_t fastdecode_loadtag(const char* ptr) {
