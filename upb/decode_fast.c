@@ -382,7 +382,7 @@ again:
       case FD_NEXT_SAMEFIELD:
         dst = ret.dst;
         goto again;
-      case FD_NEXT_OTHERFIELD: 
+      case FD_NEXT_OTHERFIELD:
         return fastdecode_tagdispatch(d, ptr, msg, table, hasbits, ret.tag);
       case FD_NEXT_ATLIMIT:
         return ptr;
@@ -991,7 +991,7 @@ again:
   ptr += tagbytes;
   ptr = fastdecode_delimited(d, ptr, fastdecode_tosubmsg, &submsg);
 
-  if (UPB_UNLIKELY(ptr == NULL || d->end_group != 0)) {
+  if (UPB_UNLIKELY(ptr == NULL || d->end_group != DECODE_NOGROUP)) {
     return fastdecode_err(d);
   }
 

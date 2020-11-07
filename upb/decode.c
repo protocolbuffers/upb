@@ -309,8 +309,8 @@ static const char *decode_tosubmsg(upb_decstate *d, const char *ptr,
   if (!decode_isdone(d, &ptr)) {
     ptr = decode_msg(d, ptr, submsg, subl);
   }
+  if (d->end_group != DECODE_NOGROUP) decode_err(d);
   decode_poplimit(d, ptr, saved_delta);
-  if (d->end_group != 0) decode_err(d);
   d->depth++;
   return ptr;
 }
@@ -325,7 +325,7 @@ static const char *decode_group(upb_decstate *d, const char *ptr,
   }
   ptr = decode_msg(d, ptr, submsg, subl);
   if (d->end_group != number) decode_err(d);
-  d->end_group = 0;
+  d->end_group = DECODE_NOGROUP;
   d->depth++;
   return ptr;
 }
@@ -665,7 +665,7 @@ bool upb_decode(const char *buf, size_t size, void *msg, const upb_msglayout *l,
   state.limit_ptr = state.end;
   state.unknown_msg = NULL;
   state.depth = 64;
-  state.end_group = 0;
+  state.end_group = DECODE_NOGROUP;
   state.arena.head = arena->head;
   state.arena.last_size = arena->last_size;
   state.arena.parent = arena;
@@ -676,7 +676,7 @@ bool upb_decode(const char *buf, size_t size, void *msg, const upb_msglayout *l,
     if (!decode_tryfastdispatch(&state, &buf, msg, l)) {
       decode_msg(&state, buf, msg, l);
     }
-    ok = state.end_group == 0;
+    ok = state.end_group == DECODE_NOGROUP;
   }
 
   arena->head.ptr = state.arena.head.ptr;
