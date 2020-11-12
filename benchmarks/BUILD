@@ -8,6 +8,7 @@ load(
     "tmpl_cc_binary",
     "cc_lite_proto_library",
     "expand_suffixes",
+    "proto_library",
 )
 
 licenses(["notice"])
@@ -79,16 +80,19 @@ SIZE_BENCHMARKS = {
 py_binary(
     name = "gen_synthetic_protos",
     srcs = ["gen_synthetic_protos.py"],
+    python_version = "PY3",
 )
 
 py_binary(
     name = "gen_upb_binary_c",
     srcs = ["gen_upb_binary_c.py"],
+    python_version = "PY3",
 )
 
 py_binary(
     name = "gen_protobuf_binary_cc",
     srcs = ["gen_protobuf_binary_cc.py"],
+    python_version = "PY3",
 )
 
 genrule(
@@ -100,7 +104,7 @@ genrule(
         "100_fields.proto",
         "200_fields.proto",
     ],
-    cmd = "$(execpath :gen_synthetic_protos) $(GENDIR)",
+    cmd = "$(execpath :gen_synthetic_protos) $(RULEDIR)",
 )
 
 proto_library(
@@ -142,7 +146,7 @@ tmpl_cc_binary(
     testonly = 1,
     gen = ":gen_upb_binary_c",
     args = [
-        "benchmarks/" + k + ".upb.h", 
+        package_name() + "/" + k + ".upb.h",
         "upb_benchmark_" + v,
     ],
     deps = [
@@ -154,7 +158,7 @@ tmpl_cc_binary(
     testonly = 1,
     gen = ":gen_protobuf_binary_cc",
     args = [
-        "benchmarks/" + k + ".pb.h",
+        package_name() + "/" + k + ".pb.h",
         "upb_benchmark::" + v,
     ],
     deps = [
@@ -171,7 +175,7 @@ tmpl_cc_binary(
     testonly = 1,
     gen = ":gen_protobuf_binary_cc",
     args = [
-        "benchmarks/" + k + "_lite.pb.h",
+        package_name() + "/" + k + "_lite.pb.h",
         "upb_benchmark::" + v,
     ],
     deps = [
@@ -187,5 +191,8 @@ genrule(
         suffixes = ["_upb_binary", "_protobuf_binary", "_lite_protobuf_binary"],
     ),
     outs = ["size_data.txt"],
-    cmd = "size --format=GNU -d $(SRCS) > $@",
+    # We want --format=GNU which counts rodata with data, not text.
+    cmd = "size $$($$OSTYPE == 'linux-gnu' ? '--format=GNU -d' : '') $(SRCS) > $@",
+    # "size" sometimes isn't available remotely.
+    local = 1,
 )

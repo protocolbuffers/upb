@@ -1,4 +1,20 @@
 
+# copybara:insert_for_google3_begin
+# load("//tools/build_defs/proto/cpp:cc_proto_library.bzl", _cc_proto_library="cc_proto_library")
+# copybara:insert_end
+
+# copybara:strip_for_google3_begin
+_cc_proto_library = native.cc_proto_library
+# copybara:strip_end
+
+def proto_library(**kwargs):
+    native.proto_library(
+        # copybara:insert_for_google3_begin
+        # cc_api_version = 2,
+        # copybara:insert_end
+        **kwargs,
+    )
+
 def tmpl_cc_binary(name, gen, args, replacements = [], **kwargs):
     srcs = [name + ".cc"]
     native.genrule(
@@ -9,6 +25,10 @@ def tmpl_cc_binary(name, gen, args, replacements = [], **kwargs):
     )
 
     native.cc_binary(
+        # copybara:insert_for_google3_begin
+        # malloc="//base:system_malloc",
+        # features = ["-static_linking_mode"],
+        # copybara:insert_end
         name = name,
         srcs = srcs,
         **kwargs,
@@ -25,19 +45,19 @@ def cc_lite_proto_library(name, srcs, outs):
         cmd = "cp $< $@ && chmod a+w $@ && echo 'option optimize_for = LITE_RUNTIME;' >> $@",
     )
 
-    native.proto_library(
+    proto_library(
         name = name + "_proto",
         srcs = outs,
     )
 
-    native.cc_proto_library(
+    _cc_proto_library(
         name = name,
         deps = [":" + name + "_proto"],
     )
 
 def expand_suffixes(vals, suffixes):
-  ret = []
-  for val in vals:
-    for suffix in suffixes:
-      ret.append(val + suffix)
-  return ret
+    ret = []
+    for val in vals:
+        for suffix in suffixes:
+            ret.append(val + suffix)
+    return ret
