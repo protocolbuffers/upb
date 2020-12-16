@@ -345,6 +345,12 @@ bool upb_array_resize(upb_array *arr, size_t size, upb_arena *arena) {
   return _upb_array_resize(arr, size, arena);
 }
 
+void *upb_array_ptr(upb_array *arr, size_t* n) {
+  int lg2 = arr->data & 7;
+  if (n) *n = arr->len << lg2;
+  return _upb_array_ptr(arr);
+}
+
 /** upb_map *******************************************************************/
 
 upb_map *upb_map_new(upb_arena *a, upb_fieldtype_t key_type,
