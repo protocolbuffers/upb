@@ -595,10 +595,6 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
         uint64_t size;
         if (_upb_isrepeated(field)) ndx += 18;
         ptr = decode_varint64(d, ptr, &size);
-        if (size >= INT32_MAX ||
-            ptr - d->end + (int32_t)size > d->limit) {
-          decode_err(d); /* Length overflow. */
-        }
         op = delim_ops[ndx];
         val.size = size;
         break;
