@@ -306,31 +306,10 @@ cc_library(
 
 exports_files(
     [
-        "upb/json/parser.rl",
-        "BUILD",
-        "WORKSPACE",
-    ],
-    visibility = ["//cmake:__pkg__"],
-)
-
-exports_files(
-    [
         "third_party/lunit/console.lua",
         "third_party/lunit/lunit.lua",
     ],
     visibility = ["//tests/bindings/lua:__pkg__"],
-)
-
-filegroup(
-    name = "cmake_files",
-    srcs = glob([
-        "google/**/*",
-        "upbc/**/*",
-        "upb/**/*",
-        "tests/**/*",
-        "third_party/**/*",
-    ]),
-    visibility = ["//cmake:__pkg__"],
 )
 
 # copybara:strip_end

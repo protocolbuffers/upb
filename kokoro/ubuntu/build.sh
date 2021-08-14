@@ -34,8 +34,6 @@ fi
 
 # Verify/query CMake
 echo PATH=$PATH
-ls -l `which cmake`
-cmake --version
 
 # Log the bazel path and version.
 which bazel
@@ -48,7 +46,7 @@ if which gcc; then
   CC=gcc bazel test -c opt --test_output=errors ... -- -benchmarks:benchmark
   if [[ $(uname) = "Linux" ]]; then
     CC=gcc bazel test --test_output=errors ...
-    CC=gcc bazel test --test_output=errors ... --//:fasttable_enabled=true -- -cmake:test_generated_files -benchmarks:benchmark
+    CC=gcc bazel test --test_output=errors ... --//:fasttable_enabled=true -- -benchmarks:benchmark
   fi
   # TODO: work through these errors and enable this.
   # if gcc -fanalyzer -x c /dev/null -c -o /dev/null; then
@@ -60,7 +58,7 @@ if which clang; then
   if [[ $(uname) = "Linux" ]]; then
     CC=clang bazel test --test_output=errors ...
     CC=clang bazel test --test_output=errors -c opt ... -- -benchmarks:benchmark
-    CC=clang bazel test --test_output=errors ... --//:fasttable_enabled=true -- -cmake:test_generated_files
+    CC=clang bazel test --test_output=errors ... --//:fasttable_enabled=true
 
     CC=clang bazel test --test_output=errors --config=m32 ... -- -benchmarks:benchmark
     CC=clang bazel test --test_output=errors --config=asan ... -- -benchmarks:benchmark
@@ -71,5 +69,5 @@ if which clang; then
 fi
 
 if which valgrind; then
-  bazel test --config=valgrind ... -- -tests:test_conformance_upb -cmake:cmake_build
+  bazel test --config=valgrind ... -- -tests:test_conformance_upb
 fi
