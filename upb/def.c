@@ -1374,15 +1374,22 @@ static char* makejsonname(symtab_addctx *ctx, const char* name) {
   return json_name;
 }
 
-static void symtab_add(symtab_addctx *ctx, const char *name, upb_value v) {
-  // TODO: table should support an operation "tryinsert" to avoid the double
-  // lookup.
-  if (upb_strtable_lookup(&ctx->symtab->syms, name, NULL)) {
-    symtab_errf(ctx, "duplicate symbol '%s'", name);
+static void symtab_tryinsert(symtab_addctx *ctx, upb_strtable *strtab,
+                             const char *name, upb_value v,
+                             const char *errmsg) {
+  switch (
+      upb_strtable_tryinsert(strtab, name, v, ctx->symtab->arena)) {
+    case kUpbTableOom:
+      symtab_oomerr(ctx);  // Never returns.
+    case kUpbTableDuplicate:
+      symtab_errf(ctx, errmsg, name);  // Never returns.
+    case kUpbTableSuccess:
+      break;
   }
-  size_t len = strlen(name);
-  CHK_OOM(upb_strtable_insert(&ctx->symtab->syms, name, len, v,
-                              ctx->symtab->arena));
+}
+
+static void symtab_add(symtab_addctx *ctx, const char *name, upb_value v) {
+  symtab_tryinsert(ctx, &ctx->symtab->syms, name, v, "duplicate symbol '%s'");
 }
 
 /* Given a symbol and the base symbol inside which it is defined, find the
@@ -1631,14 +1638,6 @@ static void create_fielddef(
     f->msgdef = m;
     f->is_extension_ = false;
 
-    if (upb_strtable_lookup(&m->ntof, shortname, NULL)) {
-      symtab_errf(ctx, "duplicate field name (%s)", shortname);
-    }
-
-    if (upb_strtable_lookup(&m->ntof, json_name, NULL)) {
-      symtab_errf(ctx, "duplicate json_name (%s)", json_name);
-    }
-
     if (upb_inttable_lookup(&m->itof, field_number, NULL)) {
       symtab_errf(ctx, "duplicate field number (%u)", field_number);
     }
@@ -1648,12 +1647,13 @@ static void create_fielddef(
     v = upb_value_constptr(f);
     json_size = strlen(json_name);
 
-    CHK_OOM(upb_strtable_insert(&m->ntof, name.data, name.size, field_v,
-                                ctx->arena));
+    symtab_tryinsert(ctx, &m->ntof, shortname, field_v,
+                     "duplicate field name (%s)");
     CHK_OOM(upb_inttable_insert(&m->itof, field_number, v, ctx->arena));
 
     if (strcmp(shortname, json_name) != 0) {
-      upb_strtable_insert(&m->ntof, json_name, json_size, json_v, ctx->arena);
+      symtab_tryinsert(ctx, &m->ntof, json_name, json_v,
+                       "duplicate json_name (%s)");
     }
 
     if (ctx->layouts) {

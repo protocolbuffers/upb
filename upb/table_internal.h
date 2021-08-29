@@ -230,6 +230,15 @@ bool upb_inttable_insert(upb_inttable *t, uintptr_t key, upb_value val,
 bool upb_strtable_insert(upb_strtable *t, const char *key, size_t len,
                          upb_value val, upb_arena *a);
 
+typedef enum {
+  kUpbTableSuccess = 0,
+  kUpbTableDuplicate = 1,
+  kUpbTableOom = 2,
+} upb_tryinsert_status;
+
+upb_tryinsert_status upb_strtable_tryinsert(upb_strtable *t, const char *key,
+                                            upb_value val, upb_arena *a);
+
 /* Looks up key in this table, returning "true" if the key was found.
  * If v is non-NULL, copies the value for this key into *v. */
 bool upb_inttable_lookup(const upb_inttable *t, uintptr_t key, upb_value *v);

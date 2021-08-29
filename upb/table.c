@@ -194,14 +194,15 @@ static bool lookup(const upb_table *t, lookupkey_t key, upb_value *v,
   }
 }
 
-/* The given key must not already exist in the table. */
-static void insert(upb_table *t, lookupkey_t key, upb_tabkey tabkey,
+static bool insert(upb_table *t, lookupkey_t key, upb_tabkey tabkey,
                    upb_value val, uint32_t hash,
-                   hashfunc_t *hashfunc, eqlfunc_t *eql) {
+                   hashfunc_t *hashfunc, eqlfunc_t *eql, bool allow_failure) {
   upb_tabent *mainpos_e;
   upb_tabent *our_e;
 
-  UPB_ASSERT(findentry(t, key, hash, eql) == NULL);
+  if (!allow_failure) {
+    UPB_ASSERT(findentry(t, key, hash, eql) == NULL);
+  }
 
   t->count++;
   mainpos_e = getentry_mutable(t, hash);
@@ -217,7 +218,16 @@ static void insert(upb_table *t, lookupkey_t key, upb_tabkey tabkey,
     upb_tabent *chain = getentry_mutable(t, hashfunc(mainpos_e->key));
     if (chain == mainpos_e) {
       /* Existing ent is in its main position (it has the same hash as us, and
-       * is the head of our chain).  Insert to new ent and append to this chain. */
+       * is the head of our chain). */
+      if (allow_failure) {
+        const upb_tabent *e = mainpos_e;
+        while (1) {
+          if (eql(e->key, key)) return false;  // Already present?
+          if ((e = e->next) == NULL) break;
+        }
+      }
+
+      /* Insert to new ent and append to this chain. */
       new_e->next = mainpos_e->next;
       mainpos_e->next = new_e;
       our_e = new_e;
@@ -238,6 +248,7 @@ static void insert(upb_table *t, lookupkey_t key, upb_tabkey tabkey,
   our_e->key = tabkey;
   our_e->val.val = val.val;
   UPB_ASSERT(findentry(t, key, hash, eql) == our_e);
+  return true;
 }
 
 static bool rm(upb_table *t, lookupkey_t key, upb_value *val,
@@ -506,8 +517,33 @@ bool upb_strtable_insert(upb_strtable *t, const char *k, size_t len,
   if (tabkey == 0) return false;
 
   hash = table_hash(key.str.str, key.str.len);
-  insert(&t->t, key, tabkey, v, hash, &strhash, &streql);
+  insert(&t->t, key, tabkey, v, hash, &strhash, &streql, false);
   return true;
+}
+
+upb_tryinsert_status upb_strtable_tryinsert(upb_strtable *t, const char *k,
+                                            upb_value val, upb_arena *a) {
+  lookupkey_t key;
+  upb_tabkey tabkey;
+  uint32_t hash;
+  size_t len = strlen(k);
+
+  if (isfull(&t->t)) {
+    /* Need to resize.  New table of double the size, add old elements to it. */
+    if (!upb_strtable_resize(t, t->t.size_lg2 + 1, a)) {
+      return kUpbTableOom;
+    }
+  }
+
+  key = strkey2(k, len);
+  tabkey = strcopy(key, a);
+  if (tabkey == 0) return kUpbTableOom;
+
+  hash = table_hash(key.str.str, key.str.len);
+  if (!insert(&t->t, key, tabkey, val, hash, &strhash, &streql, true)) {
+    return kUpbTableDuplicate;
+  }
+  return kUpbTableSuccess;
 }
 
 bool upb_strtable_lookup2(const upb_strtable *t, const char *key, size_t len,
@@ -667,14 +703,16 @@ bool upb_inttable_insert(upb_inttable *t, uintptr_t key, upb_value val,
 
         _upb_value_setval(&v, e->val.val);
         hash = upb_inthash(e->key);
-        insert(&new_table, intkey(e->key), e->key, v, hash, &inthash, &inteql);
+        insert(&new_table, intkey(e->key), e->key, v, hash, &inthash, &inteql,
+               false);
       }
 
       UPB_ASSERT(t->t.count == new_table.count);
 
       t->t = new_table;
     }
-    insert(&t->t, intkey(key), key, val, upb_inthash(key), &inthash, &inteql);
+    insert(&t->t, intkey(key), key, val, upb_inthash(key), &inthash, &inteql,
+           false);
   }
   check(t);
   return true;

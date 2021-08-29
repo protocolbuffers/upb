@@ -54,7 +54,7 @@ def Run(cmd):
   subprocess.check_call(cmd, shell=True)
 
 def Benchmark(outbase, bench_cpu=True, runs=12, fasttable=False):
-  tmpfile = "/tmp/bench-output.json"
+  tmpfile = outbase + ".json"
   Run("rm -rf {}".format(tmpfile))
   #Run("CC=clang bazel test ...")
   if fasttable:
@@ -95,11 +95,11 @@ if len(sys.argv) > 1:
     pass
 
 # Benchmark our current directory first, since it's more likely to be broken.
-Benchmark("/tmp/new", bench_cpu, fasttable=fasttable)
+Benchmark("/tmp/bench-new", bench_cpu, fasttable=fasttable)
 
 # Benchmark the baseline.
 with GitWorktree(baseline):
-  Benchmark("/tmp/old", bench_cpu, fasttable=fasttable)
+  Benchmark("/tmp/bench-old", bench_cpu, fasttable=fasttable)
 
 print()
 print()
