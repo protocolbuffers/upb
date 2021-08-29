@@ -118,8 +118,6 @@ struct upb_oneofdef {
   int field_count;
   bool synthetic;
   const upb_fielddef **fields;
-  upb_strtable ntof;
-  upb_inttable itof;
 };
 
 struct upb_filedef {
@@ -302,28 +300,9 @@ const upb_enumvaldef *upb_enumdef_value(const upb_enumdef *e, int i) {
   return &e->values[i];
 }
 
-// Deprecated functions.
-
-int upb_enumdef_numvals(const upb_enumdef *e) {
-  return (int)upb_strtable_count(&e->ntoi);
+int upb_enumdef_valuecount(const upb_enumdef *e) {
+  return e->value_count;
 }
-
-void upb_enum_begin(upb_enum_iter *i, const upb_enumdef *e) {
-  /* We iterate over the ntoi table, to account for duplicate numbers. */
-  upb_strtable_begin(i, &e->ntoi);
-}
-
-void upb_enum_next(upb_enum_iter *iter) { upb_strtable_next(iter); }
-bool upb_enum_done(upb_enum_iter *iter) { return upb_strtable_done(iter); }
-
-const char *upb_enum_iter_name(upb_enum_iter *iter) {
-  return upb_strtable_iter_key(iter).data;
-}
-
-int32_t upb_enum_iter_number(upb_enum_iter *iter) {
-  return upb_value_getint32(upb_strtable_iter_value(iter));
-}
-
 
 /* upb_enumvaldef *************************************************************/
 
@@ -639,18 +618,6 @@ const upb_fielddef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
   return f;
 }
 
-int upb_msgdef_numfields(const upb_msgdef *m) {
-  return m->field_count;
-}
-
-int upb_msgdef_numoneofs(const upb_msgdef *m) {
-  return m->oneof_count;
-}
-
-int upb_msgdef_numrealoneofs(const upb_msgdef *m) {
-  return m->real_oneof_count;
-}
-
 int upb_msgdef_fieldcount(const upb_msgdef *m) {
   return m->field_count;
 }
@@ -697,63 +664,6 @@ bool upb_msgdef_iswrapper(const upb_msgdef *m) {
          type <= UPB_WELLKNOWN_BOOLVALUE;
 }
 
-void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m) {
-  upb_inttable_begin(iter, &m->itof);
-}
-
-void upb_msg_field_next(upb_msg_field_iter *iter) { upb_inttable_next(iter); }
-
-bool upb_msg_field_done(const upb_msg_field_iter *iter) {
-  return upb_inttable_done(iter);
-}
-
-upb_fielddef *upb_msg_iter_field(const upb_msg_field_iter *iter) {
-  return (upb_fielddef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
-}
-
-void upb_msg_field_iter_setdone(upb_msg_field_iter *iter) {
-  upb_inttable_iter_setdone(iter);
-}
-
-bool upb_msg_field_iter_isequal(const upb_msg_field_iter * iter1,
-                                const upb_msg_field_iter * iter2) {
-  return upb_inttable_iter_isequal(iter1, iter2);
-}
-
-void upb_msg_oneof_begin(upb_msg_oneof_iter *iter, const upb_msgdef *m) {
-  upb_strtable_begin(iter, &m->ntof);
-  /* We need to skip past any initial fields. */
-  while (!upb_strtable_done(iter) &&
-         !unpack_def(upb_strtable_iter_value(iter), UPB_DEFTYPE_ONEOF)) {
-    upb_strtable_next(iter);
-  }
-}
-
-void upb_msg_oneof_next(upb_msg_oneof_iter *iter) {
-  /* We need to skip past fields to return only oneofs. */
-  do {
-    upb_strtable_next(iter);
-  } while (!upb_strtable_done(iter) &&
-           !unpack_def(upb_strtable_iter_value(iter), UPB_DEFTYPE_ONEOF));
-}
-
-bool upb_msg_oneof_done(const upb_msg_oneof_iter *iter) {
-  return upb_strtable_done(iter);
-}
-
-const upb_oneofdef *upb_msg_iter_oneof(const upb_msg_oneof_iter *iter) {
-  return unpack_def(upb_strtable_iter_value(iter), UPB_DEFTYPE_ONEOF);
-}
-
-void upb_msg_oneof_iter_setdone(upb_msg_oneof_iter *iter) {
-  upb_strtable_iter_setdone(iter);
-}
-
-bool upb_msg_oneof_iter_isequal(const upb_msg_oneof_iter *iter1,
-                                const upb_msg_oneof_iter *iter2) {
-  return upb_strtable_iter_isequal(iter1, iter2);
-}
-
 /* upb_oneofdef ***************************************************************/
 
 const char *upb_oneofdef_name(const upb_oneofdef *o) {
@@ -773,10 +683,6 @@ const upb_fielddef *upb_oneofdef_field(const upb_oneofdef *o, int i) {
   return o->fields[i];
 }
 
-int upb_oneofdef_numfields(const upb_oneofdef *o) {
-  return o->field_count;
-}
-
 uint32_t upb_oneofdef_index(const upb_oneofdef *o) {
   return o - o->parent->oneofs;
 }
@@ -787,35 +693,13 @@ bool upb_oneofdef_issynthetic(const upb_oneofdef *o) {
 
 const upb_fielddef *upb_oneofdef_ntof(const upb_oneofdef *o,
                                       const char *name, size_t length) {
-  upb_value val;
-  return upb_strtable_lookup2(&o->ntof, name, length, &val) ?
-      upb_value_getptr(val) : NULL;
+  const upb_fielddef *ret = upb_msgdef_ntof(o->parent, name, length);
+  return ret && ret->oneof == o ? ret : NULL;
 }
 
 const upb_fielddef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num) {
-  upb_value val;
-  return upb_inttable_lookup(&o->itof, num, &val) ? upb_value_getptr(val)
-                                                  : NULL;
-}
-
-void upb_oneof_begin(upb_oneof_iter *iter, const upb_oneofdef *o) {
-  upb_inttable_begin(iter, &o->itof);
-}
-
-void upb_oneof_next(upb_oneof_iter *iter) {
-  upb_inttable_next(iter);
-}
-
-bool upb_oneof_done(upb_oneof_iter *iter) {
-  return upb_inttable_done(iter);
-}
-
-upb_fielddef *upb_oneof_iter_field(const upb_oneof_iter *iter) {
-  return (upb_fielddef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
-}
-
-void upb_oneof_iter_setdone(upb_oneof_iter *iter) {
-  upb_inttable_iter_setdone(iter);
+  const upb_fielddef *ret = upb_msgdef_itof(o->parent, num);
+  return ret && ret->oneof == o ? ret : NULL;
 }
 
 /* upb_filedef ****************************************************************/
@@ -1069,7 +953,7 @@ static int field_number_cmp(const void *p1, const void *p2) {
 static void assign_layout_indices(const upb_msgdef *m, upb_msglayout *l,
                                   upb_msglayout_field *fields) {
   int i;
-  int n = upb_msgdef_numfields(m);
+  int n = upb_msgdef_fieldcount(m);
   int dense_below = 0;
   for (i = 0; i < n; i++) {
     upb_fielddef *f = (upb_fielddef*)upb_msgdef_itof(m, fields[i].number);
@@ -1111,10 +995,8 @@ static void fill_fieldlayout(upb_msglayout_field *field, const upb_fielddef *f) 
  * It computes a dynamic layout for all of the fields in |m|. */
 static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   upb_msglayout *l = (upb_msglayout*)m->layout;
-  upb_msg_field_iter it;
-  upb_msg_oneof_iter oit;
-  size_t hasbit;
-  size_t field_count = upb_msgdef_numfields(m);
+  size_t hasbit = 0;
+  size_t field_count = upb_msgdef_fieldcount(m);
   size_t submsg_count = 0;
   const upb_msglayout **submsgs;
   upb_msglayout_field *fields;
@@ -1131,7 +1013,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   fields = symtab_alloc(ctx, field_count * sizeof(*fields));
   submsgs = symtab_alloc(ctx, submsg_count * sizeof(*submsgs));
 
-  l->field_count = upb_msgdef_numfields(m);
+  l->field_count = upb_msgdef_fieldcount(m);
   l->fields = fields;
   l->submsgs = submsgs;
   l->table_mask = 0;
@@ -1179,10 +1061,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
 
   /* Allocate hasbits and set basic field attributes. */
   submsg_count = 0;
-  for (upb_msg_field_begin(&it, m), hasbit = 0;
-       !upb_msg_field_done(&it);
-       upb_msg_field_next(&it)) {
-    upb_fielddef* f = upb_msg_iter_field(&it);
+  for (int i = 0; i < m->field_count; i++) {
+    upb_fielddef* f = (upb_fielddef*)&m->fields[i];
     upb_msglayout_field *field = &fields[upb_fielddef_index(f)];
 
     fill_fieldlayout(field, f);
@@ -1206,9 +1086,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   l->size = div_round_up(hasbit, 8);
 
   /* Allocate non-oneof fields. */
-  for (upb_msg_field_begin(&it, m); !upb_msg_field_done(&it);
-       upb_msg_field_next(&it)) {
-    const upb_fielddef* f = upb_msg_iter_field(&it);
+  for (int i = 0; i < m->field_count; i++) {
+    const upb_fielddef* f = &m->fields[i];
     size_t field_size = upb_msg_fielddefsize(f);
     size_t index = upb_fielddef_index(f);
 
@@ -1222,10 +1101,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
 
   /* Allocate oneof fields.  Each oneof field consists of a uint32 for the case
    * and space for the actual data. */
-  for (upb_msg_oneof_begin(&oit, m); !upb_msg_oneof_done(&oit);
-       upb_msg_oneof_next(&oit)) {
-    const upb_oneofdef* o = upb_msg_iter_oneof(&oit);
-    upb_oneof_iter fit;
+  for (int i = 0; i < m->oneof_count; i++) {
+    const upb_oneofdef* o = &m->oneofs[i];
 
     size_t case_size = sizeof(uint32_t);  /* Could potentially optimize this. */
     size_t field_size = 0;
@@ -1235,10 +1112,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
     if (upb_oneofdef_issynthetic(o)) continue;
 
     /* Calculate field size: the max of all field sizes. */
-    for (upb_oneof_begin(&fit, o);
-         !upb_oneof_done(&fit);
-         upb_oneof_next(&fit)) {
-      const upb_fielddef* f = upb_oneof_iter_field(&fit);
+    for (int j = 0; j < o->field_count; j++) {
+      const upb_fielddef* f = o->fields[j];
       field_size = UPB_MAX(field_size, upb_msg_fielddefsize(f));
     }
 
@@ -1246,10 +1121,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
     case_offset = upb_msglayout_place(l, case_size);
     data_offset = upb_msglayout_place(l, field_size);
 
-    for (upb_oneof_begin(&fit, o);
-         !upb_oneof_done(&fit);
-         upb_oneof_next(&fit)) {
-      const upb_fielddef* f = upb_oneof_iter_field(&fit);
+    for (int j = 0; j < o->field_count; j++) {
+      const upb_fielddef* f = o->fields[j];
       fields[upb_fielddef_index(f)].offset = data_offset;
       fields[upb_fielddef_index(f)].presence = ~case_offset;
     }
@@ -1260,7 +1133,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   l->size = UPB_ALIGN_UP(l->size, 8);
 
   /* Sort fields by number. */
-  qsort(fields, upb_msgdef_numfields(m), sizeof(*fields), field_number_cmp);
+  qsort(fields, upb_msgdef_fieldcount(m), sizeof(*fields), field_number_cmp);
   assign_layout_indices(m, l, fields);
 }
 
@@ -1378,7 +1251,7 @@ static void symtab_tryinsert(symtab_addctx *ctx, upb_strtable *strtab,
                              const char *name, upb_value v,
                              const char *errmsg) {
   switch (
-      upb_strtable_tryinsert(strtab, name, v, ctx->symtab->arena)) {
+     upb_strtable_tryinsert(strtab, name, v, ctx->symtab->arena)) {
     case kUpbTableOom:
       symtab_oomerr(ctx);  // Never returns.
     case kUpbTableDuplicate:
@@ -1442,9 +1315,6 @@ static void create_oneofdef(
   v = pack_def(o, UPB_DEFTYPE_ONEOF);
   symtab_add(ctx, o->full_name, v);
   CHK_OOM(upb_strtable_insert(&m->ntof, name.data, name.size, v, ctx->arena));
-
-  CHK_OOM(upb_inttable_init(&o->itof, ctx->arena));
-  CHK_OOM(upb_strtable_init(&o->ntof, 4, ctx->arena));
 }
 
 static str_t *newstr(symtab_addctx *ctx, const char *data, size_t len) {
@@ -1700,7 +1570,6 @@ static void create_fielddef(
     int oneof_index =
         google_protobuf_FieldDescriptorProto_oneof_index(field_proto);
     upb_oneofdef *oneof;
-    upb_value v = upb_value_constptr(f);
 
     if (upb_fielddef_label(f) != UPB_LABEL_OPTIONAL) {
       symtab_errf(ctx, "fields in oneof must have OPTIONAL label (%s)",
@@ -1723,9 +1592,6 @@ static void create_fielddef(
     if (f->proto3_optional_) {
       oneof->synthetic = true;
     }
-    CHK_OOM(upb_inttable_insert(&oneof->itof, f->number_, v, ctx->arena));
-    CHK_OOM(
-        upb_strtable_insert(&oneof->ntof, name.data, name.size, v, ctx->arena));
   } else {
     f->oneof = NULL;
     if (f->proto3_optional_) {

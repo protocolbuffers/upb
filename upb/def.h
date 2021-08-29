@@ -161,17 +161,6 @@ UPB_INLINE const upb_fielddef *upb_oneofdef_ntofz(const upb_oneofdef *o,
 }
 const upb_fielddef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num);
 
-/* DEPRECATED, slated for removal. */
-int upb_oneofdef_numfields(const upb_oneofdef *o);
-void upb_oneof_begin(upb_oneof_iter *iter, const upb_oneofdef *o);
-void upb_oneof_next(upb_oneof_iter *iter);
-bool upb_oneof_done(upb_oneof_iter *iter);
-upb_fielddef *upb_oneof_iter_field(const upb_oneof_iter *iter);
-void upb_oneof_iter_setdone(upb_oneof_iter *iter);
-bool upb_oneof_iter_isequal(const upb_oneof_iter *iter1,
-                            const upb_oneof_iter *iter2);
-/* END DEPRECATED */
-
 /* upb_msgdef *****************************************************************/
 
 typedef upb_inttable_iter upb_msg_field_iter;
@@ -238,26 +227,6 @@ UPB_INLINE bool upb_msgdef_lookupnamez(const upb_msgdef *m, const char *name,
 const upb_fielddef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
                                               const char *name, size_t len);
 
-/* DEPRECATED, slated for removal */
-int upb_msgdef_numfields(const upb_msgdef *m);
-int upb_msgdef_numoneofs(const upb_msgdef *m);
-int upb_msgdef_numrealoneofs(const upb_msgdef *m);
-void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m);
-void upb_msg_field_next(upb_msg_field_iter *iter);
-bool upb_msg_field_done(const upb_msg_field_iter *iter);
-upb_fielddef *upb_msg_iter_field(const upb_msg_field_iter *iter);
-void upb_msg_field_iter_setdone(upb_msg_field_iter *iter);
-bool upb_msg_field_iter_isequal(const upb_msg_field_iter * iter1,
-                                const upb_msg_field_iter * iter2);
-void upb_msg_oneof_begin(upb_msg_oneof_iter * iter, const upb_msgdef *m);
-void upb_msg_oneof_next(upb_msg_oneof_iter * iter);
-bool upb_msg_oneof_done(const upb_msg_oneof_iter *iter);
-const upb_oneofdef *upb_msg_iter_oneof(const upb_msg_oneof_iter *iter);
-void upb_msg_oneof_iter_setdone(upb_msg_oneof_iter * iter);
-bool upb_msg_oneof_iter_isequal(const upb_msg_oneof_iter *iter1,
-                                const upb_msg_oneof_iter *iter2);
-/* END DEPRECATED */
-
 /* upb_enumdef ****************************************************************/
 
 typedef upb_strtable_iter upb_enum_iter;
@@ -272,15 +241,6 @@ const upb_enumvaldef *upb_enumdef_value(const upb_enumdef *e, int i);
 const upb_enumvaldef *upb_enumdef_lookupname(const upb_enumdef *e,
                                              const char *name, size_t len);
 const upb_enumvaldef *upb_enumdef_lookupnum(const upb_enumdef *e, int32_t num);
-
-/* DEPRECATED, slated for removal */
-int upb_enumdef_numvals(const upb_enumdef *e);
-void upb_enum_begin(upb_enum_iter *iter, const upb_enumdef *e);
-void upb_enum_next(upb_enum_iter *iter);
-bool upb_enum_done(upb_enum_iter *iter);
-const char *upb_enum_iter_name(upb_enum_iter *iter);
-int32_t upb_enum_iter_number(upb_enum_iter *iter);
-/* END DEPRECATED */
 
 // Convenience wrapper.
 UPB_INLINE const upb_enumvaldef *upb_enumdef_lookupnamez(const upb_enumdef *e,

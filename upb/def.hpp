@@ -167,7 +167,7 @@ class OneofDefPtr {
   const char* name() const { return upb_oneofdef_name(ptr_); }
 
   // Returns the number of fields in the oneof.
-  int field_count() const { return upb_oneofdef_numfields(ptr_); }
+  int field_count() const { return upb_oneofdef_fieldcount(ptr_); }
   FieldDefPtr field(int i) const { return FieldDefPtr(upb_oneofdef_field(ptr_, i)); }
 
   // Looks up by name.
@@ -205,11 +205,11 @@ class MessageDefPtr {
   const char* name() const { return upb_msgdef_name(ptr_); }
 
   // The number of fields that belong to the MessageDef.
-  int field_count() const { return upb_msgdef_numfields(ptr_); }
+  int field_count() const { return upb_msgdef_fieldcount(ptr_); }
   FieldDefPtr field(int i) const { return FieldDefPtr(upb_msgdef_field(ptr_, i)); }
 
   // The number of oneofs that belong to the MessageDef.
-  int oneof_count() const { return upb_msgdef_numoneofs(ptr_); }
+  int oneof_count() const { return upb_msgdef_oneofcount(ptr_); }
   OneofDefPtr oneof(int i) const { return OneofDefPtr(upb_msgdef_oneof(ptr_, i)); }
 
   upb_syntax_t syntax() const { return upb_msgdef_syntax(ptr_); }
@@ -345,7 +345,7 @@ class EnumDefPtr {
   // Returns the number of values currently defined in the enum.  Note that
   // multiple names can refer to the same number, so this may be greater than
   // the total number of unique numbers.
-  int value_count() const { return upb_enumdef_numvals(ptr_); }
+  int value_count() const { return upb_enumdef_valuecount(ptr_); }
 
   // Lookups from name to integer, returning true if found.
   EnumValDefPtr FindValueByName(const char* name) const {
@@ -358,23 +358,6 @@ class EnumDefPtr {
   EnumValDefPtr FindValueByNumber(int32_t num) const {
     return EnumValDefPtr(upb_enumdef_lookupnum(ptr_, num));
   }
-
-  // Iteration over name/value pairs.  The order is undefined.
-  // Adding an enum val invalidates any iterators.
-  //
-  // TODO: make compatible with range-for, with elements as pairs?
-  class Iterator {
-   public:
-    explicit Iterator(EnumDefPtr e) { upb_enum_begin(&iter_, e.ptr()); }
-
-    int32_t number() { return upb_enum_iter_number(&iter_); }
-    const char* name() { return upb_enum_iter_name(&iter_); }
-    bool Done() { return upb_enum_done(&iter_); }
-    void Next() { return upb_enum_next(&iter_); }
-
-   private:
-    upb_enum_iter iter_;
-  };
 
  private:
   const upb_enumdef* ptr_;

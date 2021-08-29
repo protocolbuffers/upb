@@ -91,7 +91,7 @@ function test_def_readers()
   -- enum
   local e = test_messages_proto3['TestAllTypesProto3.NestedEnum']
   assert_true(#e > 3 and #e < 10)
-  assert_equal(2, e:value("BAZ"):number())
+  assert_equal(2, e:lookup("BAZ"):number())
 end
 
 function test_msg_map()
