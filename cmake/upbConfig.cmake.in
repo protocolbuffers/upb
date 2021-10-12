@@ -1,0 +1,19 @@
+get_filename_component(upb_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+list(
+  APPEND
+  CMAKE_MODULE_PATH
+  ${upb_CMAKE_DIR}
+  ${upb_CMAKE_DIR}/../Modules
+)
+
+if(NOT TARGET upb::upb)
+  include(${upb_CMAKE_DIR}/upbTargets.cmake)
+  include(${upb_CMAKE_DIR}/../Modules/ProtocGenUpb.cmake)
+endif()
+
+set(upb_LIBRARIES
+    upb::upb
+    upb::fastdecode
+    upb::protoc-gen-upb
+    upb::protoc-gen-upbc
+)

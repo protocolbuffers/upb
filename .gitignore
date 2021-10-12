@@ -1,4 +1,21 @@
+# Bazel
 *.s??
 obj/
 lib/
 bazel-*
+
+# CMake
+.build/
+build/
+
+# Conan
+tmp/
+
+# Jetbrains
+.idea
+
+# VS Code
+.vscode
+
+# Visual Studio
+.vs
