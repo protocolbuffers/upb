@@ -390,6 +390,7 @@ static int lupb_array_checkindex(lua_State *L, int narg, uint32_t max) {
  *   Array(message_type)
  */
 static int lupb_array_new(lua_State *L) {
+  int arg_count = lua_gettop(L);
   lupb_array *larray;
   upb_arena *arena;
 
@@ -410,6 +411,17 @@ static int lupb_array_new(lua_State *L) {
 
   larray->arr = upb_array_new(arena, larray->type);
   lupb_cacheset(L, larray->arr);
+
+  if (arg_count > 1) {
+    /* Set initial fields from table. */
+    int msg = arg_count + 1;
+    lua_pushnil(L);
+    while (lua_next(L, 2) != 0) {
+      lua_pushvalue(L, -2);  /* now stack is key, val, key */
+      lua_insert(L, -3);  /* now stack is key, key, val */
+      lua_settable(L, msg);
+    }
+  }
 
   return 1;
 }
@@ -943,15 +955,15 @@ static int lupb_decode(lua_State *L) {
   upb_msg *msg = lupb_msg_pushnew(L, 1);
   upb_arena *arena = lupb_arenaget(L, -1);
   char *buf;
-  bool ok;
 
   /* Copy input data to arena, message will reference it. */
   buf = upb_arena_malloc(arena, len);
   memcpy(buf, pb, len);
 
-  ok = _upb_decode(buf, len, msg, layout, NULL, UPB_DECODE_ALIAS, arena);
+  upb_DecodeStatus status = _upb_decode(buf, len, msg, layout, NULL,
+                                        kUpb_DecodeOption_AliasString, arena);
 
-  if (!ok) {
+  if (status != kUpb_DecodeStatus_Ok) {
     lua_pushstring(L, "Error decoding protobuf.");
     return lua_error(L);
   }

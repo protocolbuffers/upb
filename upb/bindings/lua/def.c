@@ -34,6 +34,7 @@
 #include "upb/def.h"
 
 #define LUPB_ENUMDEF "lupb.enumdef"
+#define LUPB_ENUMVALDEF "lupb.enumvaldef"
 #define LUPB_FIELDDEF "lupb.fielddef"
 #define LUPB_FILEDEF "lupb.filedef"
 #define LUPB_MSGDEF "lupb.msgdef"
@@ -170,12 +171,6 @@ static int lupb_fielddef_label(lua_State *L) {
   return 1;
 }
 
-static int lupb_fielddef_lazy(lua_State *L) {
-  const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushboolean(L, upb_fielddef_lazy(f));
-  return 1;
-}
-
 static int lupb_fielddef_name(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
   lua_pushstring(L, upb_fielddef_name(f));
@@ -228,7 +223,6 @@ static const struct luaL_Reg lupb_fielddef_m[] = {
   {"index", lupb_fielddef_index},
   {"is_extension", lupb_fielddef_isextension},
   {"label", lupb_fielddef_label},
-  {"lazy", lupb_fielddef_lazy},
   {"name", lupb_fielddef_name},
   {"number", lupb_fielddef_number},
   {"packed", lupb_fielddef_packed},
@@ -568,29 +562,20 @@ static int lupb_enumdef_file(lua_State *L) {
 /* lupb_enumdef_value()
  *
  * Handles:
- *   enum.value(number) -> name
- *   enum.value(name) -> number
+ *   enum.value(number) -> enumval
+ *   enum.value(name) -> enumval
  */
 static int lupb_enumdef_value(lua_State *L) {
   const upb_enumdef *e = lupb_enumdef_check(L, 1);
+  const upb_enumvaldef *ev;
 
   switch (lua_type(L, 2)) {
-    case LUA_TNUMBER: {
-      int32_t key = lupb_checkint32(L, 2);
-      /* Pushes "nil" for a NULL pointer. */
-      lua_pushstring(L, upb_enumdef_iton(e, key));
+    case LUA_TNUMBER:
+      ev = upb_enumdef_lookupnum(e, lupb_checkint32(L, 2));
       break;
-    }
-    case LUA_TSTRING: {
-      const char *key = lua_tostring(L, 2);
-      int32_t num;
-      if (upb_enumdef_ntoiz(e, key, &num)) {
-        lua_pushinteger(L, num);
-      } else {
-        lua_pushnil(L);
-      }
+    case LUA_TSTRING:
+      ev = upb_enumdef_lookupnamez(e, lua_tostring(L, 2));
       break;
-    }
     default: {
       const char *msg = lua_pushfstring(L, "number or string expected, got %s",
                                         luaL_typename(L, 2));
@@ -598,6 +583,7 @@ static int lupb_enumdef_value(lua_State *L) {
     }
   }
 
+  lupb_wrapper_pushwrapper(L, 1, ev, LUPB_ENUMVALDEF);
   return 1;
 }
 
@@ -634,6 +620,45 @@ static const struct luaL_Reg lupb_enumdef_m[] = {
 };
 
 
+/* lupb_enumvaldef ************************************************************/
+
+const upb_enumvaldef *lupb_enumvaldef_check(lua_State *L, int narg) {
+  return lupb_wrapper_check(L, narg, LUPB_ENUMVALDEF);
+}
+
+static int lupb_enumvaldef_enum(lua_State *L) {
+  const upb_enumvaldef *ev = lupb_enumvaldef_check(L, 1);
+  const upb_enumdef *e = upb_enumvaldef_enum(ev);
+  lupb_wrapper_pushwrapper(L, 1, e, LUPB_ENUMDEF);
+  return 1;
+}
+
+static int lupb_enumvaldef_fullname(lua_State *L) {
+  const upb_enumvaldef *ev = lupb_enumvaldef_check(L, 1);
+  lua_pushstring(L, upb_enumvaldef_fullname(ev));
+  return 1;
+}
+
+static int lupb_enumvaldef_name(lua_State *L) {
+  const upb_enumvaldef *ev = lupb_enumvaldef_check(L, 1);
+  lua_pushstring(L, upb_enumvaldef_name(ev));
+  return 1;
+}
+
+static int lupb_enumvaldef_number(lua_State *L) {
+  const upb_enumvaldef *ev = lupb_enumvaldef_check(L, 1);
+  lupb_pushint32(L, upb_enumvaldef_number(ev));
+  return 1;
+}
+
+static const struct luaL_Reg lupb_enumvaldef_m[] = {
+  {"enum", lupb_enumvaldef_enum},
+  {"full_name", lupb_enumvaldef_fullname},
+  {"name", lupb_enumvaldef_name},
+  {"number", lupb_enumvaldef_number},
+  {NULL, NULL}
+};
+
 /* lupb_filedef ***************************************************************/
 
 const upb_filedef *lupb_filedef_check(lua_State *L, int narg) {
@@ -657,28 +682,28 @@ static int lupb_filedef_depcount(lua_State *L) {
 static int lupb_filedef_enum(lua_State *L) {
   const upb_filedef *f = lupb_filedef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_enumdef *e = upb_filedef_enum(f, index);
+  const upb_enumdef *e = upb_filedef_toplvlenum(f, index);
   lupb_wrapper_pushwrapper(L, 1, e, LUPB_ENUMDEF);
   return 1;
 }
 
 static int lupb_filedef_enumcount(lua_State *L) {
   const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_enumcount(f));
+  lua_pushnumber(L, upb_filedef_toplvlenumcount(f));
   return 1;
 }
 
 static int lupb_filedef_msg(lua_State *L) {
   const upb_filedef *f = lupb_filedef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_msgdef *m = upb_filedef_msg(f, index);
+  const upb_msgdef *m = upb_filedef_toplvlmsg(f, index);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
 
 static int lupb_filedef_msgcount(lua_State *L) {
   const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_msgcount(f));
+  lua_pushnumber(L, upb_filedef_toplvlmsgcount(f));
   return 1;
 }
 
@@ -875,10 +900,15 @@ static int lupb_symtab_lookupenum(lua_State *L) {
   return 1;
 }
 
-static int lupb_symtab_tostring(lua_State *L) {
+static int lupb_symtab_lookupenumval(lua_State *L) {
   const upb_symtab *s = lupb_symtab_check(L, 1);
-  lua_pushfstring(L, "<upb.SymbolTable file_count=%d>",
-                  (int)upb_symtab_filecount(s));
+  const upb_enumvaldef *e = upb_symtab_lookupenumval(s, luaL_checkstring(L, 2));
+  lupb_symtab_pushwrapper(L, 1, e, LUPB_ENUMVALDEF);
+  return 1;
+}
+
+static int lupb_symtab_tostring(lua_State *L) {
+  lua_pushfstring(L, "<upb.SymbolTable>");
   return 1;
 }
 
@@ -887,6 +917,7 @@ static const struct luaL_Reg lupb_symtab_m[] = {
   {"add_set", lupb_symtab_addset},
   {"lookup_msg", lupb_symtab_lookupmsg},
   {"lookup_enum", lupb_symtab_lookupenum},
+  {"lookup_enumval", lupb_symtab_lookupenumval},
   {NULL, NULL}
 };
 
@@ -913,6 +944,7 @@ void lupb_def_registertypes(lua_State *L) {
 
   /* Register types. */
   lupb_register_type(L, LUPB_ENUMDEF,  lupb_enumdef_m,  lupb_enumdef_mm);
+  lupb_register_type(L, LUPB_ENUMVALDEF, lupb_enumvaldef_m,  NULL);
   lupb_register_type(L, LUPB_FIELDDEF, lupb_fielddef_m, NULL);
   lupb_register_type(L, LUPB_FILEDEF,  lupb_filedef_m,  NULL);
   lupb_register_type(L, LUPB_MSGDEF,   lupb_msgdef_m,   lupb_msgdef_mm);

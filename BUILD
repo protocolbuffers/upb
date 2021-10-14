@@ -102,12 +102,14 @@ cc_library(
     deps = [
         ":fastdecode",
         ":port",
+        "//third_party/utf8_range",
     ],
 )
 
 cc_library(
     name = "fastdecode",
     srcs = [
+        "upb/decode.h",
         "upb/decode_internal.h",
         "upb/decode_fast.c",
         "upb/decode_fast.h",
@@ -119,6 +121,7 @@ cc_library(
     deps = [
         ":port",
         ":table",
+        "//third_party/utf8_range",
     ],
 )
 
@@ -215,6 +218,27 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "msg_test",
+    srcs = ["upb/msg_test.cc"],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":msg_test_upb_proto_reflection",
+        ":json",
+    ],
+)
+
+proto_library(
+    name = "msg_test_proto",
+    srcs = ["upb/msg_test.proto"],
+    deps = ["@com_google_protobuf//:test_messages_proto3_proto"],
+)
+
+upb_proto_reflection_library(
+    name = "msg_test_upb_proto_reflection",
+    deps = [":msg_test_proto"],
+)
+
 # Internal C/C++ libraries #####################################################
 
 cc_library(
@@ -253,6 +277,7 @@ cc_library(
     srcs = ["upb.c"],
     hdrs = ["upb.h"],
     copts = UPB_DEFAULT_COPTS,
+    deps = ["//third_party/utf8_range"],
 )
 
 upb_amalgamation(
@@ -278,6 +303,7 @@ cc_library(
     srcs = ["php-upb.c"],
     hdrs = ["php-upb.h"],
     copts = UPB_DEFAULT_COPTS,
+    deps = ["//third_party/utf8_range"],
 )
 
 upb_amalgamation(
@@ -302,6 +328,7 @@ cc_library(
     srcs = ["ruby-upb.c"],
     hdrs = ["ruby-upb.h"],
     copts = UPB_DEFAULT_COPTS,
+    deps = ["//third_party/utf8_range"],
 )
 
 exports_files(

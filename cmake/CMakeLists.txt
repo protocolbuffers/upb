@@ -118,6 +118,7 @@ target_include_directories(
                     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(
+
   reflection
   PUBLIC descriptor_upb_proto
          port

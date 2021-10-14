@@ -67,20 +67,11 @@ class FieldDefPtr {
   uint32_t number() const { return upb_fielddef_number(ptr_); }
   bool is_extension() const { return upb_fielddef_isextension(ptr_); }
 
-  // For UPB_TYPE_MESSAGE fields only where is_tag_delimited() == false,
-  // indicates whether this field should have lazy parsing handlers that yield
-  // the unparsed string for the submessage.
-  //
-  // TODO(haberman): I think we want to move this into a FieldOptions container
-  // when we add support for custom options (the FieldOptions struct will
-  // contain both regular FieldOptions like "lazy" *and* custom options).
-  bool lazy() const { return upb_fielddef_lazy(ptr_); }
-
   // For non-string, non-submessage fields, this indicates whether binary
   // protobufs are encoded in packed or non-packed format.
   //
-  // TODO(haberman): see note above about putting options like this into a
-  // FieldOptions container.
+  // Note: this accessor reflects the fact that "packed" has different defaults
+  // depending on whether the proto is proto2 or proto3.
   bool packed() const { return upb_fielddef_packed(ptr_); }
 
   // An integer that can be used as an index into an array of fields for
@@ -312,6 +303,19 @@ class MessageDefPtr {
   const upb_msgdef* ptr_;
 };
 
+class EnumValDefPtr {
+ public:
+  EnumValDefPtr() : ptr_(nullptr) {}
+  explicit EnumValDefPtr(const upb_enumvaldef* ptr) : ptr_(ptr) {}
+
+  int32_t number() const { return upb_enumvaldef_number(ptr_); }
+  const char *full_name() const { return upb_enumvaldef_fullname(ptr_); }
+  const char *name() const { return upb_enumvaldef_name(ptr_); }
+
+ private:
+  const upb_enumvaldef* ptr_;
+};
+
 class EnumDefPtr {
  public:
   EnumDefPtr() : ptr_(nullptr) {}
@@ -335,15 +339,15 @@ class EnumDefPtr {
   int value_count() const { return upb_enumdef_numvals(ptr_); }
 
   // Lookups from name to integer, returning true if found.
-  bool FindValueByName(const char* name, int32_t* num) const {
-    return upb_enumdef_ntoiz(ptr_, name, num);
+  EnumValDefPtr FindValueByName(const char* name) const {
+    return EnumValDefPtr(upb_enumdef_lookupnamez(ptr_, name));
   }
 
   // Finds the name corresponding to the given number, or NULL if none was
   // found.  If more than one name corresponds to this number, returns the
   // first one that was added.
-  const char* FindValueByNumber(int32_t num) const {
-    return upb_enumdef_iton(ptr_, num);
+  EnumValDefPtr FindValueByNumber(int32_t num) const {
+    return EnumValDefPtr(upb_enumdef_lookupnum(ptr_, num));
   }
 
   // Iteration over name/value pairs.  The order is undefined.

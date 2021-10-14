@@ -1,14 +1,13 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def upb_deps():
     maybe(
-        git_repository,
+        http_archive,
         name = "com_google_absl",
-        commit = "998805a4c79d5d7a771f7e5a8ee3cbbbcba04f94",
-        remote = "https://github.com/abseil/abseil-cpp.git",
-        shallow_since = "1583355457 -0500",
+        url = "https://github.com/abseil/abseil-cpp/archive/b9b925341f9e90f5e7aa0cf23f036c29c7e454eb.zip",
+        strip_prefix = "abseil-cpp-b9b925341f9e90f5e7aa0cf23f036c29c7e454eb",
+        sha256 = "bb2a0b57c92b6666e8acb00f4cbbfce6ddb87e83625fb851b0e78db581340617",
     )
 
     maybe(

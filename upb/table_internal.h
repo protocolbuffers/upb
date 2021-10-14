@@ -245,8 +245,13 @@ UPB_INLINE bool upb_strtable_lookup(const upb_strtable *t, const char *key,
 /* Removes an item from the table.  Returns true if the remove was successful,
  * and stores the removed item in *val if non-NULL. */
 bool upb_inttable_remove(upb_inttable *t, uintptr_t key, upb_value *val);
-bool upb_strtable_remove(upb_strtable *t, const char *key, size_t len,
+bool upb_strtable_remove2(upb_strtable *t, const char *key, size_t len,
                           upb_value *val);
+
+UPB_INLINE bool upb_strtable_remove(upb_strtable *t, const char *key,
+                                    upb_value *v) {
+  return upb_strtable_remove2(t, key, strlen(key), v);
+}
 
 /* Updates an existing entry in an inttable.  If the entry does not exist,
  * returns false and does nothing.  Unlike insert/remove, this does not
@@ -263,7 +268,41 @@ bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_arena *a);
 
 /* Iterators ******************************************************************/
 
-/* Iterators for int and string tables.  We are subject to some kind of unusual
+/* Iteration over inttable.
+ *
+ *   intptr_t iter = UPB_INTTABLE_BEGIN;
+ *   uintptr_t key;
+ *   upb_value val;
+ *   while (upb_inttable_next2(t, &key, &val, &iter)) {
+ *      // ...
+ *   }
+ */
+
+#define UPB_INTTABLE_BEGIN -1
+
+bool upb_inttable_next2(const upb_inttable *t, uintptr_t *key, upb_value *val,
+                        intptr_t *iter);
+void upb_inttable_removeiter(upb_inttable *t, intptr_t *iter);
+
+/* Iteration over strtable.
+ *
+ *   intptr_t iter = UPB_INTTABLE_BEGIN;
+ *   upb_strview key;
+ *   upb_value val;
+ *   while (upb_strtable_next2(t, &key, &val, &iter)) {
+ *      // ...
+ *   }
+ */
+
+#define UPB_STRTABLE_BEGIN -1
+
+bool upb_strtable_next2(const upb_strtable *t, upb_strview *key, upb_value *val,
+                        intptr_t *iter);
+void upb_strtable_removeiter(upb_strtable *t, intptr_t *iter);
+
+/* DEPRECATED iterators, slated for removal.
+ *
+ * Iterators for int and string tables.  We are subject to some kind of unusual
  * design constraints:
  *
  * For high-level languages:

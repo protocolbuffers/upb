@@ -203,10 +203,10 @@ static void jsonenc_enum(int32_t val, const upb_fielddef *f, jsonenc *e) {
   if (strcmp(upb_enumdef_fullname(e_def), "google.protobuf.NullValue") == 0) {
     jsonenc_putstr(e, "null");
   } else {
-    const char *name = upb_enumdef_iton(e_def, val);
+    const upb_enumvaldef *ev = upb_enumdef_lookupnum(e_def, val);
 
-    if (name) {
-      jsonenc_printf(e, "\"%s\"", name);
+    if (ev) {
+      jsonenc_printf(e, "\"%s\"", upb_enumvaldef_name(ev));
     } else {
       jsonenc_printf(e, "%" PRId32, val);
     }
@@ -374,7 +374,8 @@ static void jsonenc_any(jsonenc *e, const upb_msg *msg, const upb_msgdef *m) {
   upb_arena *arena = jsonenc_arena(e);
   upb_msg *any = upb_msg_new(any_m, arena);
 
-  if (!upb_decode(value.data, value.size, any, any_layout, arena)) {
+  if (upb_decode(value.data, value.size, any, any_layout, arena) !=
+      kUpb_DecodeStatus_Ok) {
     jsonenc_err(e, "Error decoding message in Any");
   }
 
@@ -670,14 +671,21 @@ static void jsonenc_fieldval(jsonenc *e, const upb_fielddef *f,
                              upb_msgval val, bool *first) {
   const char *name;
 
-  if (e->options & UPB_JSONENC_PROTONAMES) {
-    name = upb_fielddef_name(f);
-  } else {
-    name = upb_fielddef_jsonname(f);
-  }
-
   jsonenc_putsep(e, ",", first);
-  jsonenc_printf(e, "\"%s\":", name);
+
+  if (upb_fielddef_isextension(f)) {
+    // TODO: For MessageSet, I would have expected this to print the message
+    // name here, but Python doesn't appear to do this. We should do more
+    // research here about what various implementations do.
+    jsonenc_printf(e, "\"[%s]\":", upb_fielddef_fullname(f));
+  } else {
+    if (e->options & UPB_JSONENC_PROTONAMES) {
+      name = upb_fielddef_name(f);
+    } else {
+      name = upb_fielddef_jsonname(f);
+    }
+    jsonenc_printf(e, "\"%s\":", name);
+  }
 
   if (upb_fielddef_ismap(f)) {
     jsonenc_map(e, val.map_val, f);

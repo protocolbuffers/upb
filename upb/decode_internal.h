@@ -35,6 +35,8 @@
 
 #include <setjmp.h>
 
+#include "third_party/utf8_range/utf8_range.h"
+#include "upb/decode.h"
 #include "upb/msg_internal.h"
 #include "upb/upb_internal.h"
 
@@ -48,13 +50,20 @@ typedef struct upb_decstate {
   const char *limit_ptr;   /* = end + UPB_MIN(limit, 0) */
   upb_msg *unknown_msg;    /* If non-NULL, add unknown data at buffer flip. */
   const char *unknown;     /* Start of unknown data. */
+  const upb_extreg *extreg;  /* For looking up extensions during the parse. */
   int limit;               /* Submessage limit relative to end. */
-  int depth;
+  int depth;               /* Tracks recursion depth to bound stack usage. */
   uint32_t end_group;   /* field number of END_GROUP tag, else DECODE_NOGROUP */
-  bool alias;
+  uint16_t options;
+  bool missing_required;
   char patch[32];
   upb_arena arena;
   jmp_buf err;
+
+#ifndef NDEBUG
+  const char *debug_tagstart;
+  const char *debug_valstart;
+#endif
 } upb_decstate;
 
 /* Error function that will abort decoding with longjmp(). We can't declare this
@@ -64,30 +73,36 @@ typedef struct upb_decstate {
  * of our optimizations. That is also why we must declare it in a separate file,
  * otherwise the compiler will see that it calls longjmp() and deduce that it is
  * noreturn. */
-const char *fastdecode_err(upb_decstate *d);
+const char *fastdecode_err(upb_decstate *d, int status);
 
 extern const uint8_t upb_utf8_offsets[];
 
 UPB_INLINE
-bool decode_verifyutf8_inl(const char *buf, int len) {
-  int i, j;
-  uint8_t offset;
+bool decode_verifyutf8_inl(const char *ptr, int len) {
+  const char *end = ptr + len;
 
-  i = 0;
-  while (i < len) {
-    offset = upb_utf8_offsets[(uint8_t)buf[i]];
-    if (offset == 0 || i + offset > len) {
-      return false;
-    }
-    for (j = i + 1; j < i + offset; j++) {
-      if ((buf[j] & 0xc0) != 0x80) {
-        return false;
-      }
-    }
-    i += offset;
+  // Check 8 bytes at a time for any non-ASCII char.
+  while (end - ptr >= 8) {
+    uint64_t data;
+    memcpy(&data, ptr, 8);
+    if (data & 0x8080808080808080) goto non_ascii;
+    ptr += 8;
   }
-  return i == len;
+
+  // Check one byte at a time for non-ASCII.
+  while (ptr < end) {
+    if (*ptr & 0x80) goto non_ascii;
+    ptr++;
+  }
+
+  return true;
+
+ non_ascii:
+  return utf8_range2((const unsigned char *)ptr, end - ptr) == 0;
 }
+
+const char *decode_checkrequired(upb_decstate *d, const char *ptr,
+                                 const upb_msg *msg, const upb_msglayout *l);
 
 /* x86-64 pointers always have the high 16 bits matching. So we can shift
  * left 8 and right 8 without loss of information. */
@@ -101,13 +116,14 @@ UPB_INLINE const upb_msglayout *decode_totablep(intptr_t table) {
 
 UPB_INLINE
 const char *decode_isdonefallback_inl(upb_decstate *d, const char *ptr,
-                                      int overrun) {
+                                      int overrun, int *status) {
   if (overrun < d->limit) {
     /* Need to copy remaining data into patch buffer. */
     UPB_ASSERT(overrun < 16);
     if (d->unknown_msg) {
       if (!_upb_msg_addunknown(d->unknown_msg, d->unknown, ptr - d->unknown,
                                &d->arena)) {
+        *status = kUpb_DecodeStatus_OutOfMemory;
         return NULL;
       }
       d->unknown = &d->patch[0] + overrun;
@@ -118,10 +134,11 @@ const char *decode_isdonefallback_inl(upb_decstate *d, const char *ptr,
     d->end = &d->patch[16];
     d->limit -= 16;
     d->limit_ptr = d->end + d->limit;
-    d->alias = false;
+    d->options &= ~kUpb_DecodeOption_AliasString;
     UPB_ASSERT(ptr < d->limit_ptr);
     return ptr;
   } else {
+    *status = kUpb_DecodeStatus_Malformed;
     return NULL;
   }
 }
