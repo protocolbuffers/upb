@@ -434,23 +434,66 @@ static const char *decode_enum_toarray(upb_decstate *d, const char *ptr,
 }
 
 UPB_FORCEINLINE
-static const char *decode_fixed_packed(upb_decstate *d, const char *ptr,
-                                       upb_array *arr, wireval *val,
-                                       const upb_msglayout_field *field,
-                                       int lg2) {
+static bool validate_fixed_packed_size(wireval *val, int lg2) {
   int mask = (1 << lg2) - 1;
-  size_t count = val->size >> lg2;
+
   if ((val->size & mask) != 0) {
-    // Length isn't a round multiple of elem size.
+    return false;
+  }
+
+  return true;
+}
+
+UPB_FORCEINLINE
+static const char *decode_fixed32_packed(upb_decstate *d, const char *ptr,
+                                         upb_array *arr, wireval *val,
+                                         int lg2) {
+  if (!validate_fixed_packed_size(val, lg2)) {
     return decode_err(d, kUpb_DecodeStatus_Malformed);
   }
+
+  size_t count = val->size >> lg2;
   decode_reserve(d, arr, count);
-  void *mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+
+  char *mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+
+  for (size_t i = 0; i < count; i++) {
+    uint32_t data = *(uint32_t *) ptr;
+    data = _upb_be_swap32(data);
+    memcpy(mem, &data, sizeof(data));
+
+    ptr += sizeof(data);
+    mem += sizeof(data);
+  }
+
   arr->len += count;
-  // Note: if/when the decoder supports multi-buffer input, we will need to
-  // handle buffer seams here.
-  memcpy(mem, ptr, val->size);
-  return ptr + val->size;
+  return ptr;
+}
+
+UPB_FORCEINLINE
+static const char *decode_fixed64_packed(upb_decstate *d, const char *ptr,
+                                         upb_array *arr, wireval *val,
+                                         int lg2) {
+  if (!validate_fixed_packed_size(val, lg2)) {
+    return decode_err(d, kUpb_DecodeStatus_Malformed);
+  }
+
+  size_t count = val->size >> lg2;
+  decode_reserve(d, arr, count);
+
+  char *mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->len << lg2, void);
+
+  for (size_t i = 0; i < count; i++) {
+    uint64_t data = *(uint64_t *) ptr;
+    data = _upb_be_swap64(data);
+    memcpy(mem, &data, sizeof(data));
+
+    ptr += sizeof(data);
+    mem += sizeof(data);
+  }
+
+  arr->len += count;
+  return ptr;
 }
 
 UPB_FORCEINLINE
@@ -552,9 +595,11 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       }
     }
     case OP_FIXPCK_LG2(2):
+      return decode_fixed32_packed(d, ptr, arr, val,
+                                   op - OP_FIXPCK_LG2(0));
     case OP_FIXPCK_LG2(3):
-      return decode_fixed_packed(d, ptr, arr, val, field,
-                                 op - OP_FIXPCK_LG2(0));
+      return decode_fixed64_packed(d, ptr, arr, val,
+                                   op - OP_FIXPCK_LG2(0));
     case OP_VARPCK_LG2(0):
     case OP_VARPCK_LG2(2):
     case OP_VARPCK_LG2(3):
