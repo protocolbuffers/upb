@@ -97,24 +97,24 @@ static upb_strview default_string(upb_ToProto_Context *ctx,
   upb_msgval d = upb_fielddef_default(f);
   switch (upb_fielddef_type(f)) {
     case UPB_TYPE_BOOL:
-      return strviewdup(ctx, d.bool_val ? "true" : "false");
+      return strviewdup(ctx, upb_fielddef_defaultbool(f) ? "true" : "false");
     case UPB_TYPE_ENUM: {
       const upb_enumdef *e = upb_fielddef_enumsubdef(f);
-      const upb_enumvaldef *ev = upb_enumdef_lookupnum(e, d.int32_val);
+      const upb_enumvaldef *ev = upb_enumdef_lookupnum(e, upb_fielddef_defaultuint32(f));
       return strviewdup(ctx, upb_enumvaldef_name(ev));
     }
     case UPB_TYPE_INT64:
-      return printf_dup(ctx, "%" PRId64, d.int64_val);
+      return printf_dup(ctx, "%" PRId64, upb_fielddef_defaultint64(f));
     case UPB_TYPE_UINT64:
-      return printf_dup(ctx, "%" PRIu64, d.uint64_val);
+      return printf_dup(ctx, "%" PRIu64, upb_fielddef_defaultuint64(f));
     case UPB_TYPE_INT32:
-      return printf_dup(ctx, "%" PRId32, d.int32_val);
+      return printf_dup(ctx, "%" PRId32, upb_fielddef_defaultint32(f));
     case UPB_TYPE_UINT32:
-      return printf_dup(ctx, "%" PRIu32, d.uint32_val);
+      return printf_dup(ctx, "%" PRIu32, upb_fielddef_defaultuint32(f));
     case UPB_TYPE_FLOAT:
-      return printf_dup(ctx, "%.9g", d.float_val);
+      return printf_dup(ctx, "%.9g", upb_fielddef_defaultfloat(f));
     case UPB_TYPE_DOUBLE:
-      return printf_dup(ctx, "%.17g", d.double_val);
+      return printf_dup(ctx, "%.17g", upb_fielddef_defaultdouble(f));
     case UPB_TYPE_STRING:
       return strviewdup2(ctx, d.str_val);
     case UPB_TYPE_BYTES:
