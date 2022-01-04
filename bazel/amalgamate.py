@@ -30,6 +30,7 @@ import re
 import os
 
 INCLUDE_RE = re.compile('^#include "([^"]*)"$')
+VALID_HDR_PREFIXES = ["upb", "google", "third_party"]
 
 def parse_include(line):
   match = INCLUDE_RE.match(line)
@@ -86,7 +87,7 @@ class Amalgamator:
     include = parse_include(line)
     if not include:
       return False
-    if not (include.startswith("upb") or include.startswith("google")):
+    if not any([include.startswith(prefix) for prefix in VALID_HDR_PREFIXES]):
       return False
     if include.endswith("hpp"):
       # Skip, we don't support the amalgamation from C++.

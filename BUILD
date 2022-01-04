@@ -270,6 +270,7 @@ upb_amalgamation(
         ":descriptor_upb_proto",
         ":reflection",
         ":port",
+        "//third_party/utf8_range",
     ],
 )
 
