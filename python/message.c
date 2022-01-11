@@ -276,7 +276,12 @@ static bool PyUpb_CMessage_LookupName(PyUpb_CMessage* self, PyObject* py_name,
   } else if (PyBytes_Check(py_name)) {
     PyBytes_AsStringAndSize(py_name, (char**)&name, &size);
   }
-  if (!name) return NULL;
+  if (!name) {
+    PyErr_Format(exc_type,
+                 "Expected a field name, but got non-string argument %S.",
+                 py_name);
+    return false;
+  }
   const upb_msgdef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
 
   if (!upb_msgdef_lookupname(msgdef, name, size, f, o)) {
