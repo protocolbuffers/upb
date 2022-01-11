@@ -30,7 +30,7 @@
 
 // We restrict ourselves to the limited API, so that we will be ABI-compatible
 // with any version of Python >= 3.6.1  (3.6.1 introduce PySlice_Unpack())
-#define Py_LIMITED_API 0x03060100
+//#define Py_LIMITED_API 0x03060100
 #include <Python.h>
 
 // This function was not officially added to the limited API until Python 3.10.

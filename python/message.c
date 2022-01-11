@@ -55,6 +55,7 @@ typedef struct {
   // For each member, we note the equivalent expression that we could use in the
   // full (non-limited) API.
   newfunc type_new;            // PyTypeObject.tp_new
+  destructor type_dealloc;  // PyTypeObject.tp_dealloc
   getattrofunc type_getattro;  // PyTypeObject.tp_getattro
   setattrofunc type_setattro;  // PyTypeObject.tp_setattro
   size_t type_basicsize;       // sizeof(PyHeapTypeObject)
@@ -100,15 +101,41 @@ static bool PyUpb_CPythonBits_Init(PyUpb_CPythonBits* bits) {
   bits->type_getattro = PyType_GetSlot(type, Py_tp_getattro);
   bits->type_setattro = PyType_GetSlot(type, Py_tp_setattro);
 
+  // This is a bit desperate.  PyType_GetSlot(type, Py_tp_dealloc) returns
+  // subtype_dealloc(), not type_dealloc(), but we need to call the latter from
+  // our dealloc to properly free the type's memory.  There appears to be no way
+  // whatsoever to fetch type_dealloc() through the limited API, so we attempt
+  // to find it by looking for the offset of tp_dealloc in PyTypeObject, then
+  // memcpy() it directly.  This should always work in practice.
+  //
+  // Starting with Python 3.10 on you can call PyType_GetSlot() on non-heap
+  // types.  We will be able to replace all this hack with just:
+  //
+  //   PyType_GetSlot(&PyType_Type, Py_tp_dealloc)
+  //
+  destructor subtype_dealloc = PyType_GetSlot(type, Py_tp_dealloc);
+  bits->type_dealloc = NULL;
+  for (size_t i = 0; i < 2000; i += sizeof(uintptr_t)) {
+    destructor maybe_subtype_dealloc;
+    memcpy(&maybe_subtype_dealloc, (char*)type + i, sizeof(destructor*));
+    if (maybe_subtype_dealloc == subtype_dealloc) {
+      memcpy(&bits->type_dealloc, (char*)&PyType_Type + i, sizeof(destructor*));
+    }
+  }
+
   size = PyObject_GetAttrString((PyObject*)&PyType_Type, "__basicsize__");
   if (!size) goto err;
   bits->type_basicsize = PyLong_AsLong(size);
   if (bits->type_basicsize == -1) goto err;
 
-  assert(bits->type_new && bits->type_getattro && bits->type_setattro);
+  assert(bits->type_new);
+  assert(bits->type_dealloc);
+  assert(bits->type_getattro);
+  assert(bits->type_setattro);
 
 #ifndef Py_LIMITED_API
   assert(bits->type_new == PyType_Type.tp_new);
+  assert(bits->type_dealloc == PyType_Type.tp_dealloc);
   assert(bits->type_getattro == PyType_Type.tp_getattro);
   assert(bits->type_setattro == PyType_Type.tp_setattro);
   assert(bits->type_basicsize == sizeof(PyHeapTypeObject));
@@ -955,7 +982,6 @@ static PyObject* PyUpb_CMessage_IsInitialized(PyObject* _self, PyObject* args) {
   if (!PyArg_ParseTuple(args, "|O", &errors)) {
     return NULL;
   }
-  upb_msg* msg = PyUpb_CMessage_GetIfReified(_self);
   if (errors) {
     // We need to collect a list of unset required fields and append it to
     // `errors`.
@@ -963,6 +989,7 @@ static PyObject* PyUpb_CMessage_IsInitialized(PyObject* _self, PyObject* args) {
   } else {
     // We just need to return a boolean "true" or "false" for whether all
     // required fields are set.
+    upb_msg* msg = PyUpb_CMessage_GetIfReified(_self);
     const upb_msgdef* m = PyUpb_CMessage_GetMsgdef(_self);
     const upb_symtab* symtab = upb_filedef_symtab(upb_msgdef_file(m));
     bool initialized = !upb_util_HasUnsetRequired(msg, m, symtab, NULL);
@@ -1260,7 +1287,9 @@ static PyObject* PyUpb_CMessage_FindInitializationErrors(PyObject* _self,
         need = upb_FieldPath_ToText(&fields, buf, size);
         assert(size > need);
       }
-      PyList_Append(ret, PyUnicode_FromString(buf));
+      PyObject* str = PyUnicode_FromString(buf);
+      PyList_Append(ret, str);
+      Py_DECREF(str);
     }
     free(buf);
   }
@@ -1577,9 +1606,10 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
   assert(!PyUpb_ObjCache_Get(upb_msgdef_layout(msgdef)));
 
   PyObject* slots = PyTuple_New(0);
-  if (PyDict_SetItemString(dict, "__slots__", slots) < 0) {
-    return NULL;
-  }
+  if (!slots) return NULL;
+  int status = PyDict_SetItemString(dict, "__slots__", slots);
+  Py_DECREF(slots);
+  if (status < 0) return NULL;
 
   // Bases are either:
   //    (CMessage, Message)            # for regular messages
@@ -1594,9 +1624,15 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
   } else {
     args = Py_BuildValue("s(OOO)O", name, state->cmessage_type,
                          state->message_class, wkt_base, dict);
+    Py_DECREF(wkt_base);
   }
 
-  PyObject* ret = cpython_bits.type_new(state->message_meta_type, args, NULL);
+  PyObject* ret;
+  if (PyDict_GetItemString(dict, "__yoyoyo__")) {
+    ret = PyUnicode_FromString("YO!!");
+    Py_DECREF(args);
+  } else {
+  ret = cpython_bits.type_new(state->message_meta_type, args, NULL);
   Py_DECREF(args);
   if (!ret) return NULL;
 
@@ -1605,7 +1641,8 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
   meta->layout = upb_msgdef_layout(msgdef);
   Py_INCREF(meta->py_message_descriptor);
 
-  PyUpb_ObjCache_Add(upb_msgdef_layout(msgdef), ret);
+  PyUpb_ObjCache_Add(meta->layout, ret);
+  }
 
   return ret;
 }
@@ -1651,7 +1688,9 @@ static void PyUpb_MessageMeta_Dealloc(PyObject* self) {
   PyUpb_MessageMeta* meta = PyUpb_GetMessageMeta(self);
   PyUpb_ObjCache_Delete(meta->layout);
   Py_DECREF(meta->py_message_descriptor);
-  PyUpb_Dealloc(self);
+  PyTypeObject* tp = Py_TYPE(self);
+  cpython_bits.type_dealloc(self);
+  Py_DECREF(tp);
 }
 
 void PyUpb_MessageMeta_AddFieldNumber(PyObject* self, const upb_fielddef* f) {
