@@ -101,12 +101,14 @@ static bool PyUpb_CPythonBits_Init(PyUpb_CPythonBits* bits) {
   bits->type_getattro = PyType_GetSlot(type, Py_tp_getattro);
   bits->type_setattro = PyType_GetSlot(type, Py_tp_setattro);
 
-  // This is a bit desperate.  PyType_GetSlot(type, Py_tp_dealloc) returns
-  // subtype_dealloc(), not type_dealloc(), but we need to call the latter from
-  // our dealloc to properly free the type's memory.  There appears to be no way
-  // whatsoever to fetch type_dealloc() through the limited API, so we attempt
-  // to find it by looking for the offset of tp_dealloc in PyTypeObject, then
-  // memcpy() it directly.  This should always work in practice.
+  // This is a bit desperate.  We need type_dealloc(), but PyType_GetSlot(type,
+  // Py_tp_dealloc) will return subtype_dealloc().  There appears to be no way
+  // whatsoever to fetch type_dealloc() through the limited API until Python
+  // 3.10.
+  //
+  // To work around this so we attempt to find it by looking for the offset of
+  // tp_dealloc in PyTypeObject, then memcpy() it directly.  This should always
+  // work in practice.
   //
   // Starting with Python 3.10 on you can call PyType_GetSlot() on non-heap
   // types.  We will be able to replace all this hack with just:
@@ -120,6 +122,7 @@ static bool PyUpb_CPythonBits_Init(PyUpb_CPythonBits* bits) {
     memcpy(&maybe_subtype_dealloc, (char*)type + i, sizeof(destructor*));
     if (maybe_subtype_dealloc == subtype_dealloc) {
       memcpy(&bits->type_dealloc, (char*)&PyType_Type + i, sizeof(destructor*));
+      break;
     }
   }
 
@@ -1013,7 +1016,7 @@ static PyObject* PyUpb_CMessage_ListFieldsItemKey(PyObject* self,
 static bool PyUpb_CMessage_SortFieldList(PyObject* list) {
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   bool ok = false;
-  PyObject* args = PyList_New(0);
+  PyObject* args = PyTuple_New(0);
   PyObject* kwargs = PyDict_New();
   PyObject* method = PyObject_GetAttrString(list, "sort");
   PyObject* call_result = NULL;
@@ -1629,7 +1632,6 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
   } else {
     args = Py_BuildValue("s(OOO)O", name, state->cmessage_type,
                          state->message_class, wkt_base, dict);
-    Py_DECREF(wkt_base);
   }
 
   PyObject* ret;
