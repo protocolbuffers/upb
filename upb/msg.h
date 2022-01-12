@@ -78,7 +78,7 @@ size_t upb_msg_extcount(const upb_msg *msg);
  *
  * Unlike most mini-table types, upb_extreg requires dynamic memory allocation
  * and dynamic initialization:
- * * If reflection is being used, then upb_symtab will construct an appropriate
+ * * If reflection is being used, then upb_DefPool will construct an appropriate
  *   upb_extreg automatically.
  * * For a mini-table only build, the user must manually construct the
  *   upb_extreg and populate it with all of the extensions the user cares about.
@@ -95,7 +95,7 @@ size_t upb_msg_extcount(const upb_msg *msg);
  * extensions from a generated module and pass the extension registry to the
  * binary decoder.
  *
- * A upb_symtab provides a upb_extreg, so any users who use reflection do not
+ * A upb_DefPool provides a upb_extreg, so any users who use reflection do not
  * need to populate a upb_extreg directly.
  */
 

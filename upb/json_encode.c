@@ -47,7 +47,7 @@ typedef struct {
   size_t overflow;
   int indent_depth;
   int options;
-  const upb_symtab *ext_pool;
+  const upb_DefPool *ext_pool;
   jmp_buf err;
   upb_status *status;
   upb_arena *arena;
@@ -351,7 +351,7 @@ static const upb_MessageDef *jsonenc_getanymsg(jsonenc *e, upb_strview type_url)
     }
   }
 
-  ret = upb_symtab_lookupmsg2(e->ext_pool, ptr, end - ptr);
+  ret = upb_DefPool_FindMessageByNameWithSize(e->ext_pool, ptr, end - ptr);
 
   if (!ret) {
     jsonenc_errf(e, "Couldn't find Any type: %.*s", (int)(end - ptr), ptr);
@@ -738,7 +738,7 @@ static size_t jsonenc_nullz(jsonenc *e, size_t size) {
 }
 
 size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
-                       const upb_symtab *ext_pool, int options, char *buf,
+                       const upb_DefPool *ext_pool, int options, char *buf,
                        size_t size, upb_status *status) {
   jsonenc e;
 

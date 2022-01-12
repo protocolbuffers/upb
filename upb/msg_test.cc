@@ -82,7 +82,7 @@ TEST(MessageTest, Extensions) {
   ASSERT_GE(size, 0);
 
   upb_test_TestExtensions *ext_msg2 = upb_test_TestExtensions_parse_ex(
-      serialized, size, upb_symtab_extreg(symtab.ptr()), 0, arena.ptr());
+      serialized, size, upb_DefPool_ExtensionRegistry(symtab.ptr()), 0, arena.ptr());
   VerifyMessage(ext_msg2);
 
   // Test round-trip through JSON format.
@@ -139,7 +139,7 @@ TEST(MessageTest, MessageSet) {
   ASSERT_GE(size, 0);
 
   upb_test_TestMessageSet *ext_msg2 = upb_test_TestMessageSet_parse_ex(
-      serialized, size, upb_symtab_extreg(symtab.ptr()), 0, arena.ptr());
+      serialized, size, upb_DefPool_ExtensionRegistry(symtab.ptr()), 0, arena.ptr());
   VerifyMessageSet(ext_msg2);
 
   // Test round-trip through JSON format.

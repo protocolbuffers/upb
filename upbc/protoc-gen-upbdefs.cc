@@ -50,10 +50,10 @@ static std::string DefSourceFilename(std::string proto_filename) {
 }
 
 void GenerateMessageDefAccessor(const protobuf::Descriptor* d, Output& output) {
-  output("UPB_INLINE const upb_MessageDef *$0_getmsgdef(upb_symtab *s) {\n",
+  output("UPB_INLINE const upb_MessageDef *$0_getmsgdef(upb_DefPool *s) {\n",
          ToCIdent(d->full_name()));
-  output("  _upb_symtab_loaddefinit(s, &$0);\n", DefInitSymbol(d->file()));
-  output("  return upb_symtab_lookupmsg(s, \"$0\");\n", d->full_name());
+  output("  _upb_DefPool_loaddefinit(s, &$0);\n", DefInitSymbol(d->file()));
+  output("  return upb_DefPool_FindMessageByName(s, \"$0\");\n", d->full_name());
   output("}\n");
   output("\n");
 

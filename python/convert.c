@@ -360,7 +360,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
   //
   // We don't need to visit all of msg2's extensions, because we verified up
   // front that both messages have the same number of extensions.
-  const upb_symtab* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
+  const upb_DefPool* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
   const upb_FieldDef *f1, *f2;
   upb_msgval val1, val2;
   size_t iter1 = UPB_MSG_BEGIN;

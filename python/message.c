@@ -630,7 +630,7 @@ static PyObject* PyUpb_CMessage_ToString(PyUpb_CMessage* self) {
   }
   upb_msg* msg = PyUpb_CMessage_GetMsg(self);
   const upb_MessageDef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
-  const upb_symtab* symtab = upb_FileDef_Pool(upb_MessageDef_File(msgdef));
+  const upb_DefPool* symtab = upb_FileDef_Pool(upb_MessageDef_File(msgdef));
   char buf[1024];
   int options = UPB_TXTENC_SKIPUNKNOWN;
   size_t size = upb_text_encode(msg, msgdef, symtab, options, buf, sizeof(buf));
@@ -964,7 +964,7 @@ static PyObject* PyUpb_CMessage_IsInitialized(PyObject* _self, PyObject* args) {
     // We just need to return a boolean "true" or "false" for whether all
     // required fields are set.
     const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(_self);
-    const upb_symtab* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
+    const upb_DefPool* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
     bool initialized = !upb_util_HasUnsetRequired(msg, m, symtab, NULL);
     return PyBool_FromLong(initialized);
   }
@@ -1008,7 +1008,7 @@ static PyObject* PyUpb_CMessage_ListFields(PyObject* _self, PyObject* arg) {
 
   size_t iter1 = UPB_MSG_BEGIN;
   const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(_self);
-  const upb_symtab* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
+  const upb_DefPool* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
   const upb_FieldDef* f;
   PyObject* field_desc = NULL;
   PyObject* py_val = NULL;
@@ -1096,7 +1096,7 @@ PyObject* PyUpb_CMessage_MergeFromString(PyObject* _self, PyObject* arg) {
   PyUpb_CMessage_EnsureReified(self);
   const upb_MessageDef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
   const upb_FileDef* file = upb_MessageDef_File(msgdef);
-  const upb_extreg* extreg = upb_symtab_extreg(upb_FileDef_Pool(file));
+  const upb_extreg* extreg = upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
   const upb_msglayout* layout = upb_MessageDef_Layout(msgdef);
   upb_arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
@@ -1242,7 +1242,7 @@ static PyObject* PyUpb_CMessage_FindInitializationErrors(PyObject* _self,
   PyUpb_CMessage* self = (void*)_self;
   upb_msg* msg = PyUpb_CMessage_GetIfReified(_self);
   const upb_MessageDef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
-  const upb_symtab* ext_pool = upb_FileDef_Pool(upb_MessageDef_File(msgdef));
+  const upb_DefPool* ext_pool = upb_FileDef_Pool(upb_MessageDef_File(msgdef));
   upb_FieldPathEntry* fields;
   PyObject* ret = PyList_New(0);
   if (upb_util_HasUnsetRequired(msg, msgdef, ext_pool, &fields)) {
@@ -1668,27 +1668,27 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
   const char* name_buf = PyUpb_GetStrData(name);
   const upb_MessageDef* msgdef = PyUpb_MessageMeta_GetMsgdef(self);
   const upb_FileDef* filedef = upb_MessageDef_File(msgdef);
-  const upb_symtab* symtab = upb_FileDef_Pool(filedef);
+  const upb_DefPool* symtab = upb_FileDef_Pool(filedef);
 
   PyObject* py_key =
       PyBytes_FromFormat("%s.%s", upb_MessageDef_FullName(msgdef), name_buf);
   const char* key = PyUpb_GetStrData(py_key);
   PyObject* ret = NULL;
-  const upb_MessageDef* nested = upb_symtab_lookupmsg(symtab, key);
+  const upb_MessageDef* nested = upb_DefPool_FindMessageByName(symtab, key);
   const upb_EnumDef* enumdef;
   const upb_EnumValueDef* enumval;
   const upb_FieldDef* ext;
 
   if (nested) {
     ret = PyUpb_Descriptor_GetClass(nested);
-  } else if ((enumdef = upb_symtab_lookupenum(symtab, key))) {
+  } else if ((enumdef = upb_DefPool_FindEnumByName(symtab, key))) {
     PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
     PyObject* klass = state->enum_type_wrapper_class;
     ret = PyUpb_EnumDescriptor_Get(enumdef);
     ret = PyObject_CallFunctionObjArgs(klass, ret, NULL);
-  } else if ((enumval = upb_symtab_lookupenumval(symtab, key))) {
+  } else if ((enumval = upb_DefPool_FindEnumByNameval(symtab, key))) {
     ret = PyLong_FromLong(upb_EnumValueDef_Number(enumval));
-  } else if ((ext = upb_symtab_lookupext(symtab, key))) {
+  } else if ((ext = upb_DefPool_FindExtensionByName(symtab, key))) {
     ret = PyUpb_FieldDescriptor_Get(ext);
   }
 

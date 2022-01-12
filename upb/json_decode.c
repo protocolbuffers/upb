@@ -45,7 +45,7 @@
 typedef struct {
   const char *ptr, *end;
   upb_arena *arena;  /* TODO: should we have a tmp arena for tmp data? */
-  const upb_symtab *symtab;
+  const upb_DefPool *symtab;
   int depth;
   upb_status *status;
   jmp_buf err;
@@ -935,7 +935,7 @@ static void jsondec_field(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
 
   if (name.size >= 2 && name.data[0] == '[' &&
      name.data[name.size - 1] == ']') {
-   f = upb_symtab_lookupext2(d->symtab, name.data + 1, name.size - 2);
+   f = upb_DefPool_FindExtensionByNameWithSize(d->symtab, name.data + 1, name.size - 2);
    if (f && upb_FieldDef_ContainingType(f) != m) {
      jsondec_errf(
          d, "Extension %s extends message %s, but was seen in message %s",
@@ -1349,7 +1349,7 @@ static const upb_MessageDef *jsondec_typeurl(jsondec *d, upb_msg *msg,
   }
 
   ptr++;
-  type_m = upb_symtab_lookupmsg2(d->symtab, ptr, end - ptr);
+  type_m = upb_DefPool_FindMessageByNameWithSize(d->symtab, ptr, end - ptr);
 
   if (!type_m) {
     jsondec_err(d, "Type was not found");
@@ -1467,7 +1467,7 @@ static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_MessageDef *m)
 }
 
 bool upb_json_decode(const char *buf, size_t size, upb_msg *msg,
-                     const upb_MessageDef *m, const upb_symtab *symtab,
+                     const upb_MessageDef *m, const upb_DefPool *symtab,
                      int options, upb_arena *arena, upb_status *status) {
   jsondec d;
 

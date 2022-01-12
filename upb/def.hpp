@@ -371,24 +371,24 @@ class FileDefPtr {
 // Non-const methods in upb::SymbolTable are NOT thread-safe.
 class SymbolTable {
  public:
-  SymbolTable() : ptr_(upb_symtab_new(), upb_symtab_free) {}
-  explicit SymbolTable(upb_symtab* s) : ptr_(s, upb_symtab_free) {}
+  SymbolTable() : ptr_(upb_DefPool_New(), upb_DefPool_Free) {}
+  explicit SymbolTable(upb_DefPool* s) : ptr_(s, upb_DefPool_Free) {}
 
-  const upb_symtab* ptr() const { return ptr_.get(); }
-  upb_symtab* ptr() { return ptr_.get(); }
+  const upb_DefPool* ptr() const { return ptr_.get(); }
+  upb_DefPool* ptr() { return ptr_.get(); }
 
   // Finds an entry in the symbol table with this exact name.  If not found,
   // returns NULL.
   MessageDefPtr LookupMessage(const char* sym) const {
-    return MessageDefPtr(upb_symtab_lookupmsg(ptr_.get(), sym));
+    return MessageDefPtr(upb_DefPool_FindMessageByName(ptr_.get(), sym));
   }
 
   EnumDefPtr LookupEnum(const char* sym) const {
-    return EnumDefPtr(upb_symtab_lookupenum(ptr_.get(), sym));
+    return EnumDefPtr(upb_DefPool_FindEnumByName(ptr_.get(), sym));
   }
 
   FileDefPtr LookupFile(const char* name) const {
-    return FileDefPtr(upb_symtab_lookupfile(ptr_.get(), name));
+    return FileDefPtr(upb_DefPool_FindFileByName(ptr_.get(), name));
   }
 
   // TODO: iteration?
@@ -397,11 +397,11 @@ class SymbolTable {
   FileDefPtr AddFile(const google_protobuf_FileDescriptorProto* file_proto,
                      Status* status) {
     return FileDefPtr(
-        upb_symtab_addfile(ptr_.get(), file_proto, status->ptr()));
+        upb_DefPool_AddFile(ptr_.get(), file_proto, status->ptr()));
   }
 
  private:
-  std::unique_ptr<upb_symtab, decltype(&upb_symtab_free)> ptr_;
+  std::unique_ptr<upb_DefPool, decltype(&upb_DefPool_Free)> ptr_;
 };
 
 inline FileDefPtr MessageDefPtr::file() const {

@@ -111,7 +111,7 @@ void upb_msg_clear(upb_msg *msg, const upb_MessageDef *m);
 
 #define UPB_MSG_BEGIN -1
 bool upb_msg_next(const upb_msg *msg, const upb_MessageDef *m,
-                  const upb_symtab *ext_pool, const upb_FieldDef **f,
+                  const upb_DefPool *ext_pool, const upb_FieldDef **f,
                   upb_msgval *val, size_t *iter);
 
 /* Clears all unknown field data from this message and all submessages. */

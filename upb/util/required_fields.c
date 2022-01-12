@@ -160,7 +160,7 @@ typedef struct {
 typedef struct {
   upb_FieldPathVector stack;
   upb_FieldPathVector out_fields;
-  const upb_symtab *ext_pool;
+  const upb_DefPool *ext_pool;
   jmp_buf err;
   bool has_unset_required;
   bool save_paths;
@@ -284,7 +284,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
 }
 
 bool upb_util_HasUnsetRequired(const upb_msg* msg, const upb_MessageDef* m,
-                               const upb_symtab* ext_pool,
+                               const upb_DefPool* ext_pool,
                                upb_FieldPathEntry** fields) {
   upb_FindContext ctx;
   ctx.has_unset_required = false;

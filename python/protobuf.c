@@ -39,7 +39,7 @@ static void PyUpb_ModuleDealloc(void *module) {
   PyUpb_ModuleState *s = PyModule_GetState(module);
   PyUpb_WeakMap_Free(s->obj_cache);
   if (s->c_descriptor_symtab) {
-    upb_symtab_free(s->c_descriptor_symtab);
+    upb_DefPool_Free(s->c_descriptor_symtab);
   }
 }
 

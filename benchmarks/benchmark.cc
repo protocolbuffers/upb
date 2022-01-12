@@ -74,7 +74,7 @@ static void BM_LoadDescriptor_Upb(benchmark::State& state) {
   for (auto _ : state) {
     upb::SymbolTable symtab;
     upb_benchmark_DescriptorProto_getmsgdef(symtab.ptr());
-    bytes_per_iter = _upb_symtab_bytesloaded(symtab.ptr());
+    bytes_per_iter = _upb_DefPool_BytesLoaded(symtab.ptr());
   }
   state.SetBytesProcessed(state.iterations() * bytes_per_iter);
 }
@@ -86,7 +86,7 @@ static void BM_LoadAdsDescriptor_Upb(benchmark::State& state) {
     upb::SymbolTable symtab;
     google_ads_googleads_v7_services_SearchGoogleAdsRequest_getmsgdef(
         symtab.ptr());
-    bytes_per_iter = _upb_symtab_bytesloaded(symtab.ptr());
+    bytes_per_iter = _upb_DefPool_BytesLoaded(symtab.ptr());
   }
   state.SetBytesProcessed(state.iterations() * bytes_per_iter);
 }

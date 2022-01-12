@@ -81,7 +81,7 @@ typedef struct {
   const conformance_ConformanceRequest *request;
   conformance_ConformanceResponse *response;
   upb_arena *arena;
-  const upb_symtab *symtab;
+  const upb_DefPool *symtab;
 } ctx;
 
 bool parse_proto(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
@@ -228,7 +228,7 @@ void write_output(const upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
 void DoTest(const ctx* c) {
   upb_msg *msg;
   upb_strview name = conformance_ConformanceRequest_message_type(c->request);
-  const upb_MessageDef *m = upb_symtab_lookupmsg2(c->symtab, name.data, name.size);
+  const upb_MessageDef *m = upb_DefPool_FindMessageByNameWithSize(c->symtab, name.data, name.size);
 #if 0
   // Handy code for limiting conformance tests to a single input payload.
   // This is a hack since the conformance runner doesn't give an easy way to
@@ -261,7 +261,7 @@ void debug_print(const char *label, const upb_msg *msg, const upb_MessageDef *m,
   fprintf(stderr, "%s: %s\n", label, buf);
 }
 
-bool DoTestIo(upb_symtab *symtab) {
+bool DoTestIo(upb_DefPool *symtab) {
   upb_status status;
   char *input;
   char *output;
@@ -316,7 +316,7 @@ bool DoTestIo(upb_symtab *symtab) {
 }
 
 int main(void) {
-  upb_symtab *symtab = upb_symtab_new();
+  upb_DefPool *symtab = upb_DefPool_New();
 
   protobuf_test_messages_proto2_TestAllTypesProto2_getmsgdef(symtab);
   protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
@@ -325,7 +325,7 @@ int main(void) {
     if (!DoTestIo(symtab)) {
       fprintf(stderr, "conformance_upb: received EOF from test runner "
                       "after %d tests, exiting\n", test_count);
-      upb_symtab_free(symtab);
+      upb_DefPool_Free(symtab);
       return 0;
     }
   }

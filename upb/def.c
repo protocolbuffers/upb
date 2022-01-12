@@ -169,7 +169,7 @@ struct upb_FileDef {
   const upb_FieldDef *top_lvl_exts;
   const upb_ServiceDef *services;
   const upb_msglayout_ext **ext_layouts;
-  const upb_symtab *symtab;
+  const upb_DefPool *symtab;
 
   int dep_count;
   int public_dep_count;
@@ -201,7 +201,7 @@ struct upb_ServiceDef {
   int index;
 };
 
-struct upb_symtab {
+struct upb_DefPool {
   upb_arena *arena;
   upb_strtable syms;  /* full_name -> packed def ptr */
   upb_strtable files;  /* file_name -> upb_FileDef* */
@@ -997,7 +997,7 @@ const upb_ServiceDef *upb_FileDef_Service(const upb_FileDef *f, int i) {
   return &f->services[i];
 }
 
-const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f) {
+const upb_DefPool *upb_FileDef_Pool(const upb_FileDef *f) {
   return f->symtab;
 }
 
@@ -1085,15 +1085,15 @@ const upb_MethodDef *upb_ServiceDef_FindMethodByName(const upb_ServiceDef *s,
   return NULL;
 }
 
-/* upb_symtab *****************************************************************/
+/* upb_DefPool *****************************************************************/
 
-void upb_symtab_free(upb_symtab *s) {
+void upb_DefPool_Free(upb_DefPool *s) {
   upb_arena_free(s->arena);
   upb_gfree(s);
 }
 
-upb_symtab *upb_symtab_new(void) {
-  upb_symtab *s = upb_gmalloc(sizeof(*s));
+upb_DefPool *upb_DefPool_New(void) {
+  upb_DefPool *s = upb_gmalloc(sizeof(*s));
 
   if (!s) {
     return NULL;
@@ -1119,42 +1119,42 @@ err:
   return NULL;
 }
 
-void _upb_symtab_allownameconflicts(upb_symtab *s) {
+void _upb_DefPool_allownameconflicts(upb_DefPool *s) {
   s->allow_name_conflicts = true;
 }
 
-static const void *symtab_lookup(const upb_symtab *s, const char *sym,
+static const void *symtab_lookup(const upb_DefPool *s, const char *sym,
                                  upb_deftype_t type) {
   upb_value v;
   return upb_strtable_lookup(&s->syms, sym, &v) ? unpack_def(v, type) : NULL;
 }
 
-static const void *symtab_lookup2(const upb_symtab *s, const char *sym,
+static const void *symtab_lookup2(const upb_DefPool *s, const char *sym,
                                   size_t size, upb_deftype_t type) {
   upb_value v;
   return upb_strtable_lookup2(&s->syms, sym, size, &v) ? unpack_def(v, type)
                                                        : NULL;
 }
 
-const upb_MessageDef *upb_symtab_lookupmsg(const upb_symtab *s, const char *sym) {
+const upb_MessageDef *upb_DefPool_FindMessageByName(const upb_DefPool *s, const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_MSG);
 }
 
-const upb_MessageDef *upb_symtab_lookupmsg2(const upb_symtab *s, const char *sym,
+const upb_MessageDef *upb_DefPool_FindMessageByNameWithSize(const upb_DefPool *s, const char *sym,
                                         size_t len) {
   return symtab_lookup2(s, sym, len, UPB_DEFTYPE_MSG);
 }
 
-const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym) {
+const upb_EnumDef *upb_DefPool_FindEnumByName(const upb_DefPool *s, const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUM);
 }
 
-const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
+const upb_EnumValueDef *upb_DefPool_FindEnumByNameval(const upb_DefPool *s,
                                                const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUMVAL);
 }
 
-const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s,
+const upb_FileDef *upb_DefPool_FindFileByName(const upb_DefPool *s,
                                          const char *name) {
   upb_value v;
   return upb_strtable_lookup(&s->files, name, &v)
@@ -1162,7 +1162,7 @@ const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s,
              : NULL;
 }
 
-const upb_FileDef *upb_symtab_lookupfile2(const upb_symtab *s, const char *name,
+const upb_FileDef *upb_DefPool_FindFileByNameWithSize(const upb_DefPool *s, const char *name,
                                           size_t len) {
   upb_value v;
   return upb_strtable_lookup2(&s->files, name, len, &v)
@@ -1170,7 +1170,7 @@ const upb_FileDef *upb_symtab_lookupfile2(const upb_symtab *s, const char *name,
              : NULL;
 }
 
-const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *name,
+const upb_FieldDef *upb_DefPool_FindExtensionByNameWithSize(const upb_DefPool *s, const char *name,
                                           size_t size) {
   upb_value v;
   if (!upb_strtable_lookup2(&s->syms, name, size, &v)) return NULL;
@@ -1189,16 +1189,16 @@ const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *name,
   return NULL;
 }
 
-const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym) {
-  return upb_symtab_lookupext2(s, sym, strlen(sym));
+const upb_FieldDef *upb_DefPool_FindExtensionByName(const upb_DefPool *s, const char *sym) {
+  return upb_DefPool_FindExtensionByNameWithSize(s, sym, strlen(sym));
 }
 
-const upb_ServiceDef *upb_symtab_lookupservice(const upb_symtab *s,
+const upb_ServiceDef *upb_DefPool_FindServiceByName(const upb_DefPool *s,
                                                const char *name) {
   return symtab_lookup(s, name, UPB_DEFTYPE_SERVICE);
 }
 
-const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
+const upb_FileDef *upb_DefPool_FindFileByNameforsym(const upb_DefPool *s,
                                                const char *name) {
   upb_value v;
   // TODO(haberman): non-extension fields and oneofs.
@@ -1231,7 +1231,7 @@ const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
 
   const char *last_dot = strrchr(name, '.');
   if (last_dot) {
-    const upb_MessageDef *parent = upb_symtab_lookupmsg2(s, name, last_dot - name);
+    const upb_MessageDef *parent = upb_DefPool_FindMessageByNameWithSize(s, name, last_dot - name);
     if (parent) {
       const char *shortname = last_dot + 1;
       if (upb_MessageDef_FindByNameWithSize(parent, shortname, strlen(shortname), NULL,
@@ -1254,7 +1254,7 @@ const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
 #define CHK_OOM(x) if (!(x)) { symtab_oomerr(ctx); }
 
 typedef struct {
-  upb_symtab *symtab;
+  upb_DefPool *symtab;
   upb_FileDef *file;              /* File we are building. */
   upb_arena *arena;               /* Allocate defs here. */
   upb_arena *tmp_arena;                 /* For temporary allocations. */
@@ -1886,17 +1886,17 @@ static str_t *newstr(symtab_addctx *ctx, const char *data, size_t len) {
   return ret;
 }
 
-static bool upb_symtab_TryGetChar(const char** src, const char* end, char* ch) {
+static bool upb_DefPool_TryGetChar(const char** src, const char* end, char* ch) {
   if (*src == end) return false;
   *ch = **src;
   *src += 1;
   return true;
 }
 
-static char upb_symtab_TryGetHexDigit(symtab_addctx* ctx, const upb_FieldDef* f,
+static char upb_DefPool_TryGetHexDigit(symtab_addctx* ctx, const upb_FieldDef* f,
                                       const char** src, const char* end) {
   char ch;
-  if (!upb_symtab_TryGetChar(src, end, &ch)) return -1;
+  if (!upb_DefPool_TryGetChar(src, end, &ch)) return -1;
   if ('0' <= ch && ch <= '9') {
     return ch - '0';
   }
@@ -1908,9 +1908,9 @@ static char upb_symtab_TryGetHexDigit(symtab_addctx* ctx, const upb_FieldDef* f,
   return -1;
 }
 
-static char upb_symtab_ParseHexEscape(symtab_addctx* ctx, const upb_FieldDef* f,
+static char upb_DefPool_ParseHexEscape(symtab_addctx* ctx, const upb_FieldDef* f,
                                       const char** src, const char* end) {
-  char hex_digit = upb_symtab_TryGetHexDigit(ctx, f, src, end);
+  char hex_digit = upb_DefPool_TryGetHexDigit(ctx, f, src, end);
   if (hex_digit < 0) {
     symtab_errf(ctx,
                 "\\x cannot be followed by non-hex digit in field '%s' default",
@@ -1918,7 +1918,7 @@ static char upb_symtab_ParseHexEscape(symtab_addctx* ctx, const upb_FieldDef* f,
     return 0;
   }
   unsigned int ret = hex_digit;
-  while ((hex_digit = upb_symtab_TryGetHexDigit(ctx, f, src, end)) >= 0) {
+  while ((hex_digit = upb_DefPool_TryGetHexDigit(ctx, f, src, end)) >= 0) {
     ret = (ret << 4) | hex_digit;
   }
   if (ret > 0xff) {
@@ -1929,9 +1929,9 @@ static char upb_symtab_ParseHexEscape(symtab_addctx* ctx, const upb_FieldDef* f,
   return ret;
 }
 
-char upb_symtab_TryGetOctalDigit(const char** src, const char* end) {
+char upb_DefPool_TryGetOctalDigit(const char** src, const char* end) {
   char ch;
-  if (!upb_symtab_TryGetChar(src, end, &ch)) return -1;
+  if (!upb_DefPool_TryGetChar(src, end, &ch)) return -1;
   if ('0' <= ch && ch <= '7') {
     return ch - '0';
   }
@@ -1939,23 +1939,23 @@ char upb_symtab_TryGetOctalDigit(const char** src, const char* end) {
   return -1;
 }
 
-static char upb_symtab_ParseOctalEscape(symtab_addctx* ctx,
+static char upb_DefPool_ParseOctalEscape(symtab_addctx* ctx,
                                         const upb_FieldDef* f,
                                         const char** src, const char* end) {
   char ch = 0;
   for (int i = 0; i < 3; i++) {
     char digit;
-    if ((digit = upb_symtab_TryGetOctalDigit(src, end)) >= 0) {
+    if ((digit = upb_DefPool_TryGetOctalDigit(src, end)) >= 0) {
       ch = (ch << 3) | digit;
     }
   }
   return ch;
 }
 
-static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_FieldDef* f,
+static char upb_DefPool_ParseEscape(symtab_addctx* ctx, const upb_FieldDef* f,
                                    const char** src, const char* end) {
   char ch;
-  if (!upb_symtab_TryGetChar(src, end, &ch)) {
+  if (!upb_DefPool_TryGetChar(src, end, &ch)) {
     symtab_errf(ctx, "unterminated escape sequence in field %s",
                 upb_FieldDef_FullName(f));
     return 0;
@@ -1985,7 +1985,7 @@ static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_FieldDef* f,
       return '\?';
     case 'x':
     case 'X':
-      return upb_symtab_ParseHexEscape(ctx, f, src, end);
+      return upb_DefPool_ParseHexEscape(ctx, f, src, end);
     case '0':
     case '1':
     case '2':
@@ -1995,7 +1995,7 @@ static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_FieldDef* f,
     case '6':
     case '7':
       *src -= 1;
-      return upb_symtab_ParseOctalEscape(ctx, f, src, end);
+      return upb_DefPool_ParseOctalEscape(ctx, f, src, end);
   }
   symtab_errf(ctx, "Unknown escape sequence: \\%c", ch);
 }
@@ -2011,7 +2011,7 @@ static str_t* unescape(symtab_addctx* ctx, const upb_FieldDef* f,
   while (src < end) {
     if (*src == '\\') {
       src++;
-      *dst++ = upb_symtab_ParseEscape(ctx, f, &src, end);
+      *dst++ = upb_DefPool_ParseEscape(ctx, f, &src, end);
     } else {
       *dst++ = *src++;
     }
@@ -2921,7 +2921,7 @@ static void build_filedef(
 
   for (i = 0; i < n; i++) {
     upb_strview str = strs[i];
-    file->deps[i] = upb_symtab_lookupfile2(ctx->symtab, str.data, str.size);
+    file->deps[i] = upb_DefPool_FindFileByNameWithSize(ctx->symtab, str.data, str.size);
     if (!file->deps[i]) {
       symtab_errf(ctx,
                   "Depends on file '" UPB_STRVIEW_FORMAT
@@ -3004,7 +3004,7 @@ static void build_filedef(
   }
 }
 
-static void remove_filedef(upb_symtab *s, upb_FileDef *file) {
+static void remove_filedef(upb_DefPool *s, upb_FileDef *file) {
   intptr_t iter = UPB_INTTABLE_BEGIN;
   upb_strview key;
   upb_value val;
@@ -3035,8 +3035,8 @@ static void remove_filedef(upb_symtab *s, upb_FileDef *file) {
   }
 }
 
-static const upb_FileDef *_upb_symtab_addfile(
-    upb_symtab *s, const google_protobuf_FileDescriptorProto *file_proto,
+static const upb_FileDef *_upb_DefPool_AddFile(
+    upb_DefPool *s, const google_protobuf_FileDescriptorProto *file_proto,
     const upb_msglayout_file *layout, upb_status *status) {
   symtab_addctx ctx;
   upb_strview name = google_protobuf_FileDescriptorProto_name(file_proto);
@@ -3096,16 +3096,16 @@ static const upb_FileDef *_upb_symtab_addfile(
   return ctx.file;
 }
 
-  const upb_FileDef *upb_symtab_addfile(
-      upb_symtab * s, const google_protobuf_FileDescriptorProto *file_proto,
+  const upb_FileDef *upb_DefPool_AddFile(
+      upb_DefPool * s, const google_protobuf_FileDescriptorProto *file_proto,
       upb_status *status) {
-    return _upb_symtab_addfile(s, file_proto, NULL, status);
+    return _upb_DefPool_AddFile(s, file_proto, NULL, status);
   }
 
 /* Include here since we want most of this file to be stdio-free. */
 #include <stdio.h>
 
-bool _upb_symtab_loaddefinit(upb_symtab *s, const upb_def_init *init) {
+bool _upb_DefPool_loaddefinit(upb_DefPool *s, const upb_def_init *init) {
   /* Since this function should never fail (it would indicate a bug in upb) we
    * print errors to stderr instead of returning error status to the user. */
   upb_def_init **deps = init->deps;
@@ -3115,14 +3115,14 @@ bool _upb_symtab_loaddefinit(upb_symtab *s, const upb_def_init *init) {
 
   upb_status_clear(&status);
 
-  if (upb_symtab_lookupfile(s, init->filename)) {
+  if (upb_DefPool_FindFileByName(s, init->filename)) {
     return true;
   }
 
   arena = upb_arena_new();
 
   for (; *deps; deps++) {
-    if (!_upb_symtab_loaddefinit(s, *deps)) goto err;
+    if (!_upb_DefPool_loaddefinit(s, *deps)) goto err;
   }
 
   file = google_protobuf_FileDescriptorProto_parse_ex(
@@ -3139,7 +3139,7 @@ bool _upb_symtab_loaddefinit(upb_symtab *s, const upb_def_init *init) {
     goto err;
   }
 
-  if (!_upb_symtab_addfile(s, file, init->layout, &status)) {
+  if (!_upb_DefPool_AddFile(s, file, init->layout, &status)) {
     goto err;
   }
 
@@ -3155,15 +3155,15 @@ err:
   return false;
 }
 
-size_t _upb_symtab_bytesloaded(const upb_symtab *s) {
+size_t _upb_DefPool_BytesLoaded(const upb_DefPool *s) {
   return s->bytes_loaded;
 }
 
-upb_arena *_upb_symtab_arena(const upb_symtab *s) {
+upb_arena *_upb_DefPool_Arena(const upb_DefPool *s) {
   return s->arena;
 }
 
-const upb_FieldDef *_upb_symtab_lookupextfield(const upb_symtab *s,
+const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,
                                                const upb_msglayout_ext *ext) {
   upb_value v;
   bool ok = upb_inttable_lookup(&s->exts, (uintptr_t)ext, &v);
@@ -3171,27 +3171,27 @@ const upb_FieldDef *_upb_symtab_lookupextfield(const upb_symtab *s,
   return upb_value_getconstptr(v);
 }
 
-const upb_FieldDef *upb_symtab_lookupextbynum(const upb_symtab *s,
+const upb_FieldDef *upb_DefPool_FindExtensionByNamebynum(const upb_DefPool *s,
                                               const upb_MessageDef *m,
                                               int32_t fieldnum) {
   const upb_msglayout *l = upb_MessageDef_Layout(m);
   const upb_msglayout_ext *ext = _upb_extreg_get(s->extreg, l, fieldnum);
-  return ext ? _upb_symtab_lookupextfield(s, ext) : NULL;
+  return ext ? _upb_DefPool_FindExtensionByNamefield(s, ext) : NULL;
 }
 
-bool _upb_symtab_registerlayout(upb_symtab *s, const char *filename,
+bool _upb_DefPool_registerlayout(upb_DefPool *s, const char *filename,
                                 const upb_msglayout_file *file) {
-  if (upb_symtab_lookupfile(s, filename)) return false;
+  if (upb_DefPool_FindFileByName(s, filename)) return false;
   upb_value v = pack_def(file, UPB_DEFTYPE_LAYOUT);
   return upb_strtable_insert(&s->files, filename, strlen(filename), v,
                              s->arena);
 }
 
-const upb_extreg *upb_symtab_extreg(const upb_symtab *s) {
+const upb_extreg *upb_DefPool_ExtensionRegistry(const upb_DefPool *s) {
   return s->extreg;
 }
 
-const upb_FieldDef **upb_symtab_getallexts(const upb_symtab *s,
+const upb_FieldDef **upb_DefPool_GetAllExtensions(const upb_DefPool *s,
                                            const upb_MessageDef *m, size_t *count) {
   size_t n = 0;
   intptr_t iter = UPB_INTTABLE_BEGIN;

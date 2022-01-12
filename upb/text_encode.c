@@ -42,7 +42,7 @@ typedef struct {
   size_t overflow;
   int indent_depth;
   int options;
-  const upb_symtab *ext_pool;
+  const upb_DefPool *ext_pool;
   _upb_mapsorter sorter;
 } txtenc;
 
@@ -438,7 +438,7 @@ size_t txtenc_nullz(txtenc *e, size_t size) {
 }
 
 size_t upb_text_encode(const upb_msg *msg, const upb_MessageDef *m,
-                       const upb_symtab *ext_pool, int options, char *buf,
+                       const upb_DefPool *ext_pool, int options, char *buf,
                        size_t size) {
   txtenc e;
 

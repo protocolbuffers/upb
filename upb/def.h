@@ -72,8 +72,8 @@ struct upb_ServiceDef;
 typedef struct upb_ServiceDef upb_ServiceDef;
 struct upb_streamdef;
 typedef struct upb_streamdef upb_streamdef;
-struct upb_symtab;
-typedef struct upb_symtab upb_symtab;
+struct upb_DefPool;
+typedef struct upb_DefPool upb_DefPool;
 
 typedef enum {
   UPB_SYNTAX_PROTO2 = 2,
@@ -313,7 +313,7 @@ const upb_MessageDef *upb_FileDef_TopLevelMessage(const upb_FileDef *f, int i);
 const upb_EnumDef *upb_FileDef_TopLevelEnum(const upb_FileDef *f, int i);
 const upb_FieldDef *upb_FileDef_TopLevelExtension(const upb_FileDef *f, int i);
 const upb_ServiceDef *upb_FileDef_Service(const upb_FileDef *f, int i);
-const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f);
+const upb_DefPool *upb_FileDef_Pool(const upb_FileDef *f);
 const int32_t *_upb_FileDef_PublicDependencynums(const upb_FileDef *f);
 const int32_t *_upb_FileDef_WeakDependencynums(const upb_FileDef *f);
 
@@ -344,38 +344,38 @@ const upb_MethodDef *upb_ServiceDef_Method(const upb_ServiceDef *s, int i);
 const upb_MethodDef *upb_ServiceDef_FindMethodByName(const upb_ServiceDef *s,
                                                  const char *name);
 
-/* upb_symtab *****************************************************************/
+/* upb_DefPool *****************************************************************/
 
-upb_symtab *upb_symtab_new(void);
-void upb_symtab_free(upb_symtab* s);
-const upb_MessageDef *upb_symtab_lookupmsg(const upb_symtab *s, const char *sym);
-const upb_MessageDef *upb_symtab_lookupmsg2(
-    const upb_symtab *s, const char *sym, size_t len);
-const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
-const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
+upb_DefPool *upb_DefPool_New(void);
+void upb_DefPool_Free(upb_DefPool* s);
+const upb_MessageDef *upb_DefPool_FindMessageByName(const upb_DefPool *s, const char *sym);
+const upb_MessageDef *upb_DefPool_FindMessageByNameWithSize(
+    const upb_DefPool *s, const char *sym, size_t len);
+const upb_EnumDef *upb_DefPool_FindEnumByName(const upb_DefPool *s, const char *sym);
+const upb_EnumValueDef *upb_DefPool_FindEnumByNameval(const upb_DefPool *s,
                                                const char *sym);
-const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
-const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,
+const upb_FieldDef *upb_DefPool_FindExtensionByName(const upb_DefPool *s, const char *sym);
+const upb_FieldDef *upb_DefPool_FindExtensionByNameWithSize(const upb_DefPool *s, const char *sym,
                                          size_t len);
-const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
-const upb_ServiceDef *upb_symtab_lookupservice(const upb_symtab *s,
+const upb_FileDef *upb_DefPool_FindFileByName(const upb_DefPool *s, const char *name);
+const upb_ServiceDef *upb_DefPool_FindServiceByName(const upb_DefPool *s,
                                                const char *name);
-const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
+const upb_FileDef *upb_DefPool_FindFileByNameforsym(const upb_DefPool *s,
                                                const char *name);
-const upb_FileDef *upb_symtab_lookupfile2(
-    const upb_symtab *s, const char *name, size_t len);
-const upb_FileDef *upb_symtab_addfile(
-    upb_symtab *s, const google_protobuf_FileDescriptorProto *file,
+const upb_FileDef *upb_DefPool_FindFileByNameWithSize(
+    const upb_DefPool *s, const char *name, size_t len);
+const upb_FileDef *upb_DefPool_AddFile(
+    upb_DefPool *s, const google_protobuf_FileDescriptorProto *file,
     upb_status *status);
-size_t _upb_symtab_bytesloaded(const upb_symtab *s);
-upb_arena *_upb_symtab_arena(const upb_symtab *s);
-const upb_FieldDef *_upb_symtab_lookupextfield(const upb_symtab *s,
+size_t _upb_DefPool_BytesLoaded(const upb_DefPool *s);
+upb_arena *_upb_DefPool_Arena(const upb_DefPool *s);
+const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,
                                                const upb_msglayout_ext *ext);
-const upb_FieldDef *upb_symtab_lookupextbynum(const upb_symtab *s,
+const upb_FieldDef *upb_DefPool_FindExtensionByNamebynum(const upb_DefPool *s,
                                               const upb_MessageDef *m,
                                               int32_t fieldnum);
-const upb_extreg *upb_symtab_extreg(const upb_symtab *s);
-const upb_FieldDef **upb_symtab_getallexts(const upb_symtab *s,
+const upb_extreg *upb_DefPool_ExtensionRegistry(const upb_DefPool *s);
+const upb_FieldDef **upb_DefPool_GetAllExtensions(const upb_DefPool *s,
                                            const upb_MessageDef *m, size_t *count);
 
 /* For generated code only: loads a generated descriptor. */
@@ -386,8 +386,8 @@ typedef struct upb_def_init {
   upb_strview descriptor;         /* Serialized descriptor. */
 } upb_def_init;
 
-bool _upb_symtab_loaddefinit(upb_symtab *s, const upb_def_init *init);
-void _upb_symtab_allownameconflicts(upb_symtab *s);
+bool _upb_DefPool_loaddefinit(upb_DefPool *s, const upb_def_init *init);
+void _upb_DefPool_allownameconflicts(upb_DefPool *s);
 
 #include "upb/port_undef.inc"
 

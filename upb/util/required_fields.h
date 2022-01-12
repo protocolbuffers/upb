@@ -81,7 +81,7 @@ size_t upb_FieldPath_ToText(upb_FieldPathEntry **path, char *buf, size_t size);
 // {.field = NULL} terminates the list of paths.  The caller is responsible for
 // freeing this array.
 bool upb_util_HasUnsetRequired(const upb_msg* msg, const upb_MessageDef* m,
-                               const upb_symtab* ext_pool,
+                               const upb_DefPool* ext_pool,
                                upb_FieldPathEntry** fields);
 
 #ifdef __cplusplus

@@ -235,7 +235,7 @@ void upb_msg_clear(upb_msg *msg, const upb_MessageDef *m) {
 }
 
 bool upb_msg_next(const upb_msg *msg, const upb_MessageDef *m,
-                  const upb_symtab *ext_pool, const upb_FieldDef **out_f,
+                  const upb_DefPool *ext_pool, const upb_FieldDef **out_f,
                   upb_msgval *out_val, size_t *iter) {
   size_t i = *iter;
   size_t n = upb_MessageDef_FieldCount(m);
@@ -280,7 +280,7 @@ bool upb_msg_next(const upb_msg *msg, const upb_MessageDef *m,
     if (i - n < count) {
       ext += count - 1 - (i - n);
       memcpy(out_val, &ext->data, sizeof(*out_val));
-      *out_f = _upb_symtab_lookupextfield(ext_pool, ext->ext);
+      *out_f = _upb_DefPool_FindExtensionByNamefield(ext_pool, ext->ext);
       *iter = i;
       return true;
     }

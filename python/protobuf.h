@@ -63,7 +63,7 @@ typedef struct {
 
   // From descriptor_pool.c
   PyTypeObject *descriptor_pool_type;
-  upb_symtab* c_descriptor_symtab;
+  upb_DefPool* c_descriptor_symtab;
 
   // From extension_dict.c
   PyTypeObject* extension_dict_type;
