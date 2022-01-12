@@ -93,20 +93,21 @@ PyUpb_ModuleState *PyUpb_ModuleState_Get(void) {
 }
 
 PyObject *PyUpb_GetWktBases(PyUpb_ModuleState *state) {
-  if (state->wkt_bases) return state->wkt_bases;
+  if (!state->wkt_bases) {
+    PyObject *wkt_module =
+        PyImport_ImportModule("google.protobuf.internal.well_known_types");
 
-  PyObject *wkt_module =
-      PyImport_ImportModule("google.protobuf.internal.well_known_types");
+    if (wkt_module == NULL) {
+      return false;
+    }
 
-  if (wkt_module == NULL) {
-    return false;
+    state->wkt_bases = PyObject_GetAttrString(wkt_module, "WKTBASES");
+    PyObject *m = PyState_FindModule(&module_def);
+    // Reparent ownership to m.
+    PyModule_AddObject(m, "__internal_wktbases", state->wkt_bases);
+    Py_DECREF(wkt_module);
   }
 
-  state->wkt_bases = PyObject_GetAttrString(wkt_module, "WKTBASES");
-  PyObject *m = PyState_FindModule(&module_def);
-  // Reparent ownership to m.
-  PyModule_AddObject(m, "__internal_wktbases", state->wkt_bases);
-  Py_DECREF(wkt_module);
   return state->wkt_bases;
 }
 

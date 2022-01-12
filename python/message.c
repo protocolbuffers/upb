@@ -55,7 +55,7 @@ typedef struct {
   // For each member, we note the equivalent expression that we could use in the
   // full (non-limited) API.
   newfunc type_new;            // PyTypeObject.tp_new
-  destructor type_dealloc;  // PyTypeObject.tp_dealloc
+  destructor type_dealloc;     // PyTypeObject.tp_dealloc
   getattrofunc type_getattro;  // PyTypeObject.tp_getattro
   setattrofunc type_setattro;  // PyTypeObject.tp_setattro
   size_t type_basicsize;       // sizeof(PyHeapTypeObject)
@@ -1642,12 +1642,7 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
                          state->message_class, wkt_base, dict);
   }
 
-  PyObject* ret;
-  if (PyDict_GetItemString(dict, "__yoyoyo__")) {
-    ret = PyUnicode_FromString("YO!!");
-    Py_DECREF(args);
-  } else {
-  ret = cpython_bits.type_new(state->message_meta_type, args, NULL);
+  PyObject* ret = cpython_bits.type_new(state->message_meta_type, args, NULL);
   Py_DECREF(args);
   if (!ret) return NULL;
 
@@ -1657,7 +1652,6 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
   Py_INCREF(meta->py_message_descriptor);
 
   PyUpb_ObjCache_Add(meta->layout, ret);
-  }
 
   return ret;
 }
