@@ -1187,7 +1187,7 @@ static PyObject* PyUpb_FileDescriptor_GetServicesByName(PyObject* _self,
           (void*)&PyUpb_ServiceDescriptor_Get,
       },
       (void*)&PyUpb_FileDescriptor_LookupService,
-      (void*)&upb_servicedef_name,
+      (void*)&upb_ServiceDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -1302,7 +1302,7 @@ const upb_MethodDef* PyUpb_MethodDescriptor_GetDef(PyObject* _self) {
 }
 
 PyObject* PyUpb_MethodDescriptor_Get(const upb_MethodDef* m) {
-  const upb_FileDef* file = upb_servicedef_file(upb_MethodDef_Service(m));
+  const upb_FileDef* file = upb_ServiceDef_File(upb_MethodDef_Service(m));
   return PyUpb_DescriptorBase_Get(kPyUpb_MethodDescriptor, m, file);
 }
 
@@ -1477,47 +1477,47 @@ static PyType_Spec PyUpb_OneofDescriptor_Spec = {
 // ServiceDescriptor
 // -----------------------------------------------------------------------------
 
-const upb_servicedef* PyUpb_ServiceDescriptor_GetDef(PyObject* _self) {
+const upb_ServiceDef* PyUpb_ServiceDescriptor_GetDef(PyObject* _self) {
   PyUpb_DescriptorBase* self =
       PyUpb_DescriptorBase_Check(_self, kPyUpb_ServiceDescriptor);
   return self ? self->def : NULL;
 }
 
-PyObject* PyUpb_ServiceDescriptor_Get(const upb_servicedef* s) {
-  const upb_FileDef* file = upb_servicedef_file(s);
+PyObject* PyUpb_ServiceDescriptor_Get(const upb_ServiceDef* s) {
+  const upb_FileDef* file = upb_ServiceDef_File(s);
   return PyUpb_DescriptorBase_Get(kPyUpb_ServiceDescriptor, s, file);
 }
 
 static PyObject* PyUpb_ServiceDescriptor_GetFullName(PyObject* self,
                                                      void* closure) {
-  const upb_servicedef* s = PyUpb_ServiceDescriptor_GetDef(self);
-  return PyUnicode_FromString(upb_servicedef_fullname(s));
+  const upb_ServiceDef* s = PyUpb_ServiceDescriptor_GetDef(self);
+  return PyUnicode_FromString(upb_ServiceDef_FullName(s));
 }
 
 static PyObject* PyUpb_ServiceDescriptor_GetName(PyObject* self,
                                                  void* closure) {
-  const upb_servicedef* s = PyUpb_ServiceDescriptor_GetDef(self);
-  return PyUnicode_FromString(upb_servicedef_name(s));
+  const upb_ServiceDef* s = PyUpb_ServiceDescriptor_GetDef(self);
+  return PyUnicode_FromString(upb_ServiceDef_Name(s));
 }
 
 static PyObject* PyUpb_ServiceDescriptor_GetFile(PyObject* self,
                                                  void* closure) {
-  const upb_servicedef* s = PyUpb_ServiceDescriptor_GetDef(self);
-  return PyUpb_FileDescriptor_Get(upb_servicedef_file(s));
+  const upb_ServiceDef* s = PyUpb_ServiceDescriptor_GetDef(self);
+  return PyUpb_FileDescriptor_Get(upb_ServiceDef_File(s));
 }
 
 static PyObject* PyUpb_ServiceDescriptor_GetIndex(PyObject* self,
                                                   void* closure) {
-  const upb_servicedef* s = PyUpb_ServiceDescriptor_GetDef(self);
-  return PyLong_FromLong(upb_servicedef_index(s));
+  const upb_ServiceDef* s = PyUpb_ServiceDescriptor_GetDef(self);
+  return PyLong_FromLong(upb_ServiceDef_Index(s));
 }
 
 static PyObject* PyUpb_ServiceDescriptor_GetMethods(PyObject* _self,
                                                     void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_servicedef_methodcount,
-      (void*)&upb_servicedef_method,
+      (void*)&upb_ServiceDef_MethodCount,
+      (void*)&upb_ServiceDef_Method,
       (void*)&PyUpb_MethodDescriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -1527,11 +1527,11 @@ static PyObject* PyUpb_ServiceDescriptor_GetMethodsByName(PyObject* _self,
                                                           void* closure) {
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_servicedef_methodcount,
-          (void*)&upb_servicedef_method,
+          (void*)&upb_ServiceDef_MethodCount,
+          (void*)&upb_ServiceDef_Method,
           (void*)&PyUpb_MethodDescriptor_Get,
       },
-      (void*)&upb_servicedef_lookupmethod,
+      (void*)&upb_ServiceDef_FindMethodByName,
       (void*)&upb_MethodDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
@@ -1542,7 +1542,7 @@ static PyObject* PyUpb_ServiceDescriptor_GetOptions(PyObject* _self,
                                                     PyObject* args) {
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_DescriptorBase_GetOptions(
-      self, upb_servicedef_options(self->def),
+      self, upb_ServiceDef_Options(self->def),
       &google_protobuf_ServiceOptions_msginit,
       "google.protobuf.ServiceOptions");
 }
@@ -1559,7 +1559,7 @@ static PyObject* PyUpb_ServiceDescriptor_FindMethodByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   const char* name = PyUnicode_AsUTF8AndSize(py_name, NULL);
   if (!name) return NULL;
-  const upb_MethodDef* method = upb_servicedef_lookupmethod(self->def, name);
+  const upb_MethodDef* method = upb_ServiceDef_FindMethodByName(self->def, name);
   if (method == NULL) {
     return PyErr_Format(PyExc_KeyError, "Couldn't find method %.200s", name);
   }

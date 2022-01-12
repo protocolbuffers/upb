@@ -53,7 +53,7 @@ google_protobuf_FileDescriptorProto* upb_FileDef_ToProto(const upb_FileDef* f,
 google_protobuf_MethodDescriptorProto* upb_MethodDef_ToProto(
     const upb_MethodDef* m, upb_arena* a);
 google_protobuf_ServiceDescriptorProto* upb_ServiceDef_ToProto(
-    const upb_servicedef* s, upb_arena* a);
+    const upb_ServiceDef* s, upb_arena* a);
 
 #ifdef __cplusplus
 }  /* extern "C" */

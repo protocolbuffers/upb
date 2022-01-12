@@ -387,25 +387,25 @@ static google_protobuf_MethodDescriptorProto *methoddef_toproto(
 }
 
 static google_protobuf_ServiceDescriptorProto *servicedef_toproto(
-    upb_ToProto_Context *ctx, const upb_servicedef *s) {
+    upb_ToProto_Context *ctx, const upb_ServiceDef *s) {
   google_protobuf_ServiceDescriptorProto *proto =
       google_protobuf_ServiceDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_ServiceDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_servicedef_name(s)));
+      proto, strviewdup(ctx, upb_ServiceDef_Name(s)));
 
-  size_t n = upb_servicedef_methodcount(s);
+  size_t n = upb_ServiceDef_MethodCount(s);
   google_protobuf_MethodDescriptorProto **methods =
       google_protobuf_ServiceDescriptorProto_resize_method(proto, n,
                                                            ctx->arena);
   for (int i = 0; i < n; i++) {
-    methods[i] = methoddef_toproto(ctx, upb_servicedef_method(s, i));
+    methods[i] = methoddef_toproto(ctx, upb_ServiceDef_Method(s, i));
   }
 
-  if (upb_servicedef_hasoptions(s)) {
+  if (upb_ServiceDef_HasOptions(s)) {
     SET_OPTIONS(proto, ServiceDescriptorProto, ServiceOptions,
-                upb_servicedef_options(s));
+                upb_ServiceDef_Options(s));
   }
 
   return proto;
@@ -545,7 +545,7 @@ google_protobuf_MethodDescriptorProto *upb_MethodDef_ToProto(
 }
 
 google_protobuf_ServiceDescriptorProto *upb_ServiceDef_ToProto(
-    const upb_servicedef *s, upb_arena *a) {
+    const upb_ServiceDef *s, upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return servicedef_toproto(&ctx, s);

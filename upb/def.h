@@ -68,8 +68,8 @@ struct upb_MessageDef;
 typedef struct upb_MessageDef upb_MessageDef;
 struct upb_OneofDef;
 typedef struct upb_OneofDef upb_OneofDef;
-struct upb_servicedef;
-typedef struct upb_servicedef upb_servicedef;
+struct upb_ServiceDef;
+typedef struct upb_ServiceDef upb_ServiceDef;
 struct upb_streamdef;
 typedef struct upb_streamdef upb_streamdef;
 struct upb_symtab;
@@ -312,7 +312,7 @@ const upb_FileDef *upb_FileDef_WeakDependency(const upb_FileDef *f, int i);
 const upb_MessageDef *upb_FileDef_TopLevelMessage(const upb_FileDef *f, int i);
 const upb_EnumDef *upb_FileDef_TopLevelEnum(const upb_FileDef *f, int i);
 const upb_FieldDef *upb_FileDef_TopLevelExtension(const upb_FileDef *f, int i);
-const upb_servicedef *upb_FileDef_Service(const upb_FileDef *f, int i);
+const upb_ServiceDef *upb_FileDef_Service(const upb_FileDef *f, int i);
 const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f);
 const int32_t *_upb_FileDef_PublicDependencynums(const upb_FileDef *f);
 const int32_t *_upb_FileDef_WeakDependencynums(const upb_FileDef *f);
@@ -324,24 +324,24 @@ const google_protobuf_MethodOptions *upb_MethodDef_Options(
 bool upb_MethodDef_HasOptions(const upb_MethodDef *m);
 const char *upb_MethodDef_FullName(const upb_MethodDef *m);
 const char *upb_MethodDef_Name(const upb_MethodDef *m);
-const upb_servicedef *upb_MethodDef_Service(const upb_MethodDef *m);
+const upb_ServiceDef *upb_MethodDef_Service(const upb_MethodDef *m);
 const upb_MessageDef *upb_MethodDef_InputType(const upb_MethodDef *m);
 const upb_MessageDef *upb_MethodDef_OutputType(const upb_MethodDef *m);
 bool upb_MethodDef_ClientStreaming(const upb_MethodDef *m);
 bool upb_MethodDef_ServerStreaming(const upb_MethodDef *m);
 
-/* upb_servicedef *************************************************************/
+/* upb_ServiceDef *************************************************************/
 
-const google_protobuf_ServiceOptions *upb_servicedef_options(
-    const upb_servicedef *s);
-bool upb_servicedef_hasoptions(const upb_servicedef *s);
-const char *upb_servicedef_fullname(const upb_servicedef *s);
-const char *upb_servicedef_name(const upb_servicedef *s);
-int upb_servicedef_index(const upb_servicedef *s);
-const upb_FileDef *upb_servicedef_file(const upb_servicedef *s);
-int upb_servicedef_methodcount(const upb_servicedef *s);
-const upb_MethodDef *upb_servicedef_method(const upb_servicedef *s, int i);
-const upb_MethodDef *upb_servicedef_lookupmethod(const upb_servicedef *s,
+const google_protobuf_ServiceOptions *upb_ServiceDef_Options(
+    const upb_ServiceDef *s);
+bool upb_ServiceDef_HasOptions(const upb_ServiceDef *s);
+const char *upb_ServiceDef_FullName(const upb_ServiceDef *s);
+const char *upb_ServiceDef_Name(const upb_ServiceDef *s);
+int upb_ServiceDef_Index(const upb_ServiceDef *s);
+const upb_FileDef *upb_ServiceDef_File(const upb_ServiceDef *s);
+int upb_ServiceDef_MethodCount(const upb_ServiceDef *s);
+const upb_MethodDef *upb_ServiceDef_Method(const upb_ServiceDef *s, int i);
+const upb_MethodDef *upb_ServiceDef_FindMethodByName(const upb_ServiceDef *s,
                                                  const char *name);
 
 /* upb_symtab *****************************************************************/
@@ -358,7 +358,7 @@ const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
 const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,
                                          size_t len);
 const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
-const upb_servicedef *upb_symtab_lookupservice(const upb_symtab *s,
+const upb_ServiceDef *upb_symtab_lookupservice(const upb_symtab *s,
                                                const char *name);
 const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
                                                const char *name);

@@ -151,3 +151,14 @@ s/upb_methoddef_outputtype/upb_MethodDef_OutputType/g;
 s/upb_methoddef_clientstreaming/upb_MethodDef_ClientStreaming/g;
 s/upb_methoddef_serverstreaming/upb_MethodDef_ServerStreaming/g;
 s/upb_methoddef/upb_MethodDef/g;
+
+s/upb_servicedef_options/upb_ServiceDef_Options/g;
+s/upb_servicedef_hasoptions/upb_ServiceDef_HasOptions/g;
+s/upb_servicedef_fullname/upb_ServiceDef_FullName/g;
+s/upb_servicedef_name/upb_ServiceDef_Name/g;
+s/upb_servicedef_index/upb_ServiceDef_Index/g;
+s/upb_servicedef_file/upb_ServiceDef_File/g;
+s/upb_servicedef_methodcount/upb_ServiceDef_MethodCount/g;
+s/upb_servicedef_method/upb_ServiceDef_Method/g;
+s/upb_servicedef_lookupmethod/upb_ServiceDef_FindMethodByName/g;
+s/upb_servicedef/upb_ServiceDef/g;

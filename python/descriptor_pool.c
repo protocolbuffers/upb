@@ -479,7 +479,7 @@ static PyObject* PyUpb_DescriptorPool_FindServiceByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_servicedef* s = upb_symtab_lookupservice(self->symtab, name);
+  const upb_ServiceDef* s = upb_symtab_lookupservice(self->symtab, name);
   if (s == NULL) {
     return PyErr_Format(PyExc_KeyError, "Couldn't find enum %.200s", name);
   }

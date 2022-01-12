@@ -59,7 +59,7 @@ PyObject* PyUpb_FileDescriptor_Get(const upb_FileDef* file);
 PyObject* PyUpb_OneofDescriptor_Get(const upb_OneofDef* oneof);
 PyObject* PyUpb_EnumValueDescriptor_Get(const upb_EnumValueDef* enumval);
 PyObject* PyUpb_Descriptor_GetOrCreateWrapper(const upb_MessageDef* msg);
-PyObject* PyUpb_ServiceDescriptor_Get(const upb_servicedef* s);
+PyObject* PyUpb_ServiceDescriptor_Get(const upb_ServiceDef* s);
 
 // Returns the underlying |def| for a given wrapper object. The caller must
 // have already verified that the given Python object is of the expected type.

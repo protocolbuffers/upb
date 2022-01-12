@@ -167,7 +167,7 @@ struct upb_FileDef {
   const upb_MessageDef *top_lvl_msgs;
   const upb_EnumDef *top_lvl_enums;
   const upb_FieldDef *top_lvl_exts;
-  const upb_servicedef *services;
+  const upb_ServiceDef *services;
   const upb_msglayout_ext **ext_layouts;
   const upb_symtab *symtab;
 
@@ -184,7 +184,7 @@ struct upb_FileDef {
 
 struct upb_MethodDef {
   const google_protobuf_MethodOptions *opts;
-  upb_servicedef *service;
+  upb_ServiceDef *service;
   const char *full_name;
   const upb_MessageDef *input_type;
   const upb_MessageDef *output_type;
@@ -192,7 +192,7 @@ struct upb_MethodDef {
   bool server_streaming;
 };
 
-struct upb_servicedef {
+struct upb_ServiceDef {
   const google_protobuf_ServiceOptions *opts;
   const upb_FileDef *file;
   const char *full_name;
@@ -992,7 +992,7 @@ const upb_FieldDef *upb_FileDef_TopLevelExtension(const upb_FileDef *f, int i) {
   return &f->top_lvl_exts[i];
 }
 
-const upb_servicedef *upb_FileDef_Service(const upb_FileDef *f, int i) {
+const upb_ServiceDef *upb_FileDef_Service(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->service_count);
   return &f->services[i];
 }
@@ -1020,7 +1020,7 @@ const char *upb_MethodDef_Name(const upb_MethodDef *m) {
   return shortdefname(m->full_name);
 }
 
-const upb_servicedef *upb_MethodDef_Service(const upb_MethodDef *m) {
+const upb_ServiceDef *upb_MethodDef_Service(const upb_MethodDef *m) {
   return m->service;
 }
 
@@ -1040,42 +1040,42 @@ bool upb_MethodDef_ServerStreaming(const upb_MethodDef *m) {
   return m->server_streaming;
 }
 
-/* upb_servicedef *************************************************************/
+/* upb_ServiceDef *************************************************************/
 
-const google_protobuf_ServiceOptions *upb_servicedef_options(
-    const upb_servicedef *s) {
+const google_protobuf_ServiceOptions *upb_ServiceDef_Options(
+    const upb_ServiceDef *s) {
   return s->opts;
 }
 
-bool upb_servicedef_hasoptions(const upb_servicedef *s) {
+bool upb_ServiceDef_HasOptions(const upb_ServiceDef *s) {
   return s->opts != (void*)opt_default;
 }
 
-const char *upb_servicedef_fullname(const upb_servicedef *s) {
+const char *upb_ServiceDef_FullName(const upb_ServiceDef *s) {
   return s->full_name;
 }
 
-const char *upb_servicedef_name(const upb_servicedef *s) {
+const char *upb_ServiceDef_Name(const upb_ServiceDef *s) {
   return shortdefname(s->full_name);
 }
 
-int upb_servicedef_index(const upb_servicedef *s) {
+int upb_ServiceDef_Index(const upb_ServiceDef *s) {
   return s->index;
 }
 
-const upb_FileDef *upb_servicedef_file(const upb_servicedef *s) {
+const upb_FileDef *upb_ServiceDef_File(const upb_ServiceDef *s) {
   return s->file;
 }
 
-int upb_servicedef_methodcount(const upb_servicedef *s) {
+int upb_ServiceDef_MethodCount(const upb_ServiceDef *s) {
   return s->method_count;
 }
 
-const upb_MethodDef *upb_servicedef_method(const upb_servicedef *s, int i) {
+const upb_MethodDef *upb_ServiceDef_Method(const upb_ServiceDef *s, int i) {
   return i < 0 || i >= s->method_count ? NULL : &s->methods[i];
 }
 
-const upb_MethodDef *upb_servicedef_lookupmethod(const upb_servicedef *s,
+const upb_MethodDef *upb_ServiceDef_FindMethodByName(const upb_ServiceDef *s,
                                                  const char *name) {
   for (int i = 0; i < s->method_count; i++) {
     if (strcmp(name, upb_MethodDef_Name(&s->methods[i])) == 0) {
@@ -1193,7 +1193,7 @@ const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym) {
   return upb_symtab_lookupext2(s, sym, strlen(sym));
 }
 
-const upb_servicedef *upb_symtab_lookupservice(const upb_symtab *s,
+const upb_ServiceDef *upb_symtab_lookupservice(const upb_symtab *s,
                                                const char *name) {
   return symtab_lookup(s, name, UPB_DEFTYPE_SERVICE);
 }
@@ -1221,8 +1221,8 @@ const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
         return upb_EnumDef_File(upb_EnumValueDef_Enum(ev));
       }
       case UPB_DEFTYPE_SERVICE: {
-        const upb_servicedef *service = unpack_def(v, UPB_DEFTYPE_SERVICE);
-        return upb_servicedef_file(service);
+        const upb_ServiceDef *service = unpack_def(v, UPB_DEFTYPE_SERVICE);
+        return upb_ServiceDef_File(service);
       }
       default:
         UPB_UNREACHABLE();
@@ -2369,8 +2369,8 @@ static void create_fielddef(
 
 static void create_service(
     symtab_addctx *ctx, const google_protobuf_ServiceDescriptorProto *svc_proto,
-    const upb_servicedef *_s) {
-  upb_servicedef *s = (upb_servicedef*)_s;
+    const upb_ServiceDef *_s) {
+  upb_ServiceDef *s = (upb_ServiceDef*)_s;
   upb_strview name;
   const google_protobuf_MethodDescriptorProto *const *methods;
   size_t i, n;
@@ -2986,7 +2986,7 @@ static void build_filedef(
   file->services = symtab_alloc(ctx, sizeof(*file->services) * n);
   for (i = 0; i < n; i++) {
     create_service(ctx, services[i], &file->services[i]);
-    ((upb_servicedef*)&file->services[i])->index = i;
+    ((upb_ServiceDef*)&file->services[i])->index = i;
   }
 
   /* Now that all names are in the table, build layouts and resolve refs. */
@@ -3025,7 +3025,7 @@ static void remove_filedef(upb_symtab *s, upb_FileDef *file) {
             upb_EnumValueDef_Enum(unpack_def(val, UPB_DEFTYPE_ENUMVAL)));
         break;
       case UPB_DEFTYPE_SERVICE:
-        f = upb_servicedef_file(unpack_def(val, UPB_DEFTYPE_SERVICE));
+        f = upb_ServiceDef_File(unpack_def(val, UPB_DEFTYPE_SERVICE));
         break;
       default:
         UPB_UNREACHABLE();
