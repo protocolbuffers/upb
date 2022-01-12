@@ -317,8 +317,8 @@ static upb_msgval lupb_tomsgval(lua_State *L, upb_fieldtype_t type, int narg,
   return ret;
 }
 
-static void lupb_pushmsgval(lua_State *L, int container, upb_fieldtype_t type,
-                            upb_msgval val) {
+void lupb_pushmsgval(lua_State* L, int container, upb_fieldtype_t type,
+                     upb_msgval val) {
   switch (type) {
     case UPB_TYPE_INT32:
     case UPB_TYPE_ENUM:
@@ -355,7 +355,6 @@ static void lupb_pushmsgval(lua_State *L, int container, upb_fieldtype_t type,
   }
   LUPB_UNREACHABLE();
 }
-
 
 /* lupb_array *****************************************************************/
 
@@ -717,7 +716,7 @@ static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val) {
  */
 static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
                             const char *type, const upb_fielddef *f) {
-  if (upb_fielddef_type(f) == UPB_TYPE_MESSAGE) {
+  if (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE) {
     /* Wrapper needs a reference to the msgdef. */
     void* ud = lupb_newuserdata(L, size, 2, type);
     lua_getiuservalue(L, narg, LUPB_MSGDEF_INDEX);
@@ -736,17 +735,17 @@ static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
  */
 static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_fielddef *f,
                                 upb_mutmsgval val) {
-  if (upb_fielddef_ismap(f)) {
-    const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+  if (upb_FieldDef_IsMap(f)) {
+    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_fielddef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
     const upb_fielddef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
     lupb_map *lmap = lupb_msg_newud(L, narg, sizeof(*lmap), LUPB_MAP, val_f);
-    lmap->key_type = upb_fielddef_type(key_f);
-    lmap->value_type = upb_fielddef_type(val_f);
+    lmap->key_type = upb_FieldDef_CType(key_f);
+    lmap->value_type = upb_FieldDef_CType(val_f);
     lmap->map = val.map;
-  } else if (upb_fielddef_isseq(f)) {
+  } else if (upb_FieldDef_IsRepeated(f)) {
     lupb_array *larr = lupb_msg_newud(L, narg, sizeof(*larr), LUPB_ARRAY, f);
-    larr->type = upb_fielddef_type(f);
+    larr->type = upb_FieldDef_CType(f);
     larr->arr = val.array;
   } else {
     lupb_msg *lmsg = lupb_msg_newud(L, narg, sizeof(*lmsg), LUPB_MSG, f);
@@ -816,9 +815,9 @@ static int lupb_msg_index(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
   const upb_fielddef *f = lupb_msg_checkfield(L, 1, 2);
 
-  if (upb_fielddef_isseq(f) || upb_fielddef_issubmsg(f)) {
+  if (upb_FieldDef_IsRepeated(f) || upb_FieldDef_IsSubMessage(f)) {
     /* Wrapped type; get or create wrapper. */
-    upb_arena *arena = upb_fielddef_isseq(f) ? lupb_arenaget(L, 1) : NULL;
+    upb_arena *arena = upb_FieldDef_IsRepeated(f) ? lupb_arenaget(L, 1) : NULL;
     upb_mutmsgval val = upb_msg_mutable(msg, f, arena);
     if (!lupb_cacheget(L, val.msg)) {
       lupb_msg_newwrapper(L, 1, f, val);
@@ -826,7 +825,7 @@ static int lupb_msg_index(lua_State *L) {
   } else {
     /* Value type, just push value and return .*/
     upb_msgval val = upb_msg_get(msg, f);
-    lupb_pushmsgval(L, 0, upb_fielddef_type(f), val);
+    lupb_pushmsgval(L, 0, upb_FieldDef_CType(f), val);
   }
 
   return 1;
@@ -846,33 +845,33 @@ static int lupb_msg_newindex(lua_State *L) {
   upb_msgval msgval;
   bool merge_arenas = true;
 
-  if (upb_fielddef_ismap(f)) {
+  if (upb_FieldDef_IsMap(f)) {
     lupb_map *lmap = lupb_map_check(L, 3);
-    const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_fielddef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
     const upb_fielddef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
-    upb_fieldtype_t key_type = upb_fielddef_type(key_f);
-    upb_fieldtype_t value_type = upb_fielddef_type(val_f);
+    upb_fieldtype_t key_type = upb_FieldDef_CType(key_f);
+    upb_fieldtype_t value_type = upb_FieldDef_CType(val_f);
     luaL_argcheck(L, lmap->key_type == key_type, 3, "key type mismatch");
     luaL_argcheck(L, lmap->value_type == value_type, 3, "value type mismatch");
     if (value_type == UPB_TYPE_MESSAGE) {
       lupb_msg_typechecksubmsg(L, 3, 1, val_f);
     }
     msgval.map_val = lmap->map;
-  } else if (upb_fielddef_isseq(f)) {
+  } else if (upb_FieldDef_IsRepeated(f)) {
     lupb_array *larr = lupb_array_check(L, 3);
-    upb_fieldtype_t type = upb_fielddef_type(f);
+    upb_fieldtype_t type = upb_FieldDef_CType(f);
     luaL_argcheck(L, larr->type == type, 3, "array type mismatch");
     if (type == UPB_TYPE_MESSAGE) {
       lupb_msg_typechecksubmsg(L, 3, 1, f);
     }
     msgval.array_val = larr->arr;
-  } else if (upb_fielddef_issubmsg(f)) {
+  } else if (upb_FieldDef_IsSubMessage(f)) {
     upb_msg *msg = lupb_msg_check(L, 3);
     lupb_msg_typechecksubmsg(L, 3, 1, f);
     msgval.msg_val = msg;
   } else {
-    msgval = lupb_tomsgval(L, upb_fielddef_type(f), 3, 1, LUPB_COPY);
+    msgval = lupb_tomsgval(L, upb_FieldDef_CType(f), 3, 1, LUPB_COPY);
     merge_arenas = false;
   }
 

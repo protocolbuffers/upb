@@ -101,7 +101,7 @@ static void txtenc_endfield(txtenc *e) {
 }
 
 static void txtenc_enum(int32_t val, const upb_fielddef *f, txtenc *e) {
-  const upb_enumdef *e_def = upb_fielddef_enumsubdef(f);
+  const upb_enumdef *e_def = upb_FieldDef_EnumSubDef(f);
   const upb_enumvaldef *ev = upb_enumdef_lookupnum(e_def, val);
 
   if (ev) {
@@ -152,14 +152,14 @@ static void txtenc_string(txtenc *e, upb_strview str, bool bytes) {
 
 static void txtenc_field(txtenc *e, upb_msgval val, const upb_fielddef *f) {
   txtenc_indent(e);
-  upb_fieldtype_t type = upb_fielddef_type(f);
-  const char* name = upb_fielddef_name(f);
+  upb_fieldtype_t type = upb_FieldDef_CType(f);
+  const char* name = upb_FieldDef_Name(f);
 
   if (type == UPB_TYPE_MESSAGE) {
     txtenc_printf(e, "%s {", name);
     txtenc_endfield(e);
     e->indent_depth++;
-    txtenc_msg(e, val.msg_val, upb_fielddef_msgsubdef(f));
+    txtenc_msg(e, val.msg_val, upb_FieldDef_MessageSubDef(f));
     e->indent_depth--;
     txtenc_indent(e);
     txtenc_putstr(e, "}");
@@ -226,11 +226,11 @@ static void txtenc_array(txtenc *e, const upb_array *arr,
 
 static void txtenc_mapentry(txtenc *e, upb_msgval key, upb_msgval val,
                             const upb_fielddef *f) {
-  const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+  const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
   const upb_fielddef *key_f = upb_msgdef_field(entry, 0);
   const upb_fielddef *val_f = upb_msgdef_field(entry, 1);
   txtenc_indent(e);
-  txtenc_printf(e, "%s {", upb_fielddef_name(f));
+  txtenc_printf(e, "%s {", upb_FieldDef_Name(f));
   txtenc_endfield(e);
   e->indent_depth++;
 
@@ -264,12 +264,12 @@ static void txtenc_map(txtenc *e, const upb_map *map, const upb_fielddef *f) {
       txtenc_mapentry(e, key, val, f);
     }
   } else {
-    const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_fielddef *key_f = upb_msgdef_field(entry, 0);
     _upb_sortedmap sorted;
     upb_map_entry ent;
 
-    _upb_mapsorter_pushmap(&e->sorter, upb_fielddef_descriptortype(key_f), map,
+    _upb_mapsorter_pushmap(&e->sorter, upb_FieldDef_Type(key_f), map,
                            &sorted);
     while (_upb_sortedmap_next(&e->sorter, map, &sorted, &ent)) {
       upb_msgval key, val;
@@ -404,9 +404,9 @@ static void txtenc_msg(txtenc *e, const upb_msg *msg,
   upb_msgval val;
 
   while (upb_msg_next(msg, m, e->ext_pool, &f, &val, &iter)) {
-    if (upb_fielddef_ismap(f)) {
+    if (upb_FieldDef_IsMap(f)) {
       txtenc_map(e, val.map_val, f);
-    } else if (upb_fielddef_isseq(f)) {
+    } else if (upb_FieldDef_IsRepeated(f)) {
       txtenc_array(e, val.array_val, f);
     } else {
       txtenc_field(e, val, f);

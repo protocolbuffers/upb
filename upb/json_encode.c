@@ -198,7 +198,7 @@ static void jsonenc_duration(jsonenc *e, const upb_msg *msg, const upb_msgdef *m
 }
 
 static void jsonenc_enum(int32_t val, const upb_fielddef *f, jsonenc *e) {
-  const upb_enumdef *e_def = upb_fielddef_enumsubdef(f);
+  const upb_enumdef *e_def = upb_FieldDef_EnumSubDef(f);
 
   if (strcmp(upb_enumdef_fullname(e_def), "google.protobuf.NullValue") == 0) {
     jsonenc_putstr(e, "null");
@@ -446,7 +446,7 @@ static void jsonenc_struct(jsonenc *e, const upb_msg *msg,
                            const upb_msgdef *m) {
   const upb_fielddef *fields_f = upb_msgdef_itof(m, 1);
   const upb_map *fields = upb_msg_get(msg, fields_f).map_val;
-  const upb_msgdef *entry_m = upb_fielddef_msgsubdef(fields_f);
+  const upb_msgdef *entry_m = upb_FieldDef_MessageSubDef(fields_f);
   const upb_fielddef *value_f = upb_msgdef_itof(entry_m, 2);
   size_t iter = UPB_MAP_BEGIN;
   bool first = true;
@@ -461,7 +461,7 @@ static void jsonenc_struct(jsonenc *e, const upb_msg *msg,
       jsonenc_putsep(e, ",", &first);
       jsonenc_string(e, key.str_val);
       jsonenc_putstr(e, ":");
-      jsonenc_value(e, val.msg_val, upb_fielddef_msgsubdef(value_f));
+      jsonenc_value(e, val.msg_val, upb_FieldDef_MessageSubDef(value_f));
     }
   }
 
@@ -471,7 +471,7 @@ static void jsonenc_struct(jsonenc *e, const upb_msg *msg,
 static void jsonenc_listvalue(jsonenc *e, const upb_msg *msg,
                               const upb_msgdef *m) {
   const upb_fielddef *values_f = upb_msgdef_itof(m, 1);
-  const upb_msgdef *values_m = upb_fielddef_msgsubdef(values_f);
+  const upb_msgdef *values_m = upb_FieldDef_MessageSubDef(values_f);
   const upb_array *values = upb_msg_get(msg, values_f).array_val;
   size_t i;
   bool first = true;
@@ -501,7 +501,7 @@ static void jsonenc_value(jsonenc *e, const upb_msg *msg, const upb_msgdef *m) {
     jsonenc_err(e, "No value set in Value proto");
   }
 
-  switch (upb_fielddef_number(f)) {
+  switch (upb_FieldDef_Number(f)) {
     case 1:
       jsonenc_putstr(e, "null");
       break;
@@ -515,10 +515,10 @@ static void jsonenc_value(jsonenc *e, const upb_msg *msg, const upb_msgdef *m) {
       jsonenc_putstr(e, val.bool_val ? "true" : "false");
       break;
     case 5:
-      jsonenc_struct(e, val.msg_val, upb_fielddef_msgsubdef(f));
+      jsonenc_struct(e, val.msg_val, upb_FieldDef_MessageSubDef(f));
       break;
     case 6:
-      jsonenc_listvalue(e, val.msg_val, upb_fielddef_msgsubdef(f));
+      jsonenc_listvalue(e, val.msg_val, upb_FieldDef_MessageSubDef(f));
       break;
   }
 }
@@ -565,7 +565,7 @@ static void jsonenc_msgfield(jsonenc *e, const upb_msg *msg,
 }
 
 static void jsonenc_scalar(jsonenc *e, upb_msgval val, const upb_fielddef *f) {
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       jsonenc_putstr(e, val.bool_val ? "true" : "false");
       break;
@@ -597,7 +597,7 @@ static void jsonenc_scalar(jsonenc *e, upb_msgval val, const upb_fielddef *f) {
       jsonenc_enum(val.int32_val, f, e);
       break;
     case UPB_TYPE_MESSAGE:
-      jsonenc_msgfield(e, val.msg_val, upb_fielddef_msgsubdef(f));
+      jsonenc_msgfield(e, val.msg_val, upb_FieldDef_MessageSubDef(f));
       break;
   }
 }
@@ -605,7 +605,7 @@ static void jsonenc_scalar(jsonenc *e, upb_msgval val, const upb_fielddef *f) {
 static void jsonenc_mapkey(jsonenc *e, upb_msgval val, const upb_fielddef *f) {
   jsonenc_putstr(e, "\"");
 
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       jsonenc_putstr(e, val.bool_val ? "true" : "false");
       break;
@@ -648,7 +648,7 @@ static void jsonenc_array(jsonenc *e, const upb_array *arr,
 }
 
 static void jsonenc_map(jsonenc *e, const upb_map *map, const upb_fielddef *f) {
-  const upb_msgdef *entry = upb_fielddef_msgsubdef(f);
+  const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
   const upb_fielddef *key_f = upb_msgdef_itof(entry, 1);
   const upb_fielddef *val_f = upb_msgdef_itof(entry, 2);
   size_t iter = UPB_MAP_BEGIN;
@@ -673,23 +673,23 @@ static void jsonenc_fieldval(jsonenc *e, const upb_fielddef *f,
 
   jsonenc_putsep(e, ",", first);
 
-  if (upb_fielddef_isextension(f)) {
+  if (upb_FieldDef_IsExtension(f)) {
     // TODO: For MessageSet, I would have expected this to print the message
     // name here, but Python doesn't appear to do this. We should do more
     // research here about what various implementations do.
-    jsonenc_printf(e, "\"[%s]\":", upb_fielddef_fullname(f));
+    jsonenc_printf(e, "\"[%s]\":", upb_FieldDef_FullName(f));
   } else {
     if (e->options & UPB_JSONENC_PROTONAMES) {
-      name = upb_fielddef_name(f);
+      name = upb_FieldDef_Name(f);
     } else {
-      name = upb_fielddef_jsonname(f);
+      name = upb_FieldDef_JsonName(f);
     }
     jsonenc_printf(e, "\"%s\":", name);
   }
 
-  if (upb_fielddef_ismap(f)) {
+  if (upb_FieldDef_IsMap(f)) {
     jsonenc_map(e, val.map_val, f);
-  } else if (upb_fielddef_isseq(f)) {
+  } else if (upb_FieldDef_IsRepeated(f)) {
     jsonenc_array(e, val.array_val, f);
   } else {
     jsonenc_scalar(e, val, f);
@@ -707,7 +707,7 @@ static void jsonenc_msgfields(jsonenc *e, const upb_msg *msg,
     int n = upb_msgdef_fieldcount(m);
     for (i = 0; i < n; i++) {
       f = upb_msgdef_field(m, i);
-      if (!upb_fielddef_haspresence(f) || upb_msg_has(msg, f)) {
+      if (!upb_FieldDef_HasPresence(f) || upb_msg_has(msg, f)) {
         jsonenc_fieldval(e, f, upb_msg_get(msg, f), &first);
       }
     }

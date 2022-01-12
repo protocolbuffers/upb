@@ -82,7 +82,7 @@ static size_t upb_FieldPath_NullTerminate(upb_PrintfAppender *d, size_t size) {
 
 static void upb_FieldPath_PutMapKey(upb_PrintfAppender *a, upb_msgval map_key,
                                     const upb_fielddef *key_f) {
-  switch (upb_fielddef_type(key_f)) {
+  switch (upb_FieldDef_CType(key_f)) {
     case UPB_TYPE_INT32:
       upb_FieldPath_Printf(a, "[%" PRId32 "]", map_key.int32_val);
       break;
@@ -127,15 +127,15 @@ size_t upb_FieldPath_ToText(upb_FieldPathEntry** path, char* buf, size_t size) {
   while (ptr->field) {
     const upb_fielddef *f = ptr->field;
 
-    upb_FieldPath_Printf(&appender, first ? "%s" : ".%s", upb_fielddef_name(f));
+    upb_FieldPath_Printf(&appender, first ? "%s" : ".%s", upb_FieldDef_Name(f));
     first = false;
     ptr++;
 
-    if (upb_fielddef_ismap(f)) {
-      const upb_fielddef *key_f = upb_msgdef_field(upb_fielddef_msgsubdef(f), 0);
+    if (upb_FieldDef_IsMap(f)) {
+      const upb_fielddef *key_f = upb_msgdef_field(upb_FieldDef_MessageSubDef(f), 0);
       upb_FieldPath_PutMapKey(&appender, ptr->map_key, key_f);
       ptr++;
-    } else if (upb_fielddef_isseq(f)) {
+    } else if (upb_FieldDef_IsRepeated(f)) {
       upb_FieldPath_Printf(&appender, "[%zu]", ptr->array_index);
       ptr++;
     }
@@ -202,7 +202,7 @@ static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
   // Iterate over all fields to see if any required fields are missing.
   for (int i = 0, n = upb_msgdef_fieldcount(m); i < n; i++) {
     const upb_fielddef* f = upb_msgdef_field(m, i);
-    if (upb_fielddef_label(f) != UPB_LABEL_REQUIRED) continue;
+    if (upb_FieldDef_Label(f) != UPB_LABEL_REQUIRED) continue;
 
     if (!msg || !upb_msg_has(msg, f)) {
       // A required field is missing.
@@ -246,15 +246,15 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
   upb_msgval val;
   while (upb_msg_next(msg, m, ctx->ext_pool, &f, &val, &iter)) {
     // Skip non-submessage fields.
-    if (!upb_fielddef_issubmsg(f)) continue;
+    if (!upb_FieldDef_IsSubMessage(f)) continue;
 
     upb_FindContext_Push(ctx, (upb_FieldPathEntry){.field = f});
-    const upb_msgdef* sub_m = upb_fielddef_msgsubdef(f);
+    const upb_msgdef* sub_m = upb_FieldDef_MessageSubDef(f);
 
-    if (upb_fielddef_ismap(f)) {
+    if (upb_FieldDef_IsMap(f)) {
       // Map field.
       const upb_fielddef* val_f = upb_msgdef_field(sub_m, 1);
-      const upb_msgdef* val_m = upb_fielddef_msgsubdef(val_f);
+      const upb_msgdef* val_m = upb_FieldDef_MessageSubDef(val_f);
       if (!val_m) continue;
       const upb_map* map = val.map_val;
       size_t iter = UPB_MAP_BEGIN;
@@ -265,7 +265,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
         upb_util_FindUnsetRequiredInternal(ctx, map_val.msg_val, val_m);
         upb_FindContext_Pop(ctx);
       }
-    } else if (upb_fielddef_isseq(f)) {
+    } else if (upb_FieldDef_IsRepeated(f)) {
       // Repeated field.
       const upb_array* arr = val.array_val;
       for (size_t i = 0, n = upb_array_size(arr); i < n; i++) {

@@ -59,27 +59,27 @@ class FieldDefPtr {
   typedef upb_label_t Label;
   typedef upb_descriptortype_t DescriptorType;
 
-  const char* full_name() const { return upb_fielddef_fullname(ptr_); }
+  const char* full_name() const { return upb_FieldDef_FullName(ptr_); }
 
-  Type type() const { return upb_fielddef_type(ptr_); }
-  Label label() const { return upb_fielddef_label(ptr_); }
-  const char* name() const { return upb_fielddef_name(ptr_); }
-  const char* json_name() const { return upb_fielddef_jsonname(ptr_); }
-  uint32_t number() const { return upb_fielddef_number(ptr_); }
-  bool is_extension() const { return upb_fielddef_isextension(ptr_); }
+  Type type() const { return upb_FieldDef_CType(ptr_); }
+  Label label() const { return upb_FieldDef_Label(ptr_); }
+  const char* name() const { return upb_FieldDef_Name(ptr_); }
+  const char* json_name() const { return upb_FieldDef_JsonName(ptr_); }
+  uint32_t number() const { return upb_FieldDef_Number(ptr_); }
+  bool is_extension() const { return upb_FieldDef_IsExtension(ptr_); }
 
   // For non-string, non-submessage fields, this indicates whether binary
   // protobufs are encoded in packed or non-packed format.
   //
   // Note: this accessor reflects the fact that "packed" has different defaults
   // depending on whether the proto is proto2 or proto3.
-  bool packed() const { return upb_fielddef_packed(ptr_); }
+  bool packed() const { return upb_FieldDef_IsPacked(ptr_); }
 
   // An integer that can be used as an index into an array of fields for
   // whatever message this field belongs to.  Guaranteed to be less than
   // f->containing_type()->field_count().  May only be accessed once the def has
   // been finalized.
-  uint32_t index() const { return upb_fielddef_index(ptr_); }
+  uint32_t index() const { return upb_FieldDef_Index(ptr_); }
 
   // The MessageDef to which this field belongs.
   //
@@ -101,37 +101,17 @@ class FieldDefPtr {
   // descriptor_type() is a function of type(), integer_format(), and
   // is_tag_delimited().
   DescriptorType descriptor_type() const {
-    return upb_fielddef_descriptortype(ptr_);
+    return upb_FieldDef_Type(ptr_);
   }
 
   // Convenient field type tests.
-  bool IsSubMessage() const { return upb_fielddef_issubmsg(ptr_); }
-  bool IsString() const { return upb_fielddef_isstring(ptr_); }
-  bool IsSequence() const { return upb_fielddef_isseq(ptr_); }
-  bool IsPrimitive() const { return upb_fielddef_isprimitive(ptr_); }
-  bool IsMap() const { return upb_fielddef_ismap(ptr_); }
-
-  // Returns the non-string default value for this fielddef, which may either
-  // be something the client set explicitly or the "default default" (0 for
-  // numbers, empty for strings).  The field's type indicates the type of the
-  // returned value, except for enum fields that are still mutable.
-  //
-  // Requires that the given function matches the field's current type.
-  int64_t default_int64() const { return upb_fielddef_defaultint64(ptr_); }
-  int32_t default_int32() const { return upb_fielddef_defaultint32(ptr_); }
-  uint64_t default_uint64() const { return upb_fielddef_defaultuint64(ptr_); }
-  uint32_t default_uint32() const { return upb_fielddef_defaultuint32(ptr_); }
-  bool default_bool() const { return upb_fielddef_defaultbool(ptr_); }
-  float default_float() const { return upb_fielddef_defaultfloat(ptr_); }
-  double default_double() const { return upb_fielddef_defaultdouble(ptr_); }
+  bool IsSubMessage() const { return upb_FieldDef_IsSubMessage(ptr_); }
+  bool IsString() const { return upb_FieldDef_IsString(ptr_); }
+  bool IsSequence() const { return upb_FieldDef_IsRepeated(ptr_); }
+  bool IsPrimitive() const { return upb_FieldDef_IsPrimitive(ptr_); }
+  bool IsMap() const { return upb_FieldDef_IsMap(ptr_); }
 
   MessageValue default_value() const { return upb_fielddef_default(ptr_); }
-
-  // The resulting string is always NULL-terminated.  If non-NULL, the length
-  // will be stored in *len.
-  const char* default_string(size_t* len) const {
-    return upb_fielddef_defaultstr(ptr_, len);
-  }
 
   // Returns the enum or submessage def for this field, if any.  The field's
   // type must match (ie. you may only call enum_subdef() for fields where
@@ -455,11 +435,11 @@ inline FileDefPtr MessageDefPtr::file() const {
 }
 
 inline MessageDefPtr FieldDefPtr::message_subdef() const {
-  return MessageDefPtr(upb_fielddef_msgsubdef(ptr_));
+  return MessageDefPtr(upb_FieldDef_MessageSubDef(ptr_));
 }
 
 inline MessageDefPtr FieldDefPtr::containing_type() const {
-  return MessageDefPtr(upb_fielddef_containingtype(ptr_));
+  return MessageDefPtr(upb_FieldDef_ContainingType(ptr_));
 }
 
 inline MessageDefPtr OneofDefPtr::containing_type() const {
@@ -467,11 +447,11 @@ inline MessageDefPtr OneofDefPtr::containing_type() const {
 }
 
 inline OneofDefPtr FieldDefPtr::containing_oneof() const {
-  return OneofDefPtr(upb_fielddef_containingoneof(ptr_));
+  return OneofDefPtr(upb_FieldDef_ContainingOneof(ptr_));
 }
 
 inline EnumDefPtr FieldDefPtr::enum_subdef() const {
-  return EnumDefPtr(upb_fielddef_enumsubdef(ptr_));
+  return EnumDefPtr(upb_FieldDef_EnumSubDef(ptr_));
 }
 
 }  // namespace upb

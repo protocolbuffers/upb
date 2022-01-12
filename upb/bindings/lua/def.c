@@ -32,6 +32,7 @@
 #include "lauxlib.h"
 #include "upb/bindings/lua/upb.h"
 #include "upb/def.h"
+#include "upb/reflection.h"
 
 #define LUPB_ENUMDEF "lupb.enumdef"
 #define LUPB_ENUMVALDEF "lupb.enumvaldef"
@@ -84,7 +85,7 @@ static void lupb_wrapper_pushwrapper(lua_State *L, int narg, const void *def,
  * may be the submessage of the map value).
  */
 void lupb_msgdef_pushsubmsgdef(lua_State *L, const upb_fielddef *f) {
-  const upb_msgdef *m = upb_fielddef_msgsubdef(f);
+  const upb_msgdef *m = upb_FieldDef_MessageSubDef(f);
   assert(m);
   lupb_wrapper_pushwrapper(L, -1, m, LUPB_MSGDEF);
   lua_replace(L, -2);  /* Replace msgdef with submsgdef. */
@@ -96,90 +97,69 @@ const upb_fielddef *lupb_fielddef_check(lua_State *L, int narg) {
   return lupb_wrapper_check(L, narg, LUPB_FIELDDEF);
 }
 
-static int lupb_fielddef_containingoneof(lua_State *L) {
+static int lupb_FieldDef_ContainingOneof(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  const upb_oneofdef *o = upb_fielddef_containingoneof(f);
+  const upb_oneofdef *o = upb_FieldDef_ContainingOneof(f);
   lupb_wrapper_pushwrapper(L, 1, o, LUPB_ONEOFDEF);
   return 1;
 }
 
-static int lupb_fielddef_containingtype(lua_State *L) {
+static int lupb_FieldDef_ContainingType(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  const upb_msgdef *m = upb_fielddef_containingtype(f);
+  const upb_msgdef *m = upb_FieldDef_ContainingType(f);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
 
 static int lupb_fielddef_default(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  switch (upb_fielddef_type(f)) {
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_ENUM:
-      lupb_pushint32(L, upb_fielddef_defaultint32(f)); break;
-    case UPB_TYPE_INT64:
-      lupb_pushint64(L, upb_fielddef_defaultint64(f)); break;
-    case UPB_TYPE_UINT32:
-      lupb_pushuint32(L, upb_fielddef_defaultuint32(f)); break;
-    case UPB_TYPE_UINT64:
-      lupb_pushuint64(L, upb_fielddef_defaultuint64(f)); break;
-    case UPB_TYPE_DOUBLE:
-      lua_pushnumber(L, upb_fielddef_defaultdouble(f)); break;
-    case UPB_TYPE_FLOAT:
-      lua_pushnumber(L, upb_fielddef_defaultfloat(f)); break;
-    case UPB_TYPE_BOOL:
-      lua_pushboolean(L, upb_fielddef_defaultbool(f)); break;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES: {
-      size_t len;
-      const char *data = upb_fielddef_defaultstr(f, &len);
-      lua_pushlstring(L, data, len);
-      break;
-    }
-    case UPB_TYPE_MESSAGE:
-      return luaL_error(L, "Message fields do not have explicit defaults.");
+  upb_fieldtype_t type = upb_FieldDef_CType(f);
+  if (type == UPB_TYPE_MESSAGE) {
+    return luaL_error(L, "Message fields do not have explicit defaults.");
   }
+  lupb_pushmsgval(L, 0, type, upb_fielddef_default(f));
   return 1;
 }
 
-static int lupb_fielddef_descriptortype(lua_State *L) {
+static int lupb_FieldDef_Type(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushnumber(L, upb_fielddef_descriptortype(f));
+  lua_pushnumber(L, upb_FieldDef_Type(f));
   return 1;
 }
 
-static int lupb_fielddef_hassubdef(lua_State *L) {
+static int lupb_FieldDef_HasSubDef(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushboolean(L, upb_fielddef_hassubdef(f));
+  lua_pushboolean(L, upb_FieldDef_HasSubDef(f));
   return 1;
 }
 
-static int lupb_fielddef_index(lua_State *L) {
+static int lupb_FieldDef_Index(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushinteger(L, upb_fielddef_index(f));
+  lua_pushinteger(L, upb_FieldDef_Index(f));
   return 1;
 }
 
-static int lupb_fielddef_isextension(lua_State *L) {
+static int lupb_FieldDef_IsExtension(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushboolean(L, upb_fielddef_isextension(f));
+  lua_pushboolean(L, upb_FieldDef_IsExtension(f));
   return 1;
 }
 
-static int lupb_fielddef_label(lua_State *L) {
+static int lupb_FieldDef_Label(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushinteger(L, upb_fielddef_label(f));
+  lua_pushinteger(L, upb_FieldDef_Label(f));
   return 1;
 }
 
-static int lupb_fielddef_name(lua_State *L) {
+static int lupb_FieldDef_Name(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushstring(L, upb_fielddef_name(f));
+  lua_pushstring(L, upb_FieldDef_Name(f));
   return 1;
 }
 
-static int lupb_fielddef_number(lua_State *L) {
+static int lupb_FieldDef_Number(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  int32_t num = upb_fielddef_number(f);
+  int32_t num = upb_FieldDef_Number(f);
   if (num) {
     lua_pushinteger(L, num);
   } else {
@@ -188,47 +168,47 @@ static int lupb_fielddef_number(lua_State *L) {
   return 1;
 }
 
-static int lupb_fielddef_packed(lua_State *L) {
+static int lupb_FieldDef_IsPacked(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushboolean(L, upb_fielddef_packed(f));
+  lua_pushboolean(L, upb_FieldDef_IsPacked(f));
   return 1;
 }
 
-static int lupb_fielddef_msgsubdef(lua_State *L) {
+static int lupb_FieldDef_MessageSubDef(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  const upb_msgdef *m = upb_fielddef_msgsubdef(f);
+  const upb_msgdef *m = upb_FieldDef_MessageSubDef(f);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
 
-static int lupb_fielddef_enumsubdef(lua_State *L) {
+static int lupb_FieldDef_EnumSubDef(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  const upb_enumdef *e = upb_fielddef_enumsubdef(f);
+  const upb_enumdef *e = upb_FieldDef_EnumSubDef(f);
   lupb_wrapper_pushwrapper(L, 1, e, LUPB_ENUMDEF);
   return 1;
 }
 
-static int lupb_fielddef_type(lua_State *L) {
+static int lupb_FieldDef_CType(lua_State *L) {
   const upb_fielddef *f = lupb_fielddef_check(L, 1);
-  lua_pushinteger(L, upb_fielddef_type(f));
+  lua_pushinteger(L, upb_FieldDef_CType(f));
   return 1;
 }
 
 static const struct luaL_Reg lupb_fielddef_m[] = {
-  {"containing_oneof", lupb_fielddef_containingoneof},
-  {"containing_type", lupb_fielddef_containingtype},
+  {"containing_oneof", lupb_FieldDef_ContainingOneof},
+  {"containing_type", lupb_FieldDef_ContainingType},
   {"default", lupb_fielddef_default},
-  {"descriptor_type", lupb_fielddef_descriptortype},
-  {"has_subdef", lupb_fielddef_hassubdef},
-  {"index", lupb_fielddef_index},
-  {"is_extension", lupb_fielddef_isextension},
-  {"label", lupb_fielddef_label},
-  {"name", lupb_fielddef_name},
-  {"number", lupb_fielddef_number},
-  {"packed", lupb_fielddef_packed},
-  {"msgsubdef", lupb_fielddef_msgsubdef},
-  {"enumsubdef", lupb_fielddef_enumsubdef},
-  {"type", lupb_fielddef_type},
+  {"descriptor_type", lupb_FieldDef_Type},
+  {"has_subdef", lupb_FieldDef_HasSubDef},
+  {"index", lupb_FieldDef_Index},
+  {"is_extension", lupb_FieldDef_IsExtension},
+  {"label", lupb_FieldDef_Label},
+  {"name", lupb_FieldDef_Name},
+  {"number", lupb_FieldDef_Number},
+  {"packed", lupb_FieldDef_IsPacked},
+  {"msgsubdef", lupb_FieldDef_MessageSubDef},
+  {"enumsubdef", lupb_FieldDef_EnumSubDef},
+  {"type", lupb_FieldDef_CType},
   {NULL, NULL}
 };
 

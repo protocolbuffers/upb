@@ -275,7 +275,7 @@ static PyObject* PyUpb_Descriptor_GetExtensionsByName(PyObject* _self,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&PyUpb_Descriptor_LookupNestedExtension,
-      (void*)&upb_fielddef_name,
+      (void*)&upb_FieldDef_Name,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
 }
@@ -345,7 +345,7 @@ static PyObject* PyUpb_Descriptor_GetFieldsByName(PyObject* _self,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&upb_msgdef_ntofz,
-      (void*)&upb_fielddef_name,
+      (void*)&upb_FieldDef_Name,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
 }
@@ -360,7 +360,7 @@ static PyObject* PyUpb_Descriptor_GetFieldsByCamelCaseName(PyObject* _self,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&upb_msgdef_lookupjsonnamez,
-      (void*)&upb_fielddef_jsonname,
+      (void*)&upb_FieldDef_JsonName,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
 }
@@ -374,7 +374,7 @@ static PyObject* PyUpb_Descriptor_GetFieldsByNumber(PyObject* _self,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&upb_msgdef_itof,
-      (void*)&upb_fielddef_number,
+      (void*)&upb_FieldDef_Number,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNumberMap_New(&funcs, self->def, self->pool);
@@ -847,41 +847,41 @@ const upb_fielddef* PyUpb_FieldDescriptor_GetDef(PyObject* _self) {
 }
 
 PyObject* PyUpb_FieldDescriptor_Get(const upb_fielddef* field) {
-  const upb_filedef* file = upb_fielddef_file(field);
+  const upb_filedef* file = upb_FieldDef_File(field);
   return PyUpb_DescriptorBase_Get(kPyUpb_FieldDescriptor, field, file);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetFullName(PyUpb_DescriptorBase* self,
                                                    void* closure) {
-  return PyUnicode_FromString(upb_fielddef_fullname(self->def));
+  return PyUnicode_FromString(upb_FieldDef_FullName(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetName(PyUpb_DescriptorBase* self,
                                                void* closure) {
-  return PyUnicode_FromString(upb_fielddef_name(self->def));
+  return PyUnicode_FromString(upb_FieldDef_Name(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetCamelCaseName(
     PyUpb_DescriptorBase* self, void* closure) {
   // TODO: Ok to use jsonname here?
-  return PyUnicode_FromString(upb_fielddef_jsonname(self->def));
+  return PyUnicode_FromString(upb_FieldDef_JsonName(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetJsonName(PyUpb_DescriptorBase* self,
                                                    void* closure) {
-  return PyUnicode_FromString(upb_fielddef_jsonname(self->def));
+  return PyUnicode_FromString(upb_FieldDef_JsonName(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetFile(PyUpb_DescriptorBase* self,
                                                void* closure) {
-  const upb_filedef* file = upb_fielddef_file(self->def);
+  const upb_filedef* file = upb_FieldDef_File(self->def);
   if (!file) Py_RETURN_NONE;
   return PyUpb_FileDescriptor_Get(file);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetType(PyUpb_DescriptorBase* self,
                                                void* closure) {
-  return PyLong_FromLong(upb_fielddef_descriptortype(self->def));
+  return PyLong_FromLong(upb_FieldDef_Type(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetCppType(PyUpb_DescriptorBase* self,
@@ -913,73 +913,73 @@ static PyObject* PyUpb_FieldDescriptor_GetCppType(PyUpb_DescriptorBase* self,
     [UPB_TYPE_BYTES] = CPPTYPE_STRING,
     [UPB_TYPE_MESSAGE] = CPPTYPE_MESSAGE,
   };
-  return PyLong_FromLong(cpp_types[upb_fielddef_type(self->def)]);
+  return PyLong_FromLong(cpp_types[upb_FieldDef_CType(self->def)]);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetLabel(PyUpb_DescriptorBase* self,
                                                 void* closure) {
-  return PyLong_FromLong(upb_fielddef_label(self->def));
+  return PyLong_FromLong(upb_FieldDef_Label(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetIsExtension(
     PyUpb_DescriptorBase* self, void* closure) {
-  return PyBool_FromLong(upb_fielddef_isextension(self->def));
+  return PyBool_FromLong(upb_FieldDef_IsExtension(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetNumber(PyUpb_DescriptorBase* self,
                                                  void* closure) {
-  return PyLong_FromLong(upb_fielddef_number(self->def));
+  return PyLong_FromLong(upb_FieldDef_Number(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetIndex(PyUpb_DescriptorBase* self,
                                                 void* closure) {
-  return PyLong_FromLong(upb_fielddef_index(self->def));
+  return PyLong_FromLong(upb_FieldDef_Index(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetMessageType(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* subdef = upb_fielddef_msgsubdef(self->def);
+  const upb_msgdef* subdef = upb_FieldDef_MessageSubDef(self->def);
   if (!subdef) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(subdef);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetEnumType(PyUpb_DescriptorBase* self,
                                                    void* closure) {
-  const upb_enumdef* enumdef = upb_fielddef_enumsubdef(self->def);
+  const upb_enumdef* enumdef = upb_FieldDef_EnumSubDef(self->def);
   if (!enumdef) Py_RETURN_NONE;
   return PyUpb_EnumDescriptor_Get(enumdef);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetContainingType(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* m = upb_fielddef_containingtype(self->def);
+  const upb_msgdef* m = upb_FieldDef_ContainingType(self->def);
   if (!m) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(m);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetExtensionScope(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* m = upb_fielddef_extensionscope(self->def);
+  const upb_msgdef* m = upb_FieldDef_ExtensionScope(self->def);
   if (!m) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(m);
 }
 
 static PyObject* PyUpb_FieldDescriptor_HasDefaultValue(
     PyUpb_DescriptorBase* self, void* closure) {
-  return PyBool_FromLong(upb_fielddef_hasdefault(self->def));
+  return PyBool_FromLong(upb_FieldDef_HasDefault(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetDefaultValue(
     PyUpb_DescriptorBase* self, void* closure) {
   const upb_fielddef* f = self->def;
-  if (upb_fielddef_isseq(f)) return PyList_New(0);
-  if (upb_fielddef_issubmsg(f)) Py_RETURN_NONE;
+  if (upb_FieldDef_IsRepeated(f)) return PyList_New(0);
+  if (upb_FieldDef_IsSubMessage(f)) Py_RETURN_NONE;
   return PyUpb_UpbToPy(upb_fielddef_default(self->def), self->def, NULL);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetContainingOneof(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_oneofdef* oneof = upb_fielddef_containingoneof(self->def);
+  const upb_oneofdef* oneof = upb_FieldDef_ContainingOneof(self->def);
   if (!oneof) Py_RETURN_NONE;
   return PyUpb_OneofDescriptor_Get(oneof);
 }
@@ -987,13 +987,13 @@ static PyObject* PyUpb_FieldDescriptor_GetContainingOneof(
 static PyObject* PyUpb_FieldDescriptor_GetHasOptions(
     PyUpb_DescriptorBase* _self, void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  return PyBool_FromLong(upb_fielddef_hasoptions(self->def));
+  return PyBool_FromLong(upb_FieldDef_HasOptions(self->def));
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetOptions(PyObject* _self,
                                                   PyObject* args) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  return PyUpb_DescriptorBase_GetOptions(self, upb_fielddef_options(self->def),
+  return PyUpb_DescriptorBase_GetOptions(self, upb_FieldDef_Options(self->def),
                                          &google_protobuf_FieldOptions_msginit,
                                          "google.protobuf.FieldOptions");
 }
@@ -1172,7 +1172,7 @@ static PyObject* PyUpb_FileDescriptor_GetExtensionsByName(PyObject* _self,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&PyUpb_FileDescriptor_LookupExtension,
-      (void*)&upb_fielddef_name,
+      (void*)&upb_FieldDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);

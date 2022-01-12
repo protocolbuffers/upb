@@ -94,7 +94,7 @@ static int PyUpb_ExtensionDict_Contains(PyObject* _self, PyObject* key) {
   if (!f) return -1;
   upb_msg* msg = PyUpb_CMessage_GetIfReified(self->msg);
   if (!msg) return 0;
-  if (upb_fielddef_isseq(f)) {
+  if (upb_FieldDef_IsRepeated(f)) {
     upb_msgval val = upb_msg_get(msg, f);
     return upb_array_size(val.array_val) > 0;
   } else {
@@ -198,7 +198,7 @@ PyObject* PyUpb_ExtensionIterator_IterNext(PyObject* _self) {
     const upb_fielddef* f;
     upb_msgval val;
     if (!upb_msg_next(msg, m, symtab, &f, &val, &self->iter)) return NULL;
-    if (upb_fielddef_isextension(f)) return PyUpb_FieldDescriptor_Get(f);
+    if (upb_FieldDef_IsExtension(f)) return PyUpb_FieldDescriptor_Get(f);
   }
 }
 

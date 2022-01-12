@@ -33,7 +33,7 @@
 #include "upb/util/compare.h"
 
 PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_fielddef *f, PyObject *arena) {
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_ENUM:
     case UPB_TYPE_INT32:
       return PyLong_FromLong(val.int32_val);
@@ -66,11 +66,11 @@ PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_fielddef *f, PyObject *arena) 
     }
     case UPB_TYPE_MESSAGE:
       return PyUpb_CMessage_Get((upb_msg*)val.msg_val,
-                                upb_fielddef_msgsubdef(f), arena);
+                                upb_FieldDef_MessageSubDef(f), arena);
     default:
       PyErr_Format(PyExc_SystemError,
                    "Getting a value from a field of unknown type %d",
-                   upb_fielddef_type(f));
+                   upb_FieldDef_CType(f));
       return NULL;
   }
 }
@@ -184,9 +184,9 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_enumdef *e,
 
 bool PyUpb_PyToUpb(PyObject *obj, const upb_fielddef *f, upb_msgval *val,
                    upb_arena *arena) {
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_ENUM:
-      return PyUpb_PyToUpbEnum(obj, upb_fielddef_enumsubdef(f), val);
+      return PyUpb_PyToUpbEnum(obj, upb_FieldDef_EnumSubDef(f), val);
     case UPB_TYPE_INT32:
       return PyUpb_GetInt32(obj, &val->int32_val);
     case UPB_TYPE_INT64:
@@ -231,12 +231,12 @@ bool PyUpb_PyToUpb(PyObject *obj, const upb_fielddef *f, upb_msgval *val,
     case UPB_TYPE_MESSAGE:
       PyErr_Format(
           PyExc_ValueError, "Message objects may not be assigned",
-          upb_fielddef_type(f));
+          upb_FieldDef_CType(f));
       return false;
     default:
       PyErr_Format(
           PyExc_SystemError, "Getting a value from a field of unknown type %d",
-          upb_fielddef_type(f));
+          upb_FieldDef_CType(f));
       return false;
   }
 }
@@ -249,7 +249,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
 // -----------------------------------------------------------------------------
 
 bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_fielddef *f) {
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       return val1.bool_val == val2.bool_val;
     case UPB_TYPE_INT32:
@@ -269,7 +269,7 @@ bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_fielddef *f) {
           memcmp(val1.str_val.data, val2.str_val.data, val1.str_val.size) == 0;
     case UPB_TYPE_MESSAGE:
       return PyUpb_Message_IsEqual(val1.msg_val, val2.msg_val,
-                                   upb_fielddef_msgsubdef(f));
+                                   upb_FieldDef_MessageSubDef(f));
     default:
       return false;
   }
@@ -277,7 +277,7 @@ bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_fielddef *f) {
 
 bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
                        const upb_fielddef *f) {
-  assert(upb_fielddef_ismap(f));
+  assert(upb_FieldDef_IsMap(f));
   if (map1 == map2) return true;
 
   size_t size1 = map1 ? upb_map_size(map1) : 0;
@@ -285,7 +285,7 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
   if (size1 != size2) return false;
   if (size1 == 0) return true;
 
-  const upb_msgdef *entry_m = upb_fielddef_msgsubdef(f);
+  const upb_msgdef *entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_fielddef *val_f = upb_msgdef_field(entry_m, 1);
   size_t iter = UPB_MAP_BEGIN;
 
@@ -312,7 +312,7 @@ static bool PyUpb_ArrayElem_IsEqual(const upb_array *arr1,
 
 bool PyUpb_Array_IsEqual(const upb_array *arr1, const upb_array *arr2,
                          const upb_fielddef *f) {
-  assert(upb_fielddef_isseq(f) && !upb_fielddef_ismap(f));
+  assert(upb_FieldDef_IsRepeated(f) && !upb_FieldDef_IsMap(f));
   if (arr1 == arr2) return true;
 
   size_t n1 = arr1 ? upb_array_size(arr1) : 0;
@@ -366,7 +366,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
   size_t iter1 = UPB_MSG_BEGIN;
   size_t iter2 = UPB_MSG_BEGIN;
   while (upb_msg_next(msg1, m, symtab, &f1, &val1, &iter1)) {
-    if (upb_fielddef_isextension(f1)) {
+    if (upb_FieldDef_IsExtension(f1)) {
       val2 = upb_msg_get(msg2, f1);
     } else {
       if (!upb_msg_next(msg2, m, NULL, &f2, &val2, &iter2) || f1 != f2) {
@@ -374,9 +374,9 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
       }
     }
 
-    if (upb_fielddef_ismap(f1)) {
+    if (upb_FieldDef_IsMap(f1)) {
       if (!PyUpb_Map_IsEqual(val1.map_val, val2.map_val, f1)) return false;
-    } else if (upb_fielddef_isseq(f1)) {
+    } else if (upb_FieldDef_IsRepeated(f1)) {
       if (!PyUpb_Array_IsEqual(val1.array_val, val2.array_val, f1)) {
         return false;
       }

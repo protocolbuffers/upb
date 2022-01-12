@@ -73,7 +73,7 @@ upb_msgval upb_msg_get(const upb_msg *msg, const upb_fielddef *f);
  * present.  May not be called for primitive fields. */
 upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_fielddef *f, upb_arena *a);
 
-/* May only be called for fields where upb_fielddef_haspresence(f) == true. */
+/* May only be called for fields where upb_FieldDef_HasPresence(f) == true. */
 bool upb_msg_has(const upb_msg *msg, const upb_fielddef *f);
 
 /* Returns the field that is set in the oneof, or NULL if none are set. */

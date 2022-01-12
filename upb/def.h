@@ -112,45 +112,37 @@ typedef enum {
  * protobuf wire format. */
 #define UPB_MAX_FIELDNUMBER ((1 << 29) - 1)
 
-const google_protobuf_FieldOptions *upb_fielddef_options(const upb_fielddef *f);
-bool upb_fielddef_hasoptions(const upb_fielddef *f);
-const char *upb_fielddef_fullname(const upb_fielddef *f);
-upb_fieldtype_t upb_fielddef_type(const upb_fielddef *f);
-upb_descriptortype_t upb_fielddef_descriptortype(const upb_fielddef *f);
-upb_label_t upb_fielddef_label(const upb_fielddef *f);
-uint32_t upb_fielddef_number(const upb_fielddef *f);
-const char *upb_fielddef_name(const upb_fielddef *f);
-const char *upb_fielddef_jsonname(const upb_fielddef *f);
-bool upb_fielddef_hasjsonname(const upb_fielddef *f);
-bool upb_fielddef_isextension(const upb_fielddef *f);
-bool upb_fielddef_packed(const upb_fielddef *f);
-const upb_filedef *upb_fielddef_file(const upb_fielddef *f);
-const upb_msgdef *upb_fielddef_containingtype(const upb_fielddef *f);
-const upb_msgdef *upb_fielddef_extensionscope(const upb_fielddef *f);
-const upb_oneofdef *upb_fielddef_containingoneof(const upb_fielddef *f);
-const upb_oneofdef *upb_fielddef_realcontainingoneof(const upb_fielddef *f);
-uint32_t upb_fielddef_index(const upb_fielddef *f);
-bool upb_fielddef_issubmsg(const upb_fielddef *f);
-bool upb_fielddef_isstring(const upb_fielddef *f);
-bool upb_fielddef_isseq(const upb_fielddef *f);
-bool upb_fielddef_isprimitive(const upb_fielddef *f);
-bool upb_fielddef_ismap(const upb_fielddef *f);
-bool upb_fielddef_hasdefault(const upb_fielddef *f);
-int64_t upb_fielddef_defaultint64(const upb_fielddef *f);
-int32_t upb_fielddef_defaultint32(const upb_fielddef *f);
-uint64_t upb_fielddef_defaultuint64(const upb_fielddef *f);
-uint32_t upb_fielddef_defaultuint32(const upb_fielddef *f);
-bool upb_fielddef_defaultbool(const upb_fielddef *f);
-float upb_fielddef_defaultfloat(const upb_fielddef *f);
-double upb_fielddef_defaultdouble(const upb_fielddef *f);
-const char *upb_fielddef_defaultstr(const upb_fielddef *f, size_t *len);
-bool upb_fielddef_hassubdef(const upb_fielddef *f);
-bool upb_fielddef_haspresence(const upb_fielddef *f);
-const upb_msgdef *upb_fielddef_msgsubdef(const upb_fielddef *f);
-const upb_enumdef *upb_fielddef_enumsubdef(const upb_fielddef *f);
-const upb_msglayout_field *upb_fielddef_layout(const upb_fielddef *f);
-const upb_msglayout_ext *_upb_fielddef_extlayout(const upb_fielddef *f);
-bool _upb_fielddef_proto3optional(const upb_fielddef *f);
+const google_protobuf_FieldOptions *upb_FieldDef_Options(const upb_fielddef *f);
+bool upb_FieldDef_HasOptions(const upb_fielddef *f);
+const char *upb_FieldDef_FullName(const upb_fielddef *f);
+upb_fieldtype_t upb_FieldDef_CType(const upb_fielddef *f);
+upb_descriptortype_t upb_FieldDef_Type(const upb_fielddef *f);
+upb_label_t upb_FieldDef_Label(const upb_fielddef *f);
+uint32_t upb_FieldDef_Number(const upb_fielddef *f);
+const char *upb_FieldDef_Name(const upb_fielddef *f);
+const char *upb_FieldDef_JsonName(const upb_fielddef *f);
+bool upb_FieldDef_HasJsonName(const upb_fielddef *f);
+bool upb_FieldDef_IsExtension(const upb_fielddef *f);
+bool upb_FieldDef_IsPacked(const upb_fielddef *f);
+const upb_filedef *upb_FieldDef_File(const upb_fielddef *f);
+const upb_msgdef *upb_FieldDef_ContainingType(const upb_fielddef *f);
+const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_fielddef *f);
+const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_fielddef *f);
+const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_fielddef *f);
+uint32_t upb_FieldDef_Index(const upb_fielddef *f);
+bool upb_FieldDef_IsSubMessage(const upb_fielddef *f);
+bool upb_FieldDef_IsString(const upb_fielddef *f);
+bool upb_FieldDef_IsRepeated(const upb_fielddef *f);
+bool upb_FieldDef_IsPrimitive(const upb_fielddef *f);
+bool upb_FieldDef_IsMap(const upb_fielddef *f);
+bool upb_FieldDef_HasDefault(const upb_fielddef *f);
+bool upb_FieldDef_HasSubDef(const upb_fielddef *f);
+bool upb_FieldDef_HasPresence(const upb_fielddef *f);
+const upb_msgdef *upb_FieldDef_MessageSubDef(const upb_fielddef *f);
+const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_fielddef *f);
+const upb_msglayout_field *upb_FieldDef_Layout(const upb_fielddef *f);
+const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_fielddef *f);
+bool _upb_FieldDef_IsProto3Optional(const upb_fielddef *f);
 
 /* upb_oneofdef ***************************************************************/
 

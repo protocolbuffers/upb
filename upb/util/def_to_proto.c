@@ -123,11 +123,11 @@ static upb_strview default_bytes(upb_ToProto_Context* ctx, upb_strview val) {
 static upb_strview default_string(upb_ToProto_Context *ctx,
                                   const upb_fielddef *f) {
   upb_msgval d = upb_fielddef_default(f);
-  switch (upb_fielddef_type(f)) {
+  switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       return strviewdup(ctx, d.bool_val ? "true" : "false");
     case UPB_TYPE_ENUM: {
-      const upb_enumdef *e = upb_fielddef_enumsubdef(f);
+      const upb_enumdef *e = upb_FieldDef_EnumSubDef(f);
       const upb_enumvaldef *ev = upb_enumdef_lookupnum(e, d.int32_val);
       return strviewdup(ctx, upb_enumvaldef_name(ev));
     }
@@ -159,50 +159,50 @@ static google_protobuf_FieldDescriptorProto *fielddef_toproto(
   CHK_OOM(proto);
 
   google_protobuf_FieldDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_fielddef_name(f)));
+      proto, strviewdup(ctx, upb_FieldDef_Name(f)));
   google_protobuf_FieldDescriptorProto_set_number(proto,
-                                                  upb_fielddef_number(f));
-  google_protobuf_FieldDescriptorProto_set_label(proto, upb_fielddef_label(f));
+                                                  upb_FieldDef_Number(f));
+  google_protobuf_FieldDescriptorProto_set_label(proto, upb_FieldDef_Label(f));
   google_protobuf_FieldDescriptorProto_set_type(proto,
-                                                upb_fielddef_descriptortype(f));
+                                                upb_FieldDef_Type(f));
 
-  if (upb_fielddef_hasjsonname(f)) {
+  if (upb_FieldDef_HasJsonName(f)) {
     google_protobuf_FieldDescriptorProto_set_json_name(
-        proto, strviewdup(ctx, upb_fielddef_jsonname(f)));
+        proto, strviewdup(ctx, upb_FieldDef_JsonName(f)));
   }
 
-  if (upb_fielddef_issubmsg(f)) {
+  if (upb_FieldDef_IsSubMessage(f)) {
     google_protobuf_FieldDescriptorProto_set_type_name(
-        proto, qual_dup(ctx, upb_msgdef_fullname(upb_fielddef_msgsubdef(f))));
-  } else if (upb_fielddef_type(f) == UPB_TYPE_ENUM) {
+        proto, qual_dup(ctx, upb_msgdef_fullname(upb_FieldDef_MessageSubDef(f))));
+  } else if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM) {
     google_protobuf_FieldDescriptorProto_set_type_name(
-        proto, qual_dup(ctx, upb_enumdef_fullname(upb_fielddef_enumsubdef(f))));
+        proto, qual_dup(ctx, upb_enumdef_fullname(upb_FieldDef_EnumSubDef(f))));
   }
 
-  if (upb_fielddef_isextension(f)) {
+  if (upb_FieldDef_IsExtension(f)) {
     google_protobuf_FieldDescriptorProto_set_extendee(
         proto,
-        qual_dup(ctx, upb_msgdef_fullname(upb_fielddef_containingtype(f))));
+        qual_dup(ctx, upb_msgdef_fullname(upb_FieldDef_ContainingType(f))));
   }
 
-  if (upb_fielddef_hasdefault(f)) {
+  if (upb_FieldDef_HasDefault(f)) {
     google_protobuf_FieldDescriptorProto_set_default_value(
         proto, default_string(ctx, f));
   }
 
-  const upb_oneofdef *o = upb_fielddef_containingoneof(f);
+  const upb_oneofdef *o = upb_FieldDef_ContainingOneof(f);
   if (o) {
     google_protobuf_FieldDescriptorProto_set_oneof_index(proto,
                                                          upb_oneofdef_index(o));
   }
 
-  if (_upb_fielddef_proto3optional(f)) {
+  if (_upb_FieldDef_IsProto3Optional(f)) {
     google_protobuf_FieldDescriptorProto_set_proto3_optional(proto, true);
   }
 
-  if (upb_fielddef_hasoptions(f)) {
+  if (upb_FieldDef_HasOptions(f)) {
     SET_OPTIONS(proto, FieldDescriptorProto, FieldOptions,
-                upb_fielddef_options(f));
+                upb_FieldDef_Options(f));
   }
 
   return proto;
