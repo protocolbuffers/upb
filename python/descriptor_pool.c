@@ -27,21 +27,20 @@
 
 #include "python/descriptor_pool.h"
 
+#include "google/protobuf/descriptor.upbdefs.h"
 #include "python/convert.h"
 #include "python/descriptor.h"
 #include "python/message.h"
 #include "python/protobuf.h"
 #include "upb/def.h"
 #include "upb/util/def_to_proto.h"
-#include "google/protobuf/descriptor.upbdefs.h"
 
 // -----------------------------------------------------------------------------
 // DescriptorPool
 // -----------------------------------------------------------------------------
 
 typedef struct {
-  PyObject_HEAD
-  upb_DefPool* symtab;
+  PyObject_HEAD upb_DefPool* symtab;
   PyObject* db;  // The DescriptorDatabase underlying this pool.  May be NULL.
 } PyUpb_DescriptorPool;
 
@@ -158,9 +157,7 @@ static bool PyUpb_DescriptorPool_TryLoadFilename(PyUpb_DescriptorPool* self,
   return ret;
 }
 
-bool PyUpb_DescriptorPool_CheckNoDatabase(PyObject* _self) {
-  return true;
-}
+bool PyUpb_DescriptorPool_CheckNoDatabase(PyObject* _self) { return true; }
 
 static bool PyUpb_DescriptorPool_LoadDependentFiles(
     PyUpb_DescriptorPool* self, google_protobuf_FileDescriptorProto* proto) {
@@ -168,8 +165,8 @@ static bool PyUpb_DescriptorPool_LoadDependentFiles(
   const upb_StringView* deps =
       google_protobuf_FileDescriptorProto_dependency(proto, &n);
   for (size_t i = 0; i < n; i++) {
-    const upb_FileDef* dep =
-        upb_DefPool_FindFileByNameWithSize(self->symtab, deps[i].data, deps[i].size);
+    const upb_FileDef* dep = upb_DefPool_FindFileByNameWithSize(
+        self->symtab, deps[i].data, deps[i].size);
     if (!dep) {
       PyObject* filename =
           PyUnicode_FromStringAndSize(deps[i].data, deps[i].size);
@@ -230,7 +227,8 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
   upb_Status status;
   upb_Status_Clear(&status);
 
-  const upb_FileDef* filedef = upb_DefPool_AddFile(self->symtab, proto, &status);
+  const upb_FileDef* filedef =
+      upb_DefPool_AddFile(self->symtab, proto, &status);
   if (!filedef) {
     PyErr_Format(PyExc_TypeError,
                  "Couldn't build proto file into descriptor pool: %s",
@@ -272,7 +270,7 @@ static PyObject* PyUpb_DescriptorPool_DoAdd(PyObject* _self,
  * Adds the given serialized FileDescriptorProto to the pool.
  */
 static PyObject* PyUpb_DescriptorPool_AddSerializedFile(
-    PyObject * _self, PyObject * serialized_pb) {
+    PyObject* _self, PyObject* serialized_pb) {
   PyUpb_DescriptorPool* self = (PyUpb_DescriptorPool*)_self;
   if (self->db) {
     PyErr_SetString(
@@ -335,7 +333,8 @@ static PyObject* PyUpb_DescriptorPool_FindExtensionByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_FieldDef* field = upb_DefPool_FindExtensionByName(self->symtab, name);
+  const upb_FieldDef* field =
+      upb_DefPool_FindExtensionByName(self->symtab, name);
   if (field == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
     field = upb_DefPool_FindExtensionByName(self->symtab, name);
@@ -397,8 +396,7 @@ static PyObject* PyUpb_DescriptorPool_FindFieldByName(PyObject* _self,
   if (!name) return NULL;
 
   size_t parent_size;
-  const char* child =
-      PyUpb_DescriptorPool_SplitSymbolName(name, &parent_size);
+  const char* child = PyUpb_DescriptorPool_SplitSymbolName(name, &parent_size);
   const upb_FieldDef* f = NULL;
   if (child) {
     const upb_MessageDef* parent =
@@ -461,7 +459,8 @@ static PyObject* PyUpb_DescriptorPool_FindOneofByName(PyObject* _self,
         upb_DefPool_FindMessageByNameWithSize(self->symtab, name, parent_size);
     if (parent == NULL && self->db) {
       if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
-      parent = upb_DefPool_FindMessageByNameWithSize(self->symtab, name, parent_size);
+      parent = upb_DefPool_FindMessageByNameWithSize(self->symtab, name,
+                                                     parent_size);
     }
     if (parent) {
       const upb_OneofDef* o = upb_MessageDef_FindOneofByName(parent, child);

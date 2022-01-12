@@ -63,7 +63,7 @@ typedef struct {
   // the version of Python we were compiled against, which may be different
   // than the version we are dynamically linked against.  Here we want the
   // version that is actually running in this process.
-  long python_version_hex;     // PY_VERSION_HEX
+  long python_version_hex;  // PY_VERSION_HEX
 } PyUpb_CPythonBits;
 
 // A global containing the values for this process.
@@ -151,8 +151,7 @@ err:
 // The parent may also be non-present, in which case a mutation will trigger a
 // chain reaction.
 typedef struct PyUpb_CMessage {
-  PyObject_HEAD
-  PyObject* arena;
+  PyObject_HEAD PyObject* arena;
   uintptr_t def;  // Tagged, low bit 1 == upb_FieldDef*, else upb_MessageDef*
   union {
     // when def is msgdef, the data for this msg.
@@ -254,8 +253,7 @@ static bool PyUpb_CMessage_LookupName(PyUpb_CMessage* self, PyObject* py_name,
 
   if (!upb_MessageDef_FindByNameWithSize(msgdef, name, size, f, o)) {
     if (exc_type) {
-      PyErr_Format(exc_type,
-                   "Protocol message %s has no \"%s\" field.",
+      PyErr_Format(exc_type, "Protocol message %s has no \"%s\" field.",
                    upb_MessageDef_Name(msgdef), name);
     }
     return false;
@@ -549,8 +547,8 @@ static void PyUpb_CMessage_SyncSubobjs(PyUpb_CMessage* self);
  * PyUpb_CMessage_Reify()
  *
  * The message equivalent of PyUpb_*Container_Reify(), this transitions
- * the wrapper from the unset state (owning a reference on self->ptr.parent) to the
- * set state (having a non-owning pointer to self->ptr.msg).
+ * the wrapper from the unset state (owning a reference on self->ptr.parent) to
+ * the set state (having a non-owning pointer to self->ptr.msg).
  */
 static void PyUpb_CMessage_Reify(PyUpb_CMessage* self, const upb_FieldDef* f,
                                  upb_msg* msg) {
@@ -580,7 +578,7 @@ static void PyUpb_CMessage_Reify(PyUpb_CMessage* self, const upb_FieldDef* f,
  *   # SyncSubobjs() is required to connect our existing 'sub' wrapper to the
  *   # newly created foo.submsg data in C.
  *   foo.MergeFrom(FooMessage(submsg={}))
- * 
+ *
  * This requires that all of the new sub-objects that have appeared are owned
  * by `self`'s arena.
  */
@@ -728,15 +726,15 @@ PyObject* PyUpb_CMessage_Get(upb_msg* u_msg, const upb_MessageDef* m,
  *
  * Non-present messages return "stub" objects that point to their parent, but
  * will materialize into real upb objects if they are mutated.
- * 
+ *
  * Note: we do *not* create stubs for repeated/map fields unless the parent
  * is a stub:
- * 
+ *
  *    msg = TestMessage()
  *    msg.submessage                # (A) Creates a stub
  *    msg.repeated_foo              # (B) Does *not* create a stub
  *    msg.submessage.repeated_bar   # (C) Creates a stub
- *    
+ *
  * In case (B) we have some freedom: we could either create a stub, or create
  * a reified object with underlying data.  It appears that either could work
  * equally well, with no observable change to users.  There isn't a clear
@@ -904,7 +902,8 @@ static int PyUpb_CMessage_SetAttr(PyObject* _self, PyObject* attr,
     return -1;
   }
 
-  return PyUpb_CMessage_SetFieldValue(_self, field, value, PyExc_AttributeError);
+  return PyUpb_CMessage_SetFieldValue(_self, field, value,
+                                      PyExc_AttributeError);
 }
 
 static PyObject* PyUpb_CMessage_HasField(PyObject* _self, PyObject* arg) {
@@ -925,7 +924,8 @@ static PyObject* PyUpb_CMessage_HasField(PyObject* _self, PyObject* arg) {
   if (PyUpb_CMessage_IsStub(self)) Py_RETURN_FALSE;
 
   return PyBool_FromLong(field ? upb_Message_Has(self->ptr.msg, field)
-                               : upb_Message_WhichOneof(self->ptr.msg, oneof) != NULL);
+                               : upb_Message_WhichOneof(self->ptr.msg, oneof) !=
+                                     NULL);
 }
 
 static PyObject* PyUpb_CMessage_FindInitializationErrors(PyObject* _self,
@@ -993,7 +993,7 @@ static bool PyUpb_CMessage_SortFieldList(PyObject* list) {
   if (!call_result) goto err;
   ok = true;
 
- err:
+err:
   Py_XDECREF(method);
   Py_XDECREF(args);
   Py_XDECREF(kwargs);
@@ -1096,7 +1096,8 @@ PyObject* PyUpb_CMessage_MergeFromString(PyObject* _self, PyObject* arg) {
   PyUpb_CMessage_EnsureReified(self);
   const upb_MessageDef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
   const upb_FileDef* file = upb_MessageDef_File(msgdef);
-  const upb_extreg* extreg = upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
+  const upb_extreg* extreg =
+      upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
   const upb_MiniTable* layout = upb_MessageDef_Layout(msgdef);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
@@ -1287,7 +1288,8 @@ err:
   goto done;
 }
 
-const upb_FieldDef* PyUpb_CMessage_GetExtensionDef(PyObject* _self, PyObject* key) {
+const upb_FieldDef* PyUpb_CMessage_GetExtensionDef(PyObject* _self,
+                                                   PyObject* key) {
   const upb_FieldDef* f = PyUpb_FieldDescriptor_GetDef(key);
   if (!f) {
     PyErr_Clear();
@@ -1307,7 +1309,6 @@ const upb_FieldDef* PyUpb_CMessage_GetExtensionDef(PyObject* _self, PyObject* ke
   }
   return f;
 }
-
 
 static PyObject* PyUpb_CMessage_HasExtension(PyObject* _self,
                                              PyObject* ext_desc) {
@@ -1694,7 +1695,7 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
 
   Py_DECREF(py_key);
 
-  const char* suffix =  "_FIELD_NUMBER";
+  const char* suffix = "_FIELD_NUMBER";
   size_t n = strlen(name_buf);
   size_t suffix_n = strlen(suffix);
   if (n > suffix_n && memcmp(suffix, name_buf + n - suffix_n, suffix_n) == 0) {
@@ -1707,7 +1708,8 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
     }
     n = upb_MessageDef_NestedExtensionCount(msgdef);
     for (int i = 0; i < n; i++) {
-      PyUpb_MessageMeta_AddFieldNumber(self, upb_MessageDef_NestedExtension(msgdef, i));
+      PyUpb_MessageMeta_AddFieldNumber(
+          self, upb_MessageDef_NestedExtension(msgdef, i));
     }
     ret = PyObject_GenericGetAttr(self, name);
   }
@@ -1772,8 +1774,8 @@ bool PyUpb_InitMessage(PyObject* m) {
 
   if (!state->cmessage_type || !state->message_meta_type) return false;
   if (PyModule_AddObject(m, "MessageMeta", message_meta_type)) return false;
-  state->listfields_item_key =
-      PyObject_GetAttrString((PyObject*)state->cmessage_type, "_ListFieldsItemKey");
+  state->listfields_item_key = PyObject_GetAttrString(
+      (PyObject*)state->cmessage_type, "_ListFieldsItemKey");
 
   PyObject* mod = PyImport_ImportModule("google.protobuf.message");
   if (mod == NULL) return false;

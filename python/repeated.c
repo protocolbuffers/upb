@@ -71,8 +71,7 @@ static bool IndexToRange(PyObject* index, Py_ssize_t size, Py_ssize_t* i,
 
 // Wrapper for a repeated field.
 typedef struct {
-  PyObject_HEAD
-  PyObject* arena;
+  PyObject_HEAD PyObject* arena;
   // The field descriptor (PyObject*).
   // The low bit indicates whether the container is reified (see ptr below).
   //   - low bit set: repeated field is a stub (no underlying data).
@@ -153,7 +152,7 @@ static PyTypeObject* PyUpb_RepeatedContainer_GetClass(const upb_FieldDef* f) {
   assert(upb_FieldDef_IsRepeated(f) && !upb_FieldDef_IsMap(f));
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   return upb_FieldDef_IsSubMessage(f) ? state->repeated_composite_container_type
-                                  : state->repeated_scalar_container_type;
+                                      : state->repeated_scalar_container_type;
 }
 
 static Py_ssize_t PyUpb_RepeatedContainer_Length(PyObject* self) {
@@ -200,7 +199,8 @@ static PyObject* PyUpb_RepeatedContainer_MergeFrom(PyObject* _self,
 
 PyObject* PyUpb_RepeatedContainer_DeepCopy(PyObject* _self, PyObject* value) {
   PyUpb_RepeatedContainer* self = (PyUpb_RepeatedContainer*)_self;
-  PyUpb_RepeatedContainer* clone = (void*)PyType_GenericAlloc(Py_TYPE(_self), 0);
+  PyUpb_RepeatedContainer* clone =
+      (void*)PyType_GenericAlloc(Py_TYPE(_self), 0);
   if (clone == NULL) return NULL;
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
   clone->arena = PyUpb_Arena_New();
@@ -211,7 +211,7 @@ PyObject* PyUpb_RepeatedContainer_DeepCopy(PyObject* _self, PyObject* value) {
   if (!PyUpb_RepeatedContainer_MergeFrom((PyObject*)clone, _self)) {
     Py_DECREF(clone);
     return NULL;
-  } 
+  }
   return (PyObject*)clone;
 }
 

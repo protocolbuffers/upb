@@ -12,11 +12,11 @@
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -35,8 +35,8 @@
 #include <set>
 #include <sstream>
 
-#include "tests/test_cpp.upbdefs.h"
 #include "tests/test_cpp.upb.h"
+#include "tests/test_cpp.upbdefs.h"
 #include "tests/upb_test.h"
 #include "upb/def.h"
 #include "upb/def.hpp"
@@ -132,7 +132,7 @@ void TestDefault() {
   upb::SymbolTable symtab;
   upb::Arena arena;
   upb::MessageDefPtr md(upb_test_TestMessage_getmsgdef(symtab.ptr()));
-  upb_test_TestMessage *msg = upb_test_TestMessage_new(arena.ptr());
+  upb_test_TestMessage* msg = upb_test_TestMessage_new(arena.ptr());
   size_t size = upb_JsonEncode(msg, md.ptr(), NULL, 0, NULL, 0, NULL);
   ASSERT(size == 2);  // "{}"
 }
@@ -157,5 +157,4 @@ int run_tests() {
 
   return 0;
 }
-
 }

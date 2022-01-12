@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -30,9 +30,8 @@
 
 #include "upb/def.h"
 #include "upb/msg.h"
-#include "upb/upb.h"
-
 #include "upb/port_def.inc"
+#include "upb/upb.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,42 +57,42 @@ typedef union {
   upb_Array* array;
 } upb_MutableMessageValue;
 
-upb_MessageValue upb_FieldDef_Default(const upb_FieldDef *f);
+upb_MessageValue upb_FieldDef_Default(const upb_FieldDef* f);
 
 /** upb_msg *******************************************************************/
 
 /* Creates a new message of the given type in the given arena. */
-upb_msg *upb_Message_New(const upb_MessageDef *m, upb_Arena *a);
+upb_msg* upb_Message_New(const upb_MessageDef* m, upb_Arena* a);
 
 /* Returns the value associated with this field. */
-upb_MessageValue upb_Message_Get(const upb_msg *msg, const upb_FieldDef *f);
+upb_MessageValue upb_Message_Get(const upb_msg* msg, const upb_FieldDef* f);
 
 /* Returns a mutable pointer to a map, array, or submessage value.  If the given
  * arena is non-NULL this will construct a new object if it was not previously
  * present.  May not be called for primitive fields. */
-upb_MutableMessageValue upb_Message_Mutable(upb_msg *msg, const upb_FieldDef *f, upb_Arena *a);
+upb_MutableMessageValue upb_Message_Mutable(upb_msg* msg, const upb_FieldDef* f,
+                                            upb_Arena* a);
 
 /* May only be called for fields where upb_FieldDef_HasPresence(f) == true. */
-bool upb_Message_Has(const upb_msg *msg, const upb_FieldDef *f);
+bool upb_Message_Has(const upb_msg* msg, const upb_FieldDef* f);
 
 /* Returns the field that is set in the oneof, or NULL if none are set. */
-const upb_FieldDef *upb_Message_WhichOneof(const upb_msg *msg,
-                                       const upb_OneofDef *o);
+const upb_FieldDef* upb_Message_WhichOneof(const upb_msg* msg,
+                                           const upb_OneofDef* o);
 
 /* Sets the given field to the given value.  For a msg/array/map/string, the
  * caller must ensure that the target data outlives |msg| (by living either in
  * the same arena or a different arena that outlives it).
  *
  * Returns false if allocation fails. */
-bool upb_Message_Set(upb_msg *msg, const upb_FieldDef *f, upb_MessageValue val,
-                 upb_Arena *a);
-
+bool upb_Message_Set(upb_msg* msg, const upb_FieldDef* f, upb_MessageValue val,
+                     upb_Arena* a);
 
 /* Clears any field presence and sets the value back to its default. */
-void upb_Message_ClearField(upb_msg *msg, const upb_FieldDef *f);
+void upb_Message_ClearField(upb_msg* msg, const upb_FieldDef* f);
 
 /* Clear all data and unknown fields. */
-void upb_Message_Clear(upb_msg *msg, const upb_MessageDef *m);
+void upb_Message_Clear(upb_msg* msg, const upb_MessageDef* m);
 
 /* Iterate over present fields.
  *
@@ -110,29 +109,30 @@ void upb_Message_Clear(upb_msg *msg, const upb_MessageDef *m);
  */
 
 #define kUpb_Message_Begin -1
-bool upb_Message_Next(const upb_msg *msg, const upb_MessageDef *m,
-                  const upb_DefPool *ext_pool, const upb_FieldDef **f,
-                  upb_MessageValue *val, size_t *iter);
+bool upb_Message_Next(const upb_msg* msg, const upb_MessageDef* m,
+                      const upb_DefPool* ext_pool, const upb_FieldDef** f,
+                      upb_MessageValue* val, size_t* iter);
 
 /* Clears all unknown field data from this message and all submessages. */
-bool upb_Message_DiscardUnknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth);
+bool upb_Message_DiscardUnknown(upb_msg* msg, const upb_MessageDef* m,
+                                int maxdepth);
 
 /** upb_Array *****************************************************************/
 
 /* Creates a new array on the given arena that holds elements of this type. */
-upb_Array *upb_Array_New(upb_Arena *a, upb_CType type);
+upb_Array* upb_Array_New(upb_Arena* a, upb_CType type);
 
 /* Returns the size of the array. */
-size_t upb_Array_Size(const upb_Array *arr);
+size_t upb_Array_Size(const upb_Array* arr);
 
 /* Returns the given element, which must be within the array's current size. */
-upb_MessageValue upb_Array_Get(const upb_Array *arr, size_t i);
+upb_MessageValue upb_Array_Get(const upb_Array* arr, size_t i);
 
 /* Sets the given element, which must be within the array's current size. */
-void upb_Array_Set(upb_Array *arr, size_t i, upb_MessageValue val);
+void upb_Array_Set(upb_Array* arr, size_t i, upb_MessageValue val);
 
 /* Appends an element to the array.  Returns false on allocation failure. */
-bool upb_Array_Append(upb_Array *array, upb_MessageValue val, upb_Arena *arena);
+bool upb_Array_Append(upb_Array* array, upb_MessageValue val, upb_Arena* arena);
 
 /* Moves elements within the array using memmove(). Like memmove(), the source
  * and destination elements may be overlapping. */
@@ -143,42 +143,42 @@ void upb_Array_Move(upb_Array* array, size_t dst_idx, size_t src_idx,
  * shifted right.  The new elements have undefined state and must be set with
  * `upb_Array_Set()`.
  * REQUIRES: `i <= upb_Array_Size(arr)` */
-bool upb_Array_Insert(upb_Array *array, size_t i, size_t count,
-                      upb_Arena *arena);
+bool upb_Array_Insert(upb_Array* array, size_t i, size_t count,
+                      upb_Arena* arena);
 
 /* Deletes one or more elements from the array.  Existing elements are shifted
  * left.
  * REQUIRES: `i + count <= upb_Array_Size(arr)` */
-void upb_Array_Delete(upb_Array *array, size_t i, size_t count);
+void upb_Array_Delete(upb_Array* array, size_t i, size_t count);
 
 /* Changes the size of a vector.  New elements are initialized to empty/0.
  * Returns false on allocation failure. */
-bool upb_Array_Resize(upb_Array *array, size_t size, upb_Arena *arena);
+bool upb_Array_Resize(upb_Array* array, size_t size, upb_Arena* arena);
 
 /** upb_Map *******************************************************************/
 
 /* Creates a new map on the given arena with the given key/value size. */
-upb_Map *upb_Map_New(upb_Arena *a, upb_CType key_type,
-                     upb_CType value_type);
+upb_Map* upb_Map_New(upb_Arena* a, upb_CType key_type, upb_CType value_type);
 
 /* Returns the number of entries in the map. */
-size_t upb_Map_Size(const upb_Map *map);
+size_t upb_Map_Size(const upb_Map* map);
 
 /* Stores a value for the given key into |*val| (or the zero value if the key is
  * not present).  Returns whether the key was present.  The |val| pointer may be
  * NULL, in which case the function tests whether the given key is present.  */
-bool upb_Map_Get(const upb_Map *map, upb_MessageValue key, upb_MessageValue *val);
+bool upb_Map_Get(const upb_Map* map, upb_MessageValue key,
+                 upb_MessageValue* val);
 
 /* Removes all entries in the map. */
-void upb_Map_Clear(upb_Map *map);
+void upb_Map_Clear(upb_Map* map);
 
 /* Sets the given key to the given value.  Returns true if this was a new key in
  * the map, or false if an existing key was replaced. */
-bool upb_Map_Set(upb_Map *map, upb_MessageValue key, upb_MessageValue val,
-                 upb_Arena *arena);
+bool upb_Map_Set(upb_Map* map, upb_MessageValue key, upb_MessageValue val,
+                 upb_Arena* arena);
 
 /* Deletes this key from the table.  Returns true if the key was present. */
-bool upb_Map_Delete(upb_Map *map, upb_MessageValue key);
+bool upb_Map_Delete(upb_Map* map, upb_MessageValue key);
 
 /* Map iteration:
  *
@@ -193,23 +193,24 @@ bool upb_Map_Delete(upb_Map *map, upb_MessageValue key);
  */
 
 /* Advances to the next entry.  Returns false if no more entries are present. */
-bool upb_MapIterator_Next(const upb_Map *map, size_t *iter);
+bool upb_MapIterator_Next(const upb_Map* map, size_t* iter);
 
 /* Returns true if the iterator still points to a valid entry, or false if the
  * iterator is past the last element. It is an error to call this function with
  * kUpb_Map_Begin (you must call next() at least once first). */
-bool upb_MapIterator_Done(const upb_Map *map, size_t iter);
+bool upb_MapIterator_Done(const upb_Map* map, size_t iter);
 
 /* Returns the key and value for this entry of the map. */
-upb_MessageValue upb_MapIterator_Key(const upb_Map *map, size_t iter);
-upb_MessageValue upb_MapIterator_Value(const upb_Map *map, size_t iter);
+upb_MessageValue upb_MapIterator_Key(const upb_Map* map, size_t iter);
+upb_MessageValue upb_MapIterator_Value(const upb_Map* map, size_t iter);
 
 /* Sets the value for this entry.  The iterator must not be done, and the
  * iterator must not have been initialized const. */
-void upb_MapIterator_SetValue(upb_Map *map, size_t iter, upb_MessageValue value);
+void upb_MapIterator_SetValue(upb_Map* map, size_t iter,
+                              upb_MessageValue value);
 
 #ifdef __cplusplus
-}  /* extern "C" */
+} /* extern "C" */
 #endif
 
 #include "upb/port_undef.inc"

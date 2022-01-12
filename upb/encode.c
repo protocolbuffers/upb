@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -41,7 +41,7 @@
 #define UPB_PB_VARINT_MAX_LEN 10
 
 UPB_NOINLINE
-static size_t encode_varint64(uint64_t val, char *buf) {
+static size_t encode_varint64(uint64_t val, char* buf) {
   size_t i = 0;
   do {
     uint8_t byte = val & 0x7fU;
@@ -52,12 +52,16 @@ static size_t encode_varint64(uint64_t val, char *buf) {
   return i;
 }
 
-static uint32_t encode_zz32(int32_t n) { return ((uint32_t)n << 1) ^ (n >> 31); }
-static uint64_t encode_zz64(int64_t n) { return ((uint64_t)n << 1) ^ (n >> 63); }
+static uint32_t encode_zz32(int32_t n) {
+  return ((uint32_t)n << 1) ^ (n >> 31);
+}
+static uint64_t encode_zz64(int64_t n) {
+  return ((uint64_t)n << 1) ^ (n >> 63);
+}
 
 typedef struct {
   jmp_buf err;
-  upb_alloc *alloc;
+  upb_alloc* alloc;
   char *buf, *ptr, *limit;
   int options;
   int depth;
@@ -72,15 +76,13 @@ static size_t upb_roundup_pow2(size_t bytes) {
   return ret;
 }
 
-UPB_NORETURN static void encode_err(upb_encstate *e) {
-  UPB_LONGJMP(e->err, 1);
-}
+UPB_NORETURN static void encode_err(upb_encstate* e) { UPB_LONGJMP(e->err, 1); }
 
 UPB_NOINLINE
-static void encode_growbuffer(upb_encstate *e, size_t bytes) {
+static void encode_growbuffer(upb_encstate* e, size_t bytes) {
   size_t old_size = e->limit - e->buf;
   size_t new_size = upb_roundup_pow2(bytes + (e->limit - e->ptr));
-  char *new_buf = upb_realloc(e->alloc, e->buf, old_size, new_size);
+  char* new_buf = upb_realloc(e->alloc, e->buf, old_size, new_size);
 
   if (!new_buf) encode_err(e);
 
@@ -99,7 +101,7 @@ static void encode_growbuffer(upb_encstate *e, size_t bytes) {
 /* Call to ensure that at least "bytes" bytes are available for writing at
  * e->ptr.  Returns false if the bytes could not be allocated. */
 UPB_FORCEINLINE
-static void encode_reserve(upb_encstate *e, size_t bytes) {
+static void encode_reserve(upb_encstate* e, size_t bytes) {
   if ((size_t)(e->ptr - e->buf) < bytes) {
     encode_growbuffer(e, bytes);
     return;
@@ -109,26 +111,26 @@ static void encode_reserve(upb_encstate *e, size_t bytes) {
 }
 
 /* Writes the given bytes to the buffer, handling reserve/advance. */
-static void encode_bytes(upb_encstate *e, const void *data, size_t len) {
-  if (len == 0) return;  /* memcpy() with zero size is UB */
+static void encode_bytes(upb_encstate* e, const void* data, size_t len) {
+  if (len == 0) return; /* memcpy() with zero size is UB */
   encode_reserve(e, len);
   memcpy(e->ptr, data, len);
 }
 
-static void encode_fixed64(upb_encstate *e, uint64_t val) {
+static void encode_fixed64(upb_encstate* e, uint64_t val) {
   val = _upb_BigEndian_Swap64(val);
   encode_bytes(e, &val, sizeof(uint64_t));
 }
 
-static void encode_fixed32(upb_encstate *e, uint32_t val) {
+static void encode_fixed32(upb_encstate* e, uint32_t val) {
   val = _upb_BigEndian_Swap32(val);
   encode_bytes(e, &val, sizeof(uint32_t));
 }
 
 UPB_NOINLINE
-static void encode_longvarint(upb_encstate *e, uint64_t val) {
+static void encode_longvarint(upb_encstate* e, uint64_t val) {
   size_t len;
-  char *start;
+  char* start;
 
   encode_reserve(e, UPB_PB_VARINT_MAX_LEN);
   len = encode_varint64(val, e->ptr);
@@ -138,7 +140,7 @@ static void encode_longvarint(upb_encstate *e, uint64_t val) {
 }
 
 UPB_FORCEINLINE
-static void encode_varint(upb_encstate *e, uint64_t val) {
+static void encode_varint(upb_encstate* e, uint64_t val) {
   if (val < 128 && e->ptr != e->buf) {
     --e->ptr;
     *e->ptr = val;
@@ -147,27 +149,27 @@ static void encode_varint(upb_encstate *e, uint64_t val) {
   }
 }
 
-static void encode_double(upb_encstate *e, double d) {
+static void encode_double(upb_encstate* e, double d) {
   uint64_t u64;
   UPB_ASSERT(sizeof(double) == sizeof(uint64_t));
   memcpy(&u64, &d, sizeof(uint64_t));
   encode_fixed64(e, u64);
 }
 
-static void encode_float(upb_encstate *e, float d) {
+static void encode_float(upb_encstate* e, float d) {
   uint32_t u32;
   UPB_ASSERT(sizeof(float) == sizeof(uint32_t));
   memcpy(&u32, &d, sizeof(uint32_t));
   encode_fixed32(e, u32);
 }
 
-static void encode_tag(upb_encstate *e, uint32_t field_number,
+static void encode_tag(upb_encstate* e, uint32_t field_number,
                        uint8_t wire_type) {
   encode_varint(e, (field_number << 3) | wire_type);
 }
 
-static void encode_fixedarray(upb_encstate *e, const upb_Array *arr,
-                               size_t elem_size, uint32_t tag) {
+static void encode_fixedarray(upb_encstate* e, const upb_Array* arr,
+                              size_t elem_size, uint32_t tag) {
   size_t bytes = arr->len * elem_size;
   const char* data = _upb_array_constptr(arr);
   const char* ptr = data + bytes - elem_size;
@@ -196,18 +198,18 @@ static void encode_fixedarray(upb_encstate *e, const upb_Array *arr,
   }
 }
 
-static void encode_message(upb_encstate *e, const upb_msg *msg,
-                           const upb_MiniTable *m, size_t *size);
+static void encode_message(upb_encstate* e, const upb_msg* msg,
+                           const upb_MiniTable* m, size_t* size);
 
-static void encode_scalar(upb_encstate *e, const void *_field_mem,
-                          const upb_MiniTable_Sub *subs,
-                          const upb_MiniTable_Field *f) {
-  const char *field_mem = _field_mem;
+static void encode_scalar(upb_encstate* e, const void* _field_mem,
+                          const upb_MiniTable_Sub* subs,
+                          const upb_MiniTable_Field* f) {
+  const char* field_mem = _field_mem;
   int wire_type;
 
 #define CASE(ctype, type, wtype, encodeval) \
   {                                         \
-    ctype val = *(ctype *)field_mem;        \
+    ctype val = *(ctype*)field_mem;         \
     encode_##type(e, encodeval);            \
     wire_type = wtype;                      \
     break;                                  \
@@ -248,8 +250,8 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
     }
     case upb_FieldType_Group: {
       size_t size;
-      void *submsg = *(void **)field_mem;
-      const upb_MiniTable *subm = subs[f->submsg_index].submsg;
+      void* submsg = *(void**)field_mem;
+      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
       if (submsg == NULL) {
         return;
       }
@@ -262,8 +264,8 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
     }
     case upb_FieldType_Message: {
       size_t size;
-      void *submsg = *(void **)field_mem;
-      const upb_MiniTable *subm = subs[f->submsg_index].submsg;
+      void* submsg = *(void**)field_mem;
+      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
       if (submsg == NULL) {
         return;
       }
@@ -282,10 +284,10 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
   encode_tag(e, f->number, wire_type);
 }
 
-static void encode_array(upb_encstate *e, const upb_msg *msg,
-                         const upb_MiniTable_Sub *subs,
-                         const upb_MiniTable_Field *f) {
-  const upb_Array *arr = *UPB_PTR_AT(msg, f->offset, upb_Array*);
+static void encode_array(upb_encstate* e, const upb_msg* msg,
+                         const upb_MiniTable_Sub* subs,
+                         const upb_MiniTable_Field* f) {
+  const upb_Array* arr = *UPB_PTR_AT(msg, f->offset, upb_Array*);
   bool packed = f->mode & upb_LabelFlags_IsPacked;
   size_t pre_len = e->limit - e->ptr;
 
@@ -295,8 +297,8 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
 
 #define VARINT_CASE(ctype, encode)                                       \
   {                                                                      \
-    const ctype *start = _upb_array_constptr(arr);                       \
-    const ctype *ptr = start + arr->len;                                 \
+    const ctype* start = _upb_array_constptr(arr);                       \
+    const ctype* ptr = start + arr->len;                                 \
     uint32_t tag = packed ? 0 : (f->number << 3) | kUpb_WireType_Varint; \
     do {                                                                 \
       ptr--;                                                             \
@@ -339,8 +341,8 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
       VARINT_CASE(int64_t, encode_zz64(*ptr));
     case upb_FieldType_String:
     case upb_FieldType_Bytes: {
-      const upb_StringView *start = _upb_array_constptr(arr);
-      const upb_StringView *ptr = start + arr->len;
+      const upb_StringView* start = _upb_array_constptr(arr);
+      const upb_StringView* ptr = start + arr->len;
       do {
         ptr--;
         encode_bytes(e, ptr->data, ptr->size);
@@ -350,9 +352,9 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
       return;
     }
     case upb_FieldType_Group: {
-      const void *const*start = _upb_array_constptr(arr);
-      const void *const*ptr = start + arr->len;
-      const upb_MiniTable *subm = subs[f->submsg_index].submsg;
+      const void* const* start = _upb_array_constptr(arr);
+      const void* const* ptr = start + arr->len;
+      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
       if (--e->depth == 0) encode_err(e);
       do {
         size_t size;
@@ -365,9 +367,9 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
       return;
     }
     case upb_FieldType_Message: {
-      const void *const*start = _upb_array_constptr(arr);
-      const void *const*ptr = start + arr->len;
-      const upb_MiniTable *subm = subs[f->submsg_index].submsg;
+      const void* const* start = _upb_array_constptr(arr);
+      const void* const* ptr = start + arr->len;
+      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
       if (--e->depth == 0) encode_err(e);
       do {
         size_t size;
@@ -388,11 +390,11 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
   }
 }
 
-static void encode_mapentry(upb_encstate *e, uint32_t number,
-                            const upb_MiniTable *layout,
-                            const upb_MapEntry *ent) {
-  const upb_MiniTable_Field *key_field = &layout->fields[0];
-  const upb_MiniTable_Field *val_field = &layout->fields[1];
+static void encode_mapentry(upb_encstate* e, uint32_t number,
+                            const upb_MiniTable* layout,
+                            const upb_MapEntry* ent) {
+  const upb_MiniTable_Field* key_field = &layout->fields[0];
+  const upb_MiniTable_Field* val_field = &layout->fields[1];
   size_t pre_len = e->limit - e->ptr;
   size_t size;
   encode_scalar(e, &ent->v, layout->subs, val_field);
@@ -402,11 +404,11 @@ static void encode_mapentry(upb_encstate *e, uint32_t number,
   encode_tag(e, number, kUpb_WireType_Delimited);
 }
 
-static void encode_map(upb_encstate *e, const upb_msg *msg,
-                       const upb_MiniTable_Sub *subs,
-                       const upb_MiniTable_Field *f) {
-  const upb_Map *map = *UPB_PTR_AT(msg, f->offset, const upb_Map*);
-  const upb_MiniTable *layout = subs[f->submsg_index].submsg;
+static void encode_map(upb_encstate* e, const upb_msg* msg,
+                       const upb_MiniTable_Sub* subs,
+                       const upb_MiniTable_Field* f) {
+  const upb_Map* map = *UPB_PTR_AT(msg, f->offset, const upb_Map*);
+  const upb_MiniTable* layout = subs[f->submsg_index].submsg;
   UPB_ASSERT(layout->field_count == 2);
 
   if (map == NULL) return;
@@ -423,7 +425,7 @@ static void encode_map(upb_encstate *e, const upb_msg *msg,
   } else {
     upb_strtable_iter i;
     upb_strtable_begin(&i, &map->table);
-    for(; !upb_strtable_done(&i); upb_strtable_next(&i)) {
+    for (; !upb_strtable_done(&i); upb_strtable_next(&i)) {
       upb_StringView key = upb_strtable_iter_key(&i);
       const upb_value val = upb_strtable_iter_value(&i);
       upb_MapEntry ent;
@@ -434,12 +436,12 @@ static void encode_map(upb_encstate *e, const upb_msg *msg,
   }
 }
 
-static bool encode_shouldencode(upb_encstate *e, const upb_msg *msg,
-                                const upb_MiniTable_Sub *subs,
-                                const upb_MiniTable_Field *f) {
+static bool encode_shouldencode(upb_encstate* e, const upb_msg* msg,
+                                const upb_MiniTable_Sub* subs,
+                                const upb_MiniTable_Field* f) {
   if (f->presence == 0) {
     /* Proto3 presence or map/array. */
-    const void *mem = UPB_PTR_AT(msg, f->offset, void);
+    const void* mem = UPB_PTR_AT(msg, f->offset, void);
     switch (f->mode >> upb_FieldRep_Shift) {
       case upb_FieldRep_1Byte: {
         char ch;
@@ -457,7 +459,7 @@ static bool encode_shouldencode(upb_encstate *e, const upb_msg *msg,
         return u64 != 0;
       }
       case upb_FieldRep_StringView: {
-        const upb_StringView *str = (const upb_StringView*)mem;
+        const upb_StringView* str = (const upb_StringView*)mem;
         return str->size != 0;
       }
       default:
@@ -472,9 +474,9 @@ static bool encode_shouldencode(upb_encstate *e, const upb_msg *msg,
   }
 }
 
-static void encode_field(upb_encstate *e, const upb_msg *msg,
-                         const upb_MiniTable_Sub *subs,
-                         const upb_MiniTable_Field *field) {
+static void encode_field(upb_encstate* e, const upb_msg* msg,
+                         const upb_MiniTable_Sub* subs,
+                         const upb_MiniTable_Field* field) {
   switch (upb_FieldMode_Get(field)) {
     case kUpb_FieldMode_Array:
       encode_array(e, msg, subs, field);
@@ -496,7 +498,8 @@ static void encode_field(upb_encstate *e, const upb_msg *msg,
  *     required string message = 3;
  *   }
  * } */
-static void encode_msgset_item(upb_encstate *e, const upb_Message_Extension *ext) {
+static void encode_msgset_item(upb_encstate* e,
+                               const upb_Message_Extension* ext) {
   size_t size;
   encode_tag(e, 1, kUpb_WireType_EndGroup);
   encode_message(e, ext->data.ptr, ext->ext->sub.submsg, &size);
@@ -507,8 +510,8 @@ static void encode_msgset_item(upb_encstate *e, const upb_Message_Extension *ext
   encode_tag(e, 1, kUpb_WireType_StartGroup);
 }
 
-static void encode_message(upb_encstate *e, const upb_msg *msg,
-                           const upb_MiniTable *m, size_t *size) {
+static void encode_message(upb_encstate* e, const upb_msg* msg,
+                           const upb_MiniTable* m, size_t* size) {
   size_t pre_len = e->limit - e->ptr;
 
   if ((e->options & kUpb_Encode_CheckRequired) && m->required_count) {
@@ -522,7 +525,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
 
   if ((e->options & kUpb_Encode_SkipUnknown) == 0) {
     size_t unknown_size;
-    const char *unknown = upb_Message_Getunknown(msg, &unknown_size);
+    const char* unknown = upb_Message_Getunknown(msg, &unknown_size);
 
     if (unknown) {
       encode_bytes(e, unknown, unknown_size);
@@ -534,8 +537,8 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
      * these in field number order relative to normal fields or even to each
      * other. */
     size_t ext_count;
-    const upb_Message_Extension *ext = _upb_Message_Getexts(msg, &ext_count);
-    const upb_Message_Extension *end = ext + ext_count;
+    const upb_Message_Extension* ext = _upb_Message_Getexts(msg, &ext_count);
+    const upb_Message_Extension* end = ext + ext_count;
     if (ext_count) {
       for (; ext != end; ext++) {
         if (UPB_UNLIKELY(m->ext == upb_ExtMode_IsMessageSet)) {
@@ -547,8 +550,8 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
     }
   }
 
-  const upb_MiniTable_Field *f = &m->fields[m->field_count];
-  const upb_MiniTable_Field *first = &m->fields[0];
+  const upb_MiniTable_Field* f = &m->fields[m->field_count];
+  const upb_MiniTable_Field* first = &m->fields[0];
   while (f != first) {
     f--;
     if (encode_shouldencode(e, msg, m->subs, f)) {
@@ -559,8 +562,8 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
   *size = (e->limit - e->ptr) - pre_len;
 }
 
-char *upb_EncodeEx(const void *msg, const upb_MiniTable *l, int options,
-                    upb_Arena *arena, size_t *size) {
+char* upb_EncodeEx(const void* msg, const upb_MiniTable* l, int options,
+                   upb_Arena* arena, size_t* size) {
   upb_encstate e;
   unsigned depth = (unsigned)options >> 16;
 
@@ -571,7 +574,7 @@ char *upb_EncodeEx(const void *msg, const upb_MiniTable *l, int options,
   e.depth = depth ? depth : 64;
   e.options = options;
   _upb_mapsorter_init(&e.sorter);
-  char *ret = NULL;
+  char* ret = NULL;
 
   if (UPB_SETJMP(e.err)) {
     *size = 0;

@@ -27,8 +27,8 @@
 
 #include "upb/util/compare.h"
 
-#include <stdbool.h>
 #include <setjmp.h>
+#include <stdbool.h>
 
 #include "upb/port_def.inc"
 
@@ -53,18 +53,18 @@ struct upb_UnknownFields {
 };
 
 typedef struct {
-  const char *end;
-  upb_Arena *arena;
-  upb_UnknownField *tmp;
+  const char* end;
+  upb_Arena* arena;
+  upb_UnknownField* tmp;
   size_t tmp_size;
   int depth;
   jmp_buf err;
 } upb_UnknownField_Context;
 
-static void upb_UnknownFields_Grow(upb_UnknownField_Context *ctx,
-                                   upb_UnknownField **base,
-                                   upb_UnknownField **ptr,
-                                   upb_UnknownField **end) {
+static void upb_UnknownFields_Grow(upb_UnknownField_Context* ctx,
+                                   upb_UnknownField** base,
+                                   upb_UnknownField** ptr,
+                                   upb_UnknownField** end) {
   size_t old = (*ptr - *base);
   size_t new = UPB_MAX(4, old * 2);
 
@@ -76,9 +76,9 @@ static void upb_UnknownFields_Grow(upb_UnknownField_Context *ctx,
   *end = *base + new;
 }
 
-static const char *upb_UnknownFields_ParseVarint(const char *ptr,
-                                                 const char *limit,
-                                                 uint64_t *val) {
+static const char* upb_UnknownFields_ParseVarint(const char* ptr,
+                                                 const char* limit,
+                                                 uint64_t* val) {
   uint8_t byte;
   int bitpos = 0;
   *val = 0;
@@ -97,9 +97,9 @@ static const char *upb_UnknownFields_ParseVarint(const char *ptr,
 
 // We have to implement our own sort here, since qsort() is not an in-order
 // sort. Here we use merge sort, the simplest in-order sort.
-static void upb_UnknownFields_Merge(upb_UnknownField *arr, size_t start,
+static void upb_UnknownFields_Merge(upb_UnknownField* arr, size_t start,
                                     size_t mid, size_t end,
-                                    upb_UnknownField *tmp) {
+                                    upb_UnknownField* tmp) {
   memcpy(tmp, &arr[start], (end - start) * sizeof(*tmp));
 
   upb_UnknownField* ptr1 = tmp;
@@ -123,9 +123,8 @@ static void upb_UnknownFields_Merge(upb_UnknownField *arr, size_t start,
   }
 }
 
-static void upb_UnknownFields_SortRecursive(upb_UnknownField *arr,
-                                            size_t start, size_t end,
-                                            upb_UnknownField *tmp) {
+static void upb_UnknownFields_SortRecursive(upb_UnknownField* arr, size_t start,
+                                            size_t end, upb_UnknownField* tmp) {
   if (end - start > 1) {
     size_t mid = start + ((end - start) / 2);
     upb_UnknownFields_SortRecursive(arr, start, mid, tmp);
@@ -134,8 +133,8 @@ static void upb_UnknownFields_SortRecursive(upb_UnknownField *arr,
   }
 }
 
-static void upb_UnknownFields_Sort(upb_UnknownField_Context *ctx,
-                                   upb_UnknownFields *fields) {
+static void upb_UnknownFields_Sort(upb_UnknownField_Context* ctx,
+                                   upb_UnknownFields* fields) {
   if (ctx->tmp_size < fields->size) {
     ctx->tmp_size = UPB_MAX(8, ctx->tmp_size);
     while (ctx->tmp_size < fields->size) ctx->tmp_size *= 2;
@@ -144,12 +143,12 @@ static void upb_UnknownFields_Sort(upb_UnknownField_Context *ctx,
   upb_UnknownFields_SortRecursive(fields->fields, 0, fields->size, ctx->tmp);
 }
 
-static upb_UnknownFields *upb_UnknownFields_DoBuild(
-    upb_UnknownField_Context *ctx, const char **buf) {
-  upb_UnknownField *arr_base = NULL;
-  upb_UnknownField *arr_ptr = NULL;
-  upb_UnknownField *arr_end = NULL;
-  const char *ptr = *buf;
+static upb_UnknownFields* upb_UnknownFields_DoBuild(
+    upb_UnknownField_Context* ctx, const char** buf) {
+  upb_UnknownField* arr_base = NULL;
+  upb_UnknownField* arr_ptr = NULL;
+  upb_UnknownField* arr_end = NULL;
+  const char* ptr = *buf;
   uint32_t last_tag = 0;
   bool sorted = true;
   while (ptr < ctx->end) {
@@ -164,7 +163,7 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
     if (arr_ptr == arr_end) {
       upb_UnknownFields_Grow(ctx, &arr_base, &arr_ptr, &arr_end);
     }
-    upb_UnknownField *field = arr_ptr;
+    upb_UnknownField* field = arr_ptr;
     field->tag = tag;
     arr_ptr++;
 
@@ -204,7 +203,7 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
   }
 
   *buf = ptr;
-  upb_UnknownFields *ret = upb_Arena_Malloc(ctx->arena, sizeof(*ret));
+  upb_UnknownFields* ret = upb_Arena_Malloc(ctx->arena, sizeof(*ret));
   if (!ret) UPB_LONGJMP(ctx->err, kUpb_UnknownCompareResult_OutOfMemory);
   ret->fields = arr_base;
   ret->size = arr_ptr - arr_base;
@@ -216,22 +215,22 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
 }
 
 // Builds a upb_UnknownFields data structure from the binary data in buf.
-static upb_UnknownFields *upb_UnknownFields_Build(upb_UnknownField_Context *ctx,
-                                                  const char *buf,
+static upb_UnknownFields* upb_UnknownFields_Build(upb_UnknownField_Context* ctx,
+                                                  const char* buf,
                                                   size_t size) {
   ctx->end = buf + size;
-  upb_UnknownFields *fields = upb_UnknownFields_DoBuild(ctx, &buf);
+  upb_UnknownFields* fields = upb_UnknownFields_DoBuild(ctx, &buf);
   UPB_ASSERT(buf == ctx->end);
   return fields;
 }
 
 // Compares two sorted upb_UnknwonFields structures for equality.
-static bool upb_UnknownFields_IsEqual(const upb_UnknownFields *uf1,
-                                      const upb_UnknownFields *uf2) {
+static bool upb_UnknownFields_IsEqual(const upb_UnknownFields* uf1,
+                                      const upb_UnknownFields* uf2) {
   if (uf1->size != uf2->size) return false;
   for (size_t i = 0, n = uf1->size; i < n; i++) {
-    upb_UnknownField *f1 = &uf1->fields[i];
-    upb_UnknownField *f2 = &uf2->fields[i];
+    upb_UnknownField* f1 = &uf1->fields[i];
+    upb_UnknownField* f2 = &uf2->fields[i];
     if (f1->tag != f2->tag) return false;
     int wire_type = f1->tag & 7;
     switch (wire_type) {
@@ -261,9 +260,9 @@ static bool upb_UnknownFields_IsEqual(const upb_UnknownFields *uf1,
   return true;
 }
 
-upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char *buf1,
+upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char* buf1,
                                                            size_t size1,
-                                                           const char *buf2,
+                                                           const char* buf2,
                                                            size_t size2,
                                                            int max_depth) {
   if (size1 == 0 && size2 == 0) return kUpb_UnknownCompareResult_Equal;
@@ -271,10 +270,10 @@ upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char *buf1,
   if (memcmp(buf1, buf2, size1) == 0) return kUpb_UnknownCompareResult_Equal;
 
   upb_UnknownField_Context ctx = {
-    .arena = upb_Arena_New(),
-    .depth = max_depth,
-    .tmp = NULL,
-    .tmp_size = 0,
+      .arena = upb_Arena_New(),
+      .depth = max_depth,
+      .tmp = NULL,
+      .tmp_size = 0,
   };
 
   if (!ctx.arena) return kUpb_UnknownCompareResult_OutOfMemory;
@@ -284,8 +283,8 @@ upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char *buf1,
   if (UPB_LIKELY(ret == 0)) {
     // First build both unknown fields into a sorted data structure (similar
     // to the UnknownFieldSet in C++).
-    upb_UnknownFields *uf1 = upb_UnknownFields_Build(&ctx, buf1, size1);
-    upb_UnknownFields *uf2 = upb_UnknownFields_Build(&ctx, buf2, size2);
+    upb_UnknownFields* uf1 = upb_UnknownFields_Build(&ctx, buf1, size1);
+    upb_UnknownFields* uf2 = upb_UnknownFields_Build(&ctx, buf2, size2);
 
     // Now perform the equality check on the sorted structures.
     if (upb_UnknownFields_IsEqual(uf1, uf2)) {

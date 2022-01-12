@@ -12,11 +12,11 @@
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -41,11 +41,12 @@ namespace protobuf = ::google::protobuf;
 /* A buffer big enough to parse descriptor.proto without going to heap. */
 char buf[65535];
 
-void CollectFileDescriptors(const _upb_DefPool_Init* file,
-                            std::vector<upb_StringView>& serialized_files,
-                            absl::flat_hash_set<const _upb_DefPool_Init*>& seen) {
+void CollectFileDescriptors(
+    const _upb_DefPool_Init* file,
+    std::vector<upb_StringView>& serialized_files,
+    absl::flat_hash_set<const _upb_DefPool_Init*>& seen) {
   if (!seen.insert(file).second) return;
-  for (_upb_DefPool_Init **deps = file->deps; *deps; deps++) {
+  for (_upb_DefPool_Init** deps = file->deps; *deps; deps++) {
     CollectFileDescriptors(*deps, serialized_files, seen);
   }
   serialized_files.push_back(file->descriptor);
@@ -95,9 +96,9 @@ BENCHMARK(BM_LoadAdsDescriptor_Upb);
 static void BM_LoadDescriptor_Proto2(benchmark::State& state) {
   for (auto _ : state) {
     protobuf::Arena arena;
-    protobuf::StringPiece input(descriptor.data,descriptor.size);
-    auto proto = protobuf::Arena::CreateMessage<protobuf::FileDescriptorProto>(
-        &arena);
+    protobuf::StringPiece input(descriptor.data, descriptor.size);
+    auto proto =
+        protobuf::Arena::CreateMessage<protobuf::FileDescriptorProto>(&arena);
     protobuf::DescriptorPool pool;
     bool ok = proto->ParseFrom<protobuf::MessageLite::kMergePartial>(input) &&
               pool.BuildFile(*proto) != nullptr;
@@ -111,7 +112,8 @@ static void BM_LoadDescriptor_Proto2(benchmark::State& state) {
 BENCHMARK(BM_LoadDescriptor_Proto2);
 
 static void BM_LoadAdsDescriptor_Proto2(benchmark::State& state) {
-  extern _upb_DefPool_Init google_ads_googleads_v7_services_google_ads_service_proto_upbdefinit;
+  extern _upb_DefPool_Init
+      google_ads_googleads_v7_services_google_ads_service_proto_upbdefinit;
   std::vector<upb_StringView> serialized_files;
   absl::flat_hash_set<const _upb_DefPool_Init*> seen_files;
   CollectFileDescriptors(
@@ -124,8 +126,8 @@ static void BM_LoadAdsDescriptor_Proto2(benchmark::State& state) {
     protobuf::DescriptorPool pool;
     for (auto file : serialized_files) {
       protobuf::StringPiece input(file.data, file.size);
-      auto proto = protobuf::Arena::CreateMessage<protobuf::FileDescriptorProto>(
-          &arena);
+      auto proto =
+          protobuf::Arena::CreateMessage<protobuf::FileDescriptorProto>(&arena);
       bool ok = proto->ParseFrom<protobuf::MessageLite::kMergePartial>(input) &&
                 pool.BuildFile(*proto) != nullptr;
       if (!ok) {
@@ -154,7 +156,7 @@ template <ArenaMode AMode, CopyStrings Copy>
 static void BM_Parse_Upb_FileDesc(benchmark::State& state) {
   size_t bytes = 0;
   for (auto _ : state) {
-    upb_Arena *arena;
+    upb_Arena* arena;
     if (AMode == InitBlock) {
       arena = upb_Arena_Init(buf, sizeof(buf), NULL);
     } else {
@@ -181,7 +183,7 @@ BENCHMARK_TEMPLATE(BM_Parse_Upb_FileDesc, InitBlock, Alias);
 template <ArenaMode AMode, class P>
 struct Proto2Factory;
 
-template<class P>
+template <class P>
 struct Proto2Factory<NoArena, P> {
  public:
   P* GetProto() { return &proto_; }
@@ -229,7 +231,7 @@ void BM_Parse_Proto2(benchmark::State& state) {
   for (auto _ : state) {
     Proto2Factory<AMode, P> proto_factory;
     auto proto = proto_factory.GetProto();
-    protobuf::StringPiece input(descriptor.data,descriptor.size);
+    protobuf::StringPiece input(descriptor.data, descriptor.size);
     bool ok = proto->template ParseFrom<kParseFlags>(input);
     if (!ok) {
       printf("Failed to parse.\n");

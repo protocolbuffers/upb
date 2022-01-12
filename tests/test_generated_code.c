@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -31,8 +31,8 @@
  */
 
 #include "src/google/protobuf/test_messages_proto3.upb.h"
-#include "tests/upb_test.h"
 #include "tests/test.upb.h"
+#include "tests/upb_test.h"
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
@@ -52,10 +52,10 @@ const int32_t test_int32_3 = 30;
 const int32_t test_int32_4 = -40;
 
 static void test_scalars(void) {
-  upb_Arena *arena = upb_Arena_New();
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg2;
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg2;
   upb_StringView serialized;
   upb_StringView val;
 
@@ -63,8 +63,10 @@ static void test_scalars(void) {
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_int64(msg, 20);
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_uint32(msg, 30);
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_uint64(msg, 40);
-  protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_float(msg, 50.5);
-  protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_double(msg, 60.6);
+  protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_float(msg,
+                                                                      50.5);
+  protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_double(msg,
+                                                                       60.6);
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_bool(msg, 1);
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_string(
       msg, test_str_view);
@@ -83,12 +85,15 @@ static void test_scalars(void) {
              msg2) == 30);
   ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_uint64(
              msg2) == 40);
-  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_float(
-             msg2) - 50.5 < 0.01);
-  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_double(
-             msg2) - 60.6 < 0.01);
-  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_bool(
-             msg2) == 1);
+  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_float(msg2) -
+             50.5 <
+         0.01);
+  ASSERT(
+      protobuf_test_messages_proto3_TestAllTypesProto3_optional_double(msg2) -
+          60.6 <
+      0.01);
+  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_bool(msg2) ==
+         1);
   val = protobuf_test_messages_proto3_TestAllTypesProto3_optional_string(msg2);
   ASSERT(upb_StringView_IsEqual(val, test_str_view));
 
@@ -97,12 +102,13 @@ static void test_scalars(void) {
 
 static void test_utf8(void) {
   const char invalid_utf8[] = "\xff";
-  const upb_StringView invalid_utf8_view = upb_StringView_FromStringAndSize(invalid_utf8, 1);
-  upb_Arena *arena = upb_Arena_New();
+  const upb_StringView invalid_utf8_view =
+      upb_StringView_FromStringAndSize(invalid_utf8, 1);
+  upb_Arena* arena = upb_Arena_New();
   upb_StringView serialized;
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg2;
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg2;
 
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_string(
       msg, invalid_utf8_view);
@@ -118,7 +124,7 @@ static void test_utf8(void) {
 }
 
 static void check_string_map_empty(
-    protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
+    protobuf_test_messages_proto3_TestAllTypesProto3* msg) {
   size_t iter = kUpb_Map_Begin;
 
   ASSERT(
@@ -130,9 +136,9 @@ static void check_string_map_empty(
 }
 
 static void check_string_map_one_entry(
-    protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
-  const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry
-      *const_ent;
+    protobuf_test_messages_proto3_TestAllTypesProto3* msg) {
+  const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry*
+      const_ent;
   size_t iter;
   upb_StringView str;
 
@@ -149,8 +155,9 @@ static void check_string_map_one_entry(
 
   /* Test that iteration reveals a single k/v pair in the map. */
   iter = kUpb_Map_Begin;
-  const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
-      msg, &iter);
+  const_ent =
+      protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
+          msg, &iter);
   ASSERT(const_ent);
   ASSERT(upb_StringView_IsEqual(
       test_str_view,
@@ -161,16 +168,17 @@ static void check_string_map_one_entry(
       protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry_value(
           const_ent)));
 
-  const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
-      msg, &iter);
+  const_ent =
+      protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
+          msg, &iter);
   ASSERT(!const_ent);
 }
 
 static void test_string_double_map(void) {
-  upb_Arena *arena = upb_Arena_New();
+  upb_Arena* arena = upb_Arena_New();
   upb_StringView serialized;
-  upb_test_MapTest *msg = upb_test_MapTest_new(arena);
-  upb_test_MapTest *msg2;
+  upb_test_MapTest* msg = upb_test_MapTest_new(arena);
+  upb_test_MapTest* msg2;
   double val;
 
   upb_test_MapTest_map_string_double_set(msg, test_str_view, 1.5, arena);
@@ -191,11 +199,11 @@ static void test_string_double_map(void) {
 }
 
 static void test_string_map(void) {
-  upb_Arena *arena = upb_Arena_New();
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
-  const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry
-      *const_ent;
+  const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry*
+      const_ent;
   size_t iter, count;
 
   check_string_map_empty(msg);
@@ -260,39 +268,36 @@ static void test_string_map(void) {
 }
 
 static void check_int32_map_empty(
-    protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
+    protobuf_test_messages_proto3_TestAllTypesProto3* msg) {
   size_t iter = kUpb_Map_Begin;
 
-  ASSERT(
-      protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_size(
-          msg) == 0);
-  ASSERT(
-      !protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
-          msg, &iter));
+  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_size(
+             msg) == 0);
+  ASSERT(!protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
+      msg, &iter));
 }
 
 static void check_int32_map_one_entry(
-    protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
-  const protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry
-      *const_ent;
+    protobuf_test_messages_proto3_TestAllTypesProto3* msg) {
+  const protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry*
+      const_ent;
   size_t iter;
   int32_t val;
 
-  ASSERT(
-      protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_size(
-          msg) == 1);
+  ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_size(
+             msg) == 1);
   ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_get(
       msg, test_int32, &val));
   ASSERT(val == test_int32_2);
 
-  ASSERT(
-      !protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_get(
-          msg, test_int32_3, &val));
+  ASSERT(!protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_get(
+      msg, test_int32_3, &val));
 
   /* Test that iteration reveals a single k/v pair in the map. */
   iter = kUpb_Map_Begin;
-  const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
-      msg, &iter);
+  const_ent =
+      protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
+          msg, &iter);
   ASSERT(const_ent);
   ASSERT(
       test_int32 ==
@@ -303,17 +308,18 @@ static void check_int32_map_one_entry(
       protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry_value(
           const_ent));
 
-  const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
-      msg, &iter);
+  const_ent =
+      protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
+          msg, &iter);
   ASSERT(!const_ent);
 }
 
 static void test_int32_map(void) {
-  upb_Arena *arena = upb_Arena_New();
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
-  const protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry
-      *const_ent;
+  const protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry*
+      const_ent;
   size_t iter, count;
 
   check_int32_map_empty(msg);
@@ -378,14 +384,14 @@ static void test_int32_map(void) {
 }
 
 void test_repeated(void) {
-  upb_Arena *arena = upb_Arena_New();
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   size_t size;
-  const int *elems;
+  const int* elems;
 
-  protobuf_test_messages_proto3_TestAllTypesProto3_add_repeated_int32(
-      msg, 5, arena);
+  protobuf_test_messages_proto3_TestAllTypesProto3_add_repeated_int32(msg, 5,
+                                                                      arena);
 
   elems = protobuf_test_messages_proto3_TestAllTypesProto3_repeated_int32(
       msg, &size);
@@ -397,8 +403,8 @@ void test_repeated(void) {
 }
 
 void test_null_decode_buf(void) {
-  upb_Arena *arena = upb_Arena_New();
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_parse(NULL, 0, arena);
   size_t size;
 
@@ -413,9 +419,9 @@ void test_status_truncation(void) {
   upb_Status status;
   upb_Status status2;
   for (i = 0; i < _kUpb_Status_MaxMessage + 20; i++) {
-    char *msg = malloc(i + 1);
+    char* msg = malloc(i + 1);
     int end;
-    char ch = (i % 96) + 33;  /* Cycle through printable chars. */
+    char ch = (i % 96) + 33; /* Cycle through printable chars. */
 
     for (j = 0; j < i; j++) {
       msg[j] = ch;
@@ -437,7 +443,7 @@ void test_status_truncation(void) {
   }
 }
 
-void decrement_int(void *ptr) {
+void decrement_int(void* ptr) {
   int* iptr = ptr;
   (*iptr)--;
 }
@@ -448,8 +454,8 @@ void test_arena_fuse(void) {
   int i3 = 5;
   int i4 = 5;
 
-  upb_Arena *arena1 = upb_Arena_New();
-  upb_Arena *arena2 = upb_Arena_New();
+  upb_Arena* arena1 = upb_Arena_New();
+  upb_Arena* arena2 = upb_Arena_New();
 
   upb_Arena_AddCleanup(arena1, &i1, decrement_int);
   upb_Arena_AddCleanup(arena2, &i2, decrement_int);
@@ -472,7 +478,7 @@ void test_arena_fuse(void) {
 }
 
 /* Do nothing allocator for testing */
-static void *test_allocfunc(upb_alloc *alloc, void *ptr, size_t oldsize,
+static void* test_allocfunc(upb_alloc* alloc, void* ptr, size_t oldsize,
                             size_t size) {
   return upb_alloc_global.func(alloc, ptr, oldsize, size);
 }
@@ -481,11 +487,11 @@ upb_alloc test_alloc = {&test_allocfunc};
 void test_arena_fuse_with_initial_block(void) {
   char buf1[1024];
   char buf2[1024];
-  upb_Arena *arenas[] = {upb_Arena_Init(buf1, 1024, &upb_alloc_global),
+  upb_Arena* arenas[] = {upb_Arena_Init(buf1, 1024, &upb_alloc_global),
                          upb_Arena_Init(buf2, 1024, &upb_alloc_global),
                          upb_Arena_Init(NULL, 0, &test_alloc),
                          upb_Arena_Init(NULL, 0, &upb_alloc_global)};
-  int size = sizeof(arenas)/sizeof(arenas[0]);
+  int size = sizeof(arenas) / sizeof(arenas[0]);
   for (int i = 0; i < size; ++i) {
     for (int j = 0; j < size; ++j) {
       if (i == j) {
@@ -504,9 +510,9 @@ void test_arena_decode(void) {
   // upb_decode().
   char large_string[1024] = {0};
   upb_StringView large_string_view = {large_string, sizeof(large_string)};
-  upb_Arena *tmp = upb_Arena_New();
+  upb_Arena* tmp = upb_Arena_New();
 
-  protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
+  protobuf_test_messages_proto3_TestAllTypesProto3* msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(tmp);
 
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_bytes(
@@ -516,7 +522,7 @@ void test_arena_decode(void) {
   serialized.data = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
       msg, tmp, &serialized.size);
 
-  upb_Arena *arena = upb_Arena_New();
+  upb_Arena* arena = upb_Arena_New();
   // Parse the large payload, forcing an arena block to be allocated. This used
   // to corrupt the cleanup list, preventing subsequent upb_Arena_AddCleanup()
   // calls from working properly.
@@ -535,10 +541,10 @@ void test_arena_decode(void) {
 void test_arena_unaligned(void) {
   char buf1[1024];
   // Force the pointer to be unaligned.
-  char *unaligned_buf_ptr = (char*)((uintptr_t)buf1 | 7);
-  upb_Arena *arena = upb_Arena_Init(
+  char* unaligned_buf_ptr = (char*)((uintptr_t)buf1 | 7);
+  upb_Arena* arena = upb_Arena_Init(
       unaligned_buf_ptr, &buf1[sizeof(buf1)] - unaligned_buf_ptr, NULL);
-  char *mem = upb_Arena_Malloc(arena, 5);
+  char* mem = upb_Arena_Malloc(arena, 5);
   ASSERT(((uintptr_t)mem & 15) == 0);
   upb_Arena_Free(arena);
 
@@ -549,7 +555,7 @@ void test_arena_unaligned(void) {
   upb_Arena_Free(arena);
 }
 
-int run_tests(int argc, char *argv[]) {
+int run_tests(int argc, char* argv[]) {
   test_scalars();
   test_utf8();
   test_string_map();

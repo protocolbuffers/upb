@@ -13,19 +13,17 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include "upb/upb_internal.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -35,42 +33,49 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "upb/upb_internal.h"
+
+// Must be last.
 #include "upb/port_def.inc"
 
 /* upb_Status *****************************************************************/
 
-void upb_Status_Clear(upb_Status *status) {
+void upb_Status_Clear(upb_Status* status) {
   if (!status) return;
   status->ok = true;
   status->msg[0] = '\0';
 }
 
-bool upb_Status_IsOk(const upb_Status *status) { return status->ok; }
+bool upb_Status_IsOk(const upb_Status* status) { return status->ok; }
 
-const char *upb_Status_ErrorMessage(const upb_Status *status) { return status->msg; }
+const char* upb_Status_ErrorMessage(const upb_Status* status) {
+  return status->msg;
+}
 
-void upb_Status_SetErrorMessage(upb_Status *status, const char *msg) {
+void upb_Status_SetErrorMessage(upb_Status* status, const char* msg) {
   if (!status) return;
   status->ok = false;
   strncpy(status->msg, msg, _kUpb_Status_MaxMessage - 1);
   status->msg[_kUpb_Status_MaxMessage - 1] = '\0';
 }
 
-void upb_Status_SetErrorFormat(upb_Status *status, const char *fmt, ...) {
+void upb_Status_SetErrorFormat(upb_Status* status, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
   upb_Status_VSetErrorFormat(status, fmt, args);
   va_end(args);
 }
 
-void upb_Status_VSetErrorFormat(upb_Status *status, const char *fmt, va_list args) {
+void upb_Status_VSetErrorFormat(upb_Status* status, const char* fmt,
+                                va_list args) {
   if (!status) return;
   status->ok = false;
   vsnprintf(status->msg, sizeof(status->msg), fmt, args);
   status->msg[_kUpb_Status_MaxMessage - 1] = '\0';
 }
 
-void upb_Status_VAppendErrorFormat(upb_Status *status, const char *fmt, va_list args) {
+void upb_Status_VAppendErrorFormat(upb_Status* status, const char* fmt,
+                                   va_list args) {
   size_t len;
   if (!status) return;
   status->ok = false;
@@ -81,7 +86,7 @@ void upb_Status_VAppendErrorFormat(upb_Status *status, const char *fmt, va_list 
 
 /* upb_alloc ******************************************************************/
 
-static void *upb_global_allocfunc(upb_alloc *alloc, void *ptr, size_t oldsize,
+static void* upb_global_allocfunc(upb_alloc* alloc, void* ptr, size_t oldsize,
                                   size_t size) {
   UPB_UNUSED(alloc);
   UPB_UNUSED(oldsize);
@@ -93,15 +98,15 @@ static void *upb_global_allocfunc(upb_alloc *alloc, void *ptr, size_t oldsize,
   }
 }
 
-static uint32_t *upb_cleanup_pointer(uintptr_t cleanup_metadata) {
-  return (uint32_t *)(cleanup_metadata & ~0x1);
+static uint32_t* upb_cleanup_pointer(uintptr_t cleanup_metadata) {
+  return (uint32_t*)(cleanup_metadata & ~0x1);
 }
 
 static bool upb_cleanup_has_initial_block(uintptr_t cleanup_metadata) {
   return cleanup_metadata & 0x1;
 }
 
-static uintptr_t upb_cleanup_metadata(uint32_t *cleanup,
+static uintptr_t upb_cleanup_metadata(uint32_t* cleanup,
                                       bool has_initial_block) {
   return (uintptr_t)cleanup | has_initial_block;
 }
@@ -113,33 +118,33 @@ upb_alloc upb_alloc_global = {&upb_global_allocfunc};
 /* Be conservative and choose 16 in case anyone is using SSE. */
 
 struct mem_block {
-  struct mem_block *next;
+  struct mem_block* next;
   uint32_t size;
   uint32_t cleanups;
   /* Data follows. */
 };
 
 typedef struct cleanup_ent {
-  upb_CleanupFunc *cleanup;
-  void *ud;
+  upb_CleanupFunc* cleanup;
+  void* ud;
 } cleanup_ent;
 
 static const size_t memblock_reserve = UPB_ALIGN_UP(sizeof(mem_block), 16);
 
-static upb_Arena *arena_findroot(upb_Arena *a) {
+static upb_Arena* arena_findroot(upb_Arena* a) {
   /* Path splitting keeps time complexity down, see:
    *   https://en.wikipedia.org/wiki/Disjoint-set_data_structure */
   while (a->parent != a) {
-    upb_Arena *next = a->parent;
+    upb_Arena* next = a->parent;
     a->parent = next->parent;
     a = next;
   }
   return a;
 }
 
-static void upb_Arena_addblock(upb_Arena *a, upb_Arena *root, void *ptr,
+static void upb_Arena_addblock(upb_Arena* a, upb_Arena* root, void* ptr,
                                size_t size) {
-  mem_block *block = ptr;
+  mem_block* block = ptr;
 
   /* The block is for arena |a|, but should appear in the freelist of |root|. */
   block->next = root->freelist;
@@ -157,33 +162,33 @@ static void upb_Arena_addblock(upb_Arena *a, upb_Arena *root, void *ptr,
   UPB_POISON_MEMORY_REGION(a->head.ptr, a->head.end - a->head.ptr);
 }
 
-static bool upb_Arena_Allocblock(upb_Arena *a, size_t size) {
-  upb_Arena *root = arena_findroot(a);
+static bool upb_Arena_Allocblock(upb_Arena* a, size_t size) {
+  upb_Arena* root = arena_findroot(a);
   size_t block_size = UPB_MAX(size, a->last_size * 2) + memblock_reserve;
-  mem_block *block = upb_malloc(root->block_alloc, block_size);
+  mem_block* block = upb_malloc(root->block_alloc, block_size);
 
   if (!block) return false;
   upb_Arena_addblock(a, root, block, block_size);
   return true;
 }
 
-void *_upb_Arena_SlowMalloc(upb_Arena *a, size_t size) {
-  if (!upb_Arena_Allocblock(a, size)) return NULL;  /* Out of memory. */
+void* _upb_Arena_SlowMalloc(upb_Arena* a, size_t size) {
+  if (!upb_Arena_Allocblock(a, size)) return NULL; /* Out of memory. */
   UPB_ASSERT(_upb_ArenaHas(a) >= size);
   return upb_Arena_Malloc(a, size);
 }
 
-static void *upb_Arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
+static void* upb_Arena_doalloc(upb_alloc* alloc, void* ptr, size_t oldsize,
                                size_t size) {
-  upb_Arena *a = (upb_Arena*)alloc;  /* upb_alloc is initial member. */
+  upb_Arena* a = (upb_Arena*)alloc; /* upb_alloc is initial member. */
   return upb_Arena_Realloc(a, ptr, oldsize, size);
 }
 
 /* Public Arena API ***********************************************************/
 
-upb_Arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
+upb_Arena* arena_initslow(void* mem, size_t n, upb_alloc* alloc) {
   const size_t first_block_overhead = sizeof(upb_Arena) + memblock_reserve;
-  upb_Arena *a;
+  upb_Arena* a;
 
   /* We need to malloc the initial block. */
   n = first_block_overhead + 256;
@@ -207,12 +212,12 @@ upb_Arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
   return a;
 }
 
-upb_Arena *upb_Arena_Init(void *mem, size_t n, upb_alloc *alloc) {
-  upb_Arena *a;
+upb_Arena* upb_Arena_Init(void* mem, size_t n, upb_alloc* alloc) {
+  upb_Arena* a;
 
   if (n) {
     /* Align initial pointer up so that we return properly-aligned pointers. */
-    void *aligned = (void*)UPB_ALIGN_UP((uintptr_t)mem, 16);
+    void* aligned = (void*)UPB_ALIGN_UP((uintptr_t)mem, 16);
     size_t delta = (uintptr_t)aligned - (uintptr_t)mem;
     n = delta <= n ? n - delta : 0;
     mem = aligned;
@@ -241,18 +246,18 @@ upb_Arena *upb_Arena_Init(void *mem, size_t n, upb_alloc *alloc) {
   return a;
 }
 
-static void arena_dofree(upb_Arena *a) {
-  mem_block *block = a->freelist;
+static void arena_dofree(upb_Arena* a) {
+  mem_block* block = a->freelist;
   UPB_ASSERT(a->parent == a);
   UPB_ASSERT(a->refcount == 0);
 
   while (block) {
     /* Load first since we are deleting block. */
-    mem_block *next = block->next;
+    mem_block* next = block->next;
 
     if (block->cleanups > 0) {
-      cleanup_ent *end = UPB_PTR_AT(block, block->size, void);
-      cleanup_ent *ptr = end - block->cleanups;
+      cleanup_ent* end = UPB_PTR_AT(block, block->size, void);
+      cleanup_ent* ptr = end - block->cleanups;
 
       for (; ptr < end; ptr++) {
         ptr->cleanup(ptr->ud);
@@ -264,17 +269,17 @@ static void arena_dofree(upb_Arena *a) {
   }
 }
 
-void upb_Arena_Free(upb_Arena *a) {
+void upb_Arena_Free(upb_Arena* a) {
   a = arena_findroot(a);
   if (--a->refcount == 0) arena_dofree(a);
 }
 
-bool upb_Arena_AddCleanup(upb_Arena *a, void *ud, upb_CleanupFunc *func) {
-  cleanup_ent *ent;
+bool upb_Arena_AddCleanup(upb_Arena* a, void* ud, upb_CleanupFunc* func) {
+  cleanup_ent* ent;
   uint32_t* cleanups = upb_cleanup_pointer(a->cleanup_metadata);
 
   if (!cleanups || _upb_ArenaHas(a) < sizeof(cleanup_ent)) {
-    if (!upb_Arena_Allocblock(a, 128)) return false;  /* Out of memory. */
+    if (!upb_Arena_Allocblock(a, 128)) return false; /* Out of memory. */
     UPB_ASSERT(_upb_ArenaHas(a) >= sizeof(cleanup_ent));
     cleanups = upb_cleanup_pointer(a->cleanup_metadata);
   }
@@ -290,11 +295,11 @@ bool upb_Arena_AddCleanup(upb_Arena *a, void *ud, upb_CleanupFunc *func) {
   return true;
 }
 
-bool upb_Arena_Fuse(upb_Arena *a1, upb_Arena *a2) {
-  upb_Arena *r1 = arena_findroot(a1);
-  upb_Arena *r2 = arena_findroot(a2);
+bool upb_Arena_Fuse(upb_Arena* a1, upb_Arena* a2) {
+  upb_Arena* r1 = arena_findroot(a1);
+  upb_Arena* r2 = arena_findroot(a2);
 
-  if (r1 == r2) return true;  /* Already fused. */
+  if (r1 == r2) return true; /* Already fused. */
 
   /* Do not fuse initial blocks since we cannot lifetime extend them. */
   if (upb_cleanup_has_initial_block(r1->cleanup_metadata)) return false;
@@ -306,7 +311,7 @@ bool upb_Arena_Fuse(upb_Arena *a1, upb_Arena *a2) {
   /* We want to join the smaller tree to the larger tree.
    * So swap first if they are backwards. */
   if (r1->refcount < r2->refcount) {
-    upb_Arena *tmp = r1;
+    upb_Arena* tmp = r1;
     r1 = r2;
     r2 = tmp;
   }

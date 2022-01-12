@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -35,6 +35,8 @@
 #include <string.h>
 
 #include "upb/reflection.h"
+
+// Must be last.
 #include "upb/port_def.inc"
 
 typedef struct {
@@ -42,13 +44,13 @@ typedef struct {
   size_t overflow;
   int indent_depth;
   int options;
-  const upb_DefPool *ext_pool;
+  const upb_DefPool* ext_pool;
   _upb_mapsorter sorter;
 } txtenc;
 
-static void txtenc_msg(txtenc *e, const upb_msg *msg, const upb_MessageDef *m);
+static void txtenc_msg(txtenc* e, const upb_msg* msg, const upb_MessageDef* m);
 
-static void txtenc_putbytes(txtenc *e, const void *data, size_t len) {
+static void txtenc_putbytes(txtenc* e, const void* data, size_t len) {
   size_t have = e->end - e->ptr;
   if (UPB_LIKELY(have >= len)) {
     memcpy(e->ptr, data, len);
@@ -62,11 +64,11 @@ static void txtenc_putbytes(txtenc *e, const void *data, size_t len) {
   }
 }
 
-static void txtenc_putstr(txtenc *e, const char *str) {
+static void txtenc_putstr(txtenc* e, const char* str) {
   txtenc_putbytes(e, str, strlen(str));
 }
 
-static void txtenc_printf(txtenc *e, const char *fmt, ...) {
+static void txtenc_printf(txtenc* e, const char* fmt, ...) {
   size_t n;
   size_t have = e->end - e->ptr;
   va_list args;
@@ -83,7 +85,7 @@ static void txtenc_printf(txtenc *e, const char *fmt, ...) {
   }
 }
 
-static void txtenc_indent(txtenc *e) {
+static void txtenc_indent(txtenc* e) {
   if ((e->options & UPB_TXTENC_SINGLELINE) == 0) {
     int i = e->indent_depth;
     while (i-- > 0) {
@@ -92,7 +94,7 @@ static void txtenc_indent(txtenc *e) {
   }
 }
 
-static void txtenc_endfield(txtenc *e) {
+static void txtenc_endfield(txtenc* e) {
   if (e->options & UPB_TXTENC_SINGLELINE) {
     txtenc_putstr(e, " ");
   } else {
@@ -100,9 +102,9 @@ static void txtenc_endfield(txtenc *e) {
   }
 }
 
-static void txtenc_enum(int32_t val, const upb_FieldDef *f, txtenc *e) {
-  const upb_EnumDef *e_def = upb_FieldDef_EnumSubDef(f);
-  const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNumber(e_def, val);
+static void txtenc_enum(int32_t val, const upb_FieldDef* f, txtenc* e) {
+  const upb_EnumDef* e_def = upb_FieldDef_EnumSubDef(f);
+  const upb_EnumValueDef* ev = upb_EnumDef_FindValueByNumber(e_def, val);
 
   if (ev) {
     txtenc_printf(e, "%s", upb_EnumValueDef_Name(ev));
@@ -111,9 +113,9 @@ static void txtenc_enum(int32_t val, const upb_FieldDef *f, txtenc *e) {
   }
 }
 
-static void txtenc_string(txtenc *e, upb_StringView str, bool bytes) {
-  const char *ptr = str.data;
-  const char *end = ptr + str.size;
+static void txtenc_string(txtenc* e, upb_StringView str, bool bytes) {
+  const char* ptr = str.data;
+  const char* end = ptr + str.size;
   txtenc_putstr(e, "\"");
 
   while (ptr < end) {
@@ -150,7 +152,8 @@ static void txtenc_string(txtenc *e, upb_StringView str, bool bytes) {
   txtenc_putstr(e, "\"");
 }
 
-static void txtenc_field(txtenc *e, upb_MessageValue val, const upb_FieldDef *f) {
+static void txtenc_field(txtenc* e, upb_MessageValue val,
+                         const upb_FieldDef* f) {
   txtenc_indent(e);
   upb_CType type = upb_FieldDef_CType(f);
   const char* name = upb_FieldDef_Name(f);
@@ -214,8 +217,8 @@ static void txtenc_field(txtenc *e, upb_MessageValue val, const upb_FieldDef *f)
  *    foo_field: 2
  *    foo_field: 3
  */
-static void txtenc_array(txtenc *e, const upb_Array *arr,
-                         const upb_FieldDef *f) {
+static void txtenc_array(txtenc* e, const upb_Array* arr,
+                         const upb_FieldDef* f) {
   size_t i;
   size_t size = upb_Array_Size(arr);
 
@@ -224,11 +227,11 @@ static void txtenc_array(txtenc *e, const upb_Array *arr,
   }
 }
 
-static void txtenc_mapentry(txtenc *e, upb_MessageValue key, upb_MessageValue val,
-                            const upb_FieldDef *f) {
-  const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
-  const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
-  const upb_FieldDef *val_f = upb_MessageDef_Field(entry, 1);
+static void txtenc_mapentry(txtenc* e, upb_MessageValue key,
+                            upb_MessageValue val, const upb_FieldDef* f) {
+  const upb_MessageDef* entry = upb_FieldDef_MessageSubDef(f);
+  const upb_FieldDef* key_f = upb_MessageDef_Field(entry, 0);
+  const upb_FieldDef* val_f = upb_MessageDef_Field(entry, 1);
   txtenc_indent(e);
   txtenc_printf(e, "%s {", upb_FieldDef_Name(f));
   txtenc_endfield(e);
@@ -255,7 +258,7 @@ static void txtenc_mapentry(txtenc *e, upb_MessageValue key, upb_MessageValue va
  *      value: 456
  *    }
  */
-static void txtenc_map(txtenc *e, const upb_Map *map, const upb_FieldDef *f) {
+static void txtenc_map(txtenc* e, const upb_Map* map, const upb_FieldDef* f) {
   if (e->options & UPB_TXTENC_NOSORT) {
     size_t iter = kUpb_Map_Begin;
     while (upb_MapIterator_Next(map, &iter)) {
@@ -264,13 +267,12 @@ static void txtenc_map(txtenc *e, const upb_Map *map, const upb_FieldDef *f) {
       txtenc_mapentry(e, key, val, f);
     }
   } else {
-    const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
+    const upb_MessageDef* entry = upb_FieldDef_MessageSubDef(f);
+    const upb_FieldDef* key_f = upb_MessageDef_Field(entry, 0);
     _upb_sortedmap sorted;
     upb_MapEntry ent;
 
-    _upb_mapsorter_pushmap(&e->sorter, upb_FieldDef_Type(key_f), map,
-                           &sorted);
+    _upb_mapsorter_pushmap(&e->sorter, upb_FieldDef_Type(key_f), map, &sorted);
     while (_upb_sortedmap_next(&e->sorter, map, &sorted, &ent)) {
       upb_MessageValue key, val;
       memcpy(&key, &ent.k, sizeof(key));
@@ -281,10 +283,15 @@ static void txtenc_map(txtenc *e, const upb_Map *map, const upb_FieldDef *f) {
   }
 }
 
-#define CHK(x) do { if (!(x)) { return false; } } while(0)
+#define CHK(x)      \
+  do {              \
+    if (!(x)) {     \
+      return false; \
+    }               \
+  } while (0)
 
-static const char *txtenc_parsevarint(const char *ptr, const char *limit,
-                                      uint64_t *val) {
+static const char* txtenc_parsevarint(const char* ptr, const char* limit,
+                                      uint64_t* val) {
   uint8_t byte;
   int bitpos = 0;
   *val = 0;
@@ -310,7 +317,7 @@ static const char *txtenc_parsevarint(const char *ptr, const char *limit,
  *   1: 111
  * }
  */
-static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
+static const char* txtenc_unknown(txtenc* e, const char* ptr, const char* end,
                                   int groupnum) {
   while (ptr < end) {
     uint64_t tag_64;
@@ -353,7 +360,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
       case kUpb_WireType_Delimited: {
         uint64_t len;
         size_t avail = end - ptr;
-        char *start = e->ptr;
+        char* start = e->ptr;
         size_t start_overflow = e->overflow;
         CHK(ptr = txtenc_parsevarint(ptr, end, &len));
         CHK(avail >= len);
@@ -397,10 +404,9 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
 
 #undef CHK
 
-static void txtenc_msg(txtenc *e, const upb_msg *msg,
-                       const upb_MessageDef *m) {
+static void txtenc_msg(txtenc* e, const upb_msg* msg, const upb_MessageDef* m) {
   size_t iter = kUpb_Message_Begin;
-  const upb_FieldDef *f;
+  const upb_FieldDef* f;
   upb_MessageValue val;
 
   while (upb_Message_Next(msg, m, e->ext_pool, &f, &val, &iter)) {
@@ -415,8 +421,8 @@ static void txtenc_msg(txtenc *e, const upb_msg *msg,
 
   if ((e->options & UPB_TXTENC_SKIPUNKNOWN) == 0) {
     size_t len;
-    const char *ptr = upb_Message_Getunknown(msg, &len);
-    char *start = e->ptr;
+    const char* ptr = upb_Message_Getunknown(msg, &len);
+    char* start = e->ptr;
     if (ptr) {
       if (!txtenc_unknown(e, ptr, ptr + len, -1)) {
         /* Unknown failed to parse, back up and don't print it at all. */
@@ -426,7 +432,7 @@ static void txtenc_msg(txtenc *e, const upb_msg *msg,
   }
 }
 
-size_t txtenc_nullz(txtenc *e, size_t size) {
+size_t txtenc_nullz(txtenc* e, size_t size) {
   size_t ret = e->ptr - e->buf + e->overflow;
 
   if (size > 0) {
@@ -437,8 +443,8 @@ size_t txtenc_nullz(txtenc *e, size_t size) {
   return ret;
 }
 
-size_t upb_text_encode(const upb_msg *msg, const upb_MessageDef *m,
-                       const upb_DefPool *ext_pool, int options, char *buf,
+size_t upb_text_encode(const upb_msg* msg, const upb_MessageDef* m,
+                       const upb_DefPool* ext_pool, int options, char* buf,
                        size_t size) {
   txtenc e;
 

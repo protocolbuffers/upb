@@ -76,4 +76,4 @@ const void* PyUpb_AnyDescriptor_GetDef(PyObject* _self);
 // Module-level init.
 bool PyUpb_InitDescriptor(PyObject* m);
 
-#endif   // PYUPB_DESCRIPTOR_H__
+#endif  // PYUPB_DESCRIPTOR_H__

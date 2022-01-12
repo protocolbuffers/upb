@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -55,16 +55,17 @@ typedef struct upb_MiniTable upb_MiniTable;
 
 /* Adds unknown data (serialized protobuf data) to the given message.  The data
  * is copied into the message instance. */
-void upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                        upb_Arena *arena);
+void upb_msg_addunknown(upb_msg* msg, const char* data, size_t len,
+                        upb_Arena* arena);
 
 /* Returns a reference to the message's unknown data. */
-const char *upb_Message_Getunknown(const upb_msg *msg, size_t *len);
+const char* upb_Message_Getunknown(const upb_msg* msg, size_t* len);
 
 /* Returns the number of extensions present in this message. */
-size_t upb_msg_extcount(const upb_msg *msg);
+size_t upb_msg_extcount(const upb_msg* msg);
 
-/** upb_extreg *******************************************************************/
+/** upb_extreg
+ * *******************************************************************/
 
 /* Extension registry: a dynamic data structure that stores a map of:
  *   (upb_MiniTable, number) -> extension info
@@ -104,10 +105,10 @@ typedef struct upb_extreg upb_extreg;
 
 /* Creates a upb_extreg in the given arena.  The arena must outlive any use of
  * the extreg. */
-upb_extreg *upb_extreg_new(upb_Arena *arena);
+upb_extreg* upb_extreg_new(upb_Arena* arena);
 
 #ifdef __cplusplus
-}  /* extern "C" */
+} /* extern "C" */
 #endif
 
 #endif /* UPB_MSG_INT_H_ */

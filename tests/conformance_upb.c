@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -41,17 +41,18 @@
 #include "src/google/protobuf/test_messages_proto3.upbdefs.h"
 #include "upb/decode.h"
 #include "upb/encode.h"
-#include "upb/reflection.h"
 #include "upb/json_decode.h"
 #include "upb/json_encode.h"
+#include "upb/reflection.h"
 #include "upb/text_encode.h"
 
+// Must be last.
 #include "upb/port_def.inc"
 
 int test_count = 0;
-bool verbose = false;  /* Set to true to get req/resp printed on stderr. */
+bool verbose = false; /* Set to true to get req/resp printed on stderr. */
 
-bool CheckedRead(int fd, void *buf, size_t len) {
+bool CheckedRead(int fd, void* buf, size_t len) {
   size_t ofs = 0;
   while (len > 0) {
     ssize_t bytes_read = read(fd, (char*)buf + ofs, len);
@@ -70,7 +71,7 @@ bool CheckedRead(int fd, void *buf, size_t len) {
   return true;
 }
 
-void CheckedWrite(int fd, const void *buf, size_t len) {
+void CheckedWrite(int fd, const void* buf, size_t len) {
   if ((size_t)write(fd, buf, len) != len) {
     perror("writing to test runner");
     exit(1);
@@ -78,17 +79,17 @@ void CheckedWrite(int fd, const void *buf, size_t len) {
 }
 
 typedef struct {
-  const conformance_ConformanceRequest *request;
-  conformance_ConformanceResponse *response;
-  upb_Arena *arena;
-  const upb_DefPool *symtab;
+  const conformance_ConformanceRequest* request;
+  conformance_ConformanceResponse* response;
+  upb_Arena* arena;
+  const upb_DefPool* symtab;
 } ctx;
 
-bool parse_proto(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
+bool parse_proto(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   upb_StringView proto =
       conformance_ConformanceRequest_protobuf_payload(c->request);
-  if (upb_decode(proto.data, proto.size, msg, upb_MessageDef_Layout(m), c->arena) ==
-      kUpb_DecodeStatus_Ok) {
+  if (upb_decode(proto.data, proto.size, msg, upb_MessageDef_Layout(m),
+                 c->arena) == kUpb_DecodeStatus_Ok) {
     return true;
   } else {
     static const char msg[] = "Parse error";
@@ -98,9 +99,10 @@ bool parse_proto(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
   }
 }
 
-void serialize_proto(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
+void serialize_proto(const upb_msg* msg, const upb_MessageDef* m,
+                     const ctx* c) {
   size_t len;
-  char *data = upb_Encode(msg, upb_MessageDef_Layout(m), c->arena, &len);
+  char* data = upb_Encode(msg, upb_MessageDef_Layout(m), c->arena, &len);
   if (data) {
     conformance_ConformanceResponse_set_protobuf_payload(
         c->response, upb_StringView_FromStringAndSize(data, len));
@@ -111,11 +113,11 @@ void serialize_proto(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) 
   }
 }
 
-void serialize_text(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
+void serialize_text(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   size_t len;
   size_t len2;
   int opts = 0;
-  char *data;
+  char* data;
 
   if (!conformance_ConformanceRequest_print_unknown_fields(c->request)) {
     opts |= UPB_TXTENC_SKIPUNKNOWN;
@@ -129,9 +131,8 @@ void serialize_text(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
       c->response, upb_StringView_FromStringAndSize(data, len));
 }
 
-bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
-  upb_StringView json =
-      conformance_ConformanceRequest_json_payload(c->request);
+bool parse_json(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
+  upb_StringView json = conformance_ConformanceRequest_json_payload(c->request);
   upb_Status status;
   int opts = 0;
 
@@ -142,38 +143,38 @@ bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
 
   upb_Status_Clear(&status);
   if (upb_JsonDecode(json.data, json.size, msg, m, c->symtab, opts, c->arena,
-                      &status)) {
+                     &status)) {
     return true;
   } else {
-    const char *inerr = upb_Status_ErrorMessage(&status);
+    const char* inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
-    char *err = upb_Arena_Malloc(c->arena, len + 1);
+    char* err = upb_Arena_Malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
-    conformance_ConformanceResponse_set_parse_error(c->response,
-                                                    upb_StringView_FromStringAndSizez(err));
+    conformance_ConformanceResponse_set_parse_error(
+        c->response, upb_StringView_FromStringAndSizez(err));
     return false;
   }
 }
 
-void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
+void serialize_json(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   size_t len;
   size_t len2;
   int opts = 0;
-  char *data;
+  char* data;
   upb_Status status;
 
   upb_Status_Clear(&status);
   len = upb_JsonEncode(msg, m, c->symtab, opts, NULL, 0, &status);
 
   if (len == (size_t)-1) {
-    const char *inerr = upb_Status_ErrorMessage(&status);
+    const char* inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
-    char *err = upb_Arena_Malloc(c->arena, len + 1);
+    char* err = upb_Arena_Malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
-    conformance_ConformanceResponse_set_serialize_error(c->response,
-                                                        upb_StringView_FromStringAndSizez(err));
+    conformance_ConformanceResponse_set_serialize_error(
+        c->response, upb_StringView_FromStringAndSizez(err));
     return;
   }
 
@@ -184,7 +185,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
       c->response, upb_StringView_FromStringAndSize(data, len));
 }
 
-bool parse_input(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
+bool parse_input(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   switch (conformance_ConformanceRequest_payload_case(c->request)) {
     case conformance_ConformanceRequest_payload_protobuf_payload:
       return parse_proto(msg, m, c);
@@ -202,7 +203,7 @@ bool parse_input(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
   }
 }
 
-void write_output(const upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
+void write_output(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   switch (conformance_ConformanceRequest_requested_output_format(c->request)) {
     case conformance_UNSPECIFIED:
       fprintf(stderr, "conformance_upb: Unspecified output format.\n");
@@ -226,9 +227,10 @@ void write_output(const upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
 }
 
 void DoTest(const ctx* c) {
-  upb_msg *msg;
+  upb_msg* msg;
   upb_StringView name = conformance_ConformanceRequest_message_type(c->request);
-  const upb_MessageDef *m = upb_DefPool_FindMessageByNameWithSize(c->symtab, name.data, name.size);
+  const upb_MessageDef* m =
+      upb_DefPool_FindMessageByNameWithSize(c->symtab, name.data, name.size);
 #if 0
   // Handy code for limiting conformance tests to a single input payload.
   // This is a hack since the conformance runner doesn't give an easy way to
@@ -254,17 +256,17 @@ void DoTest(const ctx* c) {
   }
 }
 
-void debug_print(const char *label, const upb_msg *msg, const upb_MessageDef *m,
-                 const ctx *c) {
+void debug_print(const char* label, const upb_msg* msg, const upb_MessageDef* m,
+                 const ctx* c) {
   char buf[512];
   upb_text_encode(msg, m, c->symtab, UPB_TXTENC_SINGLELINE, buf, sizeof(buf));
   fprintf(stderr, "%s: %s\n", label, buf);
 }
 
-bool DoTestIo(upb_DefPool *symtab) {
+bool DoTestIo(upb_DefPool* symtab) {
   upb_Status status;
-  char *input;
-  char *output;
+  char* input;
+  char* output;
   uint32_t input_size;
   size_t output_size;
   ctx c;
@@ -296,7 +298,7 @@ bool DoTestIo(upb_DefPool *symtab) {
   output = conformance_ConformanceResponse_serialize(c.response, c.arena,
                                                      &output_size);
 
-  uint32_t network_out = (uint32_t) output_size;
+  uint32_t network_out = (uint32_t)output_size;
   CheckedWrite(STDOUT_FILENO, &network_out, sizeof(uint32_t));
   CheckedWrite(STDOUT_FILENO, output, output_size);
 
@@ -316,15 +318,17 @@ bool DoTestIo(upb_DefPool *symtab) {
 }
 
 int main(void) {
-  upb_DefPool *symtab = upb_DefPool_New();
+  upb_DefPool* symtab = upb_DefPool_New();
 
   protobuf_test_messages_proto2_TestAllTypesProto2_getmsgdef(symtab);
   protobuf_test_messages_proto3_TestAllTypesProto3_getmsgdef(symtab);
 
   while (1) {
     if (!DoTestIo(symtab)) {
-      fprintf(stderr, "conformance_upb: received EOF from test runner "
-                      "after %d tests, exiting\n", test_count);
+      fprintf(stderr,
+              "conformance_upb: received EOF from test runner "
+              "after %d tests, exiting\n",
+              test_count);
       upb_DefPool_Free(symtab);
       return 0;
     }

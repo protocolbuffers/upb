@@ -27,13 +27,14 @@
 
 #include "upb/util/compare.h"
 
+#include <stdint.h>
+
+#include <string_view>
+#include <vector>
+
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include <stdint.h>
-#include <vector>
-#include <string_view>
 
 struct UnknownField;
 
@@ -49,12 +50,12 @@ enum class UnknownFieldType {
 };
 
 union UnknownFieldValue {
-    uint64_t varint;
-    uint64_t fixed64;
-    uint32_t fixed32;
-    // NULL-terminated (strings must not have embedded NULL).
-    const char* delimited;
-    UnknownFields* group;
+  uint64_t varint;
+  uint64_t fixed64;
+  uint32_t fixed32;
+  // NULL-terminated (strings must not have embedded NULL).
+  const char* delimited;
+  UnknownFields* group;
 };
 
 struct TypeAndValue {
@@ -114,12 +115,8 @@ void EncodeVarint(uint64_t val, std::string* str) {
 
 std::string ToBinaryPayload(const UnknownFields& fields) {
   static const upb_WireType wire_types[] = {
-    kUpb_WireType_Varint,
-    kUpb_WireType_Varint,
-    kUpb_WireType_Delimited,
-    kUpb_WireType_64Bit,
-    kUpb_WireType_32Bit,
-    kUpb_WireType_StartGroup,
+      kUpb_WireType_Varint, kUpb_WireType_Varint, kUpb_WireType_Delimited,
+      kUpb_WireType_64Bit,  kUpb_WireType_32Bit,  kUpb_WireType_StartGroup,
   };
   std::string ret;
 

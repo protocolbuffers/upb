@@ -12,11 +12,11 @@
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -37,7 +37,7 @@ namespace {
 namespace protoc = ::google::protobuf::compiler;
 namespace protobuf = ::google::protobuf;
 
-std::string DefInitSymbol(const protobuf::FileDescriptor *file) {
+std::string DefInitSymbol(const protobuf::FileDescriptor* file) {
   return ToCIdent(file->name()) + "_upbdefinit";
 }
 
@@ -53,7 +53,8 @@ void GenerateMessageDefAccessor(const protobuf::Descriptor* d, Output& output) {
   output("UPB_INLINE const upb_MessageDef *$0_getmsgdef(upb_DefPool *s) {\n",
          ToCIdent(d->full_name()));
   output("  _upb_DefPool_LoadDefInit(s, &$0);\n", DefInitSymbol(d->file()));
-  output("  return upb_DefPool_FindMessageByName(s, \"$0\");\n", d->full_name());
+  output("  return upb_DefPool_FindMessageByName(s, \"$0\");\n",
+         d->full_name());
   output("}\n");
   output("\n");
 
@@ -98,7 +99,6 @@ void WriteDefHeader(const protobuf::FileDescriptor* file, Output& output) {
       ToPreproc(file->name()));
 }
 
-
 void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   EmitFileWarning(file, output);
 
@@ -108,7 +108,8 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   output("\n");
 
   for (int i = 0; i < file->dependency_count(); i++) {
-    output("extern _upb_DefPool_Init $0;\n", DefInitSymbol(file->dependency(i)));
+    output("extern _upb_DefPool_Init $0;\n",
+           DefInitSymbol(file->dependency(i)));
   }
 
   protobuf::FileDescriptorProto file_proto;
@@ -130,7 +131,8 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   }
   output("};\n\n");
 
-  output("static _upb_DefPool_Init *deps[$0] = {\n", file->dependency_count() + 1);
+  output("static _upb_DefPool_Init *deps[$0] = {\n",
+         file->dependency_count() + 1);
   for (int i = 0; i < file->dependency_count(); i++) {
     output("  &$0,\n", DefInitSymbol(file->dependency(i)));
   }

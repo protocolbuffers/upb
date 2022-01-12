@@ -12,11 +12,11 @@
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -100,9 +100,7 @@ class FieldDefPtr {
   // INT32 and SINT32, whereas our "type" enum does not.  This return of
   // descriptor_type() is a function of type(), integer_format(), and
   // is_tag_delimited().
-  DescriptorType descriptor_type() const {
-    return upb_FieldDef_Type(ptr_);
-  }
+  DescriptorType descriptor_type() const { return upb_FieldDef_Type(ptr_); }
 
   // Convenient field type tests.
   bool IsSubMessage() const { return upb_FieldDef_IsSubMessage(ptr_); }
@@ -140,7 +138,9 @@ class OneofDefPtr {
 
   // Returns the number of fields in the oneof.
   int field_count() const { return upb_OneofDef_FieldCount(ptr_); }
-  FieldDefPtr field(int i) const { return FieldDefPtr(upb_OneofDef_Field(ptr_, i)); }
+  FieldDefPtr field(int i) const {
+    return FieldDefPtr(upb_OneofDef_Field(ptr_, i));
+  }
 
   // Looks up by name.
   FieldDefPtr FindFieldByName(const char* name, size_t len) const {
@@ -180,11 +180,15 @@ class MessageDefPtr {
 
   // The number of fields that belong to the MessageDef.
   int field_count() const { return upb_MessageDef_FieldCount(ptr_); }
-  FieldDefPtr field(int i) const { return FieldDefPtr(upb_MessageDef_Field(ptr_, i)); }
+  FieldDefPtr field(int i) const {
+    return FieldDefPtr(upb_MessageDef_Field(ptr_, i));
+  }
 
   // The number of oneofs that belong to the MessageDef.
   int oneof_count() const { return upb_MessageDef_OneofCount(ptr_); }
-  OneofDefPtr oneof(int i) const { return OneofDefPtr(upb_MessageDef_Oneof(ptr_, i)); }
+  OneofDefPtr oneof(int i) const {
+    return OneofDefPtr(upb_MessageDef_Oneof(ptr_, i));
+  }
 
   upb_Syntax syntax() const { return upb_MessageDef_Syntax(ptr_); }
 
@@ -232,15 +236,17 @@ class MessageDefPtr {
  private:
   class FieldIter {
    public:
-    explicit FieldIter(const upb_MessageDef *m, int i) : m_(m), i_(i) {}
+    explicit FieldIter(const upb_MessageDef* m, int i) : m_(m), i_(i) {}
     void operator++() { i_++; }
 
-    FieldDefPtr operator*() { return FieldDefPtr(upb_MessageDef_Field(m_, i_)); }
+    FieldDefPtr operator*() {
+      return FieldDefPtr(upb_MessageDef_Field(m_, i_));
+    }
     bool operator!=(const FieldIter& other) { return i_ != other.i_; }
     bool operator==(const FieldIter& other) { return i_ == other.i_; }
 
    private:
-    const upb_MessageDef *m_;
+    const upb_MessageDef* m_;
     int i_;
   };
 
@@ -256,15 +262,17 @@ class MessageDefPtr {
 
   class OneofIter {
    public:
-    explicit OneofIter(const upb_MessageDef *m, int i) : m_(m), i_(i) {}
+    explicit OneofIter(const upb_MessageDef* m, int i) : m_(m), i_(i) {}
     void operator++() { i_++; }
 
-    OneofDefPtr operator*() { return OneofDefPtr(upb_MessageDef_Oneof(m_, i_)); }
+    OneofDefPtr operator*() {
+      return OneofDefPtr(upb_MessageDef_Oneof(m_, i_));
+    }
     bool operator!=(const OneofIter& other) { return i_ != other.i_; }
     bool operator==(const OneofIter& other) { return i_ == other.i_; }
 
    private:
-    const upb_MessageDef *m_;
+    const upb_MessageDef* m_;
     int i_;
   };
 
@@ -292,8 +300,8 @@ class EnumValDefPtr {
   explicit EnumValDefPtr(const upb_EnumValueDef* ptr) : ptr_(ptr) {}
 
   int32_t number() const { return upb_EnumValueDef_Number(ptr_); }
-  const char *full_name() const { return upb_EnumValueDef_FullName(ptr_); }
-  const char *name() const { return upb_EnumValueDef_Name(ptr_); }
+  const char* full_name() const { return upb_EnumValueDef_FullName(ptr_); }
+  const char* name() const { return upb_EnumValueDef_Name(ptr_); }
 
  private:
   const upb_EnumValueDef* ptr_;

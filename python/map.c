@@ -36,8 +36,7 @@
 // -----------------------------------------------------------------------------
 
 typedef struct {
-  PyObject_HEAD
-  PyObject* arena;
+  PyObject_HEAD PyObject* arena;
   // The field descriptor (upb_FieldDef*).
   // The low bit indicates whether the container is reified (see ptr below).
   //   - low bit set: repeated field is a stub (empty map, no underlying data).
@@ -84,7 +83,7 @@ PyTypeObject* PyUpb_MapContainer_GetClass(const upb_FieldDef* f) {
   assert(upb_FieldDef_IsMap(f));
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   return upb_FieldDef_IsSubMessage(f) ? state->message_map_container_type
-                                  : state->scalar_map_container_type;
+                                      : state->scalar_map_container_type;
 }
 
 PyObject* PyUpb_MapContainer_NewStub(PyObject* parent, const upb_FieldDef* f,
@@ -111,7 +110,8 @@ void PyUpb_MapContainer_Reify(PyObject* _self, upb_Map* map) {
     const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
     const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
-    map = upb_Map_New(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
+    map = upb_Map_New(arena, upb_FieldDef_CType(key_f),
+                      upb_FieldDef_CType(val_f));
   }
   PyUpb_ObjCache_Add(map, &self->ob_base);
   Py_DECREF(self->ptr.parent);
@@ -136,7 +136,8 @@ upb_Map* PyUpb_MapContainer_EnsureReified(PyObject* _self) {
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
   const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
-  map = upb_Map_New(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
+  map =
+      upb_Map_New(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
   upb_MessageValue msgval = {.map_val = map};
   PyUpb_CMessage_SetConcreteSubobj(self->ptr.parent, f, msgval);
   PyUpb_MapContainer_Reify((PyObject*)self, map);
@@ -421,8 +422,7 @@ static PyType_Spec PyUpb_MessageMapContainer_Spec = {
 // -----------------------------------------------------------------------------
 
 typedef struct {
-  PyObject_HEAD
-  PyUpb_MapContainer* map;  // We own a reference.
+  PyObject_HEAD PyUpb_MapContainer* map;  // We own a reference.
   size_t iter;
   int version;
 } PyUpb_MapIterator;

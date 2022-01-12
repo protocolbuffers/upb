@@ -13,11 +13,11 @@
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
@@ -35,26 +35,27 @@
 
 static const size_t overhead = sizeof(upb_Message_InternalData);
 
-static const upb_Message_Internal *upb_Message_Getinternal_const(const upb_msg *msg) {
+static const upb_Message_Internal* upb_Message_Getinternal_const(
+    const upb_msg* msg) {
   ptrdiff_t size = sizeof(upb_Message_Internal);
   return (upb_Message_Internal*)((char*)msg - size);
 }
 
-upb_msg *_upb_Message_New(const upb_MiniTable *l, upb_Arena *a) {
+upb_msg* _upb_Message_New(const upb_MiniTable* l, upb_Arena* a) {
   return _upb_Message_New_inl(l, a);
 }
 
-void _upb_Message_Clear(upb_msg *msg, const upb_MiniTable *l) {
-  void *mem = UPB_PTR_AT(msg, -sizeof(upb_Message_Internal), char);
+void _upb_Message_Clear(upb_msg* msg, const upb_MiniTable* l) {
+  void* mem = UPB_PTR_AT(msg, -sizeof(upb_Message_Internal), char);
   memset(mem, 0, upb_msg_sizeof(l));
 }
 
-static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
-  upb_Message_Internal *in = upb_Message_Getinternal(msg);
+static bool realloc_internal(upb_msg* msg, size_t need, upb_Arena* arena) {
+  upb_Message_Internal* in = upb_Message_Getinternal(msg);
   if (!in->internal) {
     /* No internal data, allocate from scratch. */
     size_t size = UPB_MAX(128, _upb_Log2Ceilingsize(need + overhead));
-    upb_Message_InternalData *internal = upb_Arena_Malloc(arena, size);
+    upb_Message_InternalData* internal = upb_Arena_Malloc(arena, size);
     if (!internal) return false;
     internal->size = size;
     internal->unknown_end = overhead;
@@ -65,12 +66,12 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
     size_t new_size = _upb_Log2Ceilingsize(in->internal->size + need);
     size_t ext_bytes = in->internal->size - in->internal->ext_begin;
     size_t new_ext_begin = new_size - ext_bytes;
-    upb_Message_InternalData *internal =
+    upb_Message_InternalData* internal =
         upb_Arena_Realloc(arena, in->internal, in->internal->size, new_size);
     if (!internal) return false;
     if (ext_bytes) {
       /* Need to move extension data to the end. */
-      char *ptr = (char*)internal;
+      char* ptr = (char*)internal;
       memmove(ptr + new_ext_begin, ptr + internal->ext_begin, ext_bytes);
     }
     internal->ext_begin = new_ext_begin;
@@ -81,24 +82,24 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
   return true;
 }
 
-bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                         upb_Arena *arena) {
+bool _upb_msg_addunknown(upb_msg* msg, const char* data, size_t len,
+                         upb_Arena* arena) {
   if (!realloc_internal(msg, len, arena)) return false;
-  upb_Message_Internal *in = upb_Message_Getinternal(msg);
+  upb_Message_Internal* in = upb_Message_Getinternal(msg);
   memcpy(UPB_PTR_AT(in->internal, in->internal->unknown_end, char), data, len);
   in->internal->unknown_end += len;
   return true;
 }
 
-void _upb_Message_DiscardUnknown_shallow(upb_msg *msg) {
-  upb_Message_Internal *in = upb_Message_Getinternal(msg);
+void _upb_Message_DiscardUnknown_shallow(upb_msg* msg) {
+  upb_Message_Internal* in = upb_Message_Getinternal(msg);
   if (in->internal) {
     in->internal->unknown_end = overhead;
   }
 }
 
-const char *upb_Message_Getunknown(const upb_msg *msg, size_t *len) {
-  const upb_Message_Internal *in = upb_Message_Getinternal_const(msg);
+const char* upb_Message_Getunknown(const upb_msg* msg, size_t* len) {
+  const upb_Message_Internal* in = upb_Message_Getinternal_const(msg);
   if (in->internal) {
     *len = in->internal->unknown_end - overhead;
     return (char*)(in->internal + 1);
@@ -108,11 +109,12 @@ const char *upb_Message_Getunknown(const upb_msg *msg, size_t *len) {
   }
 }
 
-const upb_Message_Extension *_upb_Message_Getexts(const upb_msg *msg, size_t *count) {
-  const upb_Message_Internal *in = upb_Message_Getinternal_const(msg);
+const upb_Message_Extension* _upb_Message_Getexts(const upb_msg* msg,
+                                                  size_t* count) {
+  const upb_Message_Internal* in = upb_Message_Getinternal_const(msg);
   if (in->internal) {
-    *count =
-        (in->internal->size - in->internal->ext_begin) / sizeof(upb_Message_Extension);
+    *count = (in->internal->size - in->internal->ext_begin) /
+             sizeof(upb_Message_Extension);
     return UPB_PTR_AT(in->internal, in->internal->ext_begin, void);
   } else {
     *count = 0;
@@ -120,10 +122,10 @@ const upb_Message_Extension *_upb_Message_Getexts(const upb_msg *msg, size_t *co
   }
 }
 
-const upb_Message_Extension *_upb_Message_Getext(const upb_msg *msg,
-                                   const upb_MiniTable_Extension *e) {
+const upb_Message_Extension* _upb_Message_Getext(
+    const upb_msg* msg, const upb_MiniTable_Extension* e) {
   size_t n;
-  const upb_Message_Extension *ext = _upb_Message_Getexts(msg, &n);
+  const upb_Message_Extension* ext = _upb_Message_Getexts(msg, &n);
 
   /* For now we use linear search exclusively to find extensions. If this
    * becomes an issue due to messages with lots of extensions, we can introduce
@@ -137,24 +139,26 @@ const upb_Message_Extension *_upb_Message_Getext(const upb_msg *msg,
   return NULL;
 }
 
-void _upb_Message_Clearext(upb_msg *msg, const upb_MiniTable_Extension *ext_l) {
-  upb_Message_Internal *in = upb_Message_Getinternal(msg);
+void _upb_Message_Clearext(upb_msg* msg, const upb_MiniTable_Extension* ext_l) {
+  upb_Message_Internal* in = upb_Message_Getinternal(msg);
   if (!in->internal) return;
-  const upb_Message_Extension *base =
+  const upb_Message_Extension* base =
       UPB_PTR_AT(in->internal, in->internal->ext_begin, void);
-  upb_Message_Extension *ext = (upb_Message_Extension*)_upb_Message_Getext(msg, ext_l);
+  upb_Message_Extension* ext =
+      (upb_Message_Extension*)_upb_Message_Getext(msg, ext_l);
   if (ext) {
     *ext = *base;
     in->internal->ext_begin += sizeof(upb_Message_Extension);
   }
 }
 
-upb_Message_Extension *_upb_Message_Getorcreateext(upb_msg *msg, const upb_MiniTable_Extension *e,
-                                     upb_Arena *arena) {
-  upb_Message_Extension *ext = (upb_Message_Extension*)_upb_Message_Getext(msg, e);
+upb_Message_Extension* _upb_Message_Getorcreateext(
+    upb_msg* msg, const upb_MiniTable_Extension* e, upb_Arena* arena) {
+  upb_Message_Extension* ext =
+      (upb_Message_Extension*)_upb_Message_Getext(msg, e);
   if (ext) return ext;
   if (!realloc_internal(msg, sizeof(upb_Message_Extension), arena)) return NULL;
-  upb_Message_Internal *in = upb_Message_Getinternal(msg);
+  upb_Message_Internal* in = upb_Message_Getinternal(msg);
   in->internal->ext_begin -= sizeof(upb_Message_Extension);
   ext = UPB_PTR_AT(in->internal, in->internal->ext_begin, void);
   memset(ext, 0, sizeof(upb_Message_Extension));
@@ -162,7 +166,7 @@ upb_Message_Extension *_upb_Message_Getorcreateext(upb_msg *msg, const upb_MiniT
   return ext;
 }
 
-size_t upb_msg_extcount(const upb_msg *msg) {
+size_t upb_msg_extcount(const upb_msg* msg) {
   size_t count;
   _upb_Message_Getexts(msg, &count);
   return count;
@@ -170,7 +174,7 @@ size_t upb_msg_extcount(const upb_msg *msg) {
 
 /** upb_Array *****************************************************************/
 
-bool _upb_array_realloc(upb_Array *arr, size_t min_size, upb_Arena *arena) {
+bool _upb_array_realloc(upb_Array* arr, size_t min_size, upb_Arena* arena) {
   size_t new_size = UPB_MAX(arr->size, 4);
   int elem_size_lg2 = arr->data & 7;
   size_t old_bytes = arr->size << elem_size_lg2;
@@ -192,9 +196,9 @@ bool _upb_array_realloc(upb_Array *arr, size_t min_size, upb_Arena *arena) {
   return true;
 }
 
-static upb_Array *getorcreate_array(upb_Array **arr_ptr, int elem_size_lg2,
-                                    upb_Arena *arena) {
-  upb_Array *arr = *arr_ptr;
+static upb_Array* getorcreate_array(upb_Array** arr_ptr, int elem_size_lg2,
+                                    upb_Arena* arena) {
+  upb_Array* arr = *arr_ptr;
   if (!arr) {
     arr = _upb_Array_New(arena, 4, elem_size_lg2);
     if (!arr) return NULL;
@@ -203,16 +207,16 @@ static upb_Array *getorcreate_array(upb_Array **arr_ptr, int elem_size_lg2,
   return arr;
 }
 
-void *_upb_Array_Resize_fallback(upb_Array **arr_ptr, size_t size,
-                                 int elem_size_lg2, upb_Arena *arena) {
-  upb_Array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
+void* _upb_Array_Resize_fallback(upb_Array** arr_ptr, size_t size,
+                                 int elem_size_lg2, upb_Arena* arena) {
+  upb_Array* arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
   return arr && _upb_Array_Resize(arr, size, arena) ? _upb_array_ptr(arr)
                                                     : NULL;
 }
 
-bool _upb_Array_Append_fallback(upb_Array **arr_ptr, const void *value,
-                                int elem_size_lg2, upb_Arena *arena) {
-  upb_Array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
+bool _upb_Array_Append_fallback(upb_Array** arr_ptr, const void* value,
+                                int elem_size_lg2, upb_Arena* arena) {
+  upb_Array* arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
   if (!arr) return false;
 
   size_t elems = arr->len;
@@ -221,15 +225,15 @@ bool _upb_Array_Append_fallback(upb_Array **arr_ptr, const void *value,
     return false;
   }
 
-  char *data = _upb_array_ptr(arr);
+  char* data = _upb_array_ptr(arr);
   memcpy(data + (elems << elem_size_lg2), value, 1 << elem_size_lg2);
   return true;
 }
 
 /** upb_Map *******************************************************************/
 
-upb_Map *_upb_Map_New(upb_Arena *a, size_t key_size, size_t value_size) {
-  upb_Map *map = upb_Arena_Malloc(a, sizeof(upb_Map));
+upb_Map* _upb_Map_New(upb_Arena* a, size_t key_size, size_t value_size) {
+  upb_Map* map = upb_Arena_Malloc(a, sizeof(upb_Map));
 
   if (!map) {
     return NULL;
@@ -242,10 +246,10 @@ upb_Map *_upb_Map_New(upb_Arena *a, size_t key_size, size_t value_size) {
   return map;
 }
 
-static void _upb_mapsorter_getkeys(const void *_a, const void *_b, void *a_key,
-                                   void *b_key, size_t size) {
-  const upb_tabent *const*a = _a;
-  const upb_tabent *const*b = _b;
+static void _upb_mapsorter_getkeys(const void* _a, const void* _b, void* a_key,
+                                   void* b_key, size_t size) {
+  const upb_tabent* const* a = _a;
+  const upb_tabent* const* b = _b;
   upb_StringView a_tabkey = upb_tabstrview((*a)->key);
   upb_StringView b_tabkey = upb_tabstrview((*b)->key);
   _upb_map_fromkey(a_tabkey, a_key, size);
@@ -254,37 +258,37 @@ static void _upb_mapsorter_getkeys(const void *_a, const void *_b, void *a_key,
 
 #define UPB_COMPARE_INTEGERS(a, b) ((a) < (b) ? -1 : ((a) == (b) ? 0 : 1))
 
-static int _upb_mapsorter_cmpi64(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpi64(const void* _a, const void* _b) {
   int64_t a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, 8);
   return UPB_COMPARE_INTEGERS(a, b);
 }
 
-static int _upb_mapsorter_cmpu64(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpu64(const void* _a, const void* _b) {
   uint64_t a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, 8);
   return UPB_COMPARE_INTEGERS(a, b);
 }
 
-static int _upb_mapsorter_cmpi32(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpi32(const void* _a, const void* _b) {
   int32_t a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, 4);
   return UPB_COMPARE_INTEGERS(a, b);
 }
 
-static int _upb_mapsorter_cmpu32(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpu32(const void* _a, const void* _b) {
   uint32_t a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, 4);
   return UPB_COMPARE_INTEGERS(a, b);
 }
 
-static int _upb_mapsorter_cmpbool(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpbool(const void* _a, const void* _b) {
   bool a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, 1);
   return UPB_COMPARE_INTEGERS(a, b);
 }
 
-static int _upb_mapsorter_cmpstr(const void *_a, const void *_b) {
+static int _upb_mapsorter_cmpstr(const void* _a, const void* _b) {
   upb_StringView a, b;
   _upb_mapsorter_getkeys(_a, _b, &a, &b, UPB_MAPTYPE_STRING);
   size_t common_size = UPB_MIN(a.size, b.size);
@@ -295,8 +299,8 @@ static int _upb_mapsorter_cmpstr(const void *_a, const void *_b) {
 
 #undef UPB_COMPARE_INTEGERS
 
-bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
-                            const upb_Map *map, _upb_sortedmap *sorted) {
+bool _upb_mapsorter_pushmap(_upb_mapsorter* s, upb_FieldType key_type,
+                            const upb_Map* map, _upb_sortedmap* sorted) {
   int map_size = _upb_Map_Size(map);
   sorted->start = s->size;
   sorted->pos = sorted->start;
@@ -312,9 +316,9 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
   s->size = sorted->end;
 
   /* Copy non-empty entries from the table to s->entries. */
-  upb_tabent const**dst = &s->entries[sorted->start];
-  const upb_tabent *src = map->table.t.entries;
-  const upb_tabent *end = src + upb_table_size(&map->table.t);
+  upb_tabent const** dst = &s->entries[sorted->start];
+  const upb_tabent* src = map->table.t.entries;
+  const upb_tabent* end = src + upb_table_size(&map->table.t);
   for (; src < end; src++) {
     if (!upb_tabent_isempty(src)) {
       *dst = src;
@@ -325,7 +329,7 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
 
   /* Sort entries according to the key type. */
 
-  int (*compar)(const void *, const void *);
+  int (*compar)(const void*, const void*);
 
   switch (key_type) {
     case upb_FieldType_Int64:
@@ -365,31 +369,32 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
 /** upb_extreg ****************************************************************/
 
 struct upb_extreg {
-  upb_Arena *arena;
-  upb_strtable exts;  /* Key is upb_MiniTable* concatenated with fieldnum. */
+  upb_Arena* arena;
+  upb_strtable exts; /* Key is upb_MiniTable* concatenated with fieldnum. */
 };
 
 #define EXTREG_KEY_SIZE (sizeof(upb_MiniTable*) + sizeof(uint32_t))
 
-static void extreg_key(char *buf, const upb_MiniTable *l, uint32_t fieldnum) {
+static void extreg_key(char* buf, const upb_MiniTable* l, uint32_t fieldnum) {
   memcpy(buf, &l, sizeof(l));
   memcpy(buf + sizeof(l), &fieldnum, sizeof(fieldnum));
 }
 
-upb_extreg *upb_extreg_new(upb_Arena *arena) {
-  upb_extreg *r = upb_Arena_Malloc(arena, sizeof(*r));
+upb_extreg* upb_extreg_new(upb_Arena* arena) {
+  upb_extreg* r = upb_Arena_Malloc(arena, sizeof(*r));
   if (!r) return NULL;
   r->arena = arena;
   if (!upb_strtable_init(&r->exts, 8, arena)) return NULL;
   return r;
 }
 
-bool _upb_extreg_add(upb_extreg *r, const upb_MiniTable_Extension **e, size_t count) {
+bool _upb_extreg_add(upb_extreg* r, const upb_MiniTable_Extension** e,
+                     size_t count) {
   char buf[EXTREG_KEY_SIZE];
-  const upb_MiniTable_Extension **start = e;
-  const upb_MiniTable_Extension **end = UPB_PTRADD(e, count);
+  const upb_MiniTable_Extension** start = e;
+  const upb_MiniTable_Extension** end = UPB_PTRADD(e, count);
   for (; e < end; e++) {
-    const upb_MiniTable_Extension *ext = *e;
+    const upb_MiniTable_Extension* ext = *e;
     extreg_key(buf, ext->extendee, ext->field.number);
     if (!upb_strtable_insert(&r->exts, buf, EXTREG_KEY_SIZE,
                              upb_value_constptr(ext), r->arena)) {
@@ -401,15 +406,16 @@ bool _upb_extreg_add(upb_extreg *r, const upb_MiniTable_Extension **e, size_t co
 failure:
   /* Back out the entries previously added. */
   for (end = e, e = start; e < end; e++) {
-    const upb_MiniTable_Extension *ext = *e;
+    const upb_MiniTable_Extension* ext = *e;
     extreg_key(buf, ext->extendee, ext->field.number);
     upb_strtable_remove2(&r->exts, buf, EXTREG_KEY_SIZE, NULL);
   }
   return false;
 }
 
-const upb_MiniTable_Extension *_upb_extreg_get(const upb_extreg *r,
-                                         const upb_MiniTable *l, uint32_t num) {
+const upb_MiniTable_Extension* _upb_extreg_get(const upb_extreg* r,
+                                               const upb_MiniTable* l,
+                                               uint32_t num) {
   char buf[EXTREG_KEY_SIZE];
   upb_value v;
   extreg_key(buf, l, num);
