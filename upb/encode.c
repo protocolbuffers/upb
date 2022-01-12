@@ -411,7 +411,7 @@ static void encode_map(upb_encstate *e, const upb_msg *msg,
 
   if (map == NULL) return;
 
-  if (e->options & UPB_ENCODE_DETERMINISTIC) {
+  if (e->options & kUpb_Encode_Deterministic) {
     _upb_sortedmap sorted;
     _upb_mapsorter_pushmap(&e->sorter, layout->fields[0].descriptortype, map,
                            &sorted);
@@ -511,7 +511,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
                            const upb_msglayout *m, size_t *size) {
   size_t pre_len = e->limit - e->ptr;
 
-  if ((e->options & UPB_ENCODE_CHECKREQUIRED) && m->required_count) {
+  if ((e->options & kUpb_Encode_CheckRequired) && m->required_count) {
     uint64_t msg_head;
     memcpy(&msg_head, msg, 8);
     msg_head = _upb_BigEndian_Swap64(msg_head);
@@ -520,7 +520,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
     }
   }
 
-  if ((e->options & UPB_ENCODE_SKIPUNKNOWN) == 0) {
+  if ((e->options & kUpb_Encode_SkipUnknown) == 0) {
     size_t unknown_size;
     const char *unknown = upb_Message_Getunknown(msg, &unknown_size);
 
@@ -559,7 +559,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
   *size = (e->limit - e->ptr) - pre_len;
 }
 
-char *upb_encode_ex(const void *msg, const upb_msglayout *l, int options,
+char *upb_EncodeEx(const void *msg, const upb_msglayout *l, int options,
                     upb_Arena *arena, size_t *size) {
   upb_encstate e;
   unsigned depth = (unsigned)options >> 16;

@@ -67,7 +67,7 @@ std::unique_ptr<google::protobuf::Message> ToProto(
       factory->GetPrototype(desc)->New());
   size_t size;
   const char* buf =
-      upb_encode(msg, upb_MessageDef_Layout(msgdef), arena.ptr(), &size);
+      upb_Encode(msg, upb_MessageDef_Layout(msgdef), arena.ptr(), &size);
   google_msg->ParseFromArray(buf, size);
   return google_msg;
 }

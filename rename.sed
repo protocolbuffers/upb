@@ -356,3 +356,9 @@ s/upb_mapiter_done/upb_MapIterator_Done/g;
 s/upb_mapiter_key/upb_MapIterator_Key/g;
 s/upb_mapiter_value/upb_MapIterator_Value/g;
 s/upb_mapiter_setvalue/upb_MapIterator_SetValue/g;
+
+s/UPB_ENCODE_DETERMINISTIC/kUpb_Encode_Deterministic/g;
+s/UPB_ENCODE_SKIPUNKNOWN/kUpb_Encode_SkipUnknown/g;
+s/UPB_ENCODE_CHECKREQUIRED/kUpb_Encode_CheckRequired/g;
+s/upb_encode_ex/upb_EncodeEx/g;
+s/upb_encode/upb_Encode/g;

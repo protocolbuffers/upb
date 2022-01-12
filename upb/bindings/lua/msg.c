@@ -971,12 +971,12 @@ static int lupb_decode(lua_State *L) {
 }
 
 /**
- * lupb_encode()
+ * lupb_Encode()
  *
  * Handles:
  *   bin_string = upb.encode(msg)
  */
-static int lupb_encode(lua_State *L) {
+static int lupb_Encode(lua_State *L) {
   const upb_msg *msg = lupb_msg_check(L, 1);
   const upb_MessageDef *m = lupb_Message_Getmsgdef(L, 1);
   const upb_msglayout *layout = upb_MessageDef_Layout(m);
@@ -986,7 +986,7 @@ static int lupb_encode(lua_State *L) {
   char *result;
 
   arena = lupb_Arena_pushnew(L);
-  result = upb_encode_ex(msg, (const void*)layout, options, arena, &size);
+  result = upb_EncodeEx(msg, (const void*)layout, options, arena, &size);
 
   if (!result) {
     lua_pushstring(L, "Error encoding protobuf.");
@@ -1089,7 +1089,7 @@ static const struct luaL_Reg lupb_msg_toplevel_m[] = {
   {"Array", lupb_Array_New},
   {"Map", lupb_Map_New},
   {"decode", lupb_decode},
-  {"encode", lupb_encode},
+  {"encode", lupb_Encode},
   {"json_decode", lupb_jsondecode},
   {"json_encode", lupb_jsonencode},
   {"text_encode", lupb_textencode},
@@ -1108,8 +1108,8 @@ void lupb_msg_registertypes(lua_State *L) {
   lupb_setfieldi(L, "TXTENC_SKIPUNKNOWN", UPB_TXTENC_SKIPUNKNOWN);
   lupb_setfieldi(L, "TXTENC_NOSORT", UPB_TXTENC_NOSORT);
 
-  lupb_setfieldi(L, "ENCODE_DETERMINISTIC", UPB_ENCODE_DETERMINISTIC);
-  lupb_setfieldi(L, "ENCODE_SKIPUNKNOWN", UPB_ENCODE_SKIPUNKNOWN);
+  lupb_setfieldi(L, "ENCODE_DETERMINISTIC", kUpb_Encode_Deterministic);
+  lupb_setfieldi(L, "ENCODE_SKIPUNKNOWN", kUpb_Encode_SkipUnknown);
 
   lupb_setfieldi(L, "JSONENC_EMITDEFAULTS", UPB_JSONENC_EMITDEFAULTS);
   lupb_setfieldi(L, "JSONENC_PROTONAMES", UPB_JSONENC_PROTONAMES);

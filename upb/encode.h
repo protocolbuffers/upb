@@ -26,7 +26,7 @@
  */
 
 /*
- * upb_encode: parsing into a upb_msg using a upb_msglayout.
+ * upb_Encode: parsing into a upb_msg using a upb_msglayout.
  */
 
 #ifndef UPB_ENCODE_H_
@@ -48,23 +48,23 @@ enum {
    *
    * If your proto contains maps, the encoder will need to malloc()/free()
    * memory during encode. */
-  UPB_ENCODE_DETERMINISTIC = 1,
+  kUpb_Encode_Deterministic = 1,
 
   /* When set, unknown fields are not printed. */
-  UPB_ENCODE_SKIPUNKNOWN = 2,
+  kUpb_Encode_SkipUnknown = 2,
 
   /* When set, the encode will fail if any required fields are missing. */
-  UPB_ENCODE_CHECKREQUIRED = 4,
+  kUpb_Encode_CheckRequired = 4,
 };
 
 #define UPB_ENCODE_MAXDEPTH(depth) ((depth) << 16)
 
-char *upb_encode_ex(const void *msg, const upb_msglayout *l, int options,
+char *upb_EncodeEx(const void *msg, const upb_msglayout *l, int options,
                     upb_Arena *arena, size_t *size);
 
-UPB_INLINE char *upb_encode(const void *msg, const upb_msglayout *l,
+UPB_INLINE char *upb_Encode(const void *msg, const upb_msglayout *l,
                             upb_Arena *arena, size_t *size) {
-  return upb_encode_ex(msg, l, 0, arena, size);
+  return upb_EncodeEx(msg, l, 0, arena, size);
 }
 
 #include "upb/port_undef.inc"

@@ -1372,9 +1372,9 @@ PyObject* PyUpb_CMessage_SerializeInternal(PyObject* _self, PyObject* args,
   size_t size = 0;
   // Python does not currently have any effective limit on serialization depth.
   int options = UPB_ENCODE_MAXDEPTH(UINT32_MAX);
-  if (check_required) options |= UPB_ENCODE_CHECKREQUIRED;
-  if (deterministic) options |= UPB_ENCODE_DETERMINISTIC;
-  char* pb = upb_encode_ex(self->ptr.msg, layout, options, arena, &size);
+  if (check_required) options |= kUpb_Encode_CheckRequired;
+  if (deterministic) options |= kUpb_Encode_Deterministic;
+  char* pb = upb_EncodeEx(self->ptr.msg, layout, options, arena, &size);
   PyObject* ret = NULL;
 
   if (!pb) {

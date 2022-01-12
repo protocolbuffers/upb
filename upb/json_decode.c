@@ -1416,7 +1416,7 @@ static void jsondec_any(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
 
   jsondec_objend(d);
 
-  encoded.str_val.data = upb_encode(any_msg, upb_MessageDef_Layout(any_m), d->arena,
+  encoded.str_val.data = upb_Encode(any_msg, upb_MessageDef_Layout(any_m), d->arena,
                                     &encoded.str_val.size);
   upb_Message_Set(msg, value_f, encoded, d->arena);
 }

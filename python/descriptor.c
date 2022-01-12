@@ -123,7 +123,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     size_t size;
     PyObject* py_arena = PyUpb_Arena_New();
     upb_Arena* arena = PyUpb_Arena_Get(py_arena);
-    char* pb = upb_encode(opts, layout, arena, &size);
+    char* pb = upb_Encode(opts, layout, arena, &size);
     upb_msg* opts2 = upb_Message_New(m, arena);
     assert(opts2);
     bool ok = _upb_decode(pb, size, opts2, upb_MessageDef_Layout(m),
@@ -150,7 +150,7 @@ static PyObject* PyUpb_DescriptorBase_GetSerializedProto(
   upb_msg* proto = func(self->def, arena);
   if (!proto) goto oom;
   size_t size;
-  char* pb = upb_encode(proto, layout, arena, &size);
+  char* pb = upb_Encode(proto, layout, arena, &size);
   if (!pb) goto oom;
   PyObject* str = PyBytes_FromStringAndSize(pb, size);
   upb_Arena_Free(arena);
