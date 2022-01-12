@@ -132,7 +132,7 @@ void serialize_text(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
 bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
   upb_strview json =
       conformance_ConformanceRequest_json_payload(c->request);
-  upb_status status;
+  upb_Status status;
   int opts = 0;
 
   if (conformance_ConformanceRequest_test_category(c->request) ==
@@ -140,12 +140,12 @@ bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
     opts |= UPB_JSONDEC_IGNOREUNKNOWN;
   }
 
-  upb_status_clear(&status);
+  upb_Status_Clear(&status);
   if (upb_json_decode(json.data, json.size, msg, m, c->symtab, opts, c->arena,
                       &status)) {
     return true;
   } else {
-    const char *inerr = upb_status_errmsg(&status);
+    const char *inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
     char *err = upb_arena_malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
@@ -161,13 +161,13 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   size_t len2;
   int opts = 0;
   char *data;
-  upb_status status;
+  upb_Status status;
 
-  upb_status_clear(&status);
+  upb_Status_Clear(&status);
   len = upb_json_encode(msg, m, c->symtab, opts, NULL, 0, &status);
 
   if (len == (size_t)-1) {
-    const char *inerr = upb_status_errmsg(&status);
+    const char *inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
     char *err = upb_arena_malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
@@ -262,7 +262,7 @@ void debug_print(const char *label, const upb_msg *msg, const upb_MessageDef *m,
 }
 
 bool DoTestIo(upb_DefPool *symtab) {
-  upb_status status;
+  upb_Status status;
   char *input;
   char *output;
   uint32_t input_size;
@@ -290,7 +290,7 @@ bool DoTestIo(upb_DefPool *symtab) {
     DoTest(&c);
   } else {
     fprintf(stderr, "conformance_upb: parse of ConformanceRequest failed: %s\n",
-            upb_status_errmsg(&status));
+            upb_Status_ErrorMessage(&status));
   }
 
   output = conformance_ConformanceResponse_serialize(c.response, c.arena,

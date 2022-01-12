@@ -34,31 +34,31 @@ namespace upb {
 
 class Status {
  public:
-  Status() { upb_status_clear(&status_); }
+  Status() { upb_Status_Clear(&status_); }
 
-  upb_status* ptr() { return &status_; }
+  upb_Status* ptr() { return &status_; }
 
   // Returns true if there is no error.
-  bool ok() const { return upb_ok(&status_); }
+  bool ok() const { return upb_Status_IsOk(&status_); }
 
   // Guaranteed to be NULL-terminated.
-  const char *error_message() const { return upb_status_errmsg(&status_); }
+  const char *error_message() const { return upb_Status_ErrorMessage(&status_); }
 
   // The error message will be truncated if it is longer than
-  // UPB_STATUS_MAX_MESSAGE-4.
-  void SetErrorMessage(const char *msg) { upb_status_seterrmsg(&status_, msg); }
+  // _kUpb_Status_MaxMessage-4.
+  void SetErrorMessage(const char *msg) { upb_Status_SetErrorMessage(&status_, msg); }
   void SetFormattedErrorMessage(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    upb_status_vseterrf(&status_, fmt, args);
+    upb_Status_VSetErrorFormat(&status_, fmt, args);
     va_end(args);
   }
 
   // Resets the status to a successful state with no message.
-  void Clear() { upb_status_clear(&status_); }
+  void Clear() { upb_Status_Clear(&status_); }
 
  private:
-  upb_status status_;
+  upb_Status status_;
 };
 
 class Arena {

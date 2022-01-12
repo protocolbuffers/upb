@@ -47,7 +47,7 @@ typedef struct {
   upb_arena *arena;  /* TODO: should we have a tmp arena for tmp data? */
   const upb_DefPool *symtab;
   int depth;
-  upb_status *status;
+  upb_Status *status;
   jmp_buf err;
   int line;
   const char *line_begin;
@@ -83,7 +83,7 @@ static bool jsondec_isvalue(const upb_FieldDef *f) {
 }
 
 UPB_NORETURN static void jsondec_err(jsondec *d, const char *msg) {
-  upb_status_seterrf(d->status, "Error parsing JSON @%d:%d: %s", d->line,
+  upb_Status_SetErrorFormat(d->status, "Error parsing JSON @%d:%d: %s", d->line,
                      (int)(d->ptr - d->line_begin), msg);
   UPB_LONGJMP(d->err, 1);
 }
@@ -91,10 +91,10 @@ UPB_NORETURN static void jsondec_err(jsondec *d, const char *msg) {
 UPB_PRINTF(2, 3)
 UPB_NORETURN static void jsondec_errf(jsondec *d, const char *fmt, ...) {
   va_list argp;
-  upb_status_seterrf(d->status, "Error parsing JSON @%d:%d: ", d->line,
+  upb_Status_SetErrorFormat(d->status, "Error parsing JSON @%d:%d: ", d->line,
                      (int)(d->ptr - d->line_begin));
   va_start(argp, fmt);
-  upb_status_vappenderrf(d->status, fmt, argp);
+  upb_Status_VAppendErrorFormat(d->status, fmt, argp);
   va_end(argp);
   UPB_LONGJMP(d->err, 1);
 }
@@ -1468,7 +1468,7 @@ static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_MessageDef *m)
 
 bool upb_json_decode(const char *buf, size_t size, upb_msg *msg,
                      const upb_MessageDef *m, const upb_DefPool *symtab,
-                     int options, upb_arena *arena, upb_status *status) {
+                     int options, upb_arena *arena, upb_Status *status) {
   jsondec d;
 
   if (size == 0) return true;

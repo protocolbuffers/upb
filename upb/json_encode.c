@@ -49,7 +49,7 @@ typedef struct {
   int options;
   const upb_DefPool *ext_pool;
   jmp_buf err;
-  upb_status *status;
+  upb_Status *status;
   upb_arena *arena;
 } jsonenc;
 
@@ -62,7 +62,7 @@ static void jsonenc_msgfields(jsonenc *e, const upb_msg *msg,
 static void jsonenc_value(jsonenc *e, const upb_msg *msg, const upb_MessageDef *m);
 
 UPB_NORETURN static void jsonenc_err(jsonenc *e, const char *msg) {
-  upb_status_seterrmsg(e->status, msg);
+  upb_Status_SetErrorMessage(e->status, msg);
   longjmp(e->err, 1);
 }
 
@@ -70,7 +70,7 @@ UPB_PRINTF(2, 3)
 UPB_NORETURN static void jsonenc_errf(jsonenc *e, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  upb_status_vseterrf(e->status, fmt, argp);
+  upb_Status_VSetErrorFormat(e->status, fmt, argp);
   va_end(argp);
   longjmp(e->err, 1);
 }
@@ -739,7 +739,7 @@ static size_t jsonenc_nullz(jsonenc *e, size_t size) {
 
 size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
                        const upb_DefPool *ext_pool, int options, char *buf,
-                       size_t size, upb_status *status) {
+                       size_t size, upb_Status *status) {
   jsonenc e;
 
   e.buf = buf;

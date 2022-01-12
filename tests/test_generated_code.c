@@ -410,9 +410,9 @@ void test_null_decode_buf(void) {
 
 void test_status_truncation(void) {
   int i, j;
-  upb_status status;
-  upb_status status2;
-  for (i = 0; i < UPB_STATUS_MAX_MESSAGE + 20; i++) {
+  upb_Status status;
+  upb_Status status2;
+  for (i = 0; i < _kUpb_Status_MaxMessage + 20; i++) {
     char *msg = malloc(i + 1);
     int end;
     char ch = (i % 96) + 33;  /* Cycle through printable chars. */
@@ -422,9 +422,9 @@ void test_status_truncation(void) {
     }
     msg[i] = '\0';
 
-    upb_status_seterrmsg(&status, msg);
-    upb_status_seterrf(&status2, "%s", msg);
-    end = MIN(i, UPB_STATUS_MAX_MESSAGE - 1);
+    upb_Status_SetErrorMessage(&status, msg);
+    upb_Status_SetErrorFormat(&status2, "%s", msg);
+    end = MIN(i, _kUpb_Status_MaxMessage - 1);
     ASSERT(strlen(status.msg) == end);
     ASSERT(strlen(status2.msg) == end);
 

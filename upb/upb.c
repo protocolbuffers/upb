@@ -37,46 +37,46 @@
 
 #include "upb/port_def.inc"
 
-/* upb_status *****************************************************************/
+/* upb_Status *****************************************************************/
 
-void upb_status_clear(upb_status *status) {
+void upb_Status_Clear(upb_Status *status) {
   if (!status) return;
   status->ok = true;
   status->msg[0] = '\0';
 }
 
-bool upb_ok(const upb_status *status) { return status->ok; }
+bool upb_Status_IsOk(const upb_Status *status) { return status->ok; }
 
-const char *upb_status_errmsg(const upb_status *status) { return status->msg; }
+const char *upb_Status_ErrorMessage(const upb_Status *status) { return status->msg; }
 
-void upb_status_seterrmsg(upb_status *status, const char *msg) {
+void upb_Status_SetErrorMessage(upb_Status *status, const char *msg) {
   if (!status) return;
   status->ok = false;
-  strncpy(status->msg, msg, UPB_STATUS_MAX_MESSAGE - 1);
-  status->msg[UPB_STATUS_MAX_MESSAGE - 1] = '\0';
+  strncpy(status->msg, msg, _kUpb_Status_MaxMessage - 1);
+  status->msg[_kUpb_Status_MaxMessage - 1] = '\0';
 }
 
-void upb_status_seterrf(upb_status *status, const char *fmt, ...) {
+void upb_Status_SetErrorFormat(upb_Status *status, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  upb_status_vseterrf(status, fmt, args);
+  upb_Status_VSetErrorFormat(status, fmt, args);
   va_end(args);
 }
 
-void upb_status_vseterrf(upb_status *status, const char *fmt, va_list args) {
+void upb_Status_VSetErrorFormat(upb_Status *status, const char *fmt, va_list args) {
   if (!status) return;
   status->ok = false;
   vsnprintf(status->msg, sizeof(status->msg), fmt, args);
-  status->msg[UPB_STATUS_MAX_MESSAGE - 1] = '\0';
+  status->msg[_kUpb_Status_MaxMessage - 1] = '\0';
 }
 
-void upb_status_vappenderrf(upb_status *status, const char *fmt, va_list args) {
+void upb_Status_VAppendErrorFormat(upb_Status *status, const char *fmt, va_list args) {
   size_t len;
   if (!status) return;
   status->ok = false;
   len = strlen(status->msg);
   vsnprintf(status->msg + len, sizeof(status->msg) - len, fmt, args);
-  status->msg[UPB_STATUS_MAX_MESSAGE - 1] = '\0';
+  status->msg[_kUpb_Status_MaxMessage - 1] = '\0';
 }
 
 /* upb_alloc ******************************************************************/

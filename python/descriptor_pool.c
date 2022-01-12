@@ -227,14 +227,14 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
     if (!PyUpb_DescriptorPool_LoadDependentFiles(self, proto)) goto done;
   }
 
-  upb_status status;
-  upb_status_clear(&status);
+  upb_Status status;
+  upb_Status_Clear(&status);
 
   const upb_FileDef* filedef = upb_DefPool_AddFile(self->symtab, proto, &status);
   if (!filedef) {
     PyErr_Format(PyExc_TypeError,
                  "Couldn't build proto file into descriptor pool: %s",
-                 upb_status_errmsg(&status));
+                 upb_Status_ErrorMessage(&status));
     goto done;
   }
 

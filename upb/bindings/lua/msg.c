@@ -1011,11 +1011,11 @@ static int lupb_jsondecode(lua_State *L) {
   int options = lupb_getoptions(L, 3);
   upb_msg *msg;
   upb_arena *arena;
-  upb_status status;
+  upb_Status status;
 
   msg = lupb_msg_pushnew(L, 1);
   arena = lupb_arenaget(L, -1);
-  upb_status_clear(&status);
+  upb_Status_Clear(&status);
   upb_json_decode(json, len, msg, m, NULL, options, arena, &status);
   lupb_checkstatus(L, &status);
 
@@ -1034,9 +1034,9 @@ static int lupb_jsonencode(lua_State *L) {
   int options = lupb_getoptions(L, 2);
   char buf[1024];
   size_t size;
-  upb_status status;
+  upb_Status status;
 
-  upb_status_clear(&status);
+  upb_Status_Clear(&status);
   size = upb_json_encode(msg, m, NULL, options, buf, sizeof(buf), &status);
   lupb_checkstatus(L, &status);
 

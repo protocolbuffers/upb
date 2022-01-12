@@ -304,8 +304,8 @@ int cmp_fields(const void *p1, const void *p2) {
   return field_rank(f1) - field_rank(f2);
 }
 
-static void upb_status_setoom(upb_status *status) {
-  upb_status_seterrmsg(status, "out of memory");
+static void upb_Status_setoom(upb_Status *status) {
+  upb_Status_SetErrorMessage(status, "out of memory");
 }
 
 static void assign_msg_wellknowntype(upb_MessageDef *m) {
@@ -1251,7 +1251,7 @@ typedef struct {
   int enum_count;                 /* Count of enums built so far. */
   int msg_count;                  /* Count of messages built so far. */
   int ext_count;                  /* Count of extensions built so far. */
-  upb_status *status;             /* Record errors here. */
+  upb_Status *status;             /* Record errors here. */
   jmp_buf err;                    /* longjmp() on error. */
 } symtab_addctx;
 
@@ -1259,14 +1259,14 @@ UPB_NORETURN UPB_NOINLINE UPB_PRINTF(2, 3)
 static void symtab_errf(symtab_addctx *ctx, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  upb_status_vseterrf(ctx->status, fmt, argp);
+  upb_Status_VSetErrorFormat(ctx->status, fmt, argp);
   va_end(argp);
   UPB_LONGJMP(ctx->err, 1);
 }
 
 UPB_NORETURN UPB_NOINLINE
 static void symtab_oomerr(symtab_addctx *ctx) {
-  upb_status_setoom(ctx->status);
+  upb_Status_setoom(ctx->status);
   UPB_LONGJMP(ctx->err, 1);
 }
 
@@ -3018,21 +3018,21 @@ static void remove_filedef(upb_DefPool *s, upb_FileDef *file) {
 
 static const upb_FileDef *_upb_DefPool_AddFile(
     upb_DefPool *s, const google_protobuf_FileDescriptorProto *file_proto,
-    const upb_msglayout_file *layout, upb_status *status) {
+    const upb_msglayout_file *layout, upb_Status *status) {
   symtab_addctx ctx;
   upb_strview name = google_protobuf_FileDescriptorProto_name(file_proto);
   upb_value v;
 
   if (upb_strtable_lookup2(&s->files, name.data, name.size, &v)) {
     if (unpack_def(v, UPB_DEFTYPE_FILE)) {
-      upb_status_seterrf(status, "duplicate file name (%.*s)",
+      upb_Status_SetErrorFormat(status, "duplicate file name (%.*s)",
                         UPB_STRVIEW_ARGS(name));
       return NULL;
     }
     const upb_msglayout_file *registered = unpack_def(v, UPB_DEFTYPE_LAYOUT);
     UPB_ASSERT(registered);
     if (layout && layout != registered) {
-      upb_status_seterrf(
+      upb_Status_SetErrorFormat(
           status, "tried to build with a different layout (filename=%.*s)",
           UPB_STRVIEW_ARGS(name));
       return NULL;
@@ -3053,12 +3053,12 @@ static const upb_FileDef *_upb_DefPool_AddFile(
   if (!ctx.arena || !ctx.tmp_arena) {
     if (ctx.arena) upb_arena_free(ctx.arena);
     if (ctx.tmp_arena) upb_arena_free(ctx.tmp_arena);
-    upb_status_setoom(status);
+    upb_Status_setoom(status);
     return NULL;
   }
 
   if (UPB_UNLIKELY(UPB_SETJMP(ctx.err))) {
-    UPB_ASSERT(!upb_ok(status));
+    UPB_ASSERT(!upb_Status_IsOk(status));
     if (ctx.file) {
       remove_filedef(s, ctx.file);
       ctx.file = NULL;
@@ -3068,7 +3068,7 @@ static const upb_FileDef *_upb_DefPool_AddFile(
     build_filedef(&ctx, ctx.file, file_proto);
     upb_strtable_insert(&s->files, name.data, name.size,
                         pack_def(ctx.file, UPB_DEFTYPE_FILE), ctx.arena);
-    UPB_ASSERT(upb_ok(status));
+    UPB_ASSERT(upb_Status_IsOk(status));
     upb_arena_fuse(s->arena, ctx.arena);
   }
 
@@ -3079,7 +3079,7 @@ static const upb_FileDef *_upb_DefPool_AddFile(
 
   const upb_FileDef *upb_DefPool_AddFile(
       upb_DefPool * s, const google_protobuf_FileDescriptorProto *file_proto,
-      upb_status *status) {
+      upb_Status *status) {
     return _upb_DefPool_AddFile(s, file_proto, NULL, status);
   }
 
@@ -3092,9 +3092,9 @@ bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
   _upb_DefPool_Init **deps = init->deps;
   google_protobuf_FileDescriptorProto *file;
   upb_arena *arena;
-  upb_status status;
+  upb_Status status;
 
-  upb_status_clear(&status);
+  upb_Status_Clear(&status);
 
   if (upb_DefPool_FindFileByName(s, init->filename)) {
     return true;
@@ -3112,7 +3112,7 @@ bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
   s->bytes_loaded += init->descriptor.size;
 
   if (!file) {
-    upb_status_seterrf(
+    upb_Status_SetErrorFormat(
         &status,
         "Failed to parse compiled-in descriptor for file '%s'. This should "
         "never happen.",
@@ -3131,7 +3131,7 @@ err:
   fprintf(stderr,
           "Error loading compiled-in descriptor for file '%s' (this should "
           "never happen): %s\n",
-          init->filename, upb_status_errmsg(&status));
+          init->filename, upb_Status_ErrorMessage(&status));
   upb_arena_free(arena);
   return false;
 }

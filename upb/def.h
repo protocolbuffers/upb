@@ -353,7 +353,7 @@ const upb_FileDef *upb_DefPool_FindFileByNameWithSize(
     const upb_DefPool *s, const char *name, size_t len);
 const upb_FileDef *upb_DefPool_AddFile(
     upb_DefPool *s, const google_protobuf_FileDescriptorProto *file,
-    upb_status *status);
+    upb_Status *status);
 size_t _upb_DefPool_BytesLoaded(const upb_DefPool *s);
 upb_arena *_upb_DefPool_Arena(const upb_DefPool *s);
 const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,

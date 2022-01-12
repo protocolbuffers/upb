@@ -53,7 +53,7 @@ enum {
  * snprintf()). */
 size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
                        const upb_DefPool *ext_pool, int options, char *buf,
-                       size_t size, upb_status *status);
+                       size_t size, upb_Status *status);
 
 #ifdef __cplusplus
 }  /* extern "C" */

@@ -66,8 +66,8 @@ int lua_getiuservalue(lua_State *L, int index, int n);
 void lupb_register_type(lua_State *L, const char *name, const luaL_Reg *m,
                         const luaL_Reg *mm);
 
-/* Checks the given upb_status and throws a Lua error if it is not ok. */
-void lupb_checkstatus(lua_State *L, upb_status *s);
+/* Checks the given upb_Status and throws a Lua error if it is not ok. */
+void lupb_checkstatus(lua_State *L, upb_Status *s);
 
 int luaopen_lupb(lua_State *L);
 

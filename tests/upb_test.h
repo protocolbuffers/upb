@@ -67,7 +67,7 @@ uint32_t testhash = 0;
   ++num_assertions; \
   if (!(expr)) { \
     PRINT_FAILURE(expr) \
-    fprintf(stderr, "failed status: %s\n", upb_status_errmsg(status)); \
+    fprintf(stderr, "failed status: %s\n", upb_Status_ErrorMessage(status)); \
     abort(); \
   } \
 } while (0)

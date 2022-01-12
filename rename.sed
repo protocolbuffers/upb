@@ -221,3 +221,13 @@ s/UPB_DURATION_SECONDS/kUpb_Duration_SecondsFieldNumber/g;
 s/UPB_DURATION_NANOS/kUpb_Duration_NanosFieldNumber/g;
 s/UPB_TIMESTAMP_SECONDS/kUpb_Timestamp_SecondsFieldNumber/g;
 s/UPB_TIMESTAMP_NANOS/kUpb_Timestamp_NanosFieldNumber/g;
+
+s/upb_status_errmsg/upb_Status_ErrorMessage/g;
+s/upb_ok/upb_Status_IsOk/g;
+s/upb_status_clear/upb_Status_Clear/g;
+s/upb_status_seterrmsg/upb_Status_SetErrorMessage/g;
+s/upb_status_seterrf/upb_Status_SetErrorFormat/g;
+s/upb_status_vseterrf/upb_Status_VSetErrorFormat/g;
+s/upb_status_vappenderrf/upb_Status_VAppendErrorFormat/g;
+s/upb_status/upb_Status/g;
+s/UPB_STATUS_MAX_MESSAGE/_kUpb_Status_MaxMessage/g;

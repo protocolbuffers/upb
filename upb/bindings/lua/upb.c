@@ -70,9 +70,9 @@ static bool lua_isinteger(lua_State *L, int argn) {
 
 /* Utility functions **********************************************************/
 
-void lupb_checkstatus(lua_State *L, upb_status *s) {
-  if (!upb_ok(s)) {
-    lua_pushstring(L, upb_status_errmsg(s));
+void lupb_checkstatus(lua_State *L, upb_Status *s) {
+  if (!upb_Status_IsOk(s)) {
+    lua_pushstring(L, upb_Status_ErrorMessage(s));
     lua_error(L);
   }
 }
