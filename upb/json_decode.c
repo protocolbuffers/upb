@@ -822,7 +822,7 @@ static upb_MessageValue jsondec_enum(jsondec *d, const upb_FieldDef *f) {
       if (ev) {
         val.int32_val = upb_EnumValueDef_Number(ev);
       } else {
-        if (d->options & UPB_JSONDEC_IGNOREUNKNOWN) {
+        if (d->options & upb_JsonDecode_IgnoreUnknown) {
           val.int32_val = 0;
         } else {
           jsondec_errf(d, "Unknown enumerator: '" UPB_STRINGVIEW_FORMAT "'",
@@ -948,7 +948,7 @@ static void jsondec_field(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
  }
 
   if (!f) {
-    if ((d->options & UPB_JSONDEC_IGNOREUNKNOWN) == 0) {
+    if ((d->options & upb_JsonDecode_IgnoreUnknown) == 0) {
       jsondec_errf(d, "No such field: " UPB_STRINGVIEW_FORMAT,
                    UPB_STRINGVIEW_ARGS(name));
     }
@@ -1466,7 +1466,7 @@ static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_MessageDef *m)
   }
 }
 
-bool upb_json_decode(const char *buf, size_t size, upb_msg *msg,
+bool upb_JsonDecode(const char *buf, size_t size, upb_msg *msg,
                      const upb_MessageDef *m, const upb_DefPool *symtab,
                      int options, upb_Arena *arena, upb_Status *status) {
   jsondec d;

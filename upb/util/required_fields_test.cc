@@ -65,7 +65,7 @@ void CheckRequired(absl::string_view json, const std::vector<std::string>& missi
   upb::MessageDefPtr m(
       upb_util_test_TestRequiredFields_getmsgdef(symtab.ptr()));
   upb::Status status;
-  EXPECT_TRUE(upb_json_decode(json.data(), json.size(), test_msg, m.ptr(),
+  EXPECT_TRUE(upb_JsonDecode(json.data(), json.size(), test_msg, m.ptr(),
                               symtab.ptr(), 0, arena.ptr(), status.ptr()))
       << status.error_message();
   upb_FieldPathEntry *entries;

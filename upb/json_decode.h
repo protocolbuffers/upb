@@ -35,10 +35,10 @@ extern "C" {
 #endif
 
 enum {
-  UPB_JSONDEC_IGNOREUNKNOWN = 1
+  upb_JsonDecode_IgnoreUnknown = 1
 };
 
-bool upb_json_decode(const char *buf, size_t size, upb_msg *msg,
+bool upb_JsonDecode(const char *buf, size_t size, upb_msg *msg,
                      const upb_MessageDef *m, const upb_DefPool *symtab,
                      int options, upb_Arena *arena, upb_Status *status);
 

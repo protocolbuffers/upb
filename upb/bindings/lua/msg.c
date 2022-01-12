@@ -1016,7 +1016,7 @@ static int lupb_jsondecode(lua_State *L) {
   msg = lupb_msg_pushnew(L, 1);
   arena = lupb_Arenaget(L, -1);
   upb_Status_Clear(&status);
-  upb_json_decode(json, len, msg, m, NULL, options, arena, &status);
+  upb_JsonDecode(json, len, msg, m, NULL, options, arena, &status);
   lupb_checkstatus(L, &status);
 
   return 1;
@@ -1114,7 +1114,7 @@ void lupb_msg_registertypes(lua_State *L) {
   lupb_setfieldi(L, "JSONENC_EMITDEFAULTS", UPB_JSONENC_EMITDEFAULTS);
   lupb_setfieldi(L, "JSONENC_PROTONAMES", UPB_JSONENC_PROTONAMES);
 
-  lupb_setfieldi(L, "JSONDEC_IGNOREUNKNOWN", UPB_JSONDEC_IGNOREUNKNOWN);
+  lupb_setfieldi(L, "JSONDEC_IGNOREUNKNOWN", upb_JsonDecode_IgnoreUnknown);
 
   lupb_cacheinit(L);
 }

@@ -69,7 +69,7 @@ TEST(MessageTest, Extensions) {
   }
   )json";
   upb::Status status;
-  EXPECT_TRUE(upb_json_decode(json.data(), json.size(), ext_msg, m.ptr(),
+  EXPECT_TRUE(upb_JsonDecode(json.data(), json.size(), ext_msg, m.ptr(),
                               symtab.ptr(), 0, arena.ptr(), status.ptr()))
       << status.error_message();
 
@@ -93,7 +93,7 @@ TEST(MessageTest, Extensions) {
   upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
                   status.ptr());
   upb_test_TestExtensions *ext_msg3 = upb_test_TestExtensions_new(arena.ptr());
-  EXPECT_TRUE(upb_json_decode(json_buf, json_size, ext_msg3, m.ptr(),
+  EXPECT_TRUE(upb_JsonDecode(json_buf, json_size, ext_msg3, m.ptr(),
                               symtab.ptr(), 0, arena.ptr(), status.ptr()))
       << status.error_message();
   VerifyMessage(ext_msg3);
@@ -126,7 +126,7 @@ TEST(MessageTest, MessageSet) {
   }
   )json";
   upb::Status status;
-  EXPECT_TRUE(upb_json_decode(json.data(), json.size(), ext_msg, m.ptr(),
+  EXPECT_TRUE(upb_JsonDecode(json.data(), json.size(), ext_msg, m.ptr(),
                               symtab.ptr(), 0, arena.ptr(), status.ptr()))
       << status.error_message();
 
@@ -150,7 +150,7 @@ TEST(MessageTest, MessageSet) {
   upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
                   status.ptr());
   upb_test_TestMessageSet *ext_msg3 = upb_test_TestMessageSet_new(arena.ptr());
-  EXPECT_TRUE(upb_json_decode(json_buf, json_size, ext_msg3, m.ptr(),
+  EXPECT_TRUE(upb_JsonDecode(json_buf, json_size, ext_msg3, m.ptr(),
                               symtab.ptr(), 0, arena.ptr(), status.ptr()))
       << status.error_message();
   VerifyMessageSet(ext_msg3);

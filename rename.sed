@@ -362,3 +362,6 @@ s/UPB_ENCODE_SKIPUNKNOWN/kUpb_Encode_SkipUnknown/g;
 s/UPB_ENCODE_CHECKREQUIRED/kUpb_Encode_CheckRequired/g;
 s/upb_encode_ex/upb_EncodeEx/g;
 s/upb_encode/upb_Encode/g;
+
+s/UPB_JSONDEC_IGNOREUNKNOWN/upb_JsonDecode_IgnoreUnknown/g;
+s/upb_json_decode/upb_JsonDecode/g;

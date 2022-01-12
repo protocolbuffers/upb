@@ -137,11 +137,11 @@ bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
 
   if (conformance_ConformanceRequest_test_category(c->request) ==
       conformance_JSON_IGNORE_UNKNOWN_PARSING_TEST) {
-    opts |= UPB_JSONDEC_IGNOREUNKNOWN;
+    opts |= upb_JsonDecode_IgnoreUnknown;
   }
 
   upb_Status_Clear(&status);
-  if (upb_json_decode(json.data, json.size, msg, m, c->symtab, opts, c->arena,
+  if (upb_JsonDecode(json.data, json.size, msg, m, c->symtab, opts, c->arena,
                       &status)) {
     return true;
   } else {
