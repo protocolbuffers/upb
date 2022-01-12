@@ -382,7 +382,7 @@ static void jsonenc_any(jsonenc *e, const upb_msg *msg, const upb_MessageDef *m)
   jsonenc_putstr(e, "{\"@type\":");
   jsonenc_string(e, type_url);
 
-  if (upb_MessageDef_WellKnownType(any_m) == UPB_WELLKNOWN_UNSPECIFIED) {
+  if (upb_MessageDef_WellKnownType(any_m) == kUpb_WellKnown_Unspecified) {
     /* Regular messages: {"@type": "...","foo": 1, "bar": 2} */
     jsonenc_msgfields(e, any, any_m, false);
   } else {
@@ -526,39 +526,39 @@ static void jsonenc_value(jsonenc *e, const upb_msg *msg, const upb_MessageDef *
 static void jsonenc_msgfield(jsonenc *e, const upb_msg *msg,
                              const upb_MessageDef *m) {
   switch (upb_MessageDef_WellKnownType(m)) {
-    case UPB_WELLKNOWN_UNSPECIFIED:
+    case kUpb_WellKnown_Unspecified:
       jsonenc_msg(e, msg, m);
       break;
-    case UPB_WELLKNOWN_ANY:
+    case kUpb_WellKnown_Any:
       jsonenc_any(e, msg, m);
       break;
-    case UPB_WELLKNOWN_FIELDMASK:
+    case kUpb_WellKnown_FieldMask:
       jsonenc_fieldmask(e, msg, m);
       break;
-    case UPB_WELLKNOWN_DURATION:
+    case kUpb_WellKnown_Duration:
       jsonenc_duration(e, msg, m);
       break;
-    case UPB_WELLKNOWN_TIMESTAMP:
+    case kUpb_WellKnown_Timestamp:
       jsonenc_timestamp(e, msg, m);
       break;
-    case UPB_WELLKNOWN_DOUBLEVALUE:
-    case UPB_WELLKNOWN_FLOATVALUE:
-    case UPB_WELLKNOWN_INT64VALUE:
-    case UPB_WELLKNOWN_UINT64VALUE:
-    case UPB_WELLKNOWN_INT32VALUE:
-    case UPB_WELLKNOWN_UINT32VALUE:
-    case UPB_WELLKNOWN_STRINGVALUE:
-    case UPB_WELLKNOWN_BYTESVALUE:
-    case UPB_WELLKNOWN_BOOLVALUE:
+    case kUpb_WellKnown_DoubleValue:
+    case kUpb_WellKnown_FloatValue:
+    case kUpb_WellKnown_Int64Value:
+    case kUpb_WellKnown_UInt64Value:
+    case kUpb_WellKnown_Int32Value:
+    case kUpb_WellKnown_UInt32Value:
+    case kUpb_WellKnown_StringValue:
+    case kUpb_WellKnown_BytesValue:
+    case kUpb_WellKnown_BoolValue:
       jsonenc_wrapper(e, msg, m);
       break;
-    case UPB_WELLKNOWN_VALUE:
+    case kUpb_WellKnown_Value:
       jsonenc_value(e, msg, m);
       break;
-    case UPB_WELLKNOWN_LISTVALUE:
+    case kUpb_WellKnown_ListValue:
       jsonenc_listvalue(e, msg, m);
       break;
-    case UPB_WELLKNOWN_STRUCT:
+    case kUpb_WellKnown_Struct:
       jsonenc_struct(e, msg, m);
       break;
   }

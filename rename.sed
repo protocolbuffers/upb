@@ -187,3 +187,26 @@ s/upb_symtab/upb_DefPool/g;
 s/upb_def_init/_upb_DefPool_Init/g;
 
 s/_upb_DefPool_loaddefinit/_upb_DefPool_LoadDefInit/g;
+
+s/UPB_SYNTAX_PROTO2/kUpb_Syntax_Proto2/g;
+s/UPB_SYNTAX_PROTO3/kUpb_Syntax_Proto3/g;
+s/upb_syntax_t/upb_Syntax/g;
+
+s/UPB_WELLKNOWN_UNSPECIFIED/kUpb_WellKnown_Unspecified/g;
+s/UPB_WELLKNOWN_ANY/kUpb_WellKnown_Any/g;
+s/UPB_WELLKNOWN_FIELDMASK/kUpb_WellKnown_FieldMask/g;
+s/UPB_WELLKNOWN_DURATION/kUpb_WellKnown_Duration/g;
+s/UPB_WELLKNOWN_TIMESTAMP/kUpb_WellKnown_Timestamp/g;
+s/UPB_WELLKNOWN_DOUBLEVALUE/kUpb_WellKnown_DoubleValue/g;
+s/UPB_WELLKNOWN_FLOATVALUE/kUpb_WellKnown_FloatValue/g;
+s/UPB_WELLKNOWN_INT64VALUE/kUpb_WellKnown_Int64Value/g;
+s/UPB_WELLKNOWN_UINT64VALUE/kUpb_WellKnown_UInt64Value/g;
+s/UPB_WELLKNOWN_INT32VALUE/kUpb_WellKnown_Int32Value/g;
+s/UPB_WELLKNOWN_UINT32VALUE/kUpb_WellKnown_UInt32Value/g;
+s/UPB_WELLKNOWN_STRINGVALUE/kUpb_WellKnown_StringValue/g;
+s/UPB_WELLKNOWN_BYTESVALUE/kUpb_WellKnown_BytesValue/g;
+s/UPB_WELLKNOWN_BOOLVALUE/kUpb_WellKnown_BoolValue/g;
+s/UPB_WELLKNOWN_VALUE/kUpb_WellKnown_Value/g;
+s/UPB_WELLKNOWN_LISTVALUE/kUpb_WellKnown_ListValue/g;
+s/UPB_WELLKNOWN_STRUCT/kUpb_WellKnown_Struct/g;
+s/upb_wellknowntype_t/kUpb_WellKnown/g;

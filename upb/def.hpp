@@ -186,7 +186,7 @@ class MessageDefPtr {
   int oneof_count() const { return upb_MessageDef_OneofCount(ptr_); }
   OneofDefPtr oneof(int i) const { return OneofDefPtr(upb_MessageDef_Oneof(ptr_, i)); }
 
-  upb_syntax_t syntax() const { return upb_MessageDef_Syntax(ptr_); }
+  upb_Syntax syntax() const { return upb_MessageDef_Syntax(ptr_); }
 
   // These return null pointers if the field is not found.
   FieldDefPtr FindFieldByNumber(uint32_t number) const {
@@ -220,9 +220,9 @@ class MessageDefPtr {
   // Is this message a map entry?
   bool mapentry() const { return upb_MessageDef_IsMapEntry(ptr_); }
 
-  // Return the type of well known type message. UPB_WELLKNOWN_UNSPECIFIED for
+  // Return the type of well known type message. kUpb_WellKnown_Unspecified for
   // non-well-known message.
-  upb_wellknowntype_t wellknowntype() const {
+  kUpb_WellKnown wellknowntype() const {
     return upb_MessageDef_WellKnownType(ptr_);
   }
 
@@ -355,7 +355,7 @@ class FileDefPtr {
   const char* package() const { return upb_FileDef_Package(ptr_); }
 
   // Syntax for the file.  Defaults to proto2.
-  upb_syntax_t syntax() const { return upb_FileDef_Syntax(ptr_); }
+  upb_Syntax syntax() const { return upb_FileDef_Syntax(ptr_); }
 
   // Get the list of dependencies from the file.  These are returned in the
   // order that they were added to the FileDefPtr.

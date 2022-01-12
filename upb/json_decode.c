@@ -78,7 +78,7 @@ static bool jsondec_isnullvalue(const upb_FieldDef *f) {
 static bool jsondec_isvalue(const upb_FieldDef *f) {
   return (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE &&
           upb_MessageDef_WellKnownType(upb_FieldDef_MessageSubDef(f)) ==
-              UPB_WELLKNOWN_VALUE) ||
+              kUpb_WellKnown_Value) ||
          jsondec_isnullvalue(f);
 }
 
@@ -908,7 +908,7 @@ static void jsondec_map(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
 }
 
 static void jsondec_tomsg(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
-  if (upb_MessageDef_WellKnownType(m) == UPB_WELLKNOWN_UNSPECIFIED) {
+  if (upb_MessageDef_WellKnownType(m) == kUpb_WellKnown_Unspecified) {
     jsondec_object(d, msg, m);
   } else {
     jsondec_wellknown(d, msg, m);
@@ -1313,7 +1313,7 @@ static void jsondec_fieldmask(jsondec *d, upb_msg *msg, const upb_MessageDef *m)
 }
 
 static void jsondec_anyfield(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
-  if (upb_MessageDef_WellKnownType(m) == UPB_WELLKNOWN_UNSPECIFIED) {
+  if (upb_MessageDef_WellKnownType(m) == kUpb_WellKnown_Unspecified) {
     /* For regular types: {"@type": "[user type]", "f1": <V1>, "f2": <V2>}
      * where f1, f2, etc. are the normal fields of this type. */
     jsondec_field(d, msg, m);
@@ -1429,36 +1429,36 @@ static void jsondec_wrapper(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
 
 static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
   switch (upb_MessageDef_WellKnownType(m)) {
-    case UPB_WELLKNOWN_ANY:
+    case kUpb_WellKnown_Any:
       jsondec_any(d, msg, m);
       break;
-    case UPB_WELLKNOWN_FIELDMASK:
+    case kUpb_WellKnown_FieldMask:
       jsondec_fieldmask(d, msg, m);
       break;
-    case UPB_WELLKNOWN_DURATION:
+    case kUpb_WellKnown_Duration:
       jsondec_duration(d, msg, m);
       break;
-    case UPB_WELLKNOWN_TIMESTAMP:
+    case kUpb_WellKnown_Timestamp:
       jsondec_timestamp(d, msg, m);
       break;
-    case UPB_WELLKNOWN_VALUE:
+    case kUpb_WellKnown_Value:
       jsondec_wellknownvalue(d, msg, m);
       break;
-    case UPB_WELLKNOWN_LISTVALUE:
+    case kUpb_WellKnown_ListValue:
       jsondec_listvalue(d, msg, m);
       break;
-    case UPB_WELLKNOWN_STRUCT:
+    case kUpb_WellKnown_Struct:
       jsondec_struct(d, msg, m);
       break;
-    case UPB_WELLKNOWN_DOUBLEVALUE:
-    case UPB_WELLKNOWN_FLOATVALUE:
-    case UPB_WELLKNOWN_INT64VALUE:
-    case UPB_WELLKNOWN_UINT64VALUE:
-    case UPB_WELLKNOWN_INT32VALUE:
-    case UPB_WELLKNOWN_UINT32VALUE:
-    case UPB_WELLKNOWN_STRINGVALUE:
-    case UPB_WELLKNOWN_BYTESVALUE:
-    case UPB_WELLKNOWN_BOOLVALUE:
+    case kUpb_WellKnown_DoubleValue:
+    case kUpb_WellKnown_FloatValue:
+    case kUpb_WellKnown_Int64Value:
+    case kUpb_WellKnown_UInt64Value:
+    case kUpb_WellKnown_Int32Value:
+    case kUpb_WellKnown_UInt32Value:
+    case kUpb_WellKnown_StringValue:
+    case kUpb_WellKnown_BytesValue:
+    case kUpb_WellKnown_BoolValue:
       jsondec_wrapper(d, msg, m);
       break;
     default:

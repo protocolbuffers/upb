@@ -172,7 +172,7 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_EnumDef *e,
   } else {
     int32_t i32;
     if (!PyUpb_GetInt32(obj, &i32)) return false;
-    if (upb_FileDef_Syntax(upb_EnumDef_File(e)) == UPB_SYNTAX_PROTO2 &&
+    if (upb_FileDef_Syntax(upb_EnumDef_File(e)) == kUpb_Syntax_Proto2 &&
         !upb_EnumDef_CheckNumber(e, i32)) {
       PyErr_Format(PyExc_ValueError, "invalid enumerator %d", (int)i32);
       return false;

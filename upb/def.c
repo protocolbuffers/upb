@@ -122,7 +122,7 @@ struct upb_MessageDef {
   int nested_enum_count;
   int nested_ext_count;
   bool in_message_set;
-  upb_wellknowntype_t well_known_type;
+  kUpb_WellKnown well_known_type;
 };
 
 struct upb_EnumDef {
@@ -179,7 +179,7 @@ struct upb_FileDef {
   int top_lvl_ext_count;
   int service_count;
   int ext_count;  /* All exts in the file. */
-  upb_syntax_t syntax;
+  upb_Syntax syntax;
 };
 
 struct upb_MethodDef {
@@ -311,43 +311,43 @@ static void upb_status_setoom(upb_status *status) {
 static void assign_msg_wellknowntype(upb_MessageDef *m) {
   const char *name = upb_MessageDef_FullName(m);
   if (name == NULL) {
-    m->well_known_type = UPB_WELLKNOWN_UNSPECIFIED;
+    m->well_known_type = kUpb_WellKnown_Unspecified;
     return;
   }
   if (!strcmp(name, "google.protobuf.Any")) {
-    m->well_known_type = UPB_WELLKNOWN_ANY;
+    m->well_known_type = kUpb_WellKnown_Any;
   } else if (!strcmp(name, "google.protobuf.FieldMask")) {
-    m->well_known_type = UPB_WELLKNOWN_FIELDMASK;
+    m->well_known_type = kUpb_WellKnown_FieldMask;
   } else if (!strcmp(name, "google.protobuf.Duration")) {
-    m->well_known_type = UPB_WELLKNOWN_DURATION;
+    m->well_known_type = kUpb_WellKnown_Duration;
   } else if (!strcmp(name, "google.protobuf.Timestamp")) {
-    m->well_known_type = UPB_WELLKNOWN_TIMESTAMP;
+    m->well_known_type = kUpb_WellKnown_Timestamp;
   } else if (!strcmp(name, "google.protobuf.DoubleValue")) {
-    m->well_known_type = UPB_WELLKNOWN_DOUBLEVALUE;
+    m->well_known_type = kUpb_WellKnown_DoubleValue;
   } else if (!strcmp(name, "google.protobuf.FloatValue")) {
-    m->well_known_type = UPB_WELLKNOWN_FLOATVALUE;
+    m->well_known_type = kUpb_WellKnown_FloatValue;
   } else if (!strcmp(name, "google.protobuf.Int64Value")) {
-    m->well_known_type = UPB_WELLKNOWN_INT64VALUE;
+    m->well_known_type = kUpb_WellKnown_Int64Value;
   } else if (!strcmp(name, "google.protobuf.UInt64Value")) {
-    m->well_known_type = UPB_WELLKNOWN_UINT64VALUE;
+    m->well_known_type = kUpb_WellKnown_UInt64Value;
   } else if (!strcmp(name, "google.protobuf.Int32Value")) {
-    m->well_known_type = UPB_WELLKNOWN_INT32VALUE;
+    m->well_known_type = kUpb_WellKnown_Int32Value;
   } else if (!strcmp(name, "google.protobuf.UInt32Value")) {
-    m->well_known_type = UPB_WELLKNOWN_UINT32VALUE;
+    m->well_known_type = kUpb_WellKnown_UInt32Value;
   } else if (!strcmp(name, "google.protobuf.BoolValue")) {
-    m->well_known_type = UPB_WELLKNOWN_BOOLVALUE;
+    m->well_known_type = kUpb_WellKnown_BoolValue;
   } else if (!strcmp(name, "google.protobuf.StringValue")) {
-    m->well_known_type = UPB_WELLKNOWN_STRINGVALUE;
+    m->well_known_type = kUpb_WellKnown_StringValue;
   } else if (!strcmp(name, "google.protobuf.BytesValue")) {
-    m->well_known_type = UPB_WELLKNOWN_BYTESVALUE;
+    m->well_known_type = kUpb_WellKnown_BytesValue;
   } else if (!strcmp(name, "google.protobuf.Value")) {
-    m->well_known_type = UPB_WELLKNOWN_VALUE;
+    m->well_known_type = kUpb_WellKnown_Value;
   } else if (!strcmp(name, "google.protobuf.ListValue")) {
-    m->well_known_type = UPB_WELLKNOWN_LISTVALUE;
+    m->well_known_type = kUpb_WellKnown_ListValue;
   } else if (!strcmp(name, "google.protobuf.Struct")) {
-    m->well_known_type = UPB_WELLKNOWN_STRUCT;
+    m->well_known_type = kUpb_WellKnown_Struct;
   } else {
-    m->well_known_type = UPB_WELLKNOWN_UNSPECIFIED;
+    m->well_known_type = kUpb_WellKnown_Unspecified;
   }
 }
 
@@ -663,7 +663,7 @@ bool upb_FieldDef_HasSubDef(const upb_FieldDef *f) {
 bool upb_FieldDef_HasPresence(const upb_FieldDef *f) {
   if (upb_FieldDef_IsRepeated(f)) return false;
   return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_ContainingOneof(f) ||
-         f->file->syntax == UPB_SYNTAX_PROTO2;
+         f->file->syntax == kUpb_Syntax_Proto2;
 }
 
 static bool between(int32_t x, int32_t low, int32_t high) {
@@ -704,7 +704,7 @@ const char *upb_MessageDef_Name(const upb_MessageDef *m) {
   return shortdefname(m->full_name);
 }
 
-upb_syntax_t upb_MessageDef_Syntax(const upb_MessageDef *m) {
+upb_Syntax upb_MessageDef_Syntax(const upb_MessageDef *m) {
   return m->file->syntax;
 }
 
@@ -841,7 +841,7 @@ const upb_FieldDef *upb_MessageDef_NestedExtension(const upb_MessageDef *m, int 
   return &m->nested_exts[i];
 }
 
-upb_wellknowntype_t upb_MessageDef_WellKnownType(const upb_MessageDef *m) {
+kUpb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef *m) {
   return m->well_known_type;
 }
 
@@ -916,7 +916,7 @@ const char *upb_FileDef_Package(const upb_FileDef *f) {
   return f->package;
 }
 
-upb_syntax_t upb_FileDef_Syntax(const upb_FileDef *f) {
+upb_Syntax upb_FileDef_Syntax(const upb_FileDef *f) {
   return f->syntax;
 }
 
@@ -1402,10 +1402,10 @@ static uint8_t map_descriptortype(const upb_FieldDef *f) {
   uint8_t type = upb_FieldDef_Type(f);
   /* See TableDescriptorType() in upbc/generator.cc for details and
    * rationale of these exceptions. */
-  if (type == UPB_DTYPE_STRING && f->file->syntax == UPB_SYNTAX_PROTO2) {
+  if (type == UPB_DTYPE_STRING && f->file->syntax == kUpb_Syntax_Proto2) {
     return UPB_DTYPE_BYTES;
   } else if (type == UPB_DTYPE_ENUM &&
-             f->sub.enumdef->file->syntax == UPB_SYNTAX_PROTO3) {
+             f->sub.enumdef->file->syntax == kUpb_Syntax_Proto3) {
     return UPB_DTYPE_INT32;
   }
   return type;
@@ -1473,7 +1473,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
       sublayout_count++;
     }
     if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
-        f->sub.enumdef->file->syntax == UPB_SYNTAX_PROTO2) {
+        f->sub.enumdef->file->syntax == kUpb_Syntax_Proto2) {
       sublayout_count++;
     }
   }
@@ -1573,7 +1573,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].submsg = upb_FieldDef_MessageSubDef(f)->layout;
     } else if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
-               f->file->syntax == UPB_SYNTAX_PROTO2) {
+               f->file->syntax == kUpb_Syntax_Proto2) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].subenum = upb_FieldDef_EnumSubDef(f)->layout;
       UPB_ASSERT(subs[field->submsg_index].subenum);
@@ -2296,7 +2296,7 @@ static void create_fielddef(
    * to the field_proto until later when we can properly resolve it. */
   f->sub.unresolved = field_proto;
 
-  if (f->label_ == UPB_LABEL_REQUIRED && f->file->syntax == UPB_SYNTAX_PROTO3) {
+  if (f->label_ == UPB_LABEL_REQUIRED && f->file->syntax == kUpb_Syntax_Proto3) {
     symtab_errf(ctx, "proto3 fields cannot be required (%s)", f->full_name);
   }
 
@@ -2344,7 +2344,7 @@ static void create_fielddef(
   } else {
     /* Repeated fields default to packed for proto3 only. */
     f->packed_ = upb_FieldDef_IsPrimitive(f) &&
-        f->label_ == UPB_LABEL_REPEATED && f->file->syntax == UPB_SYNTAX_PROTO3;
+        f->label_ == UPB_LABEL_REPEATED && f->file->syntax == kUpb_Syntax_Proto3;
   }
 }
 
@@ -2458,7 +2458,7 @@ static void create_enumvaldef(
 
   SET_OPTIONS(val->opts, EnumValueDescriptorProto, EnumValueOptions, val_proto);
 
-  if (i == 0 && e->file->syntax == UPB_SYNTAX_PROTO3 && val->number != 0) {
+  if (i == 0 && e->file->syntax == kUpb_Syntax_Proto3 && val->number != 0) {
     symtab_errf(ctx, "for proto3, the first enum value must be zero (%s)",
                 e->full_name);
   }
@@ -2511,7 +2511,7 @@ static void create_enumdef(
 
   upb_inttable_compact(&e->iton, ctx->arena);
 
-  if (e->file->syntax == UPB_SYNTAX_PROTO2) {
+  if (e->file->syntax == kUpb_Syntax_Proto2) {
     if (ctx->layout) {
       UPB_ASSERT(ctx->enum_count < ctx->layout->enum_count);
       e->layout = ctx->layout->enums[ctx->enum_count++];
@@ -2749,7 +2749,7 @@ static void resolve_default(
     upb_strview defaultval =
         google_protobuf_FieldDescriptorProto_default_value(field_proto);
 
-    if (f->file->syntax == UPB_SYNTAX_PROTO3) {
+    if (f->file->syntax == kUpb_Syntax_Proto3) {
       symtab_errf(ctx, "proto3 fields cannot have explicit defaults (%s)",
                   f->full_name);
     }
@@ -2881,15 +2881,15 @@ static void build_filedef(
     upb_strview syntax = google_protobuf_FileDescriptorProto_syntax(file_proto);
 
     if (streql_view(syntax, "proto2")) {
-      file->syntax = UPB_SYNTAX_PROTO2;
+      file->syntax = kUpb_Syntax_Proto2;
     } else if (streql_view(syntax, "proto3")) {
-      file->syntax = UPB_SYNTAX_PROTO3;
+      file->syntax = kUpb_Syntax_Proto3;
     } else {
       symtab_errf(ctx, "Invalid syntax '" UPB_STRVIEW_FORMAT "'",
                   UPB_STRVIEW_ARGS(syntax));
     }
   } else {
-    file->syntax = UPB_SYNTAX_PROTO2;
+    file->syntax = kUpb_Syntax_Proto2;
   }
 
   /* Read options. */

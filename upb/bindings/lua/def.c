@@ -947,6 +947,6 @@ void lupb_def_registertypes(lua_State *L) {
   lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT32",    UPB_DESCRIPTOR_TYPE_SINT32);
   lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT64",    UPB_DESCRIPTOR_TYPE_SINT64);
 
-  lupb_setfieldi(L, "SYNTAX_PROTO2",  UPB_SYNTAX_PROTO2);
-  lupb_setfieldi(L, "SYNTAX_PROTO3",  UPB_SYNTAX_PROTO3);
+  lupb_setfieldi(L, "SYNTAX_PROTO2",  kUpb_Syntax_Proto2);
+  lupb_setfieldi(L, "SYNTAX_PROTO3",  kUpb_Syntax_Proto3);
 }

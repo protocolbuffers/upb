@@ -556,7 +556,7 @@ static PyObject* PyUpb_Descriptor_GetOneofsByName(PyObject* _self,
 static PyObject* PyUpb_Descriptor_GetSyntax(PyObject* self, void* closure) {
   const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
   const char* syntax =
-      upb_MessageDef_Syntax(msgdef) == UPB_SYNTAX_PROTO2 ? "proto2" : "proto3";
+      upb_MessageDef_Syntax(msgdef) == kUpb_Syntax_Proto2 ? "proto2" : "proto3";
   return PyUnicode_InternFromString(syntax);
 }
 
@@ -1219,7 +1219,7 @@ static PyObject* PyUpb_FileDescriptor_GetSyntax(PyObject* _self,
                                                 void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   const char* syntax =
-      upb_FileDef_Syntax(self->def) == UPB_SYNTAX_PROTO2 ? "proto2" : "proto3";
+      upb_FileDef_Syntax(self->def) == kUpb_Syntax_Proto2 ? "proto2" : "proto3";
   return PyUnicode_FromString(syntax);
 }
 

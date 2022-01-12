@@ -25,19 +25,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * Defs are upb's internal representation of the constructs that can appear
- * in a .proto file:
- *
- * - upb_MessageDef: describes a "message" construct.
- * - upb_FieldDef: describes a message field.
- * - upb_FileDef: describes a .proto file and its defs.
- * - upb_EnumDef: describes an enum.
- * - upb_OneofDef: describes a oneof.
- *
- * TODO: definitions of services.
- */
-
 #ifndef UPB_DEF_H_
 #define UPB_DEF_H_
 
@@ -76,35 +63,35 @@ struct upb_DefPool;
 typedef struct upb_DefPool upb_DefPool;
 
 typedef enum {
-  UPB_SYNTAX_PROTO2 = 2,
-  UPB_SYNTAX_PROTO3 = 3
-} upb_syntax_t;
+  kUpb_Syntax_Proto2 = 2,
+  kUpb_Syntax_Proto3 = 3
+} upb_Syntax;
 
 /* All the different kind of well known type messages. For simplicity of check,
  * number wrappers and string wrappers are grouped together. Make sure the
  * order and merber of these groups are not changed.
  */
 typedef enum {
-  UPB_WELLKNOWN_UNSPECIFIED,
-  UPB_WELLKNOWN_ANY,
-  UPB_WELLKNOWN_FIELDMASK,
-  UPB_WELLKNOWN_DURATION,
-  UPB_WELLKNOWN_TIMESTAMP,
+  kUpb_WellKnown_Unspecified,
+  kUpb_WellKnown_Any,
+  kUpb_WellKnown_FieldMask,
+  kUpb_WellKnown_Duration,
+  kUpb_WellKnown_Timestamp,
   /* number wrappers */
-  UPB_WELLKNOWN_DOUBLEVALUE,
-  UPB_WELLKNOWN_FLOATVALUE,
-  UPB_WELLKNOWN_INT64VALUE,
-  UPB_WELLKNOWN_UINT64VALUE,
-  UPB_WELLKNOWN_INT32VALUE,
-  UPB_WELLKNOWN_UINT32VALUE,
+  kUpb_WellKnown_DoubleValue,
+  kUpb_WellKnown_FloatValue,
+  kUpb_WellKnown_Int64Value,
+  kUpb_WellKnown_UInt64Value,
+  kUpb_WellKnown_Int32Value,
+  kUpb_WellKnown_UInt32Value,
   /* string wrappers */
-  UPB_WELLKNOWN_STRINGVALUE,
-  UPB_WELLKNOWN_BYTESVALUE,
-  UPB_WELLKNOWN_BOOLVALUE,
-  UPB_WELLKNOWN_VALUE,
-  UPB_WELLKNOWN_LISTVALUE,
-  UPB_WELLKNOWN_STRUCT
-} upb_wellknowntype_t;
+  kUpb_WellKnown_StringValue,
+  kUpb_WellKnown_BytesValue,
+  kUpb_WellKnown_BoolValue,
+  kUpb_WellKnown_Value,
+  kUpb_WellKnown_ListValue,
+  kUpb_WellKnown_Struct
+} kUpb_WellKnown;
 
 /* upb_FieldDef ***************************************************************/
 
@@ -191,8 +178,8 @@ const char *upb_MessageDef_FullName(const upb_MessageDef *m);
 const upb_FileDef *upb_MessageDef_File(const upb_MessageDef *m);
 const upb_MessageDef *upb_MessageDef_ContainingType(const upb_MessageDef *m);
 const char *upb_MessageDef_Name(const upb_MessageDef *m);
-upb_syntax_t upb_MessageDef_Syntax(const upb_MessageDef *m);
-upb_wellknowntype_t upb_MessageDef_WellKnownType(const upb_MessageDef *m);
+upb_Syntax upb_MessageDef_Syntax(const upb_MessageDef *m);
+kUpb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef *m);
 bool upb_MessageDef_iswrapper(const upb_MessageDef *m);
 bool upb_MessageDef_isnumberwrapper(const upb_MessageDef *m);
 int upb_MessageDef_ExtensionRangeCount(const upb_MessageDef *m);
@@ -298,7 +285,7 @@ const google_protobuf_FileOptions *upb_FileDef_Options(const upb_FileDef *f);
 bool upb_FileDef_HasOptions(const upb_FileDef *f);
 const char *upb_FileDef_Name(const upb_FileDef *f);
 const char *upb_FileDef_Package(const upb_FileDef *f);
-upb_syntax_t upb_FileDef_Syntax(const upb_FileDef *f);
+upb_Syntax upb_FileDef_Syntax(const upb_FileDef *f);
 int upb_FileDef_DependencyCount(const upb_FileDef *f);
 int upb_FileDef_PublicDependencyCount(const upb_FileDef *f);
 int upb_FileDef_WeakDependencyCount(const upb_FileDef *f);

@@ -429,7 +429,7 @@ static google_protobuf_FileDescriptorProto *filedef_toproto(
     }
   }
 
-  if (upb_FileDef_Syntax(f) == UPB_SYNTAX_PROTO3) {
+  if (upb_FileDef_Syntax(f) == kUpb_Syntax_Proto3) {
     google_protobuf_FileDescriptorProto_set_syntax(proto,
                                                    strviewdup(ctx, "proto3"));
   }
