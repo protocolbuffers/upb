@@ -54,8 +54,8 @@ extern "C" {
 
 struct upb_EnumDef;
 typedef struct upb_EnumDef upb_EnumDef;
-struct upb_enumvaldef;
-typedef struct upb_enumvaldef upb_enumvaldef;
+struct upb_EnumValueDef;
+typedef struct upb_EnumValueDef upb_EnumValueDef;
 struct upb_ExtensionRange;
 typedef struct upb_ExtensionRange upb_ExtensionRange;
 struct upb_FieldDef;
@@ -260,8 +260,6 @@ int32_t upb_ExtensionRange_End(const upb_ExtensionRange *r);
 
 /* upb_EnumDef ****************************************************************/
 
-typedef upb_strtable_iter upb_enum_iter;
-
 const google_protobuf_EnumOptions *upb_EnumDef_Options(const upb_EnumDef *e);
 bool upb_EnumDef_HasOptions(const upb_EnumDef *e);
 const char *upb_EnumDef_FullName(const upb_EnumDef *e);
@@ -270,38 +268,29 @@ const upb_filedef *upb_EnumDef_File(const upb_EnumDef *e);
 const upb_MessageDef *upb_EnumDef_ContainingType(const upb_EnumDef *e);
 int32_t upb_EnumDef_Default(const upb_EnumDef *e);
 int upb_EnumDef_ValueCount(const upb_EnumDef *e);
-const upb_enumvaldef *upb_EnumDef_Value(const upb_EnumDef *e, int i);
+const upb_EnumValueDef *upb_EnumDef_Value(const upb_EnumDef *e, int i);
 
-const upb_enumvaldef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *e,
+const upb_EnumValueDef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *e,
                                              const char *name, size_t len);
-const upb_enumvaldef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *e, int32_t num);
+const upb_EnumValueDef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *e, int32_t num);
 bool upb_EnumDef_CheckNumber(const upb_EnumDef *e, int32_t num);
 
-/* DEPRECATED, slated for removal */
-int upb_EnumDef_numvals(const upb_EnumDef *e);
-void upb_enum_begin(upb_enum_iter *iter, const upb_EnumDef *e);
-void upb_enum_next(upb_enum_iter *iter);
-bool upb_enum_done(upb_enum_iter *iter);
-const char *upb_enum_iter_name(upb_enum_iter *iter);
-int32_t upb_enum_iter_number(upb_enum_iter *iter);
-/* END DEPRECATED */
-
 // Convenience wrapper.
-UPB_INLINE const upb_enumvaldef *upb_EnumDef_FindValueByName(const upb_EnumDef *e,
+UPB_INLINE const upb_EnumValueDef *upb_EnumDef_FindValueByName(const upb_EnumDef *e,
                                                          const char *name) {
   return upb_EnumDef_FindValueByNameWithSize(e, name, strlen(name));
 }
 
-/* upb_enumvaldef *************************************************************/
+/* upb_EnumValueDef *************************************************************/
 
-const google_protobuf_EnumValueOptions *upb_enumvaldef_options(
-    const upb_enumvaldef *e);
-bool upb_enumvaldef_hasoptions(const upb_enumvaldef *e);
-const char *upb_enumvaldef_fullname(const upb_enumvaldef *e);
-const char *upb_enumvaldef_name(const upb_enumvaldef *e);
-int32_t upb_enumvaldef_number(const upb_enumvaldef *e);
-uint32_t upb_enumvaldef_index(const upb_enumvaldef *e);
-const upb_EnumDef *upb_enumvaldef_enum(const upb_enumvaldef *e);
+const google_protobuf_EnumValueOptions *upb_EnumValueDef_Options(
+    const upb_EnumValueDef *e);
+bool upb_EnumValueDef_HasOptions(const upb_EnumValueDef *e);
+const char *upb_EnumValueDef_FullName(const upb_EnumValueDef *e);
+const char *upb_EnumValueDef_Name(const upb_EnumValueDef *e);
+int32_t upb_EnumValueDef_Number(const upb_EnumValueDef *e);
+uint32_t upb_EnumValueDef_Index(const upb_EnumValueDef *e);
+const upb_EnumDef *upb_EnumValueDef_Enum(const upb_EnumValueDef *e);
 
 /* upb_filedef ****************************************************************/
 
@@ -365,7 +354,7 @@ const upb_MessageDef *upb_symtab_lookupmsg(const upb_symtab *s, const char *sym)
 const upb_MessageDef *upb_symtab_lookupmsg2(
     const upb_symtab *s, const char *sym, size_t len);
 const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
-const upb_enumvaldef *upb_symtab_lookupenumval(const upb_symtab *s,
+const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
                                                const char *sym);
 const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
 const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,

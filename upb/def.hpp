@@ -289,14 +289,14 @@ class MessageDefPtr {
 class EnumValDefPtr {
  public:
   EnumValDefPtr() : ptr_(nullptr) {}
-  explicit EnumValDefPtr(const upb_enumvaldef* ptr) : ptr_(ptr) {}
+  explicit EnumValDefPtr(const upb_EnumValueDef* ptr) : ptr_(ptr) {}
 
-  int32_t number() const { return upb_enumvaldef_number(ptr_); }
-  const char *full_name() const { return upb_enumvaldef_fullname(ptr_); }
-  const char *name() const { return upb_enumvaldef_name(ptr_); }
+  int32_t number() const { return upb_EnumValueDef_Number(ptr_); }
+  const char *full_name() const { return upb_EnumValueDef_FullName(ptr_); }
+  const char *name() const { return upb_EnumValueDef_Name(ptr_); }
 
  private:
-  const upb_enumvaldef* ptr_;
+  const upb_EnumValueDef* ptr_;
 };
 
 class EnumDefPtr {
@@ -319,7 +319,7 @@ class EnumDefPtr {
   // Returns the number of values currently defined in the enum.  Note that
   // multiple names can refer to the same number, so this may be greater than
   // the total number of unique numbers.
-  int value_count() const { return upb_EnumDef_numvals(ptr_); }
+  int value_count() const { return upb_EnumDef_ValueCount(ptr_); }
 
   // Lookups from name to integer, returning true if found.
   EnumValDefPtr FindValueByName(const char* name) const {
@@ -332,23 +332,6 @@ class EnumDefPtr {
   EnumValDefPtr FindValueByNumber(int32_t num) const {
     return EnumValDefPtr(upb_EnumDef_FindValueByNumber(ptr_, num));
   }
-
-  // Iteration over name/value pairs.  The order is undefined.
-  // Adding an enum val invalidates any iterators.
-  //
-  // TODO: make compatible with range-for, with elements as pairs?
-  class Iterator {
-   public:
-    explicit Iterator(EnumDefPtr e) { upb_enum_begin(&iter_, e.ptr()); }
-
-    int32_t number() { return upb_enum_iter_number(&iter_); }
-    const char* name() { return upb_enum_iter_name(&iter_); }
-    bool Done() { return upb_enum_done(&iter_); }
-    void Next() { return upb_enum_next(&iter_); }
-
-   private:
-    upb_enum_iter iter_;
-  };
 
  private:
   const upb_EnumDef* ptr_;

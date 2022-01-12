@@ -327,12 +327,12 @@ static PyObject* PyUpb_Descriptor_EnumValueName(PyObject* _self,
     PyErr_SetString(PyExc_KeyError, enum_name);
     return NULL;
   }
-  const upb_enumvaldef* ev = upb_EnumDef_FindValueByNumber(e, number);
+  const upb_EnumValueDef* ev = upb_EnumDef_FindValueByNumber(e, number);
   if (!ev) {
     PyErr_Format(PyExc_KeyError, "%d", number);
     return NULL;
   }
-  return PyUnicode_FromString(upb_enumvaldef_name(ev));
+  return PyUnicode_FromString(upb_EnumValueDef_Name(ev));
 }
 
 static PyObject* PyUpb_Descriptor_GetFieldsByName(PyObject* _self,
@@ -524,9 +524,9 @@ static PyObject* PyUpb_Descriptor_GetEnumValuesByName(PyObject* _self,
       // constraint proactively, but upb is always checking a subset of the full
       // validation performed by C++, and we have to pick and choose the biggest
       // bang for the buck.
-      const upb_enumvaldef* ev = upb_EnumDef_Value(e, j);
-      const char* name = upb_enumvaldef_name(ev);
-      PyObject* val = PyLong_FromLong(upb_enumvaldef_number(ev));
+      const upb_EnumValueDef* ev = upb_EnumDef_Value(e, j);
+      const char* name = upb_EnumValueDef_Name(ev);
+      PyObject* val = PyLong_FromLong(upb_EnumValueDef_Number(ev));
       if (!val || PyDict_SetItemString(ret, name, val) < 0) {
         Py_XDECREF(val);
         Py_DECREF(ret);
@@ -674,7 +674,7 @@ static PyObject* PyUpb_EnumDescriptor_GetValuesByName(PyObject* _self,
           (void*)&PyUpb_EnumValueDescriptor_Get,
       },
       (void*)&upb_EnumDef_FindValueByName,
-      (void*)&upb_enumvaldef_name,
+      (void*)&upb_EnumValueDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -689,7 +689,7 @@ static PyObject* PyUpb_EnumDescriptor_GetValuesByNumber(PyObject* _self,
           (void*)&PyUpb_EnumValueDescriptor_Get,
       },
       (void*)&upb_EnumDef_FindValueByNumber,
-      (void*)&upb_enumvaldef_number,
+      (void*)&upb_EnumValueDef_Number,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNumberMap_New(&funcs, self->def, self->pool);
@@ -761,46 +761,46 @@ static PyType_Spec PyUpb_EnumDescriptor_Spec = {
 // EnumValueDescriptor
 // -----------------------------------------------------------------------------
 
-PyObject* PyUpb_EnumValueDescriptor_Get(const upb_enumvaldef* ev) {
-  const upb_filedef* file = upb_EnumDef_File(upb_enumvaldef_enum(ev));
+PyObject* PyUpb_EnumValueDescriptor_Get(const upb_EnumValueDef* ev) {
+  const upb_filedef* file = upb_EnumDef_File(upb_EnumValueDef_Enum(ev));
   return PyUpb_DescriptorBase_Get(kPyUpb_EnumValueDescriptor, ev, file);
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetName(PyObject* self,
                                                    void* closure) {
   PyUpb_DescriptorBase* base = (PyUpb_DescriptorBase*)self;
-  return PyUnicode_FromString(upb_enumvaldef_name(base->def));
+  return PyUnicode_FromString(upb_EnumValueDef_Name(base->def));
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetNumber(PyObject* self,
                                                      void* closure) {
   PyUpb_DescriptorBase* base = (PyUpb_DescriptorBase*)self;
-  return PyLong_FromLong(upb_enumvaldef_number(base->def));
+  return PyLong_FromLong(upb_EnumValueDef_Number(base->def));
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetIndex(PyObject* self,
                                                     void* closure) {
   PyUpb_DescriptorBase* base = (PyUpb_DescriptorBase*)self;
-  return PyLong_FromLong(upb_enumvaldef_index(base->def));
+  return PyLong_FromLong(upb_EnumValueDef_Index(base->def));
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetType(PyObject* self,
                                                    void* closure) {
   PyUpb_DescriptorBase* base = (PyUpb_DescriptorBase*)self;
-  return PyUpb_EnumDescriptor_Get(upb_enumvaldef_enum(base->def));
+  return PyUpb_EnumDescriptor_Get(upb_EnumValueDef_Enum(base->def));
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetHasOptions(PyObject* _self,
                                                          void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  return PyBool_FromLong(upb_enumvaldef_hasoptions(self->def));
+  return PyBool_FromLong(upb_EnumValueDef_HasOptions(self->def));
 }
 
 static PyObject* PyUpb_EnumValueDescriptor_GetOptions(PyObject* _self,
                                                       PyObject* args) {
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_DescriptorBase_GetOptions(
-      self, upb_enumvaldef_options(self->def),
+      self, upb_EnumValueDef_Options(self->def),
       &google_protobuf_EnumValueOptions_msginit,
       "google.protobuf.EnumValueOptions");
 }

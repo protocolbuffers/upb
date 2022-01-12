@@ -43,7 +43,7 @@ google_protobuf_DescriptorProto* upb_MessageDef_ToProto(const upb_MessageDef* m,
 google_protobuf_EnumDescriptorProto* upb_EnumDef_ToProto(const upb_EnumDef* e,
                                                          upb_arena* a);
 google_protobuf_EnumValueDescriptorProto* upb_EnumValueDef_ToProto(
-    const upb_enumvaldef* e, upb_arena* a);
+    const upb_EnumValueDef* e, upb_arena* a);
 google_protobuf_FieldDescriptorProto* upb_FieldDef_ToProto(
     const upb_FieldDef* f, upb_arena* a);
 google_protobuf_OneofDescriptorProto* upb_OneofDef_ToProto(

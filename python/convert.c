@@ -162,12 +162,12 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_EnumDef *e,
   if (PyUnicode_Check(obj)) {
     Py_ssize_t size;
     const char *name = PyUnicode_AsUTF8AndSize(obj, &size);
-    const upb_enumvaldef *ev = upb_EnumDef_FindValueByNameWithSize(e, name, size);
+    const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNameWithSize(e, name, size);
     if (!ev) {
       PyErr_Format(PyExc_ValueError, "unknown enum label \"%s\"", name);
       return false;
     }
-    val->int32_val = upb_enumvaldef_number(ev);
+    val->int32_val = upb_EnumValueDef_Number(ev);
     return true;
   } else {
     int32_t i32;

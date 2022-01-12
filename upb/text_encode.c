@@ -102,10 +102,10 @@ static void txtenc_endfield(txtenc *e) {
 
 static void txtenc_enum(int32_t val, const upb_FieldDef *f, txtenc *e) {
   const upb_EnumDef *e_def = upb_FieldDef_EnumSubDef(f);
-  const upb_enumvaldef *ev = upb_EnumDef_FindValueByNumber(e_def, val);
+  const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNumber(e_def, val);
 
   if (ev) {
-    txtenc_printf(e, "%s", upb_enumvaldef_name(ev));
+    txtenc_printf(e, "%s", upb_EnumValueDef_Name(ev));
   } else {
     txtenc_printf(e, "%" PRId32, val);
   }

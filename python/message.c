@@ -1676,7 +1676,7 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
   PyObject* ret = NULL;
   const upb_MessageDef* nested = upb_symtab_lookupmsg(symtab, key);
   const upb_EnumDef* enumdef;
-  const upb_enumvaldef* enumval;
+  const upb_EnumValueDef* enumval;
   const upb_FieldDef* ext;
 
   if (nested) {
@@ -1687,7 +1687,7 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
     ret = PyUpb_EnumDescriptor_Get(enumdef);
     ret = PyObject_CallFunctionObjArgs(klass, ret, NULL);
   } else if ((enumval = upb_symtab_lookupenumval(symtab, key))) {
-    ret = PyLong_FromLong(upb_enumvaldef_number(enumval));
+    ret = PyLong_FromLong(upb_EnumValueDef_Number(enumval));
   } else if ((ext = upb_symtab_lookupext(symtab, key))) {
     ret = PyUpb_FieldDescriptor_Get(ext);
   }

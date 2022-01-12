@@ -128,8 +128,8 @@ static upb_strview default_string(upb_ToProto_Context *ctx,
       return strviewdup(ctx, d.bool_val ? "true" : "false");
     case UPB_TYPE_ENUM: {
       const upb_EnumDef *e = upb_FieldDef_EnumSubDef(f);
-      const upb_enumvaldef *ev = upb_EnumDef_FindValueByNumber(e, d.int32_val);
-      return strviewdup(ctx, upb_enumvaldef_name(ev));
+      const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNumber(e, d.int32_val);
+      return strviewdup(ctx, upb_EnumValueDef_Name(ev));
     }
     case UPB_TYPE_INT64:
       return printf_dup(ctx, "%" PRId64, d.int64_val);
@@ -226,19 +226,19 @@ static google_protobuf_OneofDescriptorProto *oneofdef_toproto(
 }
 
 static google_protobuf_EnumValueDescriptorProto *enumvaldef_toproto(
-    upb_ToProto_Context *ctx, const upb_enumvaldef *e) {
+    upb_ToProto_Context *ctx, const upb_EnumValueDef *e) {
   google_protobuf_EnumValueDescriptorProto *proto =
       google_protobuf_EnumValueDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_EnumValueDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_enumvaldef_name(e)));
+      proto, strviewdup(ctx, upb_EnumValueDef_Name(e)));
   google_protobuf_EnumValueDescriptorProto_set_number(proto,
-                                                      upb_enumvaldef_number(e));
+                                                      upb_EnumValueDef_Number(e));
 
-  if (upb_enumvaldef_hasoptions(e)) {
+  if (upb_EnumValueDef_HasOptions(e)) {
     SET_OPTIONS(proto, EnumValueDescriptorProto, EnumValueOptions,
-                upb_enumvaldef_options(e));
+                upb_EnumValueDef_Options(e));
   }
 
   return proto;
@@ -510,7 +510,7 @@ google_protobuf_EnumDescriptorProto *upb_EnumDef_ToProto(const upb_EnumDef *e,
 }
 
 google_protobuf_EnumValueDescriptorProto *upb_EnumValueDef_ToProto(
-    const upb_enumvaldef *e, upb_arena *a) {
+    const upb_EnumValueDef *e, upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return enumvaldef_toproto(&ctx, e);

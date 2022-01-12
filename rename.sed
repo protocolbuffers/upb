@@ -107,3 +107,12 @@ s/upb_enumdef_lookupname/upb_EnumDef_FindValueByNameWithSize/g;
 s/upb_enumdef_lookupnum/upb_EnumDef_FindValueByNumber/g;
 s/upb_enumdef_checknum/upb_EnumDef_CheckNumber/g;
 s/upb_enumdef/upb_EnumDef/g;
+
+s/upb_enumvaldef_options/upb_EnumValueDef_Options/g;
+s/upb_enumvaldef_hasoptions/upb_EnumValueDef_HasOptions/g;
+s/upb_enumvaldef_fullname/upb_EnumValueDef_FullName/g;
+s/upb_enumvaldef_name/upb_EnumValueDef_Name/g;
+s/upb_enumvaldef_number/upb_EnumValueDef_Number/g;
+s/upb_enumvaldef_index/upb_EnumValueDef_Index/g;
+s/upb_enumvaldef_enum/upb_EnumValueDef_Enum/g;
+s/upb_enumvaldef\b/upb_EnumValueDef/g;

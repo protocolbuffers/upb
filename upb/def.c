@@ -133,12 +133,12 @@ struct upb_EnumDef {
   const char *full_name;
   upb_strtable ntoi;
   upb_inttable iton;
-  const upb_enumvaldef *values;
+  const upb_EnumValueDef *values;
   int value_count;
   int32_t defaultval;
 };
 
-struct upb_enumvaldef {
+struct upb_EnumValueDef {
   const google_protobuf_EnumValueOptions *opts;
   const upb_EnumDef *parent;
   const char *full_name;
@@ -393,7 +393,7 @@ int upb_EnumDef_ValueCount(const upb_EnumDef *e) {
   return e->value_count;
 }
 
-const upb_enumvaldef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *def,
+const upb_EnumValueDef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *def,
                                              const char *name, size_t len) {
   upb_value v;
   return upb_strtable_lookup2(&def->ntoi, name, len, &v)
@@ -401,7 +401,7 @@ const upb_enumvaldef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *def
              : NULL;
 }
 
-const upb_enumvaldef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *def, int32_t num) {
+const upb_EnumValueDef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *def, int32_t num) {
   upb_value v;
   return upb_inttable_lookup(&def->iton, num, &v) ? upb_value_getconstptr(v)
                                                   : NULL;
@@ -413,62 +413,39 @@ bool upb_EnumDef_CheckNumber(const upb_EnumDef *e, int32_t num) {
   return _upb_enumlayout_checkval(e->layout, num);
 }
 
-const upb_enumvaldef *upb_EnumDef_Value(const upb_EnumDef *e, int i) {
+const upb_EnumValueDef *upb_EnumDef_Value(const upb_EnumDef *e, int i) {
   UPB_ASSERT(0 <= i && i < e->value_count);
   return &e->values[i];
 }
 
-// Deprecated functions.
+/* upb_EnumValueDef *************************************************************/
 
-int upb_EnumDef_numvals(const upb_EnumDef *e) {
-  return (int)upb_strtable_count(&e->ntoi);
-}
-
-void upb_enum_begin(upb_enum_iter *i, const upb_EnumDef *e) {
-  /* We iterate over the ntoi table, to account for duplicate numbers. */
-  upb_strtable_begin(i, &e->ntoi);
-}
-
-void upb_enum_next(upb_enum_iter *iter) { upb_strtable_next(iter); }
-bool upb_enum_done(upb_enum_iter *iter) { return upb_strtable_done(iter); }
-
-const char *upb_enum_iter_name(upb_enum_iter *iter) {
-  return upb_strtable_iter_key(iter).data;
-}
-
-int32_t upb_enum_iter_number(upb_enum_iter *iter) {
-  return upb_value_getint32(upb_strtable_iter_value(iter));
-}
-
-
-/* upb_enumvaldef *************************************************************/
-
-const google_protobuf_EnumValueOptions *upb_enumvaldef_options(
-    const upb_enumvaldef *e) {
+const google_protobuf_EnumValueOptions *upb_EnumValueDef_Options(
+    const upb_EnumValueDef *e) {
   return e->opts;
 }
 
-bool upb_enumvaldef_hasoptions(const upb_enumvaldef *e) {
+bool upb_EnumValueDef_HasOptions(const upb_EnumValueDef *e) {
   return e->opts != (void*)opt_default;
 }
 
-const upb_EnumDef *upb_enumvaldef_enum(const upb_enumvaldef *ev) {
+const upb_EnumDef *upb_EnumValueDef_Enum(const upb_EnumValueDef *ev) {
   return ev->parent;
 }
 
-const char *upb_enumvaldef_fullname(const upb_enumvaldef *ev) {
+const char *upb_EnumValueDef_FullName(const upb_EnumValueDef *ev) {
   return ev->full_name;
 }
 
-const char *upb_enumvaldef_name(const upb_enumvaldef *ev) {
+const char *upb_EnumValueDef_Name(const upb_EnumValueDef *ev) {
   return shortdefname(ev->full_name);
 }
 
-int32_t upb_enumvaldef_number(const upb_enumvaldef *ev) {
+int32_t upb_EnumValueDef_Number(const upb_EnumValueDef *ev) {
   return ev->number;
 }
 
-uint32_t upb_enumvaldef_index(const upb_enumvaldef *ev) {
+uint32_t upb_EnumValueDef_Index(const upb_EnumValueDef *ev) {
   // Compute index in our parent's array.
   return ev - ev->parent->values;
 }
@@ -1172,7 +1149,7 @@ const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUM);
 }
 
-const upb_enumvaldef *upb_symtab_lookupenumval(const upb_symtab *s,
+const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
                                                const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUMVAL);
 }
@@ -1240,8 +1217,8 @@ const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
         return upb_EnumDef_File(e);
       }
       case UPB_DEFTYPE_ENUMVAL: {
-        const upb_enumvaldef *ev = unpack_def(v, UPB_DEFTYPE_ENUMVAL);
-        return upb_EnumDef_File(upb_enumvaldef_enum(ev));
+        const upb_EnumValueDef *ev = unpack_def(v, UPB_DEFTYPE_ENUMVAL);
+        return upb_EnumDef_File(upb_EnumValueDef_Enum(ev));
       }
       case UPB_DEFTYPE_SERVICE: {
         const upb_servicedef *service = unpack_def(v, UPB_DEFTYPE_SERVICE);
@@ -2080,7 +2057,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
     }
     case UPB_TYPE_ENUM: {
       const upb_EnumDef *e = f->sub.enumdef;
-      const upb_enumvaldef *ev = upb_EnumDef_FindValueByNameWithSize(e, str, len);
+      const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNameWithSize(e, str, len);
       if (!ev) {
         goto invalid;
       }
@@ -2489,7 +2466,7 @@ static void create_enumvaldef(
     symtab_addctx *ctx, const char *prefix,
     const google_protobuf_EnumValueDescriptorProto *val_proto, upb_EnumDef *e,
     int i) {
-  upb_enumvaldef *val = (upb_enumvaldef *)&e->values[i];
+  upb_EnumValueDef *val = (upb_EnumValueDef *)&e->values[i];
   upb_strview name = google_protobuf_EnumValueDescriptorProto_name(val_proto);
   upb_value v = upb_value_constptr(val);
 
@@ -3045,7 +3022,7 @@ static void remove_filedef(upb_symtab *s, upb_filedef *file) {
         break;
       case UPB_DEFTYPE_ENUMVAL:
         f = upb_EnumDef_File(
-            upb_enumvaldef_enum(unpack_def(val, UPB_DEFTYPE_ENUMVAL)));
+            upb_EnumValueDef_Enum(unpack_def(val, UPB_DEFTYPE_ENUMVAL)));
         break;
       case UPB_DEFTYPE_SERVICE:
         f = upb_servicedef_file(unpack_def(val, UPB_DEFTYPE_SERVICE));
