@@ -140,3 +140,14 @@ s/upb_filedef_symtab/upb_FileDef_Pool/g;
 s/_upb_filedef_publicdepnums/_upb_FileDef_PublicDependencyNumbers/g;
 s/_upb_filedef_weakdepnums/_upb_FileDef_WeakDependencyNumbers/g;
 s/upb_filedef/upb_FileDef/g;
+
+s/upb_methoddef_options/upb_MethodDef_Options/g;
+s/upb_methoddef_hasoptions/upb_MethodDef_HasOptions/g;
+s/upb_methoddef_fullname/upb_MethodDef_FullName/g;
+s/upb_methoddef_name/upb_MethodDef_Name/g;
+s/upb_methoddef_service/upb_MethodDef_Service/g;
+s/upb_methoddef_inputtype/upb_MethodDef_InputType/g;
+s/upb_methoddef_outputtype/upb_MethodDef_OutputType/g;
+s/upb_methoddef_clientstreaming/upb_MethodDef_ClientStreaming/g;
+s/upb_methoddef_serverstreaming/upb_MethodDef_ServerStreaming/g;
+s/upb_methoddef/upb_MethodDef/g;

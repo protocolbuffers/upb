@@ -357,30 +357,30 @@ static google_protobuf_DescriptorProto *msgdef_toproto(upb_ToProto_Context *ctx,
 }
 
 static google_protobuf_MethodDescriptorProto *methoddef_toproto(
-    upb_ToProto_Context *ctx, const upb_methoddef *m) {
+    upb_ToProto_Context *ctx, const upb_MethodDef *m) {
   google_protobuf_MethodDescriptorProto *proto =
       google_protobuf_MethodDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_MethodDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_methoddef_name(m)));
+      proto, strviewdup(ctx, upb_MethodDef_Name(m)));
 
   google_protobuf_MethodDescriptorProto_set_input_type(
-      proto, qual_dup(ctx, upb_MessageDef_FullName(upb_methoddef_inputtype(m))));
+      proto, qual_dup(ctx, upb_MessageDef_FullName(upb_MethodDef_InputType(m))));
   google_protobuf_MethodDescriptorProto_set_output_type(
-      proto, qual_dup(ctx, upb_MessageDef_FullName(upb_methoddef_outputtype(m))));
+      proto, qual_dup(ctx, upb_MessageDef_FullName(upb_MethodDef_OutputType(m))));
 
-  if (upb_methoddef_clientstreaming(m)) {
+  if (upb_MethodDef_ClientStreaming(m)) {
     google_protobuf_MethodDescriptorProto_set_client_streaming(proto, true);
   }
 
-  if (upb_methoddef_serverstreaming(m)) {
+  if (upb_MethodDef_ServerStreaming(m)) {
     google_protobuf_MethodDescriptorProto_set_server_streaming(proto, true);
   }
 
-  if (upb_methoddef_hasoptions(m)) {
+  if (upb_MethodDef_HasOptions(m)) {
     SET_OPTIONS(proto, MethodDescriptorProto, MethodOptions,
-                upb_methoddef_options(m));
+                upb_MethodDef_Options(m));
   }
 
   return proto;
@@ -538,7 +538,7 @@ google_protobuf_FileDescriptorProto *upb_FileDef_ToProto(const upb_FileDef *f,
 }
 
 google_protobuf_MethodDescriptorProto *upb_MethodDef_ToProto(
-    const upb_methoddef *m, upb_arena *a) {
+    const upb_MethodDef *m, upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return methoddef_toproto(&ctx, m);

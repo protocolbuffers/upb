@@ -1295,50 +1295,50 @@ const upb_FileDef* PyUpb_FileDescriptor_GetDef(PyObject* _self) {
 // MethodDescriptor
 // -----------------------------------------------------------------------------
 
-const upb_methoddef* PyUpb_MethodDescriptor_GetDef(PyObject* _self) {
+const upb_MethodDef* PyUpb_MethodDescriptor_GetDef(PyObject* _self) {
   PyUpb_DescriptorBase* self =
       PyUpb_DescriptorBase_Check(_self, kPyUpb_MethodDescriptor);
   return self ? self->def : NULL;
 }
 
-PyObject* PyUpb_MethodDescriptor_Get(const upb_methoddef* m) {
-  const upb_FileDef* file = upb_servicedef_file(upb_methoddef_service(m));
+PyObject* PyUpb_MethodDescriptor_Get(const upb_MethodDef* m) {
+  const upb_FileDef* file = upb_servicedef_file(upb_MethodDef_Service(m));
   return PyUpb_DescriptorBase_Get(kPyUpb_MethodDescriptor, m, file);
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetName(PyObject* self, void* closure) {
-  const upb_methoddef* m = PyUpb_MethodDescriptor_GetDef(self);
-  return PyUnicode_FromString(upb_methoddef_name(m));
+  const upb_MethodDef* m = PyUpb_MethodDescriptor_GetDef(self);
+  return PyUnicode_FromString(upb_MethodDef_Name(m));
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetFullName(PyObject* self,
                                                     void* closure) {
-  const upb_methoddef* m = PyUpb_MethodDescriptor_GetDef(self);
-  return PyUnicode_FromString(upb_methoddef_fullname(m));
+  const upb_MethodDef* m = PyUpb_MethodDescriptor_GetDef(self);
+  return PyUnicode_FromString(upb_MethodDef_FullName(m));
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetContainingService(PyObject* self,
                                                              void* closure) {
-  const upb_methoddef* m = PyUpb_MethodDescriptor_GetDef(self);
-  return PyUpb_ServiceDescriptor_Get(upb_methoddef_service(m));
+  const upb_MethodDef* m = PyUpb_MethodDescriptor_GetDef(self);
+  return PyUpb_ServiceDescriptor_Get(upb_MethodDef_Service(m));
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetInputType(PyObject* self,
                                                      void* closure) {
-  const upb_methoddef* m = PyUpb_MethodDescriptor_GetDef(self);
-  return PyUpb_Descriptor_Get(upb_methoddef_inputtype(m));
+  const upb_MethodDef* m = PyUpb_MethodDescriptor_GetDef(self);
+  return PyUpb_Descriptor_Get(upb_MethodDef_InputType(m));
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetOutputType(PyObject* self,
                                                       void* closure) {
-  const upb_methoddef* m = PyUpb_MethodDescriptor_GetDef(self);
-  return PyUpb_Descriptor_Get(upb_methoddef_outputtype(m));
+  const upb_MethodDef* m = PyUpb_MethodDescriptor_GetDef(self);
+  return PyUpb_Descriptor_Get(upb_MethodDef_OutputType(m));
 }
 
 static PyObject* PyUpb_MethodDescriptor_GetOptions(PyObject* _self,
                                                    PyObject* args) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  return PyUpb_DescriptorBase_GetOptions(self, upb_methoddef_options(self->def),
+  return PyUpb_DescriptorBase_GetOptions(self, upb_MethodDef_Options(self->def),
                                          &google_protobuf_MethodOptions_msginit,
                                          "google.protobuf.MethodOptions");
 }
@@ -1532,7 +1532,7 @@ static PyObject* PyUpb_ServiceDescriptor_GetMethodsByName(PyObject* _self,
           (void*)&PyUpb_MethodDescriptor_Get,
       },
       (void*)&upb_servicedef_lookupmethod,
-      (void*)&upb_methoddef_name,
+      (void*)&upb_MethodDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -1559,7 +1559,7 @@ static PyObject* PyUpb_ServiceDescriptor_FindMethodByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   const char* name = PyUnicode_AsUTF8AndSize(py_name, NULL);
   if (!name) return NULL;
-  const upb_methoddef* method = upb_servicedef_lookupmethod(self->def, name);
+  const upb_MethodDef* method = upb_servicedef_lookupmethod(self->def, name);
   if (method == NULL) {
     return PyErr_Format(PyExc_KeyError, "Couldn't find method %.200s", name);
   }

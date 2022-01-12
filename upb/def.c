@@ -182,7 +182,7 @@ struct upb_FileDef {
   upb_syntax_t syntax;
 };
 
-struct upb_methoddef {
+struct upb_MethodDef {
   const google_protobuf_MethodOptions *opts;
   upb_servicedef *service;
   const char *full_name;
@@ -196,7 +196,7 @@ struct upb_servicedef {
   const google_protobuf_ServiceOptions *opts;
   const upb_FileDef *file;
   const char *full_name;
-  upb_methoddef *methods;
+  upb_MethodDef *methods;
   int method_count;
   int index;
 };
@@ -1001,42 +1001,42 @@ const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f) {
   return f->symtab;
 }
 
-/* upb_methoddef **************************************************************/
+/* upb_MethodDef **************************************************************/
 
-const google_protobuf_MethodOptions *upb_methoddef_options(
-    const upb_methoddef *m) {
+const google_protobuf_MethodOptions *upb_MethodDef_Options(
+    const upb_MethodDef *m) {
   return m->opts;
 }
 
-bool upb_methoddef_hasoptions(const upb_methoddef *m) {
+bool upb_MethodDef_HasOptions(const upb_MethodDef *m) {
   return m->opts != (void*)opt_default;
 }
 
-const char *upb_methoddef_fullname(const upb_methoddef *m) {
+const char *upb_MethodDef_FullName(const upb_MethodDef *m) {
   return m->full_name;
 }
 
-const char *upb_methoddef_name(const upb_methoddef *m) {
+const char *upb_MethodDef_Name(const upb_MethodDef *m) {
   return shortdefname(m->full_name);
 }
 
-const upb_servicedef *upb_methoddef_service(const upb_methoddef *m) {
+const upb_servicedef *upb_MethodDef_Service(const upb_MethodDef *m) {
   return m->service;
 }
 
-const upb_MessageDef *upb_methoddef_inputtype(const upb_methoddef *m) {
+const upb_MessageDef *upb_MethodDef_InputType(const upb_MethodDef *m) {
   return m->input_type;
 }
 
-const upb_MessageDef *upb_methoddef_outputtype(const upb_methoddef *m) {
+const upb_MessageDef *upb_MethodDef_OutputType(const upb_MethodDef *m) {
   return m->output_type;
 }
 
-bool upb_methoddef_clientstreaming(const upb_methoddef *m) {
+bool upb_MethodDef_ClientStreaming(const upb_MethodDef *m) {
   return m->client_streaming;
 }
 
-bool upb_methoddef_serverstreaming(const upb_methoddef *m) {
+bool upb_MethodDef_ServerStreaming(const upb_MethodDef *m) {
   return m->server_streaming;
 }
 
@@ -1071,14 +1071,14 @@ int upb_servicedef_methodcount(const upb_servicedef *s) {
   return s->method_count;
 }
 
-const upb_methoddef *upb_servicedef_method(const upb_servicedef *s, int i) {
+const upb_MethodDef *upb_servicedef_method(const upb_servicedef *s, int i) {
   return i < 0 || i >= s->method_count ? NULL : &s->methods[i];
 }
 
-const upb_methoddef *upb_servicedef_lookupmethod(const upb_servicedef *s,
+const upb_MethodDef *upb_servicedef_lookupmethod(const upb_servicedef *s,
                                                  const char *name) {
   for (int i = 0; i < s->method_count; i++) {
-    if (strcmp(name, upb_methoddef_name(&s->methods[i])) == 0) {
+    if (strcmp(name, upb_MethodDef_Name(&s->methods[i])) == 0) {
       return &s->methods[i];
     }
   }
@@ -2391,7 +2391,7 @@ static void create_service(
 
   for (i = 0; i < n; i++) {
     const google_protobuf_MethodDescriptorProto *method_proto = methods[i];
-    upb_methoddef *m = (upb_methoddef*)&s->methods[i];
+    upb_MethodDef *m = (upb_MethodDef*)&s->methods[i];
     upb_strview name = google_protobuf_MethodDescriptorProto_name(method_proto);
 
     m->service = s;

@@ -62,8 +62,8 @@ struct upb_FieldDef;
 typedef struct upb_FieldDef upb_FieldDef;
 struct upb_FileDef;
 typedef struct upb_FileDef upb_FileDef;
-struct upb_methoddef;
-typedef struct upb_methoddef upb_methoddef;
+struct upb_MethodDef;
+typedef struct upb_MethodDef upb_MethodDef;
 struct upb_MessageDef;
 typedef struct upb_MessageDef upb_MessageDef;
 struct upb_OneofDef;
@@ -298,8 +298,6 @@ const google_protobuf_FileOptions *upb_FileDef_Options(const upb_FileDef *f);
 bool upb_FileDef_HasOptions(const upb_FileDef *f);
 const char *upb_FileDef_Name(const upb_FileDef *f);
 const char *upb_FileDef_Package(const upb_FileDef *f);
-const char *upb_FileDef_phpprefix(const upb_FileDef *f);
-const char *upb_FileDef_phpnamespace(const upb_FileDef *f);
 upb_syntax_t upb_FileDef_Syntax(const upb_FileDef *f);
 int upb_FileDef_DependencyCount(const upb_FileDef *f);
 int upb_FileDef_PublicDependencyCount(const upb_FileDef *f);
@@ -319,18 +317,18 @@ const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f);
 const int32_t *_upb_FileDef_PublicDependencynums(const upb_FileDef *f);
 const int32_t *_upb_FileDef_WeakDependencynums(const upb_FileDef *f);
 
-/* upb_methoddef **************************************************************/
+/* upb_MethodDef **************************************************************/
 
-const google_protobuf_MethodOptions *upb_methoddef_options(
-    const upb_methoddef *m);
-bool upb_methoddef_hasoptions(const upb_methoddef *m);
-const char *upb_methoddef_fullname(const upb_methoddef *m);
-const char *upb_methoddef_name(const upb_methoddef *m);
-const upb_servicedef *upb_methoddef_service(const upb_methoddef *m);
-const upb_MessageDef *upb_methoddef_inputtype(const upb_methoddef *m);
-const upb_MessageDef *upb_methoddef_outputtype(const upb_methoddef *m);
-bool upb_methoddef_clientstreaming(const upb_methoddef *m);
-bool upb_methoddef_serverstreaming(const upb_methoddef *m);
+const google_protobuf_MethodOptions *upb_MethodDef_Options(
+    const upb_MethodDef *m);
+bool upb_MethodDef_HasOptions(const upb_MethodDef *m);
+const char *upb_MethodDef_FullName(const upb_MethodDef *m);
+const char *upb_MethodDef_Name(const upb_MethodDef *m);
+const upb_servicedef *upb_MethodDef_Service(const upb_MethodDef *m);
+const upb_MessageDef *upb_MethodDef_InputType(const upb_MethodDef *m);
+const upb_MessageDef *upb_MethodDef_OutputType(const upb_MethodDef *m);
+bool upb_MethodDef_ClientStreaming(const upb_MethodDef *m);
+bool upb_MethodDef_ServerStreaming(const upb_MethodDef *m);
 
 /* upb_servicedef *************************************************************/
 
@@ -342,8 +340,8 @@ const char *upb_servicedef_name(const upb_servicedef *s);
 int upb_servicedef_index(const upb_servicedef *s);
 const upb_FileDef *upb_servicedef_file(const upb_servicedef *s);
 int upb_servicedef_methodcount(const upb_servicedef *s);
-const upb_methoddef *upb_servicedef_method(const upb_servicedef *s, int i);
-const upb_methoddef *upb_servicedef_lookupmethod(const upb_servicedef *s,
+const upb_MethodDef *upb_servicedef_method(const upb_servicedef *s, int i);
+const upb_MethodDef *upb_servicedef_lookupmethod(const upb_servicedef *s,
                                                  const char *name);
 
 /* upb_symtab *****************************************************************/

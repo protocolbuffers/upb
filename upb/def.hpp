@@ -354,15 +354,6 @@ class FileDefPtr {
   // Package name for definitions inside the file (eg. "foo.bar").
   const char* package() const { return upb_FileDef_Package(ptr_); }
 
-  // Sets the php class prefix which is prepended to all php generated classes
-  // from this .proto. Default is empty.
-  const char* phpprefix() const { return upb_FileDef_phpprefix(ptr_); }
-
-  // Use this option to change the namespace of php generated classes. Default
-  // is empty. When this option is empty, the package name will be used for
-  // determining the namespace.
-  const char* phpnamespace() const { return upb_FileDef_phpnamespace(ptr_); }
-
   // Syntax for the file.  Defaults to proto2.
   upb_syntax_t syntax() const { return upb_FileDef_Syntax(ptr_); }
 
