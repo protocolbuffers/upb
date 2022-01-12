@@ -70,6 +70,36 @@ typedef struct {
 // A global containing the values for this process.
 PyUpb_CPythonBits cpython_bits;
 
+destructor upb_Pre310_PyType_GetDeallocSlot(PyTypeObject* type_subclass) {
+  // This is a bit desperate.  We need type_dealloc(), but PyType_GetSlot(type,
+  // Py_tp_dealloc) will return subtype_dealloc().  There appears to be no way
+  // whatsoever to fetch type_dealloc() through the limited API until Python
+  // 3.10.
+  //
+  // To work around this so we attempt to find it by looking for the offset of
+  // tp_dealloc in PyTypeObject, then memcpy() it directly.  This should always
+  // work in practice.
+  //
+  // Starting with Python 3.10 on you can call PyType_GetSlot() on non-heap
+  // types.  We will be able to replace all this hack with just:
+  //
+  //   PyType_GetSlot(&PyType_Type, Py_tp_dealloc)
+  //
+  destructor subtype_dealloc = PyType_GetSlot(type_subclass, Py_tp_dealloc);
+  for (size_t i = 0; i < 2000; i += sizeof(uintptr_t)) {
+    destructor maybe_subtype_dealloc;
+    memcpy(&maybe_subtype_dealloc, (char*)type_subclass + i,
+           sizeof(destructor));
+    if (maybe_subtype_dealloc == subtype_dealloc) {
+      destructor type_dealloc;
+      memcpy(&type_dealloc, (char*)&PyType_Type + i, sizeof(destructor));
+      return type_dealloc;
+    }
+  }
+  assert(false);
+  return NULL;
+}
+
 static bool PyUpb_CPythonBits_Init(PyUpb_CPythonBits* bits) {
   PyObject* bases = NULL;
   PyTypeObject* type = NULL;
@@ -98,33 +128,9 @@ static bool PyUpb_CPythonBits_Init(PyUpb_CPythonBits* bits) {
   if (!type) goto err;
 
   bits->type_new = PyType_GetSlot(type, Py_tp_new);
+  bits->type_dealloc = upb_Pre310_PyType_GetDeallocSlot(type);
   bits->type_getattro = PyType_GetSlot(type, Py_tp_getattro);
   bits->type_setattro = PyType_GetSlot(type, Py_tp_setattro);
-
-  // This is a bit desperate.  We need type_dealloc(), but PyType_GetSlot(type,
-  // Py_tp_dealloc) will return subtype_dealloc().  There appears to be no way
-  // whatsoever to fetch type_dealloc() through the limited API until Python
-  // 3.10.
-  //
-  // To work around this so we attempt to find it by looking for the offset of
-  // tp_dealloc in PyTypeObject, then memcpy() it directly.  This should always
-  // work in practice.
-  //
-  // Starting with Python 3.10 on you can call PyType_GetSlot() on non-heap
-  // types.  We will be able to replace all this hack with just:
-  //
-  //   PyType_GetSlot(&PyType_Type, Py_tp_dealloc)
-  //
-  destructor subtype_dealloc = PyType_GetSlot(type, Py_tp_dealloc);
-  bits->type_dealloc = NULL;
-  for (size_t i = 0; i < 2000; i += sizeof(uintptr_t)) {
-    destructor maybe_subtype_dealloc;
-    memcpy(&maybe_subtype_dealloc, (char*)type + i, sizeof(destructor*));
-    if (maybe_subtype_dealloc == subtype_dealloc) {
-      memcpy(&bits->type_dealloc, (char*)&PyType_Type + i, sizeof(destructor*));
-      break;
-    }
-  }
 
   size = PyObject_GetAttrString((PyObject*)&PyType_Type, "__basicsize__");
   if (!size) goto err;
@@ -380,9 +386,8 @@ static bool PyUpb_CMessage_InitRepeatedAttribute(PyObject* _self,
                                                  PyObject* name,
                                                  PyObject* value) {
   bool ok = false;
-  PyObject* repeated = NULL;
   PyObject* tmp = NULL;
-  repeated = PyUpb_CMessage_GetAttr(_self, name);
+  PyObject* repeated = PyUpb_CMessage_GetAttr(_self, name);
   if (!repeated) goto err;
   tmp = PyUpb_RepeatedContainer_Extend(repeated, value);
   if (!tmp) goto err;
