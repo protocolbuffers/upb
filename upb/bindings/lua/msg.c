@@ -1037,14 +1037,14 @@ static int lupb_jsonencode(lua_State *L) {
   upb_Status status;
 
   upb_Status_Clear(&status);
-  size = upb_json_encode(msg, m, NULL, options, buf, sizeof(buf), &status);
+  size = upb_JsonEncode(msg, m, NULL, options, buf, sizeof(buf), &status);
   lupb_checkstatus(L, &status);
 
   if (size < sizeof(buf)) {
     lua_pushlstring(L, buf, size);
   } else {
     char *ptr = malloc(size + 1);
-    upb_json_encode(msg, m, NULL, options, ptr, size + 1, &status);
+    upb_JsonEncode(msg, m, NULL, options, ptr, size + 1, &status);
     lupb_checkstatus(L, &status);
     lua_pushlstring(L, ptr, size);
     free(ptr);
@@ -1111,8 +1111,8 @@ void lupb_msg_registertypes(lua_State *L) {
   lupb_setfieldi(L, "ENCODE_DETERMINISTIC", kUpb_Encode_Deterministic);
   lupb_setfieldi(L, "ENCODE_SKIPUNKNOWN", kUpb_Encode_SkipUnknown);
 
-  lupb_setfieldi(L, "JSONENC_EMITDEFAULTS", UPB_JSONENC_EMITDEFAULTS);
-  lupb_setfieldi(L, "JSONENC_PROTONAMES", UPB_JSONENC_PROTONAMES);
+  lupb_setfieldi(L, "JSONENC_EMITDEFAULTS", upb_JsonEncode_EmitDefaults);
+  lupb_setfieldi(L, "JSONENC_PROTONAMES", upb_JsonEncode_UseProtoNames);
 
   lupb_setfieldi(L, "JSONDEC_IGNOREUNKNOWN", upb_JsonDecode_IgnoreUnknown);
 

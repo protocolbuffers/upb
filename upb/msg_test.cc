@@ -87,10 +87,10 @@ TEST(MessageTest, Extensions) {
 
   // Test round-trip through JSON format.
   size_t json_size =
-      upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, NULL, 0, status.ptr());
+      upb_JsonEncode(ext_msg, m.ptr(), symtab.ptr(), 0, NULL, 0, status.ptr());
   char *json_buf =
       static_cast<char *>(upb_Arena_Malloc(arena.ptr(), json_size + 1));
-  upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
+  upb_JsonEncode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
                   status.ptr());
   upb_test_TestExtensions *ext_msg3 = upb_test_TestExtensions_new(arena.ptr());
   EXPECT_TRUE(upb_JsonDecode(json_buf, json_size, ext_msg3, m.ptr(),
@@ -144,10 +144,10 @@ TEST(MessageTest, MessageSet) {
 
   // Test round-trip through JSON format.
   size_t json_size =
-      upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, NULL, 0, status.ptr());
+      upb_JsonEncode(ext_msg, m.ptr(), symtab.ptr(), 0, NULL, 0, status.ptr());
   char *json_buf =
       static_cast<char *>(upb_Arena_Malloc(arena.ptr(), json_size + 1));
-  upb_json_encode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
+  upb_JsonEncode(ext_msg, m.ptr(), symtab.ptr(), 0, json_buf, json_size + 1,
                   status.ptr());
   upb_test_TestMessageSet *ext_msg3 = upb_test_TestMessageSet_new(arena.ptr());
   EXPECT_TRUE(upb_JsonDecode(json_buf, json_size, ext_msg3, m.ptr(),

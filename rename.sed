@@ -365,3 +365,7 @@ s/upb_encode/upb_Encode/g;
 
 s/UPB_JSONDEC_IGNOREUNKNOWN/upb_JsonDecode_IgnoreUnknown/g;
 s/upb_json_decode/upb_JsonDecode/g;
+
+s/UPB_JSONENC_EMITDEFAULTS/upb_JsonEncode_EmitDefaults/g;
+s/UPB_JSONENC_PROTONAMES/upb_JsonEncode_UseProtoNames/g;
+s/upb_json_encode/upb_JsonEncode/g;

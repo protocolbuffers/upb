@@ -164,7 +164,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   upb_Status status;
 
   upb_Status_Clear(&status);
-  len = upb_json_encode(msg, m, c->symtab, opts, NULL, 0, &status);
+  len = upb_JsonEncode(msg, m, c->symtab, opts, NULL, 0, &status);
 
   if (len == (size_t)-1) {
     const char *inerr = upb_Status_ErrorMessage(&status);
@@ -178,7 +178,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   }
 
   data = upb_Arena_Malloc(c->arena, len + 1);
-  len2 = upb_json_encode(msg, m, c->symtab, opts, data, len + 1, &status);
+  len2 = upb_JsonEncode(msg, m, c->symtab, opts, data, len + 1, &status);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_json_payload(
       c->response, upb_StringView_FromStringAndSize(data, len));

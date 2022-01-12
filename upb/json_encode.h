@@ -36,11 +36,11 @@ extern "C" {
 
 enum {
   /* When set, emits 0/default values.  TODO(haberman): proto3 only? */
-  UPB_JSONENC_EMITDEFAULTS = 1,
+  upb_JsonEncode_EmitDefaults = 1,
 
   /* When set, use normal (snake_caes) field names instead of JSON (camelCase)
      names. */
-  UPB_JSONENC_PROTONAMES = 2
+  upb_JsonEncode_UseProtoNames = 2
 };
 
 /* Encodes the given |msg| to JSON format.  The message's reflection is given in
@@ -51,7 +51,7 @@ enum {
  * size (excluding NULL) is returned.  This means that a return value >= |size|
  * implies that the output was truncated.  (These are the same semantics as
  * snprintf()). */
-size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
+size_t upb_JsonEncode(const upb_msg *msg, const upb_MessageDef *m,
                        const upb_DefPool *ext_pool, int options, char *buf,
                        size_t size, upb_Status *status);
 

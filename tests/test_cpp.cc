@@ -133,7 +133,7 @@ void TestDefault() {
   upb::Arena arena;
   upb::MessageDefPtr md(upb_test_TestMessage_getmsgdef(symtab.ptr()));
   upb_test_TestMessage *msg = upb_test_TestMessage_new(arena.ptr());
-  size_t size = upb_json_encode(msg, md.ptr(), NULL, 0, NULL, 0, NULL);
+  size_t size = upb_JsonEncode(msg, md.ptr(), NULL, 0, NULL, 0, NULL);
   ASSERT(size == 2);  // "{}"
 }
 

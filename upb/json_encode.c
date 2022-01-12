@@ -679,7 +679,7 @@ static void jsonenc_fieldval(jsonenc *e, const upb_FieldDef *f,
     // research here about what various implementations do.
     jsonenc_printf(e, "\"[%s]\":", upb_FieldDef_FullName(f));
   } else {
-    if (e->options & UPB_JSONENC_PROTONAMES) {
+    if (e->options & upb_JsonEncode_UseProtoNames) {
       name = upb_FieldDef_Name(f);
     } else {
       name = upb_FieldDef_JsonName(f);
@@ -701,7 +701,7 @@ static void jsonenc_msgfields(jsonenc *e, const upb_msg *msg,
   upb_MessageValue val;
   const upb_FieldDef *f;
 
-  if (e->options & UPB_JSONENC_EMITDEFAULTS) {
+  if (e->options & upb_JsonEncode_EmitDefaults) {
     /* Iterate over all fields. */
     int i = 0;
     int n = upb_MessageDef_FieldCount(m);
@@ -737,7 +737,7 @@ static size_t jsonenc_nullz(jsonenc *e, size_t size) {
   return ret;
 }
 
-size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
+size_t upb_JsonEncode(const upb_msg *msg, const upb_MessageDef *m,
                        const upb_DefPool *ext_pool, int options, char *buf,
                        size_t size, upb_Status *status) {
   jsonenc e;
