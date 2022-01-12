@@ -71,7 +71,8 @@ static bool IndexToRange(PyObject* index, Py_ssize_t size, Py_ssize_t* i,
 
 // Wrapper for a repeated field.
 typedef struct {
-  PyObject_HEAD PyObject* arena;
+  PyObject_HEAD;
+  PyObject* arena;
   // The field descriptor (PyObject*).
   // The low bit indicates whether the container is reified (see ptr below).
   //   - low bit set: repeated field is a stub (no underlying data).

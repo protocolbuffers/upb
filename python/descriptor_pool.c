@@ -40,7 +40,8 @@
 // -----------------------------------------------------------------------------
 
 typedef struct {
-  PyObject_HEAD upb_DefPool* symtab;
+  PyObject_HEAD;
+  upb_DefPool* symtab;
   PyObject* db;  // The DescriptorDatabase underlying this pool.  May be NULL.
 } PyUpb_DescriptorPool;
 

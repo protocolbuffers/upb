@@ -413,91 +413,17 @@ s/_UPB_MSGEXT_EXTENDABLE/upb_ExtMode_Extendable/g;
 s/_UPB_MSGEXT_MSGSET/upb_ExtMode_IsMessageSet/g;
 s/_UPB_MSGEXT_MSGSET_ITEM/upb_ExtMode_IsMessageSetItem/g;
 s/\bupb_msgext_mode\b/upb_ExtMode/g;
-#_UPB_MSGSET_ITEM = 1,
-#_UPB_MSGSET_TYPEID = 2,
-#_UPB_MSGSET_MESSAGE = 3,
-#s/\bupb_msgext_fieldnum\b/upb_MSetFieldNum
 s/upb_msglayout_ext/upb_MiniTable_Extension/g;
 s/upb_msglayout_file/upb_MiniTable_File/g;
 s/upb_msglayout_requiredmask/upb_MiniTable_RequiredMask/g;
-#_upb_extreg_add(upb_extreg *r, const upb_msglayout_ext **e, size_t count);
 #upb_msglayout_ext *_upb_extreg_get(const upb_extreg *r,
 s/\bupb_msg_internaldata\b/upb_Message_InternalData/g;
 s/\bupb_msg_internal\b/upb_Message_Internal/g;
-#_upb_CTypeo_size[12];
 #upb_msg_sizeof(const upb_msglayout *l) {
-#_upb_Message_New_inl(const upb_msglayout *l, upb_Arena *a) {
-#_upb_Message_New(const upb_msglayout *l, upb_Arena *a);
-#upb_Message_Getinternal(upb_msg *msg) {
-#_upb_Message_Clear(upb_msg *msg, const upb_msglayout *l);
-#_upb_Message_DiscardUnknown_shallow(upb_msg *msg);
-#_upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
 s/\bupb_msg_ext\b/upb_Message_Extension/g;
-#_upb_Message_Getorcreateext(upb_msg *msg, const upb_msglayout_ext *ext,
-#_upb_Message_Getexts(const upb_msg *msg, size_t *count);
-#_upb_Message_Getext(const upb_msg *msg,
-#_upb_Message_Clearext(upb_msg *msg, const upb_msglayout_ext *ext);
-#_upb_Message_Clearext(upb_msg *msg, const upb_msglayout_ext *ext);
-#_upb_hasbit(const upb_msg *msg, size_t idx) {
-#_upb_sethas(const upb_msg *msg, size_t idx) {
-#_upb_clearhas(const upb_msg *msg, size_t idx) {
-#_upb_Message_Hasidx(const upb_msglayout_field *f) {
-#_upb_hasbit_field(const upb_msg *msg,
-#_upb_sethas_field(const upb_msg *msg,
-#_upb_clearhas_field(const upb_msg *msg,
-#_upb_oneofcase(upb_msg *msg, size_t case_ofs) {
-#_upb_getoneofcase(const void *msg, size_t case_ofs) {
-#_upb_oneofcase_ofs(const upb_msglayout_field *f) {
-#_upb_oneofcase_field(upb_msg *msg,
-#_upb_getoneofcase_field(const upb_msg *msg,
-#_upb_has_submsg_nohasbit(const upb_msg *msg, size_t ofs) {
 s/\bupb_array\b/upb_Array/g;
-#_upb_array_constptr(const upb_array *arr) {
-#_upb_array_tagptr(void* ptr, int elem_size_lg2) {
-#_upb_array_ptr(upb_array *arr) {
-#_upb_tag_arrptr(void* ptr, int elem_size_lg2) {
-#_upb_Array_New(upb_Arena *a, size_t init_size,
-#_upb_array_realloc(upb_array *arr, size_t min_size, upb_Arena *arena);
-#_upb_Array_Resize_fallback(upb_array **arr_ptr, size_t size,
-#_upb_Array_Append_fallback(upb_array **arr_ptr, const void *value,
-#_upb_array_reserve(upb_array *arr, size_t size,
-#_upb_Array_Resize(upb_array *arr, size_t size,
-#_upb_array_accessor(const void *msg, size_t ofs,
-#_upb_array_mutable_accessor(void *msg, size_t ofs,
-#_upb_Array_Resize_accessor2(void *msg, size_t ofs, size_t size,
-#_upb_Array_Append_accessor2(void *msg, size_t ofs,
-#_upb_sizelg2(upb_CType type) {
-#_upb_Array_Resize_accessor(void *msg, size_t ofs, size_t size,
-#_upb_Array_Append_accessor(void *msg, size_t ofs,
 s/\bupb_map\b/upb_Map/g;
 s/\bupb_map_entry\b/upb_MapEntry/g;
-#_upb_Map_New(upb_Arena *a, size_t key_size, size_t value_size);
-#_upb_map_tokey(const void *key, size_t size) {
-#_upb_map_fromkey(upb_StringView key, void* out, size_t size) {
-#_upb_map_tovalue(const void *val, size_t size, upb_value *msgval,
-#_upb_map_fromvalue(upb_value val, void* out, size_t size) {
-#_upb_Map_Size(const upb_map *map) {
-#_upb_Map_Get(const upb_map *map, const void *key,
-#_upb_map_next(const upb_map *map, size_t *iter) {
-#_upb_Map_Set(upb_map *map, const void *key, size_t key_size,
-#_upb_Map_Delete(upb_map *map, const void *key, size_t key_size) {
-#_upb_Map_Clear(upb_map *map) {
-#_upb_msg_map_size(const upb_msg *msg, size_t ofs) {
-#_upb_msg_map_get(const upb_msg *msg, size_t ofs,
-#_upb_msg_map_next(const upb_msg *msg, size_t ofs,
-#_upb_msg_map_set(upb_msg *msg, size_t ofs, const void *key,
-#_upb_msg_map_delete(upb_msg *msg, size_t ofs, const void *key,
-#_upb_msg_map_clear(upb_msg *msg, size_t ofs) {
-#_upb_msg_map_key(const void* msg, void* key, size_t size) {
-#_upb_msg_map_value(const void* msg, void* val, size_t size) {
-#_upb_msg_map_set_value(void* msg, const void* val, size_t size) {
-#_upb_mapsorter;
-#_upb_sortedmap;
-#_upb_mapsorter_init(_upb_mapsorter *s) {
-#_upb_mapsorter_destroy(_upb_mapsorter *s) {
-#_upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
-#_upb_mapsorter_popmap(_upb_mapsorter *s, _upb_sortedmap *sorted) {
-#_upb_sortedmap_next(_upb_mapsorter *s, const upb_map *map,
 s/\bupb_msglayout\b/upb_MiniTable/g;
 
 s/upb_MiniTable_ext/upb_MiniTable_Extension/g;
@@ -507,3 +433,5 @@ s/upb_MiniTable_sub/upb_MiniTable_Sub/g;
 s/\bLookupMessage\b/FindMessageByName/g;
 s/\bLookupEnum\b/FindEnumByName/g;
 s/\bLookupFile\b/FindFileByName/g;
+
+s/PyObject_HEAD[^;]/PyObject_HEAD;/g;
