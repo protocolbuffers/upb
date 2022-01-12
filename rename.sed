@@ -210,3 +210,14 @@ s/UPB_WELLKNOWN_VALUE/kUpb_WellKnown_Value/g;
 s/UPB_WELLKNOWN_LISTVALUE/kUpb_WellKnown_ListValue/g;
 s/UPB_WELLKNOWN_STRUCT/kUpb_WellKnown_Struct/g;
 s/upb_wellknowntype_t/kUpb_WellKnown/g;
+
+s/UPB_MAX_FIELDNUMBER/kUpb_MaxFieldNumber/g;
+
+s/UPB_MAPENTRY_KEY/kUpb_MapEntry_KeyFieldNumber/g;
+s/UPB_MAPENTRY_VALUE/kUpb_MapEntry_ValueFieldNumber/g;
+s/UPB_ANY_TYPE/kUpb_Any_TypeFieldNumber/g;
+s/UPB_ANY_VALUE/kUpb_Any_ValueFieldNumber/g;
+s/UPB_DURATION_SECONDS/kUpb_Duration_SecondsFieldNumber/g;
+s/UPB_DURATION_NANOS/kUpb_Duration_NanosFieldNumber/g;
+s/UPB_TIMESTAMP_SECONDS/kUpb_Timestamp_SecondsFieldNumber/g;
+s/UPB_TIMESTAMP_NANOS/kUpb_Timestamp_NanosFieldNumber/g;

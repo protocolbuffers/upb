@@ -97,7 +97,7 @@ typedef enum {
 
 /* Maximum field number allowed for FieldDefs.  This is an inherent limit of the
  * protobuf wire format. */
-#define UPB_MAX_FIELDNUMBER ((1 << 29) - 1)
+#define kUpb_MaxFieldNumber ((1 << 29) - 1)
 
 const google_protobuf_FieldOptions *upb_FieldDef_Options(const upb_FieldDef *f);
 bool upb_FieldDef_HasOptions(const upb_FieldDef *f);
@@ -157,20 +157,20 @@ const upb_FieldDef *upb_OneofDef_LookupNumber(const upb_OneofDef *o, uint32_t nu
 /* upb_MessageDef *****************************************************************/
 
 /* Well-known field tag numbers for map-entry messages. */
-#define UPB_MAPENTRY_KEY   1
-#define UPB_MAPENTRY_VALUE 2
+#define kUpb_MapEntry_KeyFieldNumber   1
+#define kUpb_MapEntry_ValueFieldNumber 2
 
 /* Well-known field tag numbers for Any messages. */
-#define UPB_ANY_TYPE 1
-#define UPB_ANY_VALUE 2
+#define kUpb_Any_TypeFieldNumber 1
+#define kUpb_Any_ValueFieldNumber 2
 
 /* Well-known field tag numbers for timestamp messages. */
-#define UPB_DURATION_SECONDS 1
-#define UPB_DURATION_NANOS 2
+#define kUpb_Duration_SecondsFieldNumber 1
+#define kUpb_Duration_NanosFieldNumber 2
 
 /* Well-known field tag numbers for duration messages. */
-#define UPB_TIMESTAMP_SECONDS 1
-#define UPB_TIMESTAMP_NANOS 2
+#define kUpb_Timestamp_SecondsFieldNumber 1
+#define kUpb_Timestamp_NanosFieldNumber 2
 
 const google_protobuf_MessageOptions *upb_MessageDef_Options(const upb_MessageDef *m);
 bool upb_MessageDef_HasOptions(const upb_MessageDef *m);

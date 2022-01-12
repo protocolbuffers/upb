@@ -175,8 +175,8 @@ make:
   if (!a) return (upb_mutmsgval){.array = NULL};
   if (upb_FieldDef_IsMap(f)) {
     const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_FieldDef *key = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_KEY);
-    const upb_FieldDef *value = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_VALUE);
+    const upb_FieldDef *key = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_KeyFieldNumber);
+    const upb_FieldDef *value = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_ValueFieldNumber);
     ret.map = upb_map_new(a, upb_FieldDef_CType(key), upb_FieldDef_CType(value));
   } else if (upb_FieldDef_IsRepeated(f)) {
     ret.array = upb_array_new(a, upb_FieldDef_CType(f));

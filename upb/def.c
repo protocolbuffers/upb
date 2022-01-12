@@ -2222,7 +2222,7 @@ static void create_fielddef(
     upb_value v, field_v, json_v, existing_v;
     size_t json_size;
 
-    if (field_number <= 0 || field_number > UPB_MAX_FIELDNUMBER) {
+    if (field_number <= 0 || field_number > kUpb_MaxFieldNumber) {
       symtab_errf(ctx, "invalid field number (%u)", field_number);
     }
 
@@ -2592,7 +2592,7 @@ static void create_msgdef(symtab_addctx *ctx, const char *prefix,
     int32_t max =
         google_protobuf_MessageOptions_message_set_wire_format(m->opts)
             ? INT32_MAX
-            : UPB_MAX_FIELDNUMBER + 1;
+            : kUpb_MaxFieldNumber + 1;
 
     // A full validation would also check that each range is disjoint, and that
     // none of the fields overlap with the extension ranges, but we are just
