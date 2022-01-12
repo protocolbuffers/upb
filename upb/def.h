@@ -33,7 +33,7 @@
  * - upb_FieldDef: describes a message field.
  * - upb_filedef: describes a .proto file and its defs.
  * - upb_enumdef: describes an enum.
- * - upb_oneofdef: describes a oneof.
+ * - upb_OneofDef: describes a oneof.
  *
  * TODO: definitions of services.
  */
@@ -66,8 +66,8 @@ struct upb_methoddef;
 typedef struct upb_methoddef upb_methoddef;
 struct upb_msgdef;
 typedef struct upb_msgdef upb_msgdef;
-struct upb_oneofdef;
-typedef struct upb_oneofdef upb_oneofdef;
+struct upb_OneofDef;
+typedef struct upb_OneofDef upb_OneofDef;
 struct upb_servicedef;
 typedef struct upb_servicedef upb_servicedef;
 struct upb_streamdef;
@@ -127,8 +127,8 @@ bool upb_FieldDef_IsPacked(const upb_FieldDef *f);
 const upb_filedef *upb_FieldDef_File(const upb_FieldDef *f);
 const upb_msgdef *upb_FieldDef_ContainingType(const upb_FieldDef *f);
 const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_FieldDef *f);
-const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_FieldDef *f);
-const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_FieldDef *f);
+const upb_OneofDef *upb_FieldDef_ContainingOneof(const upb_FieldDef *f);
+const upb_OneofDef *upb_FieldDef_RealContainingOneof(const upb_FieldDef *f);
 uint32_t upb_FieldDef_Index(const upb_FieldDef *f);
 bool upb_FieldDef_IsSubMessage(const upb_FieldDef *f);
 bool upb_FieldDef_IsString(const upb_FieldDef *f);
@@ -144,34 +144,34 @@ const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f);
 const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f);
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f);
 
-/* upb_oneofdef ***************************************************************/
+/* upb_OneofDef ***************************************************************/
 
 typedef upb_inttable_iter upb_oneof_iter;
 
-const google_protobuf_OneofOptions *upb_oneofdef_options(const upb_oneofdef *o);
-bool upb_oneofdef_hasoptions(const upb_oneofdef *o);
-const char *upb_oneofdef_name(const upb_oneofdef *o);
-const upb_msgdef *upb_oneofdef_containingtype(const upb_oneofdef *o);
-uint32_t upb_oneofdef_index(const upb_oneofdef *o);
-bool upb_oneofdef_issynthetic(const upb_oneofdef *o);
-int upb_oneofdef_fieldcount(const upb_oneofdef *o);
-const upb_FieldDef *upb_oneofdef_field(const upb_oneofdef *o, int i);
+const google_protobuf_OneofOptions *upb_OneofDef_Options(const upb_OneofDef *o);
+bool upb_OneofDef_HasOptions(const upb_OneofDef *o);
+const char *upb_OneofDef_Name(const upb_OneofDef *o);
+const upb_msgdef *upb_OneofDef_ContainingType(const upb_OneofDef *o);
+uint32_t upb_OneofDef_Index(const upb_OneofDef *o);
+bool upb_OneofDef_IsSynthetic(const upb_OneofDef *o);
+int upb_OneofDef_FieldCount(const upb_OneofDef *o);
+const upb_FieldDef *upb_OneofDef_Field(const upb_OneofDef *o, int i);
 
 /* Oneof lookups:
  * - ntof:  look up a field by name.
  * - ntofz: look up a field by name (as a null-terminated string).
  * - itof:  look up a field by number. */
-const upb_FieldDef *upb_oneofdef_ntof(const upb_oneofdef *o,
+const upb_FieldDef *upb_OneofDef_LookupNameWithSize(const upb_OneofDef *o,
                                       const char *name, size_t length);
-UPB_INLINE const upb_FieldDef *upb_oneofdef_ntofz(const upb_oneofdef *o,
+UPB_INLINE const upb_FieldDef *upb_OneofDef_LookupNameWithSizez(const upb_OneofDef *o,
                                                   const char *name) {
-  return upb_oneofdef_ntof(o, name, strlen(name));
+  return upb_OneofDef_LookupNameWithSize(o, name, strlen(name));
 }
-const upb_FieldDef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num);
+const upb_FieldDef *upb_OneofDef_LookupNumber(const upb_OneofDef *o, uint32_t num);
 
 /* DEPRECATED, slated for removal. */
-int upb_oneofdef_numfields(const upb_oneofdef *o);
-void upb_oneof_begin(upb_oneof_iter *iter, const upb_oneofdef *o);
+int upb_OneofDef_numfields(const upb_OneofDef *o);
+void upb_oneof_begin(upb_oneof_iter *iter, const upb_OneofDef *o);
 void upb_oneof_next(upb_oneof_iter *iter);
 bool upb_oneof_done(upb_oneof_iter *iter);
 upb_FieldDef *upb_oneof_iter_field(const upb_oneof_iter *iter);
@@ -216,15 +216,15 @@ int upb_msgdef_fieldcount(const upb_msgdef *m);
 int upb_msgdef_oneofcount(const upb_msgdef *m);
 const upb_extrange *upb_msgdef_extrange(const upb_msgdef *m, int i);
 const upb_FieldDef *upb_msgdef_field(const upb_msgdef *m, int i);
-const upb_oneofdef *upb_msgdef_oneof(const upb_msgdef *m, int i);
+const upb_OneofDef *upb_msgdef_oneof(const upb_msgdef *m, int i);
 const upb_FieldDef *upb_msgdef_itof(const upb_msgdef *m, uint32_t i);
 const upb_FieldDef *upb_msgdef_ntof(const upb_msgdef *m, const char *name,
                                     size_t len);
-const upb_oneofdef *upb_msgdef_ntoo(const upb_msgdef *m, const char *name,
+const upb_OneofDef *upb_msgdef_ntoo(const upb_msgdef *m, const char *name,
                                     size_t len);
 const upb_msglayout *upb_msgdef_layout(const upb_msgdef *m);
 
-UPB_INLINE const upb_oneofdef *upb_msgdef_ntooz(const upb_msgdef *m,
+UPB_INLINE const upb_OneofDef *upb_msgdef_ntooz(const upb_msgdef *m,
                                                const char *name) {
   return upb_msgdef_ntoo(m, name, strlen(name));
 }
@@ -250,11 +250,11 @@ const upb_FieldDef *upb_msgdef_nestedext(const upb_msgdef *m, int i);
  * If the return is true, then the found def will be set, and the non-found
  * one set to NULL. */
 bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
-                           const upb_FieldDef **f, const upb_oneofdef **o);
+                           const upb_FieldDef **f, const upb_OneofDef **o);
 
 UPB_INLINE bool upb_msgdef_lookupnamez(const upb_msgdef *m, const char *name,
                                        const upb_FieldDef **f,
-                                       const upb_oneofdef **o) {
+                                       const upb_OneofDef **o) {
   return upb_msgdef_lookupname(m, name, strlen(name), f, o);
 }
 
@@ -280,7 +280,7 @@ bool upb_msg_field_iter_isequal(const upb_msg_field_iter * iter1,
 void upb_msg_oneof_begin(upb_msg_oneof_iter * iter, const upb_msgdef *m);
 void upb_msg_oneof_next(upb_msg_oneof_iter * iter);
 bool upb_msg_oneof_done(const upb_msg_oneof_iter *iter);
-const upb_oneofdef *upb_msg_iter_oneof(const upb_msg_oneof_iter *iter);
+const upb_OneofDef *upb_msg_iter_oneof(const upb_msg_oneof_iter *iter);
 void upb_msg_oneof_iter_setdone(upb_msg_oneof_iter * iter);
 bool upb_msg_oneof_iter_isequal(const upb_msg_oneof_iter *iter1,
                                 const upb_msg_oneof_iter *iter2);

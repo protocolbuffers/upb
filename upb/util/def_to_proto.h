@@ -47,7 +47,7 @@ google_protobuf_EnumValueDescriptorProto* upb_EnumValueDef_ToProto(
 google_protobuf_FieldDescriptorProto* upb_FieldDef_ToProto(
     const upb_FieldDef* f, upb_arena* a);
 google_protobuf_OneofDescriptorProto* upb_OneofDef_ToProto(
-    const upb_oneofdef* o, upb_arena* a);
+    const upb_OneofDef* o, upb_arena* a);
 google_protobuf_FileDescriptorProto* upb_FileDef_ToProto(const upb_filedef* f,
                                                          upb_arena* a);
 google_protobuf_MethodDescriptorProto* upb_MethodDef_ToProto(

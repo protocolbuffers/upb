@@ -39,3 +39,16 @@ s/_upb_fielddef_extlayout/_upb_FieldDef_ExtensionLayout/g;
 s/_upb_fielddef_proto3optional/_upb_FieldDef_IsProto3Optional/g;
 s/upb_fielddef_default/upb_FieldDef_Default/g;
 s/upb_fielddef/upb_FieldDef/g;
+
+s/upb_oneofdef_options/upb_OneofDef_Options/g;
+s/upb_oneofdef_hasoptions/upb_OneofDef_HasOptions/g;
+s/upb_oneofdef_name/upb_OneofDef_Name/g;
+s/upb_oneofdef_containingtype/upb_OneofDef_ContainingType/g;
+s/upb_oneofdef_index/upb_OneofDef_Index/g;
+s/upb_oneofdef_issynthetic/upb_OneofDef_IsSynthetic/g;
+s/upb_oneofdef_fieldcount/upb_OneofDef_FieldCount/g;
+s/upb_oneofdef_field/upb_OneofDef_Field/g;
+s/upb_oneofdef_ntof/upb_OneofDef_LookupNameWithSize/g;
+s/upb_oneofdef_ntofz/upb_OneofDef_LookupName/g;
+s/upb_oneofdef_itof/upb_OneofDef_LookupNumber/g;
+s/upb_oneofdef/upb_OneofDef/g;

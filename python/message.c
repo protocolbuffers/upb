@@ -239,7 +239,7 @@ static PyObject* PyUpb_CMessage_New(PyObject* cls, PyObject* unused_args,
  */
 static bool PyUpb_CMessage_LookupName(PyUpb_CMessage* self, PyObject* py_name,
                                       const upb_FieldDef** f,
-                                      const upb_oneofdef** o,
+                                      const upb_OneofDef** o,
                                       PyObject* exc_type) {
   assert(f || o);
   Py_ssize_t size;
@@ -910,7 +910,7 @@ static int PyUpb_CMessage_SetAttr(PyObject* _self, PyObject* attr,
 static PyObject* PyUpb_CMessage_HasField(PyObject* _self, PyObject* arg) {
   PyUpb_CMessage* self = (void*)_self;
   const upb_FieldDef* field;
-  const upb_oneofdef* oneof;
+  const upb_OneofDef* oneof;
 
   if (!PyUpb_CMessage_LookupName(self, arg, &field, &oneof, PyExc_ValueError)) {
     return NULL;
@@ -1219,7 +1219,7 @@ static PyObject* PyUpb_CMessage_ClearField(PyObject* _self, PyObject* arg) {
   PyUpb_CMessage_EnsureReified(self);
 
   const upb_FieldDef* f;
-  const upb_oneofdef* o;
+  const upb_OneofDef* o;
   if (!PyUpb_CMessage_LookupName(self, arg, &f, &o, PyExc_ValueError)) {
     return NULL;
   }
@@ -1409,7 +1409,7 @@ PyObject* PyUpb_CMessage_SerializePartialToString(PyObject* _self,
 
 static PyObject* PyUpb_CMessage_WhichOneof(PyObject* _self, PyObject* name) {
   PyUpb_CMessage* self = (void*)_self;
-  const upb_oneofdef* o;
+  const upb_OneofDef* o;
   if (!PyUpb_CMessage_LookupName(self, name, NULL, &o, PyExc_ValueError)) {
     return NULL;
   }

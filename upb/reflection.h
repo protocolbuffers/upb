@@ -78,7 +78,7 @@ bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f);
 
 /* Returns the field that is set in the oneof, or NULL if none are set. */
 const upb_FieldDef *upb_msg_whichoneof(const upb_msg *msg,
-                                       const upb_oneofdef *o);
+                                       const upb_OneofDef *o);
 
 /* Sets the given field to the given value.  For a msg/array/map/string, the
  * caller must ensure that the target data outlives |msg| (by living either in

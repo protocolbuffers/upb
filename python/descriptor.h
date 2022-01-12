@@ -56,7 +56,7 @@ PyObject* PyUpb_Descriptor_Get(const upb_msgdef* msgdef);
 PyObject* PyUpb_EnumDescriptor_Get(const upb_enumdef* enumdef);
 PyObject* PyUpb_FieldDescriptor_Get(const upb_FieldDef* field);
 PyObject* PyUpb_FileDescriptor_Get(const upb_filedef* file);
-PyObject* PyUpb_OneofDescriptor_Get(const upb_oneofdef* oneof);
+PyObject* PyUpb_OneofDescriptor_Get(const upb_OneofDef* oneof);
 PyObject* PyUpb_EnumValueDescriptor_Get(const upb_enumvaldef* enumval);
 PyObject* PyUpb_Descriptor_GetOrCreateWrapper(const upb_msgdef* msg);
 PyObject* PyUpb_ServiceDescriptor_Get(const upb_servicedef* s);

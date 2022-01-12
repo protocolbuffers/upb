@@ -127,27 +127,27 @@ class FieldDefPtr {
 class OneofDefPtr {
  public:
   OneofDefPtr() : ptr_(nullptr) {}
-  explicit OneofDefPtr(const upb_oneofdef* ptr) : ptr_(ptr) {}
+  explicit OneofDefPtr(const upb_OneofDef* ptr) : ptr_(ptr) {}
 
-  const upb_oneofdef* ptr() const { return ptr_; }
+  const upb_OneofDef* ptr() const { return ptr_; }
   explicit operator bool() const { return ptr_ != nullptr; }
 
   // Returns the MessageDef that contains this OneofDef.
   MessageDefPtr containing_type() const;
 
   // Returns the name of this oneof.
-  const char* name() const { return upb_oneofdef_name(ptr_); }
+  const char* name() const { return upb_OneofDef_Name(ptr_); }
 
   // Returns the number of fields in the oneof.
-  int field_count() const { return upb_oneofdef_numfields(ptr_); }
-  FieldDefPtr field(int i) const { return FieldDefPtr(upb_oneofdef_field(ptr_, i)); }
+  int field_count() const { return upb_OneofDef_numfields(ptr_); }
+  FieldDefPtr field(int i) const { return FieldDefPtr(upb_OneofDef_Field(ptr_, i)); }
 
   // Looks up by name.
   FieldDefPtr FindFieldByName(const char* name, size_t len) const {
-    return FieldDefPtr(upb_oneofdef_ntof(ptr_, name, len));
+    return FieldDefPtr(upb_OneofDef_LookupNameWithSize(ptr_, name, len));
   }
   FieldDefPtr FindFieldByName(const char* name) const {
-    return FieldDefPtr(upb_oneofdef_ntofz(ptr_, name));
+    return FieldDefPtr(upb_OneofDef_LookupNameWithSizez(ptr_, name));
   }
 
   template <class T>
@@ -157,11 +157,11 @@ class OneofDefPtr {
 
   // Looks up by tag number.
   FieldDefPtr FindFieldByNumber(uint32_t num) const {
-    return FieldDefPtr(upb_oneofdef_itof(ptr_, num));
+    return FieldDefPtr(upb_OneofDef_LookupNumber(ptr_, num));
   }
 
  private:
-  const upb_oneofdef* ptr_;
+  const upb_OneofDef* ptr_;
 };
 
 // Structure that describes a single .proto message type.
@@ -443,7 +443,7 @@ inline MessageDefPtr FieldDefPtr::containing_type() const {
 }
 
 inline MessageDefPtr OneofDefPtr::containing_type() const {
-  return MessageDefPtr(upb_oneofdef_containingtype(ptr_));
+  return MessageDefPtr(upb_OneofDef_ContainingType(ptr_));
 }
 
 inline OneofDefPtr FieldDefPtr::containing_oneof() const {

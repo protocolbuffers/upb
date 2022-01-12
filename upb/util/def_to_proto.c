@@ -190,10 +190,10 @@ static google_protobuf_FieldDescriptorProto *fielddef_toproto(
         proto, default_string(ctx, f));
   }
 
-  const upb_oneofdef *o = upb_FieldDef_ContainingOneof(f);
+  const upb_OneofDef *o = upb_FieldDef_ContainingOneof(f);
   if (o) {
     google_protobuf_FieldDescriptorProto_set_oneof_index(proto,
-                                                         upb_oneofdef_index(o));
+                                                         upb_OneofDef_Index(o));
   }
 
   if (_upb_FieldDef_IsProto3Optional(f)) {
@@ -209,17 +209,17 @@ static google_protobuf_FieldDescriptorProto *fielddef_toproto(
 }
 
 static google_protobuf_OneofDescriptorProto *oneofdef_toproto(
-    upb_ToProto_Context *ctx, const upb_oneofdef *o) {
+    upb_ToProto_Context *ctx, const upb_OneofDef *o) {
   google_protobuf_OneofDescriptorProto *proto =
       google_protobuf_OneofDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_OneofDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_oneofdef_name(o)));
+      proto, strviewdup(ctx, upb_OneofDef_Name(o)));
 
-  if (upb_oneofdef_hasoptions(o)) {
+  if (upb_OneofDef_HasOptions(o)) {
     SET_OPTIONS(proto, OneofDescriptorProto, OneofOptions,
-                upb_oneofdef_options(o));
+                upb_OneofDef_Options(o));
   }
 
   return proto;
@@ -524,7 +524,7 @@ google_protobuf_FieldDescriptorProto *upb_FieldDef_ToProto(
 }
 
 google_protobuf_OneofDescriptorProto *upb_OneofDef_ToProto(
-    const upb_oneofdef *o, upb_arena *a) {
+    const upb_OneofDef *o, upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return oneofdef_toproto(&ctx, o);

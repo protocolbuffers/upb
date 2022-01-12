@@ -127,15 +127,15 @@ bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f) {
 }
 
 const upb_FieldDef *upb_msg_whichoneof(const upb_msg *msg,
-                                       const upb_oneofdef *o) {
-  const upb_FieldDef *f = upb_oneofdef_field(o, 0);
-  if (upb_oneofdef_issynthetic(o)) {
-    UPB_ASSERT(upb_oneofdef_fieldcount(o) == 1);
+                                       const upb_OneofDef *o) {
+  const upb_FieldDef *f = upb_OneofDef_Field(o, 0);
+  if (upb_OneofDef_IsSynthetic(o)) {
+    UPB_ASSERT(upb_OneofDef_FieldCount(o) == 1);
     return upb_msg_has(msg, f) ? f : NULL;
   } else {
     const upb_msglayout_field *field = upb_FieldDef_Layout(f);
     uint32_t oneof_case = _upb_getoneofcase_field(msg, field);
-    f = oneof_case ? upb_oneofdef_itof(o, oneof_case) : NULL;
+    f = oneof_case ? upb_OneofDef_LookupNumber(o, oneof_case) : NULL;
     UPB_ASSERT((f != NULL) == (oneof_case != 0));
     return f;
   }

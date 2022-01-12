@@ -464,7 +464,7 @@ static PyObject* PyUpb_DescriptorPool_FindOneofByName(PyObject* _self,
       parent = upb_symtab_lookupmsg2(self->symtab, name, parent_size);
     }
     if (parent) {
-      const upb_oneofdef* o = upb_msgdef_ntooz(parent, child);
+      const upb_OneofDef* o = upb_msgdef_ntooz(parent, child);
       return PyUpb_OneofDescriptor_Get(o);
     }
   }
