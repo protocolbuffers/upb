@@ -275,7 +275,7 @@ bool PyUpb_ValueEq(upb_MessageValue val1, upb_MessageValue val2, const upb_Field
   }
 }
 
-bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
+bool PyUpb_Map_IsEqual(const upb_Map *map1, const upb_Map *map2,
                        const upb_FieldDef *f) {
   assert(upb_FieldDef_IsMap(f));
   if (map1 == map2) return true;
@@ -300,8 +300,8 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
   return true;
 }
 
-static bool PyUpb_ArrayElem_IsEqual(const upb_array *arr1,
-                                    const upb_array *arr2, size_t i,
+static bool PyUpb_ArrayElem_IsEqual(const upb_Array *arr1,
+                                    const upb_Array *arr2, size_t i,
                                     const upb_FieldDef *f) {
   assert(i < upb_Array_Size(arr1));
   assert(i < upb_Array_Size(arr2));
@@ -310,7 +310,7 @@ static bool PyUpb_ArrayElem_IsEqual(const upb_array *arr1,
   return PyUpb_ValueEq(val1, val2, f);
 }
 
-bool PyUpb_Array_IsEqual(const upb_array *arr1, const upb_array *arr2,
+bool PyUpb_Array_IsEqual(const upb_Array *arr1, const upb_Array *arr2,
                          const upb_FieldDef *f) {
   assert(upb_FieldDef_IsRepeated(f) && !upb_FieldDef_IsMap(f));
   if (arr1 == arr2) return true;

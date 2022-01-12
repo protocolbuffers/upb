@@ -41,11 +41,11 @@ typedef struct {
   // The field descriptor (upb_FieldDef*).
   // The low bit indicates whether the container is reified (see ptr below).
   //   - low bit set: repeated field is a stub (empty map, no underlying data).
-  //   - low bit clear: repeated field is reified (points to upb_array).
+  //   - low bit clear: repeated field is reified (points to upb_Array).
   uintptr_t field;
   union {
     PyObject* parent;  // stub: owning pointer to parent message.
-    upb_map* map;      // reified: the data for this array.
+    upb_Map* map;      // reified: the data for this array.
   } ptr;
   int version;
 } PyUpb_MapContainer;
@@ -58,7 +58,7 @@ static bool PyUpb_MapContainer_IsStub(PyUpb_MapContainer* self) {
 
 // If the map is reified, returns it.  Otherwise, returns NULL.
 // If NULL is returned, the object is empty and has no underlying data.
-static upb_map* PyUpb_MapContainer_GetIfReified(PyUpb_MapContainer* self) {
+static upb_Map* PyUpb_MapContainer_GetIfReified(PyUpb_MapContainer* self) {
   return PyUpb_MapContainer_IsStub(self) ? NULL : self->ptr.map;
 }
 
@@ -103,7 +103,7 @@ PyObject* PyUpb_MapContainer_NewStub(PyObject* parent, const upb_FieldDef* f,
   return &map->ob_base;
 }
 
-void PyUpb_MapContainer_Reify(PyObject* _self, upb_map* map) {
+void PyUpb_MapContainer_Reify(PyObject* _self, upb_Map* map) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
   if (!map) {
     const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
@@ -125,10 +125,10 @@ void PyUpb_MapContainer_Invalidate(PyObject* obj) {
   self->version++;
 }
 
-upb_map* PyUpb_MapContainer_EnsureReified(PyObject* _self) {
+upb_Map* PyUpb_MapContainer_EnsureReified(PyObject* _self) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
   self->version++;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   if (map) return map;  // Already writable.
 
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
@@ -146,7 +146,7 @@ upb_map* PyUpb_MapContainer_EnsureReified(PyObject* _self) {
 int PyUpb_MapContainer_AssignSubscript(PyObject* _self, PyObject* key,
                                        PyObject* val) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
-  upb_map* map = PyUpb_MapContainer_EnsureReified(_self);
+  upb_Map* map = PyUpb_MapContainer_EnsureReified(_self);
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
@@ -169,7 +169,7 @@ int PyUpb_MapContainer_AssignSubscript(PyObject* _self, PyObject* key,
 
 PyObject* PyUpb_MapContainer_Subscript(PyObject* _self, PyObject* key) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
@@ -192,7 +192,7 @@ PyObject* PyUpb_MapContainer_Subscript(PyObject* _self, PyObject* key) {
 
 PyObject* PyUpb_MapContainer_Contains(PyObject* _self, PyObject* key) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   if (!map) Py_RETURN_FALSE;
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
@@ -207,7 +207,7 @@ PyObject* PyUpb_MapContainer_Contains(PyObject* _self, PyObject* key) {
 }
 
 PyObject* PyUpb_MapContainer_Clear(PyObject* _self, PyObject* key) {
-  upb_map* map = PyUpb_MapContainer_EnsureReified(_self);
+  upb_Map* map = PyUpb_MapContainer_EnsureReified(_self);
   upb_Map_Clear(map);
   Py_RETURN_NONE;
 }
@@ -218,7 +218,7 @@ static PyObject* PyUpb_MapContainer_Get(PyObject* _self, PyObject* args,
   static const char* kwlist[] = {"key", "default", NULL};
   PyObject* key;
   PyObject* default_value = NULL;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", (char**)kwlist, &key,
                                    &default_value)) {
     return NULL;
@@ -251,7 +251,7 @@ static PyObject* PyUpb_MapContainer_GetEntryClass(PyObject* _self,
 
 Py_ssize_t PyUpb_MapContainer_Length(PyObject* _self) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   return map ? upb_Map_Size(map) : 0;
 }
 
@@ -285,7 +285,7 @@ static PyObject* PyUpb_MapContainer_MergeFrom(PyObject* _self, PyObject* _arg) {
 
 static PyObject* PyUpb_MapContainer_Repr(PyObject* _self) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self);
   PyObject* dict = PyDict_New();
   if (map) {
     const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
@@ -314,7 +314,7 @@ static PyObject* PyUpb_MapContainer_Repr(PyObject* _self) {
   return repr;
 }
 
-PyObject* PyUpb_MapContainer_GetOrCreateWrapper(upb_map* map,
+PyObject* PyUpb_MapContainer_GetOrCreateWrapper(upb_Map* map,
                                                 const upb_FieldDef* f,
                                                 PyObject* arena) {
   PyUpb_MapContainer* ret = (void*)PyUpb_ObjCache_Get(map);
@@ -449,7 +449,7 @@ PyObject* PyUpb_MapIterator_IterNext(PyObject* _self) {
   if (self->version != self->map->version) {
     return PyErr_Format(PyExc_RuntimeError, "Map modified during iteration.");
   }
-  upb_map* map = PyUpb_MapContainer_GetIfReified(self->map);
+  upb_Map* map = PyUpb_MapContainer_GetIfReified(self->map);
   if (!map) return NULL;
   if (!upb_MapIterator_Next(map, &self->iter)) return NULL;
   upb_MessageValue key = upb_MapIterator_Key(map, self->iter);

@@ -214,7 +214,7 @@ static void txtenc_field(txtenc *e, upb_MessageValue val, const upb_FieldDef *f)
  *    foo_field: 2
  *    foo_field: 3
  */
-static void txtenc_array(txtenc *e, const upb_array *arr,
+static void txtenc_array(txtenc *e, const upb_Array *arr,
                          const upb_FieldDef *f) {
   size_t i;
   size_t size = upb_Array_Size(arr);
@@ -255,7 +255,7 @@ static void txtenc_mapentry(txtenc *e, upb_MessageValue key, upb_MessageValue va
  *      value: 456
  *    }
  */
-static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
+static void txtenc_map(txtenc *e, const upb_Map *map, const upb_FieldDef *f) {
   if (e->options & UPB_TXTENC_NOSORT) {
     size_t iter = kUpb_Map_Begin;
     while (upb_MapIterator_Next(map, &iter)) {
@@ -267,7 +267,7 @@ static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
     const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
     _upb_sortedmap sorted;
-    upb_map_entry ent;
+    upb_MapEntry ent;
 
     _upb_mapsorter_pushmap(&e->sorter, upb_FieldDef_Type(key_f), map,
                            &sorted);

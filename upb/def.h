@@ -127,8 +127,8 @@ bool upb_FieldDef_HasSubDef(const upb_FieldDef *f);
 bool upb_FieldDef_HasPresence(const upb_FieldDef *f);
 const upb_MessageDef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f);
 const upb_EnumDef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f);
-const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f);
-const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f);
+const upb_MiniTable_Field *upb_FieldDef_Layout(const upb_FieldDef *f);
+const upb_MiniTable_Extension *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f);
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f);
 
 /* upb_OneofDef ***************************************************************/
@@ -193,7 +193,7 @@ const upb_FieldDef *upb_MessageDef_FindFieldByNameWithSize(const upb_MessageDef 
                                     size_t len);
 const upb_OneofDef *upb_MessageDef_FindOneofByNameWithSize(const upb_MessageDef *m, const char *name,
                                     size_t len);
-const upb_msglayout *upb_MessageDef_Layout(const upb_MessageDef *m);
+const upb_MiniTable *upb_MessageDef_Layout(const upb_MessageDef *m);
 
 UPB_INLINE const upb_OneofDef *upb_MessageDef_FindOneofByName(const upb_MessageDef *m,
                                                const char *name) {
@@ -357,7 +357,7 @@ const upb_FileDef *upb_DefPool_AddFile(
 size_t _upb_DefPool_BytesLoaded(const upb_DefPool *s);
 upb_Arena *_upb_DefPool_Arena(const upb_DefPool *s);
 const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,
-                                               const upb_msglayout_ext *ext);
+                                               const upb_MiniTable_Extension *ext);
 const upb_FieldDef *upb_DefPool_FindExtensionByNamebynum(const upb_DefPool *s,
                                               const upb_MessageDef *m,
                                               int32_t fieldnum);
@@ -368,7 +368,7 @@ const upb_FieldDef **upb_DefPool_GetAllExtensions(const upb_DefPool *s,
 /* For generated code only: loads a generated descriptor. */
 typedef struct _upb_DefPool_Init {
   struct _upb_DefPool_Init **deps;     /* Dependencies of this file. */
-  const upb_msglayout_file *layout;
+  const upb_MiniTable_File *layout;
   const char *filename;
   upb_StringView descriptor;         /* Serialized descriptor. */
 } _upb_DefPool_Init;

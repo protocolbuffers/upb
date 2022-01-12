@@ -106,7 +106,7 @@ void AddMessages(const protobuf::Descriptor* message,
 // Ordering must match upb/def.c!
 //
 // The ordering is significant because each upb_MessageDef* will point at the
-// corresponding upb_msglayout and we just iterate through the list without
+// corresponding upb_MiniTable and we just iterate through the list without
 // any search or lookup.
 std::vector<const protobuf::Descriptor*> SortedMessages(
     const protobuf::FileDescriptor* file) {
@@ -131,7 +131,7 @@ void AddExtensionsFromMessage(
 // Ordering must match upb/def.c!
 //
 // The ordering is significant because each upb_FieldDef* will point at the
-// corresponding upb_msglayout_ext and we just iterate through the list without
+// corresponding upb_MiniTable_Extension and we just iterate through the list without
 // any search or lookup.
 std::vector<const protobuf::FieldDescriptor*> SortedExtensions(
     const protobuf::FileDescriptor* file) {
@@ -267,20 +267,20 @@ std::string SizeLg2(const protobuf::FieldDescriptor* field) {
 std::string SizeRep(const protobuf::FieldDescriptor* field) {
   switch (field->cpp_type()) {
     case protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      return "_UPB_REP_PTR";
+      return "upb_FieldRep_Pointer";
     case protobuf::FieldDescriptor::CPPTYPE_ENUM:
     case protobuf::FieldDescriptor::CPPTYPE_FLOAT:
     case protobuf::FieldDescriptor::CPPTYPE_INT32:
     case protobuf::FieldDescriptor::CPPTYPE_UINT32:
-      return "_UPB_REP_4BYTE";
+      return "upb_FieldRep_4Byte";
     case protobuf::FieldDescriptor::CPPTYPE_BOOL:
-      return "_UPB_REP_1BYTE";
+      return "upb_FieldRep_1Byte";
     case protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
     case protobuf::FieldDescriptor::CPPTYPE_INT64:
     case protobuf::FieldDescriptor::CPPTYPE_UINT64:
-      return "_UPB_REP_8BYTE";
+      return "upb_FieldRep_8Byte";
     case protobuf::FieldDescriptor::CPPTYPE_STRING:
-      return "_UPB_REP_STRVIEW";
+      return "upb_FieldRep_StringView";
     default:
       fprintf(stderr, "Unexpected type");
       abort();
@@ -387,7 +387,7 @@ void GenerateExtensionInHeader(const protobuf::FieldDescriptor* ext,
   } else if (ext->message_type()) {
     output(
         "UPB_INLINE $0 $1_$2(const struct $3 *msg) { "
-        "const upb_msg_ext *ext = _upb_Message_Getext(msg, &$4); "
+        "const upb_Message_Extension *ext = _upb_Message_Getext(msg, &$4); "
         "UPB_ASSERT(ext); return *UPB_PTR_AT(&ext->data, 0, $0); }\n",
         CTypeConst(ext), ExtensionIdentBase(ext), ext->name(),
         MessageName(ext->containing_type()), ExtensionLayout(ext),
@@ -395,7 +395,7 @@ void GenerateExtensionInHeader(const protobuf::FieldDescriptor* ext,
   } else {
     output(
         "UPB_INLINE $0 $1_$2(const struct $3 *msg) { "
-        "const upb_msg_ext *ext = _upb_Message_Getext(msg, &$4); "
+        "const upb_Message_Extension *ext = _upb_Message_Getext(msg, &$4); "
         "return ext ? *UPB_PTR_AT(&ext->data, 0, $0) : $5; }\n",
         CTypeConst(ext), ExtensionIdentBase(ext), ext->name(),
         MessageName(ext->containing_type()), ExtensionLayout(ext),
@@ -740,10 +740,10 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
     output("typedef struct $0 $0;\n", ToCIdent(message->full_name()));
   }
   for (auto message : this_file_messages) {
-    output("extern const upb_msglayout $0;\n", MessageInit(message));
+    output("extern const upb_MiniTable $0;\n", MessageInit(message));
   }
   for (auto ext : this_file_exts) {
-    output("extern const upb_msglayout_ext $0;\n", ExtensionLayout(ext));
+    output("extern const upb_MiniTable_Extension $0;\n", ExtensionLayout(ext));
   }
 
   // Forward-declare types not in this file, but used as submessages.
@@ -770,7 +770,7 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
     output("struct $0;\n", MessageName(pair.second));
   }
   for (const auto& pair : forward_messages) {
-    output("extern const upb_msglayout $0;\n", MessageInit(pair.second));
+    output("extern const upb_MiniTable $0;\n", MessageInit(pair.second));
   }
 
   if (!this_file_messages.empty()) {
@@ -795,7 +795,7 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
 
   if (file->syntax() == protobuf::FileDescriptor::SYNTAX_PROTO2) {
     for (const auto* enumdesc : this_file_enums) {
-      output("extern const upb_enumlayout $0;\n", EnumInit(enumdesc));
+      output("extern const upb_MiniTable_Enum $0;\n", EnumInit(enumdesc));
     }
   }
 
@@ -810,7 +810,7 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
   }
 
 
-  output("extern const upb_msglayout_file $0;\n\n", FileLayoutName(file));
+  output("extern const upb_MiniTable_File $0;\n\n", FileLayoutName(file));
 
   if (file->name() == protobuf::FileDescriptorProto::descriptor()->file()->name()) {
     // This is gratuitously inefficient with how many times it rebuilds
@@ -1137,25 +1137,25 @@ void WriteField(const protobuf::FieldDescriptor* field,
   std::string mode;
   std::string rep;
   if (field->is_map()) {
-    mode = "_UPB_MODE_MAP";
-    rep = "_UPB_REP_PTR";
+    mode = "kUpb_FieldMode_Map";
+    rep = "upb_FieldRep_Pointer";
   } else if (field->is_repeated()) {
-    mode = "_UPB_MODE_ARRAY";
-    rep = "_UPB_REP_PTR";
+    mode = "kUpb_FieldMode_Array";
+    rep = "upb_FieldRep_Pointer";
   } else {
-    mode = "_UPB_MODE_SCALAR";
+    mode = "kUpb_FieldMode_Scalar";
     rep = SizeRep(field);
   }
 
   if (field->is_packed()) {
-    absl::StrAppend(&mode, " | _UPB_MODE_IS_PACKED");
+    absl::StrAppend(&mode, " | upb_LabelFlags_IsPacked");
   }
 
   if (field->is_extension()) {
-    absl::StrAppend(&mode, " | _UPB_MODE_IS_EXTENSION");
+    absl::StrAppend(&mode, " | upb_LabelFlags_IsExtension");
   }
 
-  output("{$0, $1, $2, $3, $4, $5 | ($6 << _UPB_REP_SHIFT)}", field->number(),
+  output("{$0, $1, $2, $3, $4, $5 | ($6 << upb_FieldRep_Shift)}", field->number(),
          offset, presence, submsg_index, TableDescriptorType(field), mode, rep);
 }
 
@@ -1204,7 +1204,7 @@ void WriteMessage(const protobuf::Descriptor* message, Output& output,
     // "submsgs" array for every strongly-connected component.
     std::string submsgs_array_name = msg_name + "_submsgs";
     submsgs_array_ref = "&" + submsgs_array_name + "[0]";
-    output("static const upb_msglayout_sub $0[$1] = {\n",
+    output("static const upb_MiniTable_Sub $0[$1] = {\n",
            submsgs_array_name, sublayout_array.total_count());
 
     for (const auto* submsg : sublayout_array.submsgs()) {
@@ -1222,7 +1222,7 @@ void WriteMessage(const protobuf::Descriptor* message, Output& output,
   if (!field_number_order.empty()) {
     std::string fields_array_name = msg_name + "__fields";
     fields_array_ref = "&" + fields_array_name + "[0]";
-    output("static const upb_msglayout_field $0[$1] = {\n",
+    output("static const upb_MiniTable_Field $0[$1] = {\n",
            fields_array_name, field_number_order.size());
     for (int i = 0; i < static_cast<int>(field_number_order.size()); i++) {
       auto field = field_number_order[i];
@@ -1258,17 +1258,17 @@ void WriteMessage(const protobuf::Descriptor* message, Output& output,
     table_mask = (table.size() - 1) << 3;
   }
 
-  std::string msgext = "_UPB_MSGEXT_NONE";
+  std::string msgext = "upb_ExtMode_NonExtendable";
 
   if (message->extension_range_count()) {
     if (message->options().message_set_wire_format()) {
-      msgext = "_UPB_MSGEXT_MSGSET";
+      msgext = "upb_ExtMode_IsMessageSet";
     } else {
-      msgext = "_UPB_MSGEXT_EXTENDABLE";
+      msgext = "upb_ExtMode_Extendable";
     }
   }
 
-  output("const upb_msglayout $0 = {\n", MessageInit(message));
+  output("const upb_MiniTable $0 = {\n", MessageInit(message));
   output("  $0,\n", submsgs_array_ref);
   output("  $0,\n", fields_array_ref);
   output("  $0, $1, $2, $3, $4, $5,\n",
@@ -1324,7 +1324,7 @@ int WriteEnums(const protobuf::FileDescriptor* file, Output& output) {
       output("};\n\n");
     }
 
-    output("const upb_enumlayout $0 = {\n", EnumInit(e));
+    output("const upb_MiniTable_Enum $0 = {\n", EnumInit(e));
     output("  $0,\n", values_init);
     output("  0x$0ULL,\n", absl::Hex(mask));
     output("  $0,\n", values_vec.size());
@@ -1333,7 +1333,7 @@ int WriteEnums(const protobuf::FileDescriptor* file, Output& output) {
   }
 
   if (!this_file_enums.empty()) {
-    output("static const upb_enumlayout *$0[$1] = {\n", kEnumsInit,
+    output("static const upb_MiniTable_Enum *$0[$1] = {\n", kEnumsInit,
           this_file_enums.size());
     for (const auto* e : this_file_enums) {
       output("  &$0,\n", EnumInit(e));
@@ -1356,7 +1356,7 @@ int WriteMessages(const protobuf::FileDescriptor* file, Output& output,
     WriteMessage(message, output, fasttable_enabled);
   }
 
-  output("static const upb_msglayout *$0[$1] = {\n", kMessagesInit,
+  output("static const upb_MiniTable *$0[$1] = {\n", kMessagesInit,
          file_messages.size());
   for (auto message : file_messages) {
     output("  &$0,\n", MessageInit(message));
@@ -1367,7 +1367,7 @@ int WriteMessages(const protobuf::FileDescriptor* file, Output& output,
 }
 
 void WriteExtension(const protobuf::FieldDescriptor* ext, Output& output) {
-  output("const upb_msglayout_ext $0 = {\n  ", ExtensionLayout(ext));
+  output("const upb_MiniTable_Extension $0 = {\n  ", ExtensionLayout(ext));
   WriteField(ext, "0", "0", 0, output);
   output(",\n");
   output("    &$0,\n", MessageInit(ext->containing_type()));
@@ -1400,7 +1400,7 @@ int WriteExtensions(const protobuf::FileDescriptor* file, Output& output) {
   }
 
   for (const auto& decl : forward_messages) {
-    output("extern const upb_msglayout $0;\n", MessageInit(decl.second));
+    output("extern const upb_MiniTable $0;\n", MessageInit(decl.second));
   }
 
   for (auto ext : exts) {
@@ -1409,7 +1409,7 @@ int WriteExtensions(const protobuf::FileDescriptor* file, Output& output) {
 
   output(
       "\n"
-      "static const upb_msglayout_ext *$0[$1] = {\n",
+      "static const upb_MiniTable_Extension *$0[$1] = {\n",
       kExtensionsInit, exts.size());
 
   for (auto ext : exts) {
@@ -1446,7 +1446,7 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output,
   int ext_count = WriteExtensions(file, output);
   int enum_count = WriteEnums(file, output);
 
-  output("const upb_msglayout_file $0 = {\n", FileLayoutName(file));
+  output("const upb_MiniTable_File $0 = {\n", FileLayoutName(file));
   output("  $0,\n", msg_count ? kMessagesInit : "NULL");
   output("  $0,\n", enum_count ? kEnumsInit : "NULL");
   output("  $0,\n", ext_count ? kExtensionsInit : "NULL");

@@ -52,7 +52,7 @@
  * a cyclic graph cannot be serialized.  So it's better to think of this as a
  * tree of objects.
  *
- * The actual data exists at the upb level (upb_msg, upb_map, upb_array),
+ * The actual data exists at the upb level (upb_msg, upb_Map, upb_Array),
  * independently of Lua.  The upb objects contain all the canonical data and
  * edges between objects.  Lua wrapper objects expose the upb objects to Lua,
  * but ultimately they are just wrappers.  They pass through all reads and
@@ -65,8 +65,8 @@
  * that arena.  All wrapper objects strongly reference the arena to which they
  * belong.
  *
- * A global object cache stores a mapping of C pointer (upb_msg*, upb_array*,
- * upb_map*) to a corresponding Lua wrapper.  These references are weak so that
+ * A global object cache stores a mapping of C pointer (upb_msg*, upb_Array*,
+ * upb_Map*) to a corresponding Lua wrapper.  These references are weak so that
  * the wrappers can be collected if they are no longer needed.  A new wrapper
  * object can always be recreated later.
  *
@@ -359,7 +359,7 @@ void lupb_pushmsgval(lua_State* L, int container, upb_CType type,
 /* lupb_array *****************************************************************/
 
 typedef struct {
-  upb_array *arr;
+  upb_Array *arr;
   upb_CType type;
 } lupb_array;
 
@@ -491,7 +491,7 @@ static const struct luaL_Reg lupb_array_mm[] = {
 /* lupb_map *******************************************************************/
 
 typedef struct {
-  upb_map *map;
+  upb_Map *map;
   upb_CType key_type;
   upb_CType value_type;
 } lupb_map;
@@ -577,7 +577,7 @@ static int lupb_map_len(lua_State *L) {
  */
 static int lupb_Map_Newindex(lua_State *L) {
   lupb_map *lmap = lupb_map_check(L, 1);
-  upb_map *map = lmap->map;
+  upb_Map *map = lmap->map;
   upb_MessageValue key = lupb_tomsgval(L, lmap->key_type, 2, 1, LUPB_REF);
 
   if (lua_isnil(L, 3)) {
@@ -950,7 +950,7 @@ static int lupb_decode(lua_State *L) {
   size_t len;
   const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   const char *pb = lua_tolstring(L, 2, &len);
-  const upb_msglayout *layout = upb_MessageDef_Layout(m);
+  const upb_MiniTable *layout = upb_MessageDef_Layout(m);
   upb_msg *msg = lupb_msg_pushnew(L, 1);
   upb_Arena *arena = lupb_Arenaget(L, -1);
   char *buf;
@@ -979,7 +979,7 @@ static int lupb_decode(lua_State *L) {
 static int lupb_Encode(lua_State *L) {
   const upb_msg *msg = lupb_msg_check(L, 1);
   const upb_MessageDef *m = lupb_Message_Getmsgdef(L, 1);
-  const upb_msglayout *layout = upb_MessageDef_Layout(m);
+  const upb_MiniTable *layout = upb_MessageDef_Layout(m);
   int options = lupb_getoptions(L, 2);
   upb_Arena *arena;
   size_t size;

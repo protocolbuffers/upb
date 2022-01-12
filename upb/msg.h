@@ -50,8 +50,8 @@ typedef void upb_msg;
 
 /* For users these are opaque. They can be obtained from upb_MessageDef_Layout()
  * but users cannot access any of the members. */
-struct upb_msglayout;
-typedef struct upb_msglayout upb_msglayout;
+struct upb_MiniTable;
+typedef struct upb_MiniTable upb_MiniTable;
 
 /* Adds unknown data (serialized protobuf data) to the given message.  The data
  * is copied into the message instance. */
@@ -67,7 +67,7 @@ size_t upb_msg_extcount(const upb_msg *msg);
 /** upb_extreg *******************************************************************/
 
 /* Extension registry: a dynamic data structure that stores a map of:
- *   (upb_msglayout, number) -> extension info
+ *   (upb_MiniTable, number) -> extension info
  *
  * upb_decode() uses upb_extreg to look up extensions while parsing binary
  * format.

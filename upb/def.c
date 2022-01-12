@@ -96,7 +96,7 @@ struct upb_ExtensionRange {
 
 struct upb_MessageDef {
   const google_protobuf_MessageOptions *opts;
-  const upb_msglayout *layout;
+  const upb_MiniTable *layout;
   const upb_FileDef *file;
   const upb_MessageDef *containing_type;
   const char *full_name;
@@ -127,7 +127,7 @@ struct upb_MessageDef {
 
 struct upb_EnumDef {
   const google_protobuf_EnumOptions *opts;
-  const upb_enumlayout *layout;  // Only for proto2.
+  const upb_MiniTable_Enum *layout;  // Only for proto2.
   const upb_FileDef *file;
   const upb_MessageDef *containing_type;  // Could be merged with "file".
   const char *full_name;
@@ -168,7 +168,7 @@ struct upb_FileDef {
   const upb_EnumDef *top_lvl_enums;
   const upb_FieldDef *top_lvl_exts;
   const upb_ServiceDef *services;
-  const upb_msglayout_ext **ext_layouts;
+  const upb_MiniTable_Extension **ext_layouts;
   const upb_DefPool *symtab;
 
   int dep_count;
@@ -205,7 +205,7 @@ struct upb_DefPool {
   upb_Arena *arena;
   upb_strtable syms;  /* full_name -> packed def ptr */
   upb_strtable files;  /* file_name -> upb_FileDef* */
-  upb_inttable exts;   /* upb_msglayout_ext* -> upb_FieldDef* */
+  upb_inttable exts;   /* upb_MiniTable_Extension* -> upb_FieldDef* */
   upb_extreg *extreg;
   size_t bytes_loaded;
 };
@@ -404,7 +404,7 @@ const upb_EnumValueDef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *def, in
 bool upb_EnumDef_CheckNumber(const upb_EnumDef *e, int32_t num) {
   // We could use upb_EnumDef_FindValueByNumber(e, num) != NULL, but we expect this to
   // be faster (especially for small numbers).
-  return _upb_enumlayout_checkval(e->layout, num);
+  return upb_MiniTable_Enum_CheckValue(e->layout, num);
 }
 
 const upb_EnumValueDef *upb_EnumDef_Value(const upb_EnumDef *e, int i) {
@@ -616,12 +616,12 @@ const upb_EnumDef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == kUpb_CType_Enum ? f->sub.enumdef : NULL;
 }
 
-const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f) {
+const upb_MiniTable_Field *upb_FieldDef_Layout(const upb_FieldDef *f) {
   UPB_ASSERT(!upb_FieldDef_IsExtension(f));
   return &f->msgdef->layout->fields[f->layout_index];
 }
 
-const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f) {
+const upb_MiniTable_Extension *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f) {
   UPB_ASSERT(upb_FieldDef_IsExtension(f));
   return f->file->ext_layouts[f->layout_index];
 }
@@ -807,7 +807,7 @@ int upb_MessageDef_realoneofcount(const upb_MessageDef *m) {
   return m->real_oneof_count;
 }
 
-const upb_msglayout *upb_MessageDef_Layout(const upb_MessageDef *m) {
+const upb_MiniTable *upb_MessageDef_Layout(const upb_MessageDef *m) {
   return m->layout;
 }
 
@@ -1247,7 +1247,7 @@ typedef struct {
   upb_FileDef *file;              /* File we are building. */
   upb_Arena *arena;               /* Allocate defs here. */
   upb_Arena *tmp_arena;                 /* For temporary allocations. */
-  const upb_msglayout_file *layout;  /* NULL if we should build layouts. */
+  const upb_MiniTable_File *layout;  /* NULL if we should build layouts. */
   int enum_count;                 /* Count of enums built so far. */
   int msg_count;                  /* Count of messages built so far. */
   int ext_count;                  /* Count of extensions built so far. */
@@ -1351,7 +1351,7 @@ static size_t upb_MessageValue_sizeof(upb_CType type) {
 
 static uint8_t upb_msg_fielddefsize(const upb_FieldDef *f) {
   if (upb_MessageDef_IsMapEntry(upb_FieldDef_ContainingType(f))) {
-    upb_map_entry ent;
+    upb_MapEntry ent;
     UPB_ASSERT(sizeof(ent.k) == sizeof(ent.v));
     return sizeof(ent.k);
   } else if (upb_FieldDef_IsRepeated(f)) {
@@ -1361,7 +1361,7 @@ static uint8_t upb_msg_fielddefsize(const upb_FieldDef *f) {
   }
 }
 
-static uint32_t upb_msglayout_place(symtab_addctx *ctx, upb_msglayout *l,
+static uint32_t upb_MiniTable_place(symtab_addctx *ctx, upb_MiniTable *l,
                                     size_t size, const upb_MessageDef *m) {
   size_t ofs = UPB_ALIGN_UP(l->size, size);
   size_t next = ofs + size;
@@ -1376,13 +1376,13 @@ static uint32_t upb_msglayout_place(symtab_addctx *ctx, upb_msglayout *l,
 }
 
 static int field_number_cmp(const void *p1, const void *p2) {
-  const upb_msglayout_field *f1 = p1;
-  const upb_msglayout_field *f2 = p2;
+  const upb_MiniTable_Field *f1 = p1;
+  const upb_MiniTable_Field *f2 = p2;
   return f1->number - f2->number;
 }
 
-static void assign_layout_indices(const upb_MessageDef *m, upb_msglayout *l,
-                                  upb_msglayout_field *fields) {
+static void assign_layout_indices(const upb_MessageDef *m, upb_MiniTable *l,
+                                  upb_MiniTable_Field *fields) {
   int i;
   int n = upb_MessageDef_numfields(m);
   int dense_below = 0;
@@ -1411,60 +1411,60 @@ static uint8_t map_descriptortype(const upb_FieldDef *f) {
   return type;
 }
 
-static void fill_fieldlayout(upb_msglayout_field *field, const upb_FieldDef *f) {
+static void fill_fieldlayout(upb_MiniTable_Field *field, const upb_FieldDef *f) {
   field->number = upb_FieldDef_Number(f);
   field->descriptortype = map_descriptortype(f);
 
   if (upb_FieldDef_IsMap(f)) {
-    field->mode = _UPB_MODE_MAP | (_UPB_REP_PTR << _UPB_REP_SHIFT);
+    field->mode = kUpb_FieldMode_Map | (upb_FieldRep_Pointer << upb_FieldRep_Shift);
   } else if (upb_FieldDef_IsRepeated(f)) {
-    field->mode = _UPB_MODE_ARRAY | (_UPB_REP_PTR << _UPB_REP_SHIFT);
+    field->mode = kUpb_FieldMode_Array | (upb_FieldRep_Pointer << upb_FieldRep_Shift);
   } else {
     /* Maps descriptor type -> elem_size_lg2.  */
     static const uint8_t sizes[] = {
         -1,               /* invalid descriptor type */
-        _UPB_REP_8BYTE,  /* DOUBLE */
-        _UPB_REP_4BYTE,   /* FLOAT */
-        _UPB_REP_8BYTE,   /* INT64 */
-        _UPB_REP_8BYTE,  /* UINT64 */
-        _UPB_REP_4BYTE,   /* INT32 */
-        _UPB_REP_8BYTE,  /* FIXED64 */
-        _UPB_REP_4BYTE,  /* FIXED32 */
-        _UPB_REP_1BYTE,    /* BOOL */
-        _UPB_REP_STRVIEW,  /* STRING */
-        _UPB_REP_PTR,  /* GROUP */
-        _UPB_REP_PTR,  /* MESSAGE */
-        _UPB_REP_STRVIEW,  /* BYTES */
-        _UPB_REP_4BYTE,  /* UINT32 */
-        _UPB_REP_4BYTE,    /* ENUM */
-        _UPB_REP_4BYTE,   /* SFIXED32 */
-        _UPB_REP_8BYTE,   /* SFIXED64 */
-        _UPB_REP_4BYTE,   /* SINT32 */
-        _UPB_REP_8BYTE,   /* SINT64 */
+        upb_FieldRep_8Byte,  /* DOUBLE */
+        upb_FieldRep_4Byte,   /* FLOAT */
+        upb_FieldRep_8Byte,   /* INT64 */
+        upb_FieldRep_8Byte,  /* UINT64 */
+        upb_FieldRep_4Byte,   /* INT32 */
+        upb_FieldRep_8Byte,  /* FIXED64 */
+        upb_FieldRep_4Byte,  /* FIXED32 */
+        upb_FieldRep_1Byte,    /* BOOL */
+        upb_FieldRep_StringView,  /* STRING */
+        upb_FieldRep_Pointer,  /* GROUP */
+        upb_FieldRep_Pointer,  /* MESSAGE */
+        upb_FieldRep_StringView,  /* BYTES */
+        upb_FieldRep_4Byte,  /* UINT32 */
+        upb_FieldRep_4Byte,    /* ENUM */
+        upb_FieldRep_4Byte,   /* SFIXED32 */
+        upb_FieldRep_8Byte,   /* SFIXED64 */
+        upb_FieldRep_4Byte,   /* SINT32 */
+        upb_FieldRep_8Byte,   /* SINT64 */
     };
     field->mode =
-        _UPB_MODE_SCALAR | (sizes[field->descriptortype] << _UPB_REP_SHIFT);
+        kUpb_FieldMode_Scalar | (sizes[field->descriptortype] << upb_FieldRep_Shift);
   }
 
   if (upb_FieldDef_IsPacked(f)) {
-    field->mode |= _UPB_MODE_IS_PACKED;
+    field->mode |= upb_LabelFlags_IsPacked;
   }
 
   if (upb_FieldDef_IsExtension(f)) {
-    field->mode |= _UPB_MODE_IS_EXTENSION;
+    field->mode |= upb_LabelFlags_IsExtension;
   }
 }
 
 /* This function is the dynamic equivalent of message_layout.{cc,h} in upbc.
  * It computes a dynamic layout for all of the fields in |m|. */
 static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
-  upb_msglayout *l = (upb_msglayout*)m->layout;
+  upb_MiniTable *l = (upb_MiniTable*)m->layout;
   size_t field_count = upb_MessageDef_numfields(m);
   size_t sublayout_count = 0;
-  upb_msglayout_sub *subs;
-  upb_msglayout_field *fields;
+  upb_MiniTable_Sub *subs;
+  upb_MiniTable_Field *fields;
 
-  memset(l, 0, sizeof(*l) + sizeof(_upb_fasttable_entry));
+  memset(l, 0, sizeof(*l) + sizeof(_upb_FastTable_Entry));
 
   /* Count sub-messages. */
   for (size_t i = 0; i < field_count; i++) {
@@ -1489,12 +1489,12 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
 
   if (upb_MessageDef_ExtensionRangeCount(m) > 0) {
     if (google_protobuf_MessageOptions_message_set_wire_format(m->opts)) {
-      l->ext = _UPB_MSGEXT_MSGSET;
+      l->ext = upb_ExtMode_IsMessageSet;
     } else {
-      l->ext = _UPB_MSGEXT_EXTENDABLE;
+      l->ext = upb_ExtMode_Extendable;
     }
   } else {
-    l->ext = _UPB_MSGEXT_NONE;
+    l->ext = upb_ExtMode_NonExtendable;
   }
 
   /* TODO(haberman): initialize fast tables so that reflection-based parsing
@@ -1509,8 +1509,8 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
     const upb_FieldDef *val = upb_MessageDef_FindFieldByNumberWithSize(m, 2);
     fields[0].number = 1;
     fields[1].number = 2;
-    fields[0].mode = _UPB_MODE_SCALAR;
-    fields[1].mode = _UPB_MODE_SCALAR;
+    fields[0].mode = kUpb_FieldMode_Scalar;
+    fields[1].mode = kUpb_FieldMode_Scalar;
     fields[0].presence = 0;
     fields[1].presence = 0;
     fields[0].descriptortype = map_descriptortype(key);
@@ -1550,7 +1550,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
 
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = &m->fields[i];
-    upb_msglayout_field *field = &fields[upb_FieldDef_Index(f)];
+    upb_MiniTable_Field *field = &fields[upb_FieldDef_Index(f)];
     if (upb_FieldDef_Label(f) == kUpb_Label_Required) {
       field->presence = ++hasbit;
       if (hasbit >= 63) {
@@ -1565,7 +1565,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
   sublayout_count = 0;
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = &m->fields[i];
-    upb_msglayout_field *field = &fields[upb_FieldDef_Index(f)];
+    upb_MiniTable_Field *field = &fields[upb_FieldDef_Index(f)];
 
     fill_fieldlayout(field, f);
 
@@ -1604,7 +1604,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
       continue;
     }
 
-    fields[index].offset = upb_msglayout_place(ctx, l, field_size, m);
+    fields[index].offset = upb_MiniTable_place(ctx, l, field_size, m);
   }
 
   /* Allocate oneof fields.  Each oneof field consists of a uint32 for the case
@@ -1625,8 +1625,8 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
     }
 
     /* Align and allocate case offset. */
-    case_offset = upb_msglayout_place(ctx, l, case_size, m);
-    data_offset = upb_msglayout_place(ctx, l, field_size, m);
+    case_offset = upb_MiniTable_place(ctx, l, case_size, m);
+    data_offset = upb_MiniTable_place(ctx, l, field_size, m);
 
     for (int i = 0; i < o->field_count; i++) {
       const upb_FieldDef* f = o->fields[i];
@@ -2258,7 +2258,7 @@ static void create_fielddef(
     CHK_OOM(upb_inttable_insert(&m->itof, field_number, v, ctx->arena));
 
     if (ctx->layout) {
-      const upb_msglayout_field *fields = m->layout->fields;
+      const upb_MiniTable_Field *fields = m->layout->fields;
       int count = m->layout->field_count;
       bool found = false;
       for (int i = 0; i < count; i++) {
@@ -2404,7 +2404,7 @@ static int count_bits_debug(uint64_t x) {
   return n;
 }
 
-upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_EnumDef *e) {
+upb_MiniTable_Enum *create_enumlayout(symtab_addctx *ctx, const upb_EnumDef *e) {
   int n = 0;
   uint64_t mask = 0;
 
@@ -2423,7 +2423,7 @@ upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_EnumDef *e) {
     int32_t *p = values;
 
     // Add values outside the bitmask range to the list, as described in the
-    // comments for upb_enumlayout.
+    // comments for upb_MiniTable_Enum.
     for (int i = 0; i < e->value_count; i++) {
       int32_t val = e->values[i].number;
       if ((uint32_t)val >= 64) {
@@ -2435,7 +2435,7 @@ upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_EnumDef *e) {
 
   UPB_ASSERT(upb_inttable_count(&e->iton) == n + count_bits_debug(mask));
 
-  upb_enumlayout *layout = symtab_alloc(ctx, sizeof(*layout));
+  upb_MiniTable_Enum *layout = symtab_alloc(ctx, sizeof(*layout));
   layout->value_count = n;
   layout->mask = mask;
   layout->values = values;
@@ -2564,7 +2564,7 @@ static void create_msgdef(symtab_addctx *ctx, const char *prefix,
   } else {
     /* Allocate now (to allow cross-linking), populate later. */
     m->layout = symtab_alloc(
-        ctx, sizeof(*m->layout) + sizeof(_upb_fasttable_entry));
+        ctx, sizeof(*m->layout) + sizeof(_upb_FastTable_Entry));
   }
 
   SET_OPTIONS(m->opts, DescriptorProto, MessageOptions, msg_proto);
@@ -2723,11 +2723,11 @@ static void resolve_extension(
                 (unsigned)f->number_, f->full_name, f->msgdef->full_name);
   }
 
-  const upb_msglayout_ext *ext = ctx->file->ext_layouts[f->layout_index];
+  const upb_MiniTable_Extension *ext = ctx->file->ext_layouts[f->layout_index];
   if (ctx->layout) {
     UPB_ASSERT(upb_FieldDef_Number(f) == ext->field.number);
   } else {
-    upb_msglayout_ext *mut_ext = (upb_msglayout_ext*)ext;
+    upb_MiniTable_Extension *mut_ext = (upb_MiniTable_Extension*)ext;
     fill_fieldlayout(&mut_ext->field, f);
     mut_ext->field.presence = 0;
     mut_ext->field.offset = 0;
@@ -2855,7 +2855,7 @@ static void build_filedef(
     /* We are building ext layouts from scratch. */
     file->ext_layouts =
         symtab_alloc(ctx, sizeof(*file->ext_layouts) * file->ext_count);
-    upb_msglayout_ext *ext = symtab_alloc(ctx, sizeof(*ext) * file->ext_count);
+    upb_MiniTable_Extension *ext = symtab_alloc(ctx, sizeof(*ext) * file->ext_count);
     for (int i = 0; i < file->ext_count; i++) {
       file->ext_layouts[i] = &ext[i];
     }
@@ -3018,7 +3018,7 @@ static void remove_filedef(upb_DefPool *s, upb_FileDef *file) {
 
 static const upb_FileDef *_upb_DefPool_AddFile(
     upb_DefPool *s, const google_protobuf_FileDescriptorProto *file_proto,
-    const upb_msglayout_file *layout, upb_Status *status) {
+    const upb_MiniTable_File *layout, upb_Status *status) {
   symtab_addctx ctx;
   upb_StringView name = google_protobuf_FileDescriptorProto_name(file_proto);
   upb_value v;
@@ -3029,7 +3029,7 @@ static const upb_FileDef *_upb_DefPool_AddFile(
                         UPB_STRINGVIEW_ARGS(name));
       return NULL;
     }
-    const upb_msglayout_file *registered = unpack_def(v, UPB_DEFTYPE_LAYOUT);
+    const upb_MiniTable_File *registered = unpack_def(v, UPB_DEFTYPE_LAYOUT);
     UPB_ASSERT(registered);
     if (layout && layout != registered) {
       upb_Status_SetErrorFormat(
@@ -3145,7 +3145,7 @@ upb_Arena *_upb_DefPool_Arena(const upb_DefPool *s) {
 }
 
 const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,
-                                               const upb_msglayout_ext *ext) {
+                                               const upb_MiniTable_Extension *ext) {
   upb_value v;
   bool ok = upb_inttable_lookup(&s->exts, (uintptr_t)ext, &v);
   UPB_ASSERT(ok);
@@ -3155,13 +3155,13 @@ const upb_FieldDef *_upb_DefPool_FindExtensionByNamefield(const upb_DefPool *s,
 const upb_FieldDef *upb_DefPool_FindExtensionByNamebynum(const upb_DefPool *s,
                                               const upb_MessageDef *m,
                                               int32_t fieldnum) {
-  const upb_msglayout *l = upb_MessageDef_Layout(m);
-  const upb_msglayout_ext *ext = _upb_extreg_get(s->extreg, l, fieldnum);
+  const upb_MiniTable *l = upb_MessageDef_Layout(m);
+  const upb_MiniTable_Extension *ext = _upb_extreg_get(s->extreg, l, fieldnum);
   return ext ? _upb_DefPool_FindExtensionByNamefield(s, ext) : NULL;
 }
 
 bool _upb_DefPool_registerlayout(upb_DefPool *s, const char *filename,
-                                const upb_msglayout_file *file) {
+                                const upb_MiniTable_File *file) {
   if (upb_DefPool_FindFileByName(s, filename)) return false;
   upb_value v = pack_def(file, UPB_DEFTYPE_LAYOUT);
   return upb_strtable_insert(&s->files, filename, strlen(filename), v,

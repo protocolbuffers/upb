@@ -26,7 +26,7 @@
  */
 
 /*
- * upb_decode: parsing into a upb_msg using a upb_msglayout.
+ * upb_decode: parsing into a upb_msg using a upb_MiniTable.
  */
 
 #ifndef UPB_DECODE_H_
@@ -81,12 +81,12 @@ typedef enum {
 } upb_DecodeStatus;
 
 upb_DecodeStatus _upb_decode(const char *buf, size_t size, upb_msg *msg,
-                             const upb_msglayout *l, const upb_extreg *extreg,
+                             const upb_MiniTable *l, const upb_extreg *extreg,
                              int options, upb_Arena *arena);
 
 UPB_INLINE
 upb_DecodeStatus upb_decode(const char *buf, size_t size, upb_msg *msg,
-                            const upb_msglayout *l, upb_Arena *arena) {
+                            const upb_MiniTable *l, upb_Arena *arena) {
   return _upb_decode(buf, size, msg, l, NULL, 0, arena);
 }
 

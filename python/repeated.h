@@ -43,16 +43,16 @@ PyObject* PyUpb_RepeatedContainer_NewStub(PyObject* parent,
 // must be on `arena`.  If an existing wrapper object exists, it will be
 // returned, otherwise a new object will be created.  The caller always owns a
 // ref on the returned value.
-PyObject* PyUpb_RepeatedContainer_GetOrCreateWrapper(upb_array* arr,
+PyObject* PyUpb_RepeatedContainer_GetOrCreateWrapper(upb_Array* arr,
                                                      const upb_FieldDef* f,
                                                      PyObject* arena);
 
 // Reifies a repeated field stub to point to the concrete data in `arr`.
 // If `arr` is NULL, an appropriate empty array will be constructed.
-void PyUpb_RepeatedContainer_Reify(PyObject* self, upb_array* arr);
+void PyUpb_RepeatedContainer_Reify(PyObject* self, upb_Array* arr);
 
 // Reifies this repeated object if it is not already reified.
-upb_array* PyUpb_RepeatedContainer_EnsureReified(PyObject* self);
+upb_Array* PyUpb_RepeatedContainer_EnsureReified(PyObject* self);
 
 // Implements repeated_field.extend(iterable).  `_self` must be a repeated
 // field (either repeated composite or repeated scalar).

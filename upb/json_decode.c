@@ -880,7 +880,7 @@ static upb_MessageValue jsondec_bool(jsondec *d, const upb_FieldDef *f) {
 /* Composite types (array/message/map) ****************************************/
 
 static void jsondec_array(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
-  upb_array *arr = upb_Message_Mutable(msg, f, d->arena).array;
+  upb_Array *arr = upb_Message_Mutable(msg, f, d->arena).array;
 
   jsondec_arrstart(d);
   while (jsondec_arrnext(d)) {
@@ -891,7 +891,7 @@ static void jsondec_array(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
 }
 
 static void jsondec_map(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
-  upb_map *map = upb_Message_Mutable(msg, f, d->arena).map;
+  upb_Map *map = upb_Message_Mutable(msg, f, d->arena).map;
   const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, 1);
   const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, 2);
@@ -1170,7 +1170,7 @@ static void jsondec_duration(jsondec *d, upb_msg *msg, const upb_MessageDef *m) 
 static void jsondec_listvalue(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
   const upb_FieldDef *values_f = upb_MessageDef_FindFieldByNumberWithSize(m, 1);
   const upb_MessageDef *value_m = upb_FieldDef_MessageSubDef(values_f);
-  upb_array *values = upb_Message_Mutable(msg, values_f, d->arena).array;
+  upb_Array *values = upb_Message_Mutable(msg, values_f, d->arena).array;
 
   jsondec_arrstart(d);
   while (jsondec_arrnext(d)) {
@@ -1188,7 +1188,7 @@ static void jsondec_struct(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
   const upb_MessageDef *entry_m = upb_FieldDef_MessageSubDef(fields_f);
   const upb_FieldDef *value_f = upb_MessageDef_FindFieldByNumberWithSize(entry_m, 2);
   const upb_MessageDef *value_m = upb_FieldDef_MessageSubDef(value_f);
-  upb_map *fields = upb_Message_Mutable(msg, fields_f, d->arena).map;
+  upb_Map *fields = upb_Message_Mutable(msg, fields_f, d->arena).map;
 
   jsondec_objstart(d);
   while (jsondec_objnext(d)) {
@@ -1293,7 +1293,7 @@ static upb_StringView jsondec_mask(jsondec *d, const char *buf, const char *end)
 static void jsondec_fieldmask(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
   /* repeated string paths = 1; */
   const upb_FieldDef *paths_f = upb_MessageDef_FindFieldByNumberWithSize(m, 1);
-  upb_array *arr = upb_Message_Mutable(msg, paths_f, d->arena).array;
+  upb_Array *arr = upb_Message_Mutable(msg, paths_f, d->arena).array;
   upb_StringView str = jsondec_string(d);
   const char *ptr = str.data;
   const char *end = ptr + str.size;

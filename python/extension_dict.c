@@ -67,13 +67,13 @@ static PyObject* PyUpb_ExtensionDict_FindExtensionByNumber(PyObject* _self,
                                                            PyObject* arg) {
   PyUpb_ExtensionDict* self = (PyUpb_ExtensionDict*)_self;
   const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(self->msg);
-  const upb_msglayout* l = upb_MessageDef_Layout(m);
+  const upb_MiniTable* l = upb_MessageDef_Layout(m);
   const upb_FileDef* file = upb_MessageDef_File(m);
   const upb_DefPool* symtab = upb_FileDef_Pool(file);
   const upb_extreg* reg = upb_DefPool_ExtensionRegistry(symtab);
   int64_t number = PyLong_AsLong(arg);
-  const upb_msglayout_ext* ext =
-      (upb_msglayout_ext*)_upb_extreg_get(reg, l, number);
+  const upb_MiniTable_Extension* ext =
+      (upb_MiniTable_Extension*)_upb_extreg_get(reg, l, number);
   if (ext) {
     const upb_FieldDef* f = _upb_DefPool_FindExtensionByNamefield(symtab, ext);
     return PyUpb_FieldDescriptor_Get(f);

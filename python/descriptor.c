@@ -102,7 +102,7 @@ static PyUpb_DescriptorBase* PyUpb_DescriptorBase_Check(
 
 static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
                                                  const upb_msg* opts,
-                                                 const upb_msglayout* layout,
+                                                 const upb_MiniTable* layout,
                                                  const char* msg_name) {
   if (!self->options) {
     // Load descriptors protos if they are not loaded already. We have to do
@@ -143,7 +143,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
 typedef void* PyUpb_ToProto_Func(const void* def, upb_Arena* arena);
 
 static PyObject* PyUpb_DescriptorBase_GetSerializedProto(
-    PyObject* _self, PyUpb_ToProto_Func* func, const upb_msglayout* layout) {
+    PyObject* _self, PyUpb_ToProto_Func* func, const upb_MiniTable* layout) {
   PyUpb_DescriptorBase* self = (void*)_self;
   upb_Arena* arena = upb_Arena_New();
   if (!arena) PYUPB_RETURN_OOM;
@@ -164,7 +164,7 @@ oom:
 
 static PyObject* PyUpb_DescriptorBase_CopyToProto(PyObject* _self,
                                                   PyUpb_ToProto_Func* func,
-                                                  const upb_msglayout* layout,
+                                                  const upb_MiniTable* layout,
                                                   PyObject* py_proto) {
   PyObject* serialized =
       PyUpb_DescriptorBase_GetSerializedProto(_self, func, layout);

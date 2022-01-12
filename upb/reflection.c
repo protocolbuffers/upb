@@ -33,7 +33,7 @@
 
 #include "upb/port_def.inc"
 
-static size_t get_field_size(const upb_msglayout_field *f) {
+static size_t get_field_size(const upb_MiniTable_Field *f) {
   static unsigned char sizes[] = {
     0,/* 0 */
     8, /* upb_FieldType_Double */
@@ -55,7 +55,7 @@ static size_t get_field_size(const upb_msglayout_field *f) {
     4, /* upb_FieldType_SInt32 */
     8, /* upb_FieldType_SInt64 */
   };
-  return _upb_repeated_or_map(f) ? sizeof(void *) : sizes[f->descriptortype];
+  return upb_IsRepeatedOrMap(f) ? sizeof(void *) : sizes[f->descriptortype];
 }
 
 /* Strings/bytes are special-cased in maps. */
@@ -95,12 +95,12 @@ upb_msg *upb_Message_New(const upb_MessageDef *m, upb_Arena *a) {
   return _upb_Message_New(upb_MessageDef_Layout(m), a);
 }
 
-static bool in_oneof(const upb_msglayout_field *field) {
+static bool in_oneof(const upb_MiniTable_Field *field) {
   return field->presence < 0;
 }
 
 static upb_MessageValue _upb_Message_Getraw(const upb_msg *msg, const upb_FieldDef *f) {
-  const upb_msglayout_field *field = upb_FieldDef_Layout(f);
+  const upb_MiniTable_Field *field = upb_FieldDef_Layout(f);
   const char *mem = UPB_PTR_AT(msg, field->offset, char);
   upb_MessageValue val = {0};
   memcpy(&val, mem, get_field_size(field));
@@ -110,10 +110,10 @@ static upb_MessageValue _upb_Message_Getraw(const upb_msg *msg, const upb_FieldD
 bool upb_Message_Has(const upb_msg *msg, const upb_FieldDef *f) {
   assert(upb_FieldDef_HasPresence(f));
   if (upb_FieldDef_IsExtension(f)) {
-    const upb_msglayout_ext *ext = _upb_FieldDef_ExtensionLayout(f);
+    const upb_MiniTable_Extension *ext = _upb_FieldDef_ExtensionLayout(f);
     return _upb_Message_Getext(msg, ext) != NULL;
   } else {
-    const upb_msglayout_field *field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field *field = upb_FieldDef_Layout(f);
     if (in_oneof(field)) {
       return _upb_getoneofcase_field(msg, field) == field->number;
     } else if (field->presence > 0) {
@@ -133,7 +133,7 @@ const upb_FieldDef *upb_Message_WhichOneof(const upb_msg *msg,
     UPB_ASSERT(upb_OneofDef_FieldCount(o) == 1);
     return upb_Message_Has(msg, f) ? f : NULL;
   } else {
-    const upb_msglayout_field *field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field *field = upb_FieldDef_Layout(f);
     uint32_t oneof_case = _upb_getoneofcase_field(msg, field);
     f = oneof_case ? upb_OneofDef_LookupNumber(o, oneof_case) : NULL;
     UPB_ASSERT((f != NULL) == (oneof_case != 0));
@@ -143,7 +143,7 @@ const upb_FieldDef *upb_Message_WhichOneof(const upb_msg *msg,
 
 upb_MessageValue upb_Message_Get(const upb_msg *msg, const upb_FieldDef *f) {
   if (upb_FieldDef_IsExtension(f)) {
-    const upb_msg_ext *ext = _upb_Message_Getext(msg, _upb_FieldDef_ExtensionLayout(f));
+    const upb_Message_Extension *ext = _upb_Message_Getext(msg, _upb_FieldDef_ExtensionLayout(f));
     if (ext) {
       upb_MessageValue val;
       memcpy(&val, &ext->data, sizeof(val));
@@ -167,7 +167,7 @@ upb_MutableMessageValue upb_Message_Mutable(upb_msg *msg, const upb_FieldDef *f,
 
   upb_MessageValue val = upb_Message_Get(msg, f);
   if (val.array_val) {
-    return (upb_MutableMessageValue){.array = (upb_array*)val.array_val};
+    return (upb_MutableMessageValue){.array = (upb_Array*)val.array_val};
   }
 
   upb_MutableMessageValue ret;
@@ -194,12 +194,12 @@ make:
 bool upb_Message_Set(upb_msg *msg, const upb_FieldDef *f, upb_MessageValue val,
                  upb_Arena *a) {
   if (upb_FieldDef_IsExtension(f)) {
-    upb_msg_ext *ext =
+    upb_Message_Extension *ext =
         _upb_Message_Getorcreateext(msg, _upb_FieldDef_ExtensionLayout(f), a);
     if (!ext) return false;
     memcpy(&ext->data, &val, sizeof(val));
   } else {
-    const upb_msglayout_field *field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field *field = upb_FieldDef_Layout(f);
     char *mem = UPB_PTR_AT(msg, field->offset, char);
     memcpy(mem, &val, get_field_size(field));
     if (field->presence > 0) {
@@ -215,7 +215,7 @@ void upb_Message_ClearField(upb_msg *msg, const upb_FieldDef *f) {
   if (upb_FieldDef_IsExtension(f)) {
     _upb_Message_Clearext(msg, _upb_FieldDef_ExtensionLayout(f));
   } else {
-    const upb_msglayout_field *field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field *field = upb_FieldDef_Layout(f);
     char *mem = UPB_PTR_AT(msg, field->offset, char);
 
     if (field->presence > 0) {
@@ -276,7 +276,7 @@ bool upb_Message_Next(const upb_msg *msg, const upb_MessageDef *m,
   if (ext_pool) {
     /* Return any extensions that are set. */
     size_t count;
-    const upb_msg_ext *ext = _upb_Message_Getexts(msg, &count);
+    const upb_Message_Extension *ext = _upb_Message_Getexts(msg, &count);
     if (i - n < count) {
       ext += count - 1 - (i - n);
       memcpy(out_val, &ext->data, sizeof(*out_val));
@@ -306,7 +306,7 @@ bool _upb_Message_DiscardUnknown(upb_msg *msg, const upb_MessageDef *m, int dept
     if (upb_FieldDef_IsMap(f)) {
       const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(subm, 2);
       const upb_MessageDef *val_m = upb_FieldDef_MessageSubDef(val_f);
-      upb_map *map = (upb_map*)val.map_val;
+      upb_Map *map = (upb_Map*)val.map_val;
       size_t iter = kUpb_Map_Begin;
 
       if (!val_m) continue;
@@ -318,7 +318,7 @@ bool _upb_Message_DiscardUnknown(upb_msg *msg, const upb_MessageDef *m, int dept
         }
       }
     } else if (upb_FieldDef_IsRepeated(f)) {
-      const upb_array *arr = val.array_val;
+      const upb_Array *arr = val.array_val;
       size_t i, n = upb_Array_Size(arr);
       for (i = 0; i < n; i++) {
         upb_MessageValue elem = upb_Array_Get(arr, i);
@@ -340,17 +340,17 @@ bool upb_Message_DiscardUnknown(upb_msg *msg, const upb_MessageDef *m, int maxde
   return _upb_Message_DiscardUnknown(msg, m, maxdepth);
 }
 
-/** upb_array *****************************************************************/
+/** upb_Array *****************************************************************/
 
-upb_array *upb_Array_New(upb_Arena *a, upb_CType type) {
+upb_Array *upb_Array_New(upb_Arena *a, upb_CType type) {
   return _upb_Array_New(a, 4, _upb_CTypeo_sizelg2[type]);
 }
 
-size_t upb_Array_Size(const upb_array *arr) {
+size_t upb_Array_Size(const upb_Array *arr) {
   return arr->len;
 }
 
-upb_MessageValue upb_Array_Get(const upb_array *arr, size_t i) {
+upb_MessageValue upb_Array_Get(const upb_Array *arr, size_t i) {
   upb_MessageValue ret;
   const char* data = _upb_array_constptr(arr);
   int lg2 = arr->data & 7;
@@ -359,14 +359,14 @@ upb_MessageValue upb_Array_Get(const upb_array *arr, size_t i) {
   return ret;
 }
 
-void upb_Array_Set(upb_array *arr, size_t i, upb_MessageValue val) {
+void upb_Array_Set(upb_Array *arr, size_t i, upb_MessageValue val) {
   char* data = _upb_array_ptr(arr);
   int lg2 = arr->data & 7;
   UPB_ASSERT(i < arr->len);
   memcpy(data + (i << lg2), &val, 1 << lg2);
 }
 
-bool upb_Array_Append(upb_array *arr, upb_MessageValue val, upb_Arena *arena) {
+bool upb_Array_Append(upb_Array *arr, upb_MessageValue val, upb_Arena *arena) {
   if (!upb_Array_Resize(arr, arr->len + 1, arena)) {
     return false;
   }
@@ -374,14 +374,14 @@ bool upb_Array_Append(upb_array *arr, upb_MessageValue val, upb_Arena *arena) {
   return true;
 }
 
-void upb_Array_Move(upb_array* arr, size_t dst_idx, size_t src_idx,
+void upb_Array_Move(upb_Array* arr, size_t dst_idx, size_t src_idx,
                     size_t count) {
   char* data = _upb_array_ptr(arr);
   int lg2 = arr->data & 7;
   memmove(&data[dst_idx << lg2], &data[src_idx << lg2], count << lg2);
 }
 
-bool upb_Array_Insert(upb_array *arr, size_t i, size_t count,
+bool upb_Array_Insert(upb_Array *arr, size_t i, size_t count,
                       upb_Arena *arena) {
   UPB_ASSERT(i <= arr->len);
   UPB_ASSERT(count + arr->len >= count);
@@ -397,7 +397,7 @@ bool upb_Array_Insert(upb_array *arr, size_t i, size_t count,
  *              i        end      arr->len
  * |------------|XXXXXXXX|--------|
  */
-void upb_Array_Delete(upb_array *arr, size_t i, size_t count) {
+void upb_Array_Delete(upb_Array *arr, size_t i, size_t count) {
   size_t end = i + count;
   UPB_ASSERT(i <= end);
   UPB_ASSERT(end <= arr->len);
@@ -405,44 +405,44 @@ void upb_Array_Delete(upb_array *arr, size_t i, size_t count) {
   arr->len -= count;
 }
 
-bool upb_Array_Resize(upb_array *arr, size_t size, upb_Arena *arena) {
+bool upb_Array_Resize(upb_Array *arr, size_t size, upb_Arena *arena) {
   return _upb_Array_Resize(arr, size, arena);
 }
 
-/** upb_map *******************************************************************/
+/** upb_Map *******************************************************************/
 
-upb_map *upb_Map_New(upb_Arena *a, upb_CType key_type,
+upb_Map *upb_Map_New(upb_Arena *a, upb_CType key_type,
                      upb_CType value_type) {
   return _upb_Map_New(a, _upb_CTypeo_mapsize[key_type],
                       _upb_CTypeo_mapsize[value_type]);
 }
 
-size_t upb_Map_Size(const upb_map *map) {
+size_t upb_Map_Size(const upb_Map *map) {
   return _upb_Map_Size(map);
 }
 
-bool upb_Map_Get(const upb_map *map, upb_MessageValue key, upb_MessageValue *val) {
+bool upb_Map_Get(const upb_Map *map, upb_MessageValue key, upb_MessageValue *val) {
   return _upb_Map_Get(map, &key, map->key_size, val, map->val_size);
 }
 
-void upb_Map_Clear(upb_map *map) {
+void upb_Map_Clear(upb_Map *map) {
   _upb_Map_Clear(map);
 }
 
-bool upb_Map_Set(upb_map *map, upb_MessageValue key, upb_MessageValue val,
+bool upb_Map_Set(upb_Map *map, upb_MessageValue key, upb_MessageValue val,
                  upb_Arena *arena) {
   return _upb_Map_Set(map, &key, map->key_size, &val, map->val_size, arena);
 }
 
-bool upb_Map_Delete(upb_map *map, upb_MessageValue key) {
+bool upb_Map_Delete(upb_Map *map, upb_MessageValue key) {
   return _upb_Map_Delete(map, &key, map->key_size);
 }
 
-bool upb_MapIterator_Next(const upb_map *map, size_t *iter) {
+bool upb_MapIterator_Next(const upb_Map *map, size_t *iter) {
   return _upb_map_next(map, iter);
 }
 
-bool upb_MapIterator_Done(const upb_map *map, size_t iter) {
+bool upb_MapIterator_Done(const upb_Map *map, size_t iter) {
   upb_strtable_iter i;
   UPB_ASSERT(iter != kUpb_Map_Begin);
   i.t = &map->table;
@@ -451,7 +451,7 @@ bool upb_MapIterator_Done(const upb_map *map, size_t iter) {
 }
 
 /* Returns the key and value for this entry of the map. */
-upb_MessageValue upb_MapIterator_Key(const upb_map *map, size_t iter) {
+upb_MessageValue upb_MapIterator_Key(const upb_Map *map, size_t iter) {
   upb_strtable_iter i;
   upb_MessageValue ret;
   i.t = &map->table;
@@ -460,7 +460,7 @@ upb_MessageValue upb_MapIterator_Key(const upb_map *map, size_t iter) {
   return ret;
 }
 
-upb_MessageValue upb_MapIterator_Value(const upb_map *map, size_t iter) {
+upb_MessageValue upb_MapIterator_Value(const upb_Map *map, size_t iter) {
   upb_strtable_iter i;
   upb_MessageValue ret;
   i.t = &map->table;
@@ -469,4 +469,4 @@ upb_MessageValue upb_MapIterator_Value(const upb_map *map, size_t iter) {
   return ret;
 }
 
-/* void upb_MapIterator_SetValue(upb_map *map, size_t iter, upb_MessageValue value); */
+/* void upb_MapIterator_SetValue(upb_Map *map, size_t iter, upb_MessageValue value); */

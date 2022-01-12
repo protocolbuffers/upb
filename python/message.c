@@ -607,10 +607,10 @@ static void PyUpb_CMessage_SyncSubobjs(PyUpb_CMessage* self) {
     PyUpb_WeakMap_DeleteIter(subobj_map, &iter);
     if (upb_FieldDef_IsMap(f)) {
       if (!msgval.map_val) continue;
-      PyUpb_MapContainer_Reify(obj, (upb_map*)msgval.map_val);
+      PyUpb_MapContainer_Reify(obj, (upb_Map*)msgval.map_val);
     } else if (upb_FieldDef_IsRepeated(f)) {
       if (!msgval.array_val) continue;
-      PyUpb_RepeatedContainer_Reify(obj, (upb_array*)msgval.array_val);
+      PyUpb_RepeatedContainer_Reify(obj, (upb_Array*)msgval.array_val);
     } else {
       PyUpb_CMessage* sub = (void*)obj;
       assert(self == sub->ptr.parent);
@@ -1097,7 +1097,7 @@ PyObject* PyUpb_CMessage_MergeFromString(PyObject* _self, PyObject* arg) {
   const upb_MessageDef* msgdef = _PyUpb_CMessage_GetMsgdef(self);
   const upb_FileDef* file = upb_MessageDef_File(msgdef);
   const upb_extreg* extreg = upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
-  const upb_msglayout* layout = upb_MessageDef_Layout(msgdef);
+  const upb_MiniTable* layout = upb_MessageDef_Layout(msgdef);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   int options =
@@ -1368,7 +1368,7 @@ PyObject* PyUpb_CMessage_SerializeInternal(PyObject* _self, PyObject* args,
   }
 
   upb_Arena* arena = upb_Arena_New();
-  const upb_msglayout* layout = upb_MessageDef_Layout(msgdef);
+  const upb_MiniTable* layout = upb_MessageDef_Layout(msgdef);
   size_t size = 0;
   // Python does not currently have any effective limit on serialization depth.
   int options = UPB_ENCODE_MAXDEPTH(UINT32_MAX);
@@ -1544,7 +1544,7 @@ PyType_Spec PyUpb_CMessage_Spec = {
 // to simplify this, so that the illustration above is indeed accurate).
 
 typedef struct {
-  const upb_msglayout* layout;
+  const upb_MiniTable* layout;
   PyObject* py_message_descriptor;
 } PyUpb_MessageMeta;
 

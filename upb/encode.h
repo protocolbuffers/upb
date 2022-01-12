@@ -26,7 +26,7 @@
  */
 
 /*
- * upb_Encode: parsing into a upb_msg using a upb_msglayout.
+ * upb_Encode: parsing into a upb_msg using a upb_MiniTable.
  */
 
 #ifndef UPB_ENCODE_H_
@@ -59,10 +59,10 @@ enum {
 
 #define UPB_ENCODE_MAXDEPTH(depth) ((depth) << 16)
 
-char *upb_EncodeEx(const void *msg, const upb_msglayout *l, int options,
+char *upb_EncodeEx(const void *msg, const upb_MiniTable *l, int options,
                     upb_Arena *arena, size_t *size);
 
-UPB_INLINE char *upb_Encode(const void *msg, const upb_msglayout *l,
+UPB_INLINE char *upb_Encode(const void *msg, const upb_MiniTable *l,
                             upb_Arena *arena, size_t *size) {
   return upb_EncodeEx(msg, l, 0, arena, size);
 }
