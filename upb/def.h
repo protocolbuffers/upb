@@ -56,8 +56,8 @@ struct upb_enumdef;
 typedef struct upb_enumdef upb_enumdef;
 struct upb_enumvaldef;
 typedef struct upb_enumvaldef upb_enumvaldef;
-struct upb_extrange;
-typedef struct upb_extrange upb_extrange;
+struct upb_ExtensionRange;
+typedef struct upb_ExtensionRange upb_ExtensionRange;
 struct upb_FieldDef;
 typedef struct upb_FieldDef upb_FieldDef;
 struct upb_filedef;
@@ -198,7 +198,7 @@ bool upb_MessageDef_isnumberwrapper(const upb_MessageDef *m);
 int upb_MessageDef_ExtensionRangeCount(const upb_MessageDef *m);
 int upb_MessageDef_FieldCount(const upb_MessageDef *m);
 int upb_MessageDef_OneofCount(const upb_MessageDef *m);
-const upb_extrange *upb_MessageDef_ExtensionRange(const upb_MessageDef *m, int i);
+const upb_ExtensionRange *upb_MessageDef_ExtensionRange(const upb_MessageDef *m, int i);
 const upb_FieldDef *upb_MessageDef_Field(const upb_MessageDef *m, int i);
 const upb_OneofDef *upb_MessageDef_Oneof(const upb_MessageDef *m, int i);
 const upb_FieldDef *upb_MessageDef_FindFieldByNumberWithSize(const upb_MessageDef *m, uint32_t i);
@@ -250,13 +250,13 @@ UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
   return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
 }
 
-/* upb_extrange ***************************************************************/
+/* upb_ExtensionRange ***************************************************************/
 
-const google_protobuf_ExtensionRangeOptions *upb_extrange_options(
-    const upb_extrange *r);
-bool upb_extrange_hasoptions(const upb_extrange *r);
-int32_t upb_extrange_start(const upb_extrange *r);
-int32_t upb_extrange_end(const upb_extrange *r);
+const google_protobuf_ExtensionRangeOptions *upb_ExtensionRange_Options(
+    const upb_ExtensionRange *r);
+bool upb_ExtensionRange_HasOptions(const upb_ExtensionRange *r);
+int32_t upb_ExtensionRange_Start(const upb_ExtensionRange *r);
+int32_t upb_ExtensionRange_End(const upb_ExtensionRange *r);
 
 /* upb_enumdef ****************************************************************/
 

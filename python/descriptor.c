@@ -245,9 +245,9 @@ static PyObject* PyUpb_Descriptor_GetExtensionRanges(PyObject* _self,
   PyObject* range_list = PyList_New(n);
 
   for (int i = 0; i < n; i++) {
-    const upb_extrange* range = upb_MessageDef_ExtensionRange(self->def, i);
-    PyObject* start = PyLong_FromLong(upb_extrange_start(range));
-    PyObject* end = PyLong_FromLong(upb_extrange_end(range));
+    const upb_ExtensionRange* range = upb_MessageDef_ExtensionRange(self->def, i);
+    PyObject* start = PyLong_FromLong(upb_ExtensionRange_Start(range));
+    PyObject* end = PyLong_FromLong(upb_ExtensionRange_End(range));
     PyList_SetItem(range_list, i, PyTuple_Pack(2, start, end));
   }
 

@@ -86,3 +86,9 @@ s/upb_msgdef_lookupjsonnamez/upb_MessageDef_FindByNameName/g;
 s/upb_msgdef_lookupjsonname/upb_MessageDef_FindByJsonNameWithSize/g;
 s/upb_msgdef/upb_MessageDef/g;
 s/WithSizez//g;
+
+s/upb_extrange_options/upb_ExtensionRange_Options/g;
+s/upb_extrange_hasoptions/upb_ExtensionRange_HasOptions/g;
+s/upb_extrange_start/upb_ExtensionRange_Start/g;
+s/upb_extrange_end/upb_ExtensionRange_End/g;
+s/upb_extrange/upb_ExtensionRange/g;

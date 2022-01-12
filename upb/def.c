@@ -88,7 +88,7 @@ struct upb_FieldDef {
   upb_label_t label_;
 };
 
-struct upb_extrange {
+struct upb_ExtensionRange {
   const google_protobuf_ExtensionRangeOptions *opts;
   int32_t start;
   int32_t end;
@@ -110,7 +110,7 @@ struct upb_MessageDef {
    * region and calculating counts from offets or vice-versa. */
   const upb_FieldDef *fields;
   const upb_OneofDef *oneofs;
-  const upb_extrange *ext_ranges;
+  const upb_ExtensionRange *ext_ranges;
   const upb_MessageDef *nested_msgs;
   const upb_enumdef *nested_enums;
   const upb_FieldDef *nested_exts;
@@ -473,22 +473,22 @@ uint32_t upb_enumvaldef_index(const upb_enumvaldef *ev) {
   return ev - ev->parent->values;
 }
 
-/* upb_extrange ***************************************************************/
+/* upb_ExtensionRange ***************************************************************/
 
-const google_protobuf_ExtensionRangeOptions *upb_extrange_options(
-    const upb_extrange *r) {
+const google_protobuf_ExtensionRangeOptions *upb_ExtensionRange_Options(
+    const upb_ExtensionRange *r) {
   return r->opts;
 }
 
-bool upb_extrange_hasoptions(const upb_extrange *r) {
+bool upb_ExtensionRange_HasOptions(const upb_ExtensionRange *r) {
   return r->opts != (void*)opt_default;
 }
 
-int32_t upb_extrange_start(const upb_extrange *e) {
+int32_t upb_ExtensionRange_Start(const upb_ExtensionRange *e) {
   return e->start;
 }
 
-int32_t upb_extrange_end(const upb_extrange *e) {
+int32_t upb_ExtensionRange_End(const upb_ExtensionRange *e) {
   return e->end;
 }
 
@@ -840,7 +840,7 @@ const upb_msglayout *upb_MessageDef_Layout(const upb_MessageDef *m) {
   return m->layout;
 }
 
-const upb_extrange *upb_MessageDef_ExtensionRange(const upb_MessageDef *m, int i) {
+const upb_ExtensionRange *upb_MessageDef_ExtensionRange(const upb_MessageDef *m, int i) {
   UPB_ASSERT(0 <= i && i < m->ext_range_count);
   return &m->ext_ranges[i];
 }
@@ -2628,7 +2628,7 @@ static void create_msgdef(symtab_addctx *ctx, const char *prefix,
   m->ext_ranges = symtab_alloc(ctx, sizeof(*m->ext_ranges) * n_ext_range);
   for (i = 0; i < n_ext_range; i++) {
     const google_protobuf_DescriptorProto_ExtensionRange *r = ext_ranges[i];
-    upb_extrange *r_def = (upb_extrange*)&m->ext_ranges[i];
+    upb_ExtensionRange *r_def = (upb_ExtensionRange*)&m->ext_ranges[i];
     int32_t start = google_protobuf_DescriptorProto_ExtensionRange_start(r);
     int32_t end = google_protobuf_DescriptorProto_ExtensionRange_end(r);
     int32_t max =
@@ -2751,7 +2751,7 @@ static void resolve_extension(
   bool found = false;
 
   for (int i = 0, n = m->ext_range_count; i < n; i++) {
-    const upb_extrange *r = &m->ext_ranges[i];
+    const upb_ExtensionRange *r = &m->ext_ranges[i];
     if (r->start <= f->number_ && f->number_ < r->end) {
       found = true;
       break;

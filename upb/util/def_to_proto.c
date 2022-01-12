@@ -274,19 +274,19 @@ static google_protobuf_EnumDescriptorProto *enumdef_toproto(
 }
 
 static google_protobuf_DescriptorProto_ExtensionRange *extrange_toproto(
-    upb_ToProto_Context *ctx, const upb_extrange *e) {
+    upb_ToProto_Context *ctx, const upb_ExtensionRange *e) {
   google_protobuf_DescriptorProto_ExtensionRange *proto =
       google_protobuf_DescriptorProto_ExtensionRange_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_DescriptorProto_ExtensionRange_set_start(
-      proto, upb_extrange_start(e));
+      proto, upb_ExtensionRange_Start(e));
   google_protobuf_DescriptorProto_ExtensionRange_set_end(proto,
-                                                         upb_extrange_end(e));
+                                                         upb_ExtensionRange_End(e));
 
-  if (upb_extrange_hasoptions(e)) {
+  if (upb_ExtensionRange_HasOptions(e)) {
     SET_OPTIONS(proto, DescriptorProto_ExtensionRange, ExtensionRangeOptions,
-                upb_extrange_options(e));
+                upb_ExtensionRange_Options(e));
   }
 
   return proto;
