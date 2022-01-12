@@ -208,10 +208,12 @@ PyObject* PyUpb_RepeatedContainer_DeepCopy(PyObject* _self, PyObject* value) {
   clone->ptr.arr =
       upb_array_new(PyUpb_Arena_Get(clone->arena), upb_fielddef_type(f));
   PyUpb_ObjCache_Add(clone->ptr.arr, (PyObject*)clone);
-  if (!PyUpb_RepeatedContainer_MergeFrom((PyObject*)clone, _self)) {
+  PyObject* result = PyUpb_RepeatedContainer_MergeFrom((PyObject*)clone, _self);
+  if (!result) {
     Py_DECREF(clone);
     return NULL;
   } 
+  Py_DECREF(result);
   return (PyObject*)clone;
 }
 

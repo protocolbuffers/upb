@@ -380,11 +380,19 @@ static bool PyUpb_CMessage_InitMapAttribute(PyObject* _self, PyObject* name,
 static bool PyUpb_CMessage_InitRepeatedAttribute(PyObject* _self,
                                                  PyObject* name,
                                                  PyObject* value) {
-  PyObject* repeated = PyUpb_CMessage_GetAttr(_self, name);
-  PyObject* tmp = PyUpb_RepeatedContainer_Extend(repeated, value);
-  if (!tmp) return false;
-  Py_DECREF(tmp);
-  return true;
+  bool ok = false;
+  PyObject* repeated = NULL;
+  PyObject* tmp = NULL;
+  repeated = PyUpb_CMessage_GetAttr(_self, name);
+  if (!repeated) goto err;
+  tmp = PyUpb_RepeatedContainer_Extend(repeated, value);
+  if (!tmp) goto err;
+  ok = true;
+
+err:
+  Py_XDECREF(repeated);
+  Py_XDECREF(tmp);
+  return ok;
 }
 
 static bool PyUpb_CMessage_InitMessageAttribute(PyObject* _self, PyObject* name,
