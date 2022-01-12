@@ -122,7 +122,7 @@ struct upb_MessageDef {
   int nested_enum_count;
   int nested_ext_count;
   bool in_message_set;
-  kUpb_WellKnown well_known_type;
+  upb_WellKnown well_known_type;
 };
 
 struct upb_EnumDef {
@@ -598,12 +598,12 @@ const upb_EnumDef* upb_FieldDef_EnumSubDef(const upb_FieldDef* f) {
   return upb_FieldDef_CType(f) == kUpb_CType_Enum ? f->sub.enumdef : NULL;
 }
 
-const upb_MiniTable_Field* upb_FieldDef_Layout(const upb_FieldDef* f) {
+const upb_MiniTable_Field* upb_FieldDef_MiniTable(const upb_FieldDef* f) {
   UPB_ASSERT(!upb_FieldDef_IsExtension(f));
   return &f->msgdef->layout->fields[f->layout_index];
 }
 
-const upb_MiniTable_Extension* _upb_FieldDef_ExtensionLayout(
+const upb_MiniTable_Extension* _upb_FieldDef_ExtensionMiniTable(
     const upb_FieldDef* f) {
   UPB_ASSERT(upb_FieldDef_IsExtension(f));
   return f->file->ext_layouts[f->layout_index];
@@ -789,7 +789,7 @@ int upb_MessageDef_realoneofcount(const upb_MessageDef* m) {
   return m->real_oneof_count;
 }
 
-const upb_MiniTable* upb_MessageDef_Layout(const upb_MessageDef* m) {
+const upb_MiniTable* upb_MessageDef_MiniTable(const upb_MessageDef* m) {
   return m->layout;
 }
 
@@ -826,7 +826,7 @@ const upb_FieldDef* upb_MessageDef_NestedExtension(const upb_MessageDef* m,
   return &m->nested_exts[i];
 }
 
-kUpb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m) {
+upb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m) {
   return m->well_known_type;
 }
 
@@ -911,11 +911,11 @@ int upb_FileDef_WeakDependencyCount(const upb_FileDef* f) {
   return f->weak_dep_count;
 }
 
-const int32_t* _upb_FileDef_PublicDependencynums(const upb_FileDef* f) {
+const int32_t* _upb_FileDef_PublicDependencyIndexes(const upb_FileDef* f) {
   return f->public_deps;
 }
 
-const int32_t* _upb_FileDef_WeakDependencynums(const upb_FileDef* f) {
+const int32_t* _upb_FileDef_WeakDependencyIndexes(const upb_FileDef* f) {
   return f->weak_deps;
 }
 
@@ -3148,7 +3148,7 @@ const upb_FieldDef* _upb_DefPool_FindExtensionByNamefield(
 
 const upb_FieldDef* upb_DefPool_FindExtensionByNamebynum(
     const upb_DefPool* s, const upb_MessageDef* m, int32_t fieldnum) {
-  const upb_MiniTable* l = upb_MessageDef_Layout(m);
+  const upb_MiniTable* l = upb_MessageDef_MiniTable(m);
   const upb_MiniTable_Extension* ext = _upb_extreg_get(s->extreg, l, fieldnum);
   return ext ? _upb_DefPool_FindExtensionByNamefield(s, ext) : NULL;
 }

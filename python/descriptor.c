@@ -125,7 +125,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     char* pb = upb_Encode(opts, layout, arena, &size);
     upb_msg* opts2 = upb_Message_New(m, arena);
     assert(opts2);
-    bool ok = _upb_decode(pb, size, opts2, upb_MessageDef_Layout(m),
+    bool ok = _upb_decode(pb, size, opts2, upb_MessageDef_MiniTable(m),
                           upb_DefPool_ExtensionRegistry(symtab), 0,
                           arena) == kUpb_DecodeStatus_Ok;
     (void)ok;
@@ -194,7 +194,7 @@ PyObject* PyUpb_Descriptor_Get(const upb_MessageDef* m) {
 }
 
 PyObject* PyUpb_Descriptor_GetClass(const upb_MessageDef* m) {
-  PyObject* ret = PyUpb_ObjCache_Get(upb_MessageDef_Layout(m));
+  PyObject* ret = PyUpb_ObjCache_Get(upb_MessageDef_MiniTable(m));
   assert(ret);
   return ret;
 }

@@ -226,12 +226,9 @@ class MessageDefPtr {
 
   // Return the type of well known type message. kUpb_WellKnown_Unspecified for
   // non-well-known message.
-  kUpb_WellKnown wellknowntype() const {
+  upb_WellKnown wellknowntype() const {
     return upb_MessageDef_WellKnownType(ptr_);
   }
-
-  // Whether is a number wrapper.
-  bool isnumberwrapper() const { return upb_MessageDef_isnumberwrapper(ptr_); }
 
  private:
   class FieldIter {

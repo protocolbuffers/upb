@@ -452,14 +452,14 @@ static google_protobuf_FileDescriptorProto* filedef_toproto(
   int32_t* public_deps =
       google_protobuf_FileDescriptorProto_resize_public_dependency(proto, n,
                                                                    ctx->arena);
-  const int32_t* public_dep_nums = _upb_FileDef_PublicDependencynums(f);
+  const int32_t* public_dep_nums = _upb_FileDef_PublicDependencyIndexes(f);
   memcpy(public_deps, public_dep_nums, n * sizeof(int32_t));
 
   n = upb_FileDef_WeakDependencyCount(f);
   int32_t* weak_deps =
       google_protobuf_FileDescriptorProto_resize_weak_dependency(proto, n,
                                                                  ctx->arena);
-  const int32_t* weak_dep_nums = _upb_FileDef_WeakDependencynums(f);
+  const int32_t* weak_dep_nums = _upb_FileDef_WeakDependencyIndexes(f);
   memcpy(weak_deps, weak_dep_nums, n * sizeof(int32_t));
 
   n = upb_FileDef_TopLevelMessageCount(f);

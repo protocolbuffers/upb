@@ -48,8 +48,8 @@ extern "C" {
 
 typedef void upb_msg;
 
-/* For users these are opaque. They can be obtained from upb_MessageDef_Layout()
- * but users cannot access any of the members. */
+/* For users these are opaque. They can be obtained from
+ * upb_MessageDef_MiniTable() but users cannot access any of the members. */
 struct upb_MiniTable;
 typedef struct upb_MiniTable upb_MiniTable;
 

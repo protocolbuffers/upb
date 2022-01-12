@@ -92,7 +92,7 @@ static const char _upb_CTypeo_sizelg2[12] = {
 /** upb_msg *******************************************************************/
 
 upb_msg* upb_Message_New(const upb_MessageDef* m, upb_Arena* a) {
-  return _upb_Message_New(upb_MessageDef_Layout(m), a);
+  return _upb_Message_New(upb_MessageDef_MiniTable(m), a);
 }
 
 static bool in_oneof(const upb_MiniTable_Field* field) {
@@ -101,7 +101,7 @@ static bool in_oneof(const upb_MiniTable_Field* field) {
 
 static upb_MessageValue _upb_Message_Getraw(const upb_msg* msg,
                                             const upb_FieldDef* f) {
-  const upb_MiniTable_Field* field = upb_FieldDef_Layout(f);
+  const upb_MiniTable_Field* field = upb_FieldDef_MiniTable(f);
   const char* mem = UPB_PTR_AT(msg, field->offset, char);
   upb_MessageValue val = {0};
   memcpy(&val, mem, get_field_size(field));
@@ -111,10 +111,10 @@ static upb_MessageValue _upb_Message_Getraw(const upb_msg* msg,
 bool upb_Message_Has(const upb_msg* msg, const upb_FieldDef* f) {
   assert(upb_FieldDef_HasPresence(f));
   if (upb_FieldDef_IsExtension(f)) {
-    const upb_MiniTable_Extension* ext = _upb_FieldDef_ExtensionLayout(f);
+    const upb_MiniTable_Extension* ext = _upb_FieldDef_ExtensionMiniTable(f);
     return _upb_Message_Getext(msg, ext) != NULL;
   } else {
-    const upb_MiniTable_Field* field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field* field = upb_FieldDef_MiniTable(f);
     if (in_oneof(field)) {
       return _upb_getoneofcase_field(msg, field) == field->number;
     } else if (field->presence > 0) {
@@ -134,7 +134,7 @@ const upb_FieldDef* upb_Message_WhichOneof(const upb_msg* msg,
     UPB_ASSERT(upb_OneofDef_FieldCount(o) == 1);
     return upb_Message_Has(msg, f) ? f : NULL;
   } else {
-    const upb_MiniTable_Field* field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field* field = upb_FieldDef_MiniTable(f);
     uint32_t oneof_case = _upb_getoneofcase_field(msg, field);
     f = oneof_case ? upb_OneofDef_LookupNumber(o, oneof_case) : NULL;
     UPB_ASSERT((f != NULL) == (oneof_case != 0));
@@ -145,7 +145,7 @@ const upb_FieldDef* upb_Message_WhichOneof(const upb_msg* msg,
 upb_MessageValue upb_Message_Get(const upb_msg* msg, const upb_FieldDef* f) {
   if (upb_FieldDef_IsExtension(f)) {
     const upb_Message_Extension* ext =
-        _upb_Message_Getext(msg, _upb_FieldDef_ExtensionLayout(f));
+        _upb_Message_Getext(msg, _upb_FieldDef_ExtensionMiniTable(f));
     if (ext) {
       upb_MessageValue val;
       memcpy(&val, &ext->data, sizeof(val));
@@ -199,12 +199,12 @@ make:
 bool upb_Message_Set(upb_msg* msg, const upb_FieldDef* f, upb_MessageValue val,
                      upb_Arena* a) {
   if (upb_FieldDef_IsExtension(f)) {
-    upb_Message_Extension* ext =
-        _upb_Message_Getorcreateext(msg, _upb_FieldDef_ExtensionLayout(f), a);
+    upb_Message_Extension* ext = _upb_Message_Getorcreateext(
+        msg, _upb_FieldDef_ExtensionMiniTable(f), a);
     if (!ext) return false;
     memcpy(&ext->data, &val, sizeof(val));
   } else {
-    const upb_MiniTable_Field* field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field* field = upb_FieldDef_MiniTable(f);
     char* mem = UPB_PTR_AT(msg, field->offset, char);
     memcpy(mem, &val, get_field_size(field));
     if (field->presence > 0) {
@@ -218,9 +218,9 @@ bool upb_Message_Set(upb_msg* msg, const upb_FieldDef* f, upb_MessageValue val,
 
 void upb_Message_ClearField(upb_msg* msg, const upb_FieldDef* f) {
   if (upb_FieldDef_IsExtension(f)) {
-    _upb_Message_Clearext(msg, _upb_FieldDef_ExtensionLayout(f));
+    _upb_Message_Clearext(msg, _upb_FieldDef_ExtensionMiniTable(f));
   } else {
-    const upb_MiniTable_Field* field = upb_FieldDef_Layout(f);
+    const upb_MiniTable_Field* field = upb_FieldDef_MiniTable(f);
     char* mem = UPB_PTR_AT(msg, field->offset, char);
 
     if (field->presence > 0) {
@@ -236,7 +236,7 @@ void upb_Message_ClearField(upb_msg* msg, const upb_FieldDef* f) {
 }
 
 void upb_Message_Clear(upb_msg* msg, const upb_MessageDef* m) {
-  _upb_Message_Clear(msg, upb_MessageDef_Layout(m));
+  _upb_Message_Clear(msg, upb_MessageDef_MiniTable(m));
 }
 
 bool upb_Message_Next(const upb_msg* msg, const upb_MessageDef* m,

@@ -379,7 +379,7 @@ static void jsonenc_any(jsonenc* e, const upb_msg* msg,
   upb_StringView type_url = upb_Message_Get(msg, type_url_f).str_val;
   upb_StringView value = upb_Message_Get(msg, value_f).str_val;
   const upb_MessageDef* any_m = jsonenc_getanymsg(e, type_url);
-  const upb_MiniTable* any_layout = upb_MessageDef_Layout(any_m);
+  const upb_MiniTable* any_layout = upb_MessageDef_MiniTable(any_m);
   upb_Arena* arena = jsonenc_arena(e);
   upb_msg* any = upb_Message_New(any_m, arena);
 

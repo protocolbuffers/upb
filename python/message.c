@@ -1098,7 +1098,7 @@ PyObject* PyUpb_CMessage_MergeFromString(PyObject* _self, PyObject* arg) {
   const upb_FileDef* file = upb_MessageDef_File(msgdef);
   const upb_extreg* extreg =
       upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
-  const upb_MiniTable* layout = upb_MessageDef_Layout(msgdef);
+  const upb_MiniTable* layout = upb_MessageDef_MiniTable(msgdef);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   int options =
@@ -1369,7 +1369,7 @@ PyObject* PyUpb_CMessage_SerializeInternal(PyObject* _self, PyObject* args,
   }
 
   upb_Arena* arena = upb_Arena_New();
-  const upb_MiniTable* layout = upb_MessageDef_Layout(msgdef);
+  const upb_MiniTable* layout = upb_MessageDef_MiniTable(msgdef);
   size_t size = 0;
   // Python does not currently have any effective limit on serialization depth.
   int options = UPB_ENCODE_MAXDEPTH(UINT32_MAX);
@@ -1575,7 +1575,7 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
 
   const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(py_descriptor);
   assert(msgdef);
-  assert(!PyUpb_ObjCache_Get(upb_MessageDef_Layout(msgdef)));
+  assert(!PyUpb_ObjCache_Get(upb_MessageDef_MiniTable(msgdef)));
 
   PyObject* slots = PyTuple_New(0);
   if (PyDict_SetItemString(dict, "__slots__", slots) < 0) {
@@ -1603,10 +1603,10 @@ PyObject* PyUpb_MessageMeta_DoCreateClass(PyObject* py_descriptor,
 
   PyUpb_MessageMeta* meta = PyUpb_GetMessageMeta(ret);
   meta->py_message_descriptor = py_descriptor;
-  meta->layout = upb_MessageDef_Layout(msgdef);
+  meta->layout = upb_MessageDef_MiniTable(msgdef);
   Py_INCREF(meta->py_message_descriptor);
 
-  PyUpb_ObjCache_Add(upb_MessageDef_Layout(msgdef), ret);
+  PyUpb_ObjCache_Add(upb_MessageDef_MiniTable(msgdef), ret);
 
   return ret;
 }
@@ -1643,7 +1643,7 @@ static PyObject* PyUpb_MessageMeta_New(PyTypeObject* type, PyObject* args,
   }
 
   const upb_MessageDef* m = PyUpb_Descriptor_GetDef(py_descriptor);
-  PyObject* ret = PyUpb_ObjCache_Get(upb_MessageDef_Layout(m));
+  PyObject* ret = PyUpb_ObjCache_Get(upb_MessageDef_MiniTable(m));
   if (ret) return ret;
   return PyUpb_MessageMeta_DoCreateClass(py_descriptor, name, dict);
 }

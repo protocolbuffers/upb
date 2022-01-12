@@ -949,7 +949,7 @@ static int lupb_decode(lua_State* L) {
   size_t len;
   const upb_MessageDef* m = lupb_MessageDef_check(L, 1);
   const char* pb = lua_tolstring(L, 2, &len);
-  const upb_MiniTable* layout = upb_MessageDef_Layout(m);
+  const upb_MiniTable* layout = upb_MessageDef_MiniTable(m);
   upb_msg* msg = lupb_msg_pushnew(L, 1);
   upb_Arena* arena = lupb_Arenaget(L, -1);
   char* buf;
@@ -978,7 +978,7 @@ static int lupb_decode(lua_State* L) {
 static int lupb_Encode(lua_State* L) {
   const upb_msg* msg = lupb_msg_check(L, 1);
   const upb_MessageDef* m = lupb_Message_Getmsgdef(L, 1);
-  const upb_MiniTable* layout = upb_MessageDef_Layout(m);
+  const upb_MiniTable* layout = upb_MessageDef_MiniTable(m);
   int options = lupb_getoptions(L, 2);
   upb_Arena* arena;
   size_t size;

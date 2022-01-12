@@ -66,7 +66,7 @@ static PyObject* PyUpb_ExtensionDict_FindExtensionByNumber(PyObject* _self,
                                                            PyObject* arg) {
   PyUpb_ExtensionDict* self = (PyUpb_ExtensionDict*)_self;
   const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(self->msg);
-  const upb_MiniTable* l = upb_MessageDef_Layout(m);
+  const upb_MiniTable* l = upb_MessageDef_MiniTable(m);
   const upb_FileDef* file = upb_MessageDef_File(m);
   const upb_DefPool* symtab = upb_FileDef_Pool(file);
   const upb_extreg* reg = upb_DefPool_ExtensionRegistry(symtab);

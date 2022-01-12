@@ -88,7 +88,7 @@ typedef enum {
   kUpb_WellKnown_Value,
   kUpb_WellKnown_ListValue,
   kUpb_WellKnown_Struct
-} kUpb_WellKnown;
+} upb_WellKnown;
 
 /* upb_FieldDef ***************************************************************/
 
@@ -124,8 +124,8 @@ bool upb_FieldDef_HasSubDef(const upb_FieldDef* f);
 bool upb_FieldDef_HasPresence(const upb_FieldDef* f);
 const upb_MessageDef* upb_FieldDef_MessageSubDef(const upb_FieldDef* f);
 const upb_EnumDef* upb_FieldDef_EnumSubDef(const upb_FieldDef* f);
-const upb_MiniTable_Field* upb_FieldDef_Layout(const upb_FieldDef* f);
-const upb_MiniTable_Extension* _upb_FieldDef_ExtensionLayout(
+const upb_MiniTable_Field* upb_FieldDef_MiniTable(const upb_FieldDef* f);
+const upb_MiniTable_Extension* _upb_FieldDef_ExtensionMiniTable(
     const upb_FieldDef* f);
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef* f);
 
@@ -154,8 +154,7 @@ UPB_INLINE const upb_FieldDef* upb_OneofDef_LookupName(const upb_OneofDef* o,
 const upb_FieldDef* upb_OneofDef_LookupNumber(const upb_OneofDef* o,
                                               uint32_t num);
 
-/* upb_MessageDef
- * *****************************************************************/
+/* upb_MessageDef *************************************************************/
 
 /* Well-known field tag numbers for map-entry messages. */
 #define kUpb_MapEntry_KeyFieldNumber 1
@@ -181,9 +180,7 @@ const upb_FileDef* upb_MessageDef_File(const upb_MessageDef* m);
 const upb_MessageDef* upb_MessageDef_ContainingType(const upb_MessageDef* m);
 const char* upb_MessageDef_Name(const upb_MessageDef* m);
 upb_Syntax upb_MessageDef_Syntax(const upb_MessageDef* m);
-kUpb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m);
-bool upb_MessageDef_iswrapper(const upb_MessageDef* m);
-bool upb_MessageDef_isnumberwrapper(const upb_MessageDef* m);
+upb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m);
 int upb_MessageDef_ExtensionRangeCount(const upb_MessageDef* m);
 int upb_MessageDef_FieldCount(const upb_MessageDef* m);
 int upb_MessageDef_OneofCount(const upb_MessageDef* m);
@@ -197,7 +194,7 @@ const upb_FieldDef* upb_MessageDef_FindFieldByNameWithSize(
     const upb_MessageDef* m, const char* name, size_t len);
 const upb_OneofDef* upb_MessageDef_FindOneofByNameWithSize(
     const upb_MessageDef* m, const char* name, size_t len);
-const upb_MiniTable* upb_MessageDef_Layout(const upb_MessageDef* m);
+const upb_MiniTable* upb_MessageDef_MiniTable(const upb_MessageDef* m);
 
 UPB_INLINE const upb_OneofDef* upb_MessageDef_FindOneofByName(
     const upb_MessageDef* m, const char* name) {
@@ -246,8 +243,7 @@ UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
   return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
 }
 
-/* upb_ExtensionRange
- * ***************************************************************/
+/* upb_ExtensionRange *********************************************************/
 
 const google_protobuf_ExtensionRangeOptions* upb_ExtensionRange_Options(
     const upb_ExtensionRange* r);
@@ -279,8 +275,7 @@ UPB_INLINE const upb_EnumValueDef* upb_EnumDef_FindValueByName(
   return upb_EnumDef_FindValueByNameWithSize(e, name, strlen(name));
 }
 
-/* upb_EnumValueDef
- * *************************************************************/
+/* upb_EnumValueDef ***********************************************************/
 
 const google_protobuf_EnumValueOptions* upb_EnumValueDef_Options(
     const upb_EnumValueDef* e);
@@ -313,8 +308,8 @@ const upb_EnumDef* upb_FileDef_TopLevelEnum(const upb_FileDef* f, int i);
 const upb_FieldDef* upb_FileDef_TopLevelExtension(const upb_FileDef* f, int i);
 const upb_ServiceDef* upb_FileDef_Service(const upb_FileDef* f, int i);
 const upb_DefPool* upb_FileDef_Pool(const upb_FileDef* f);
-const int32_t* _upb_FileDef_PublicDependencynums(const upb_FileDef* f);
-const int32_t* _upb_FileDef_WeakDependencynums(const upb_FileDef* f);
+const int32_t* _upb_FileDef_PublicDependencyIndexes(const upb_FileDef* f);
+const int32_t* _upb_FileDef_WeakDependencyIndexes(const upb_FileDef* f);
 
 /* upb_MethodDef **************************************************************/
 
@@ -343,8 +338,7 @@ const upb_MethodDef* upb_ServiceDef_Method(const upb_ServiceDef* s, int i);
 const upb_MethodDef* upb_ServiceDef_FindMethodByName(const upb_ServiceDef* s,
                                                      const char* name);
 
-/* upb_DefPool
- * *****************************************************************/
+/* upb_DefPool ****************************************************************/
 
 upb_DefPool* upb_DefPool_New(void);
 void upb_DefPool_Free(upb_DefPool* s);
