@@ -245,6 +245,8 @@ s/upb_strview_make/upb_StringView_FromStringAndSize/g;
 s/upb_strview_makez/upb_StringView_FromCString/g;
 s/upb_strview_eql/upb_StringView_IsEqual/g;
 s/upb_strview/upb_StringView/g;
+s/upb_StringView_FromStringAndSizez/upb_StringView_FromString/g;
+s/upb_StringView_FromStringAndSize/upb_StringView_FromDataAndSize/g;
 
 s/UPB_STRVIEW_INIT/UPB_STRINGVIEW_INIT/g;
 s/UPB_STRVIEW_FORMAT/UPB_STRINGVIEW_FORMAT/g;

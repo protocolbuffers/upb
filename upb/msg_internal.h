@@ -599,7 +599,7 @@ UPB_INLINE upb_StringView _upb_map_tokey(const void* key, size_t size) {
   if (size == UPB_MAPTYPE_STRING) {
     return *(upb_StringView*)key;
   } else {
-    return upb_StringView_FromStringAndSize((const char*)key, size);
+    return upb_StringView_FromDataAndSize((const char*)key, size);
   }
 }
 

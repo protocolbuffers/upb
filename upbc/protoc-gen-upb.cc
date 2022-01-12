@@ -320,9 +320,8 @@ std::string FieldDefault(const protobuf::FieldDescriptor* field) {
     case protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       return "NULL";
     case protobuf::FieldDescriptor::CPPTYPE_STRING:
-      return absl::Substitute(
-          "upb_StringView_FromStringAndSize(\"$0\", strlen(\"$0\"))",
-          absl::CEscape(field->default_value_string()));
+      return absl::Substitute("upb_StringView_FromString(\"$0\")",
+                              absl::CEscape(field->default_value_string()));
     case protobuf::FieldDescriptor::CPPTYPE_INT32:
       return absl::StrCat(field->default_value_int32());
     case protobuf::FieldDescriptor::CPPTYPE_INT64:

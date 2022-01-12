@@ -103,7 +103,7 @@ static void test_scalars(void) {
 static void test_utf8(void) {
   const char invalid_utf8[] = "\xff";
   const upb_StringView invalid_utf8_view =
-      upb_StringView_FromStringAndSize(invalid_utf8, 1);
+      upb_StringView_FromDataAndSize(invalid_utf8, 1);
   upb_Arena* arena = upb_Arena_New();
   upb_StringView serialized;
   protobuf_test_messages_proto3_TestAllTypesProto3* msg =

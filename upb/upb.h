@@ -74,16 +74,16 @@ typedef struct {
   size_t size;
 } upb_StringView;
 
-UPB_INLINE upb_StringView upb_StringView_FromStringAndSize(const char* data,
-                                                           size_t size) {
+UPB_INLINE upb_StringView upb_StringView_FromDataAndSize(const char* data,
+                                                         size_t size) {
   upb_StringView ret;
   ret.data = data;
   ret.size = size;
   return ret;
 }
 
-UPB_INLINE upb_StringView upb_StringView_FromStringAndSizez(const char* data) {
-  return upb_StringView_FromStringAndSize(data, strlen(data));
+UPB_INLINE upb_StringView upb_StringView_FromString(const char* data) {
+  return upb_StringView_FromDataAndSize(data, strlen(data));
 }
 
 UPB_INLINE bool upb_StringView_IsEqual(upb_StringView a, upb_StringView b) {

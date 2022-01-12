@@ -295,11 +295,11 @@ static upb_MessageValue lupb_tomsgval(lua_State* L, upb_CType type, int narg,
           upb_Arena* arena = lupb_Arenaget(L, container);
           char* data = upb_Arena_Malloc(arena, len);
           memcpy(data, ptr, len);
-          ret.str_val = upb_StringView_FromStringAndSize(data, len);
+          ret.str_val = upb_StringView_FromDataAndSize(data, len);
           break;
         }
         case LUPB_REF:
-          ret.str_val = upb_StringView_FromStringAndSize(ptr, len);
+          ret.str_val = upb_StringView_FromDataAndSize(ptr, len);
           break;
       }
       break;

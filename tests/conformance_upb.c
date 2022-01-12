@@ -94,7 +94,7 @@ bool parse_proto(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   } else {
     static const char msg[] = "Parse error";
     conformance_ConformanceResponse_set_parse_error(
-        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
+        c->response, upb_StringView_FromString(msg));
     return false;
   }
 }
@@ -105,11 +105,11 @@ void serialize_proto(const upb_msg* msg, const upb_MessageDef* m,
   char* data = upb_Encode(msg, upb_MessageDef_MiniTable(m), c->arena, &len);
   if (data) {
     conformance_ConformanceResponse_set_protobuf_payload(
-        c->response, upb_StringView_FromStringAndSize(data, len));
+        c->response, upb_StringView_FromDataAndSize(data, len));
   } else {
     static const char msg[] = "Error serializing.";
     conformance_ConformanceResponse_set_serialize_error(
-        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
+        c->response, upb_StringView_FromString(msg));
   }
 }
 
@@ -128,7 +128,7 @@ void serialize_text(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   len2 = upb_text_encode(msg, m, c->symtab, opts, data, len + 1);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_text_payload(
-      c->response, upb_StringView_FromStringAndSize(data, len));
+      c->response, upb_StringView_FromDataAndSize(data, len));
 }
 
 bool parse_json(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
@@ -152,7 +152,7 @@ bool parse_json(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_parse_error(
-        c->response, upb_StringView_FromStringAndSizez(err));
+        c->response, upb_StringView_FromString(err));
     return false;
   }
 }
@@ -174,7 +174,7 @@ void serialize_json(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_serialize_error(
-        c->response, upb_StringView_FromStringAndSizez(err));
+        c->response, upb_StringView_FromString(err));
     return;
   }
 
@@ -182,7 +182,7 @@ void serialize_json(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
   len2 = upb_JsonEncode(msg, m, c->symtab, opts, data, len + 1, &status);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_json_payload(
-      c->response, upb_StringView_FromStringAndSize(data, len));
+      c->response, upb_StringView_FromDataAndSize(data, len));
 }
 
 bool parse_input(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
@@ -197,7 +197,7 @@ bool parse_input(upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
     default: {
       static const char msg[] = "Unsupported input format.";
       conformance_ConformanceResponse_set_skipped(
-          c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
+          c->response, upb_StringView_FromString(msg));
       return false;
     }
   }
@@ -220,7 +220,7 @@ void write_output(const upb_msg* msg, const upb_MessageDef* m, const ctx* c) {
     default: {
       static const char msg[] = "Unsupported output format.";
       conformance_ConformanceResponse_set_skipped(
-          c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
+          c->response, upb_StringView_FromString(msg));
       break;
     }
   }
@@ -236,7 +236,7 @@ void DoTest(const ctx* c) {
   // This is a hack since the conformance runner doesn't give an easy way to
   // specify what test should be run.
   const char skip[] = "\343>\010\301\002\344>\230?\001\230?\002\230?\003";
-  upb_StringView skip_str = upb_StringView_FromStringAndSize(skip, sizeof(skip) - 1);
+  upb_StringView skip_str = upb_StringView_FromDataAndSize(skip, sizeof(skip) - 1);
   upb_StringView pb_payload =
       conformance_ConformanceRequest_protobuf_payload(c->request);
   if (!upb_StringView_IsEqual(pb_payload, skip_str)) m = NULL;
@@ -244,8 +244,8 @@ void DoTest(const ctx* c) {
 
   if (!m) {
     static const char msg[] = "Unknown message type.";
-    conformance_ConformanceResponse_set_skipped(
-        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
+    conformance_ConformanceResponse_set_skipped(c->response,
+                                                upb_StringView_FromString(msg));
     return;
   }
 
