@@ -107,8 +107,8 @@ UPB_INLINE bool _upb_repeated_or_map(const upb_msglayout_field *field) {
 }
 
 UPB_INLINE bool _upb_issubmsg(const upb_msglayout_field *field) {
-  return field->descriptortype == UPB_DTYPE_MESSAGE ||
-         field->descriptortype == UPB_DTYPE_GROUP;
+  return field->descriptortype == upb_FieldType_Message ||
+         field->descriptortype == upb_FieldType_Group;
 }
 
 struct upb_decstate;
@@ -258,8 +258,8 @@ typedef struct {
   /* Message data follows. */
 } upb_msg_internal;
 
-/* Maps upb_fieldtype_t -> memory size. */
-extern char _upb_fieldtype_to_size[12];
+/* Maps upb_CType -> memory size. */
+extern char _upb_CTypeo_size[12];
 
 UPB_INLINE size_t upb_msg_sizeof(const upb_msglayout *l) {
   return l->size + sizeof(upb_msg_internal);
@@ -513,34 +513,34 @@ UPB_INLINE bool _upb_array_append_accessor2(void *msg, size_t ofs,
 }
 
 /* Used by old generated code, remove once all code has been regenerated. */
-UPB_INLINE int _upb_sizelg2(upb_fieldtype_t type) {
+UPB_INLINE int _upb_sizelg2(upb_CType type) {
   switch (type) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return 0;
-    case UPB_TYPE_FLOAT:
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_UINT32:
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Float:
+    case kUpb_CType_Int32:
+    case kUpb_CType_UInt32:
+    case kUpb_CType_Enum:
       return 2;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       return UPB_SIZE(2, 3);
-    case UPB_TYPE_DOUBLE:
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_Double:
+    case kUpb_CType_Int64:
+    case kUpb_CType_UInt64:
       return 3;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes:
       return UPB_SIZE(3, 4);
   }
   UPB_UNREACHABLE();
 }
 UPB_INLINE void *_upb_array_resize_accessor(void *msg, size_t ofs, size_t size,
-                                             upb_fieldtype_t type,
+                                             upb_CType type,
                                              upb_Arena *arena) {
   return _upb_array_resize_accessor2(msg, ofs, size, _upb_sizelg2(type), arena);
 }
 UPB_INLINE bool _upb_array_append_accessor(void *msg, size_t ofs,
-                                            size_t elem_size, upb_fieldtype_t type,
+                                            size_t elem_size, upb_CType type,
                                             const void *value,
                                             upb_Arena *arena) {
   (void)elem_size;
@@ -775,7 +775,7 @@ UPB_INLINE void _upb_mapsorter_destroy(_upb_mapsorter *s) {
   if (s->entries) free(s->entries);
 }
 
-bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_descriptortype_t key_type,
+bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
                             const upb_map *map, _upb_sortedmap *sorted);
 
 UPB_INLINE void _upb_mapsorter_popmap(_upb_mapsorter *s, _upb_sortedmap *sorted) {

@@ -120,7 +120,7 @@ bool upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth)
 /** upb_array *****************************************************************/
 
 /* Creates a new array on the given arena that holds elements of this type. */
-upb_array *upb_array_new(upb_Arena *a, upb_fieldtype_t type);
+upb_array *upb_array_new(upb_Arena *a, upb_CType type);
 
 /* Returns the size of the array. */
 size_t upb_array_size(const upb_array *arr);
@@ -158,8 +158,8 @@ bool upb_array_resize(upb_array *array, size_t size, upb_Arena *arena);
 /** upb_map *******************************************************************/
 
 /* Creates a new map on the given arena with the given key/value size. */
-upb_map *upb_map_new(upb_Arena *a, upb_fieldtype_t key_type,
-                     upb_fieldtype_t value_type);
+upb_map *upb_map_new(upb_Arena *a, upb_CType key_type,
+                     upb_CType value_type);
 
 /* Returns the number of entries in the map. */
 size_t upb_map_size(const upb_map *map);
@@ -182,7 +182,7 @@ bool upb_map_delete(upb_map *map, upb_msgval key);
 
 /* Map iteration:
  *
- * size_t iter = UPB_MAP_BEGIN;
+ * size_t iter = kUpb_Map_Begin;
  * while (upb_mapiter_next(map, &iter)) {
  *   upb_msgval key = upb_mapiter_key(map, iter);
  *   upb_msgval val = upb_mapiter_value(map, iter);
@@ -197,7 +197,7 @@ bool upb_mapiter_next(const upb_map *map, size_t *iter);
 
 /* Returns true if the iterator still points to a valid entry, or false if the
  * iterator is past the last element. It is an error to call this function with
- * UPB_MAP_BEGIN (you must call next() at least once first). */
+ * kUpb_Map_Begin (you must call next() at least once first). */
 bool upb_mapiter_done(const upb_map *map, size_t iter);
 
 /* Returns the key and value for this entry of the map. */

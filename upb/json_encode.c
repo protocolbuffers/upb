@@ -448,7 +448,7 @@ static void jsonenc_struct(jsonenc *e, const upb_msg *msg,
   const upb_map *fields = upb_msg_get(msg, fields_f).map_val;
   const upb_MessageDef *entry_m = upb_FieldDef_MessageSubDef(fields_f);
   const upb_FieldDef *value_f = upb_MessageDef_FindFieldByNumberWithSize(entry_m, 2);
-  size_t iter = UPB_MAP_BEGIN;
+  size_t iter = kUpb_Map_Begin;
   bool first = true;
 
   jsonenc_putstr(e, "{");
@@ -566,37 +566,37 @@ static void jsonenc_msgfield(jsonenc *e, const upb_msg *msg,
 
 static void jsonenc_scalar(jsonenc *e, upb_msgval val, const upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       jsonenc_putstr(e, val.bool_val ? "true" : "false");
       break;
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       jsonenc_double(e, "%.9g", val.float_val);
       break;
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       jsonenc_double(e, "%.17g", val.double_val);
       break;
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       jsonenc_printf(e, "%" PRId32, val.int32_val);
       break;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       jsonenc_printf(e, "%" PRIu32, val.uint32_val);
       break;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       jsonenc_printf(e, "\"%" PRId64 "\"", val.int64_val);
       break;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       jsonenc_printf(e, "\"%" PRIu64 "\"", val.uint64_val);
       break;
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       jsonenc_string(e, val.str_val);
       break;
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_Bytes:
       jsonenc_bytes(e, val.str_val);
       break;
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Enum:
       jsonenc_enum(val.int32_val, f, e);
       break;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       jsonenc_msgfield(e, val.msg_val, upb_FieldDef_MessageSubDef(f));
       break;
   }
@@ -606,22 +606,22 @@ static void jsonenc_mapkey(jsonenc *e, upb_msgval val, const upb_FieldDef *f) {
   jsonenc_putstr(e, "\"");
 
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       jsonenc_putstr(e, val.bool_val ? "true" : "false");
       break;
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       jsonenc_printf(e, "%" PRId32, val.int32_val);
       break;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       jsonenc_printf(e, "%" PRIu32, val.uint32_val);
       break;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       jsonenc_printf(e, "%" PRId64, val.int64_val);
       break;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       jsonenc_printf(e, "%" PRIu64, val.uint64_val);
       break;
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       jsonenc_stringbody(e, val.str_val);
       break;
     default:
@@ -651,7 +651,7 @@ static void jsonenc_map(jsonenc *e, const upb_map *map, const upb_FieldDef *f) {
   const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, 1);
   const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, 2);
-  size_t iter = UPB_MAP_BEGIN;
+  size_t iter = kUpb_Map_Begin;
   bool first = true;
 
   jsonenc_putstr(e, "{");

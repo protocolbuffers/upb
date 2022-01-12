@@ -83,22 +83,22 @@ static size_t upb_FieldPath_NullTerminate(upb_PrintfAppender *d, size_t size) {
 static void upb_FieldPath_PutMapKey(upb_PrintfAppender *a, upb_msgval map_key,
                                     const upb_FieldDef *key_f) {
   switch (upb_FieldDef_CType(key_f)) {
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       upb_FieldPath_Printf(a, "[%" PRId32 "]", map_key.int32_val);
       break;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       upb_FieldPath_Printf(a, "[%" PRId64 "]", map_key.int64_val);
       break;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       upb_FieldPath_Printf(a, "[%" PRIu32 "]", map_key.uint32_val);
       break;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       upb_FieldPath_Printf(a, "[%" PRIu64 "]", map_key.uint64_val);
       break;
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       upb_FieldPath_Printf(a, "[%s]", map_key.bool_val ? "true" : "false");
       break;
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       upb_FieldPath_Printf(a, "[\"");
       for (size_t i = 0; i < map_key.str_val.size; i++) {
         char ch = map_key.str_val.data[i];
@@ -202,7 +202,7 @@ static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
   // Iterate over all fields to see if any required fields are missing.
   for (int i = 0, n = upb_MessageDef_FieldCount(m); i < n; i++) {
     const upb_FieldDef* f = upb_MessageDef_Field(m, i);
-    if (upb_FieldDef_Label(f) != UPB_LABEL_REQUIRED) continue;
+    if (upb_FieldDef_Label(f) != kUpb_Label_Required) continue;
 
     if (!msg || !upb_msg_has(msg, f)) {
       // A required field is missing.
@@ -257,7 +257,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
       const upb_MessageDef* val_m = upb_FieldDef_MessageSubDef(val_f);
       if (!val_m) continue;
       const upb_map* map = val.map_val;
-      size_t iter = UPB_MAP_BEGIN;
+      size_t iter = kUpb_Map_Begin;
       while (upb_mapiter_next(map, &iter)) {
         upb_msgval key = upb_mapiter_key(map, iter);
         upb_msgval map_val = upb_mapiter_value(map, iter);

@@ -70,13 +70,13 @@ static bool jsondec_streql(upb_StringView str, const char *lit) {
 }
 
 static bool jsondec_isnullvalue(const upb_FieldDef *f) {
-  return upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
+  return upb_FieldDef_CType(f) == kUpb_CType_Enum &&
          strcmp(upb_EnumDef_FullName(upb_FieldDef_EnumSubDef(f)),
                 "google.protobuf.NullValue") == 0;
 }
 
 static bool jsondec_isvalue(const upb_FieldDef *f) {
-  return (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE &&
+  return (upb_FieldDef_CType(f) == kUpb_CType_Message &&
           upb_MessageDef_WellKnownType(upb_FieldDef_MessageSubDef(f)) ==
               kUpb_WellKnown_Value) ||
          jsondec_isnullvalue(f);
@@ -719,8 +719,8 @@ static upb_msgval jsondec_int(jsondec *d, const upb_FieldDef *f) {
       jsondec_err(d, "Expected number or string");
   }
 
-  if (upb_FieldDef_CType(f) == UPB_TYPE_INT32 ||
-      upb_FieldDef_CType(f) == UPB_TYPE_ENUM) {
+  if (upb_FieldDef_CType(f) == kUpb_CType_Int32 ||
+      upb_FieldDef_CType(f) == kUpb_CType_Enum) {
     if (val.int64_val > INT32_MAX || val.int64_val < INT32_MIN) {
       jsondec_err(d, "Integer out of range.");
     }
@@ -756,7 +756,7 @@ static upb_msgval jsondec_uint(jsondec *d, const upb_FieldDef *f) {
       jsondec_err(d, "Expected number or string");
   }
 
-  if (upb_FieldDef_CType(f) == UPB_TYPE_UINT32) {
+  if (upb_FieldDef_CType(f) == kUpb_CType_UInt32) {
     if (val.uint64_val > UINT32_MAX) {
       jsondec_err(d, "Integer out of range.");
     }
@@ -791,7 +791,7 @@ static upb_msgval jsondec_double(jsondec *d, const upb_FieldDef *f) {
       jsondec_err(d, "Expected number or string");
   }
 
-  if (upb_FieldDef_CType(f) == UPB_TYPE_FLOAT) {
+  if (upb_FieldDef_CType(f) == kUpb_CType_Float) {
     if (val.double_val != INFINITY && val.double_val != -INFINITY &&
         (val.double_val > FLT_MAX || val.double_val < -FLT_MAX)) {
       jsondec_err(d, "Float out of range");
@@ -806,7 +806,7 @@ static upb_msgval jsondec_double(jsondec *d, const upb_FieldDef *f) {
 static upb_msgval jsondec_strfield(jsondec *d, const upb_FieldDef *f) {
   upb_msgval val;
   val.str_val = jsondec_string(d);
-  if (upb_FieldDef_CType(f) == UPB_TYPE_BYTES) {
+  if (upb_FieldDef_CType(f) == kUpb_CType_Bytes) {
     val.str_val.size = jsondec_base64(d, val.str_val);
   }
   return val;
@@ -996,23 +996,23 @@ static void jsondec_object(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
 
 static upb_msgval jsondec_value(jsondec *d, const upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return jsondec_bool(d, f);
-    case UPB_TYPE_FLOAT:
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Float:
+    case kUpb_CType_Double:
       return jsondec_double(d, f);
-    case UPB_TYPE_UINT32:
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt32:
+    case kUpb_CType_UInt64:
       return jsondec_uint(d, f);
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int32:
+    case kUpb_CType_Int64:
       return jsondec_int(d, f);
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes:
       return jsondec_strfield(d, f);
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Enum:
       return jsondec_enum(d, f);
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       return jsondec_msg(d, f);
     default:
       UPB_UNREACHABLE();

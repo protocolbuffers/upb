@@ -121,9 +121,9 @@
 static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val);
 static upb_msg *lupb_msg_check(lua_State *L, int narg);
 
-static upb_fieldtype_t lupb_checkfieldtype(lua_State *L, int narg) {
+static upb_CType lupb_checkfieldtype(lua_State *L, int narg) {
   uint32_t n = lupb_checkuint32(L, narg);
-  bool ok = n >= UPB_TYPE_BOOL && n <= UPB_TYPE_BYTES;
+  bool ok = n >= kUpb_CType_Bool && n <= kUpb_CType_Bytes;
   luaL_argcheck(L, ok, narg, "invalid field type");
   return n;
 }
@@ -261,34 +261,34 @@ typedef enum {
  *
  * Converts the given Lua value |narg| to a upb_msgval.
  */
-static upb_msgval lupb_tomsgval(lua_State *L, upb_fieldtype_t type, int narg,
+static upb_msgval lupb_tomsgval(lua_State *L, upb_CType type, int narg,
                                 int container, lupb_copy_t copy) {
   upb_msgval ret;
   switch (type) {
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Int32:
+    case kUpb_CType_Enum:
       ret.int32_val = lupb_checkint32(L, narg);
       break;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       ret.int64_val = lupb_checkint64(L, narg);
       break;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       ret.uint32_val = lupb_checkuint32(L, narg);
       break;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       ret.uint64_val = lupb_checkuint64(L, narg);
       break;
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       ret.double_val = lupb_checkdouble(L, narg);
       break;
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       ret.float_val = lupb_checkfloat(L, narg);
       break;
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       ret.bool_val = lupb_checkbool(L, narg);
       break;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES: {
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes: {
       size_t len;
       const char *ptr = lupb_checkstring(L, narg, &len);
       switch (copy) {
@@ -305,7 +305,7 @@ static upb_msgval lupb_tomsgval(lua_State *L, upb_fieldtype_t type, int narg,
       }
       break;
     }
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       ret.msg_val = lupb_msg_check(L, narg);
       /* Typecheck message. */
       lua_getiuservalue(L, container, LUPB_MSGDEF_INDEX);
@@ -317,36 +317,36 @@ static upb_msgval lupb_tomsgval(lua_State *L, upb_fieldtype_t type, int narg,
   return ret;
 }
 
-void lupb_pushmsgval(lua_State* L, int container, upb_fieldtype_t type,
+void lupb_pushmsgval(lua_State* L, int container, upb_CType type,
                      upb_msgval val) {
   switch (type) {
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Int32:
+    case kUpb_CType_Enum:
       lupb_pushint32(L, val.int32_val);
       return;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       lupb_pushint64(L, val.int64_val);
       return;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       lupb_pushuint32(L, val.uint32_val);
       return;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       lupb_pushuint64(L, val.uint64_val);
       return;
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       lua_pushnumber(L, val.double_val);
       return;
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       lua_pushnumber(L, val.float_val);
       return;
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       lua_pushboolean(L, val.bool_val);
       return;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes:
       lua_pushlstring(L, val.str_val.data, val.str_val.size);
       return;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       assert(container);
       if (!lupb_cacheget(L, val.msg_val)) {
         lupb_msg_newmsgwrapper(L, container, val);
@@ -360,7 +360,7 @@ void lupb_pushmsgval(lua_State* L, int container, upb_fieldtype_t type,
 
 typedef struct {
   upb_array *arr;
-  upb_fieldtype_t type;
+  upb_CType type;
 } lupb_array;
 
 static lupb_array *lupb_array_check(lua_State *L, int narg) {
@@ -394,13 +394,13 @@ static int lupb_array_new(lua_State *L) {
   upb_Arena *arena;
 
   if (lua_type(L, 1) == LUA_TNUMBER) {
-    upb_fieldtype_t type = lupb_checkfieldtype(L, 1);
+    upb_CType type = lupb_checkfieldtype(L, 1);
     larray = lupb_newuserdata(L, sizeof(*larray), 1, LUPB_ARRAY);
     larray->type = type;
   } else {
     lupb_MessageDef_check(L, 1);
     larray = lupb_newuserdata(L, sizeof(*larray), 2, LUPB_ARRAY);
-    larray->type = UPB_TYPE_MESSAGE;
+    larray->type = kUpb_CType_Message;
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, LUPB_MSGDEF_INDEX);
   }
@@ -444,7 +444,7 @@ static int lupb_array_newindex(lua_State *L) {
     upb_array_set(larray->arr, n, msgval);
   }
 
-  if (larray->type == UPB_TYPE_MESSAGE) {
+  if (larray->type == kUpb_CType_Message) {
     lupb_Arena_Fuseobjs(L, 1, 3);
   }
 
@@ -492,8 +492,8 @@ static const struct luaL_Reg lupb_array_mm[] = {
 
 typedef struct {
   upb_map *map;
-  upb_fieldtype_t key_type;
-  upb_fieldtype_t value_type;
+  upb_CType key_type;
+  upb_CType value_type;
 } lupb_map;
 
 #define MAP_MSGDEF_INDEX 1
@@ -521,7 +521,7 @@ static int lupb_map_new(lua_State *L) {
   } else {
     lupb_MessageDef_check(L, 2);
     lmap = lupb_newuserdata(L, sizeof(*lmap), 2, LUPB_MAP);
-    lmap->value_type = UPB_TYPE_MESSAGE;
+    lmap->value_type = kUpb_CType_Message;
     lua_pushvalue(L, 2);
     lua_setiuservalue(L, -2, MAP_MSGDEF_INDEX);
   }
@@ -585,7 +585,7 @@ static int lupb_map_newindex(lua_State *L) {
   } else {
     upb_msgval val = lupb_tomsgval(L, lmap->value_type, 3, 1, LUPB_COPY);
     upb_map_set(map, key, val, lupb_Arenaget(L, 1));
-    if (lmap->value_type == UPB_TYPE_MESSAGE) {
+    if (lmap->value_type == kUpb_CType_Message) {
       lupb_Arena_Fuseobjs(L, 1, 3);
     }
   }
@@ -620,7 +620,7 @@ static int lupb_map_pairs(lua_State *L) {
   size_t *iter = lua_newuserdata(L, sizeof(*iter));
   lupb_map_check(L, 1);
 
-  *iter = UPB_MAP_BEGIN;
+  *iter = kUpb_Map_Begin;
   lua_pushvalue(L, 1);
 
   /* Upvalues are [iter, lupb_map]. */
@@ -716,7 +716,7 @@ static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val) {
  */
 static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
                             const char *type, const upb_FieldDef *f) {
-  if (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE) {
+  if (upb_FieldDef_CType(f) == kUpb_CType_Message) {
     /* Wrapper needs a reference to the msgdef. */
     void* ud = lupb_newuserdata(L, size, 2, type);
     lua_getiuservalue(L, narg, LUPB_MSGDEF_INDEX);
@@ -850,19 +850,19 @@ static int lupb_msg_newindex(lua_State *L) {
     const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_KeyFieldNumber);
     const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_ValueFieldNumber);
-    upb_fieldtype_t key_type = upb_FieldDef_CType(key_f);
-    upb_fieldtype_t value_type = upb_FieldDef_CType(val_f);
+    upb_CType key_type = upb_FieldDef_CType(key_f);
+    upb_CType value_type = upb_FieldDef_CType(val_f);
     luaL_argcheck(L, lmap->key_type == key_type, 3, "key type mismatch");
     luaL_argcheck(L, lmap->value_type == value_type, 3, "value type mismatch");
-    if (value_type == UPB_TYPE_MESSAGE) {
+    if (value_type == kUpb_CType_Message) {
       lupb_msg_typechecksubmsg(L, 3, 1, val_f);
     }
     msgval.map_val = lmap->map;
   } else if (upb_FieldDef_IsRepeated(f)) {
     lupb_array *larr = lupb_array_check(L, 3);
-    upb_fieldtype_t type = upb_FieldDef_CType(f);
+    upb_CType type = upb_FieldDef_CType(f);
     luaL_argcheck(L, larr->type == type, 3, "array type mismatch");
-    if (type == UPB_TYPE_MESSAGE) {
+    if (type == kUpb_CType_Message) {
       lupb_msg_typechecksubmsg(L, 3, 1, f);
     }
     msgval.array_val = larr->arr;

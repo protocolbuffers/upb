@@ -124,28 +124,28 @@ static upb_StringView default_string(upb_ToProto_Context *ctx,
                                   const upb_FieldDef *f) {
   upb_msgval d = upb_FieldDef_Default(f);
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return strviewdup(ctx, d.bool_val ? "true" : "false");
-    case UPB_TYPE_ENUM: {
+    case kUpb_CType_Enum: {
       const upb_EnumDef *e = upb_FieldDef_EnumSubDef(f);
       const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNumber(e, d.int32_val);
       return strviewdup(ctx, upb_EnumValueDef_Name(ev));
     }
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       return printf_dup(ctx, "%" PRId64, d.int64_val);
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       return printf_dup(ctx, "%" PRIu64, d.uint64_val);
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       return printf_dup(ctx, "%" PRId32, d.int32_val);
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       return printf_dup(ctx, "%" PRIu32, d.uint32_val);
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       return printf_dup(ctx, "%.9g", d.float_val);
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       return printf_dup(ctx, "%.17g", d.double_val);
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       return strviewdup2(ctx, d.str_val);
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_Bytes:
       return default_bytes(ctx, d.str_val);
     default:
       UPB_UNREACHABLE();
@@ -174,7 +174,7 @@ static google_protobuf_FieldDescriptorProto *fielddef_toproto(
   if (upb_FieldDef_IsSubMessage(f)) {
     google_protobuf_FieldDescriptorProto_set_type_name(
         proto, qual_dup(ctx, upb_MessageDef_FullName(upb_FieldDef_MessageSubDef(f))));
-  } else if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM) {
+  } else if (upb_FieldDef_CType(f) == kUpb_CType_Enum) {
     google_protobuf_FieldDescriptorProto_set_type_name(
         proto, qual_dup(ctx, upb_EnumDef_FullName(upb_FieldDef_EnumSubDef(f))));
   }

@@ -36,57 +36,57 @@
 static size_t get_field_size(const upb_msglayout_field *f) {
   static unsigned char sizes[] = {
     0,/* 0 */
-    8, /* UPB_DESCRIPTOR_TYPE_DOUBLE */
-    4, /* UPB_DESCRIPTOR_TYPE_FLOAT */
-    8, /* UPB_DESCRIPTOR_TYPE_INT64 */
-    8, /* UPB_DESCRIPTOR_TYPE_UINT64 */
-    4, /* UPB_DESCRIPTOR_TYPE_INT32 */
-    8, /* UPB_DESCRIPTOR_TYPE_FIXED64 */
-    4, /* UPB_DESCRIPTOR_TYPE_FIXED32 */
-    1, /* UPB_DESCRIPTOR_TYPE_BOOL */
-    sizeof(upb_StringView), /* UPB_DESCRIPTOR_TYPE_STRING */
-    sizeof(void*), /* UPB_DESCRIPTOR_TYPE_GROUP */
-    sizeof(void*), /* UPB_DESCRIPTOR_TYPE_MESSAGE */
-    sizeof(upb_StringView), /* UPB_DESCRIPTOR_TYPE_BYTES */
-    4, /* UPB_DESCRIPTOR_TYPE_UINT32 */
-    4, /* UPB_DESCRIPTOR_TYPE_ENUM */
-    4, /* UPB_DESCRIPTOR_TYPE_SFIXED32 */
-    8, /* UPB_DESCRIPTOR_TYPE_SFIXED64 */
-    4, /* UPB_DESCRIPTOR_TYPE_SINT32 */
-    8, /* UPB_DESCRIPTOR_TYPE_SINT64 */
+    8, /* upb_FieldType_Double */
+    4, /* upb_FieldType_Float */
+    8, /* upb_FieldType_Int64 */
+    8, /* upb_FieldType_UInt64 */
+    4, /* upb_FieldType_Int32 */
+    8, /* upb_FieldType_Fixed64 */
+    4, /* upb_FieldType_Fixed32 */
+    1, /* upb_FieldType_Bool */
+    sizeof(upb_StringView), /* upb_FieldType_String */
+    sizeof(void*), /* upb_FieldType_Group */
+    sizeof(void*), /* upb_FieldType_Message */
+    sizeof(upb_StringView), /* upb_FieldType_Bytes */
+    4, /* upb_FieldType_UInt32 */
+    4, /* upb_FieldType_Enum */
+    4, /* upb_FieldType_SFixed32 */
+    8, /* upb_FieldType_SFixed64 */
+    4, /* upb_FieldType_SInt32 */
+    8, /* upb_FieldType_SInt64 */
   };
   return _upb_repeated_or_map(f) ? sizeof(void *) : sizes[f->descriptortype];
 }
 
 /* Strings/bytes are special-cased in maps. */
-static char _upb_fieldtype_to_mapsize[12] = {
+static char _upb_CTypeo_mapsize[12] = {
   0,
-  1,  /* UPB_TYPE_BOOL */
-  4,  /* UPB_TYPE_FLOAT */
-  4,  /* UPB_TYPE_INT32 */
-  4,  /* UPB_TYPE_UINT32 */
-  4,  /* UPB_TYPE_ENUM */
-  sizeof(void*),  /* UPB_TYPE_MESSAGE */
-  8,  /* UPB_TYPE_DOUBLE */
-  8,  /* UPB_TYPE_INT64 */
-  8,  /* UPB_TYPE_UINT64 */
-  0,  /* UPB_TYPE_STRING */
-  0,  /* UPB_TYPE_BYTES */
+  1,  /* kUpb_CType_Bool */
+  4,  /* kUpb_CType_Float */
+  4,  /* kUpb_CType_Int32 */
+  4,  /* kUpb_CType_UInt32 */
+  4,  /* kUpb_CType_Enum */
+  sizeof(void*),  /* kUpb_CType_Message */
+  8,  /* kUpb_CType_Double */
+  8,  /* kUpb_CType_Int64 */
+  8,  /* kUpb_CType_UInt64 */
+  0,  /* kUpb_CType_String */
+  0,  /* kUpb_CType_Bytes */
 };
 
-static const char _upb_fieldtype_to_sizelg2[12] = {
+static const char _upb_CTypeo_sizelg2[12] = {
   0,
-  0,  /* UPB_TYPE_BOOL */
-  2,  /* UPB_TYPE_FLOAT */
-  2,  /* UPB_TYPE_INT32 */
-  2,  /* UPB_TYPE_UINT32 */
-  2,  /* UPB_TYPE_ENUM */
-  UPB_SIZE(2, 3),  /* UPB_TYPE_MESSAGE */
-  3,  /* UPB_TYPE_DOUBLE */
-  3,  /* UPB_TYPE_INT64 */
-  3,  /* UPB_TYPE_UINT64 */
-  UPB_SIZE(3, 4),  /* UPB_TYPE_STRING */
-  UPB_SIZE(3, 4),  /* UPB_TYPE_BYTES */
+  0,  /* kUpb_CType_Bool */
+  2,  /* kUpb_CType_Float */
+  2,  /* kUpb_CType_Int32 */
+  2,  /* kUpb_CType_UInt32 */
+  2,  /* kUpb_CType_Enum */
+  UPB_SIZE(2, 3),  /* kUpb_CType_Message */
+  3,  /* kUpb_CType_Double */
+  3,  /* kUpb_CType_Int64 */
+  3,  /* kUpb_CType_UInt64 */
+  UPB_SIZE(3, 4),  /* kUpb_CType_String */
+  UPB_SIZE(3, 4),  /* kUpb_CType_Bytes */
 };
 
 /** upb_msg *******************************************************************/
@@ -119,8 +119,8 @@ bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f) {
     } else if (field->presence > 0) {
       return _upb_hasbit_field(msg, field);
     } else {
-      UPB_ASSERT(field->descriptortype == UPB_DESCRIPTOR_TYPE_MESSAGE ||
-                 field->descriptortype == UPB_DESCRIPTOR_TYPE_GROUP);
+      UPB_ASSERT(field->descriptortype == upb_FieldType_Message ||
+                 field->descriptortype == upb_FieldType_Group);
       return _upb_msg_getraw(msg, f).msg_val != NULL;
     }
   }
@@ -307,7 +307,7 @@ bool _upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int depth) {
       const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(subm, 2);
       const upb_MessageDef *val_m = upb_FieldDef_MessageSubDef(val_f);
       upb_map *map = (upb_map*)val.map_val;
-      size_t iter = UPB_MAP_BEGIN;
+      size_t iter = kUpb_Map_Begin;
 
       if (!val_m) continue;
 
@@ -342,8 +342,8 @@ bool upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth)
 
 /** upb_array *****************************************************************/
 
-upb_array *upb_array_new(upb_Arena *a, upb_fieldtype_t type) {
-  return _upb_array_new(a, 4, _upb_fieldtype_to_sizelg2[type]);
+upb_array *upb_array_new(upb_Arena *a, upb_CType type) {
+  return _upb_array_new(a, 4, _upb_CTypeo_sizelg2[type]);
 }
 
 size_t upb_array_size(const upb_array *arr) {
@@ -411,10 +411,10 @@ bool upb_array_resize(upb_array *arr, size_t size, upb_Arena *arena) {
 
 /** upb_map *******************************************************************/
 
-upb_map *upb_map_new(upb_Arena *a, upb_fieldtype_t key_type,
-                     upb_fieldtype_t value_type) {
-  return _upb_map_new(a, _upb_fieldtype_to_mapsize[key_type],
-                      _upb_fieldtype_to_mapsize[value_type]);
+upb_map *upb_map_new(upb_Arena *a, upb_CType key_type,
+                     upb_CType value_type) {
+  return _upb_map_new(a, _upb_CTypeo_mapsize[key_type],
+                      _upb_CTypeo_mapsize[value_type]);
 }
 
 size_t upb_map_size(const upb_map *map) {
@@ -444,7 +444,7 @@ bool upb_mapiter_next(const upb_map *map, size_t *iter) {
 
 bool upb_mapiter_done(const upb_map *map, size_t iter) {
   upb_strtable_iter i;
-  UPB_ASSERT(iter != UPB_MAP_BEGIN);
+  UPB_ASSERT(iter != kUpb_Map_Begin);
   i.t = &map->table;
   i.index = iter;
   return upb_strtable_done(&i);

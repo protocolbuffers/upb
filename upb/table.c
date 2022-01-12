@@ -462,7 +462,7 @@ bool upb_strtable_init(upb_strtable *t, size_t expected_size, upb_Arena *a) {
   // Multiply by approximate reciprocal of MAX_LOAD (0.85), with pow2 denominator.
   size_t need_entries = (expected_size + 1) * 1204 / 1024;
   UPB_ASSERT(need_entries >= expected_size * 0.85);
-  int size_lg2 = _upb_lg2ceil(need_entries);
+  int size_lg2 = _upb_Log2Ceiling(need_entries);
   return init(&t->t, size_lg2, a);
 }
 

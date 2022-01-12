@@ -101,7 +101,6 @@ FUNCS(bool,     _bool,        bool,         bool,       UPB_CTYPE_BOOL)
 FUNCS(cstr,     cstr,         char*,        uintptr_t,  UPB_CTYPE_CSTR)
 FUNCS(ptr,      ptr,          void*,        uintptr_t,  UPB_CTYPE_PTR)
 FUNCS(constptr, constptr,     const void*,  uintptr_t,  UPB_CTYPE_CONSTPTR)
-FUNCS(fptr,     fptr,         upb_func*,    uintptr_t,  UPB_CTYPE_FPTR)
 
 #undef FUNCS
 

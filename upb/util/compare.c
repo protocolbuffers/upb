@@ -157,7 +157,7 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
     ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &tag);
     UPB_ASSERT(tag <= UINT32_MAX);
     int wire_type = tag & 7;
-    if (wire_type == UPB_WIRE_TYPE_END_GROUP) break;
+    if (wire_type == kUpb_WireType_EndGroup) break;
     if (tag < last_tag) sorted = false;
     last_tag = tag;
 
@@ -169,20 +169,20 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
     arr_ptr++;
 
     switch (wire_type) {
-      case UPB_WIRE_TYPE_VARINT:
+      case kUpb_WireType_Varint:
         ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &field->data.varint);
         break;
-      case UPB_WIRE_TYPE_64BIT:
+      case kUpb_WireType_64Bit:
         UPB_ASSERT(ctx->end - ptr >= 8);
         memcpy(&field->data.uint64, ptr, 8);
         ptr += 8;
         break;
-      case UPB_WIRE_TYPE_32BIT:
+      case kUpb_WireType_32Bit:
         UPB_ASSERT(ctx->end - ptr >= 4);
         memcpy(&field->data.uint32, ptr, 4);
         ptr += 4;
         break;
-      case UPB_WIRE_TYPE_DELIMITED: {
+      case kUpb_WireType_Delimited: {
         uint64_t size;
         ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &size);
         UPB_ASSERT(ctx->end - ptr >= size);
@@ -191,7 +191,7 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
         ptr += size;
         break;
       }
-      case UPB_WIRE_TYPE_START_GROUP:
+      case kUpb_WireType_StartGroup:
         if (--ctx->depth == 0) {
           UPB_LONGJMP(ctx->err, kUpb_UnknownCompareResult_MaxDepthExceeded);
         }
@@ -235,21 +235,21 @@ static bool upb_UnknownFields_IsEqual(const upb_UnknownFields *uf1,
     if (f1->tag != f2->tag) return false;
     int wire_type = f1->tag & 7;
     switch (wire_type) {
-      case UPB_WIRE_TYPE_VARINT:
+      case kUpb_WireType_Varint:
         if (f1->data.varint != f2->data.varint) return false;
         break;
-      case UPB_WIRE_TYPE_64BIT:
+      case kUpb_WireType_64Bit:
         if (f1->data.uint64 != f2->data.uint64) return false;
         break;
-      case UPB_WIRE_TYPE_32BIT:
+      case kUpb_WireType_32Bit:
         if (f1->data.uint32 != f2->data.uint32) return false;
         break;
-      case UPB_WIRE_TYPE_DELIMITED:
+      case kUpb_WireType_Delimited:
         if (!upb_StringView_IsEqual(f1->data.delimited, f2->data.delimited)) {
           return false;
         }
         break;
-      case UPB_WIRE_TYPE_START_GROUP:
+      case kUpb_WireType_StartGroup:
         if (!upb_UnknownFields_IsEqual(f1->data.group, f2->data.group)) {
           return false;
         }

@@ -34,24 +34,24 @@
 
 PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_FieldDef *f, PyObject *arena) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_ENUM:
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Enum:
+    case kUpb_CType_Int32:
       return PyLong_FromLong(val.int32_val);
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       return PyLong_FromLongLong(val.int64_val);
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       return PyLong_FromSize_t(val.uint32_val);
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       return PyLong_FromUnsignedLongLong(val.uint64_val);
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       return PyFloat_FromDouble(val.float_val);
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       return PyFloat_FromDouble(val.double_val);
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return PyBool_FromLong(val.bool_val);
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_Bytes:
       return PyBytes_FromStringAndSize(val.str_val.data, val.str_val.size);
-    case UPB_TYPE_STRING: {
+    case kUpb_CType_String: {
       PyObject* ret =
           PyUnicode_DecodeUTF8(val.str_val.data, val.str_val.size, NULL);
       // If the string can't be decoded in UTF-8, just return a bytes object
@@ -64,7 +64,7 @@ PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_FieldDef *f, PyObject *arena) 
       }
       return ret;
     }
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       return PyUpb_CMessage_Get((upb_msg*)val.msg_val,
                                 upb_FieldDef_MessageSubDef(f), arena);
     default:
@@ -185,33 +185,33 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_EnumDef *e,
 bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
                    upb_Arena *arena) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Enum:
       return PyUpb_PyToUpbEnum(obj, upb_FieldDef_EnumSubDef(f), val);
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       return PyUpb_GetInt32(obj, &val->int32_val);
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       return PyUpb_GetInt64(obj, &val->int64_val);
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       return PyUpb_GetUint32(obj, &val->uint32_val);
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       return PyUpb_GetUint64(obj, &val->uint64_val);
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       val->float_val = PyFloat_AsDouble(obj);
       return !PyErr_Occurred();
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       val->double_val = PyFloat_AsDouble(obj);
       return !PyErr_Occurred();
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       val->bool_val = PyLong_AsLong(obj);
       return !PyErr_Occurred();
-    case UPB_TYPE_BYTES: {
+    case kUpb_CType_Bytes: {
       char *ptr;
       Py_ssize_t size;
       if (PyBytes_AsStringAndSize(obj, &ptr, &size) < 0) return false;
       *val = PyUpb_MaybeCopyString(ptr, size, arena);
       return true;
     }
-    case UPB_TYPE_STRING: {
+    case kUpb_CType_String: {
       Py_ssize_t size;
       const char *ptr;
       PyObject *unicode = NULL;
@@ -228,7 +228,7 @@ bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
       Py_XDECREF(unicode);
       return true;
     }
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       PyErr_Format(
           PyExc_ValueError, "Message objects may not be assigned",
           upb_FieldDef_CType(f));
@@ -250,24 +250,24 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
 
 bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return val1.bool_val == val2.bool_val;
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_UINT32:
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Int32:
+    case kUpb_CType_UInt32:
+    case kUpb_CType_Enum:
       return val1.int32_val == val2.int32_val;
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_Int64:
+    case kUpb_CType_UInt64:
       return val1.int64_val == val2.int64_val;
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       return val1.float_val == val2.float_val;
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       return val1.double_val == val2.double_val;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes:
       return val1.str_val.size == val2.str_val.size &&
           memcmp(val1.str_val.data, val2.str_val.data, val1.str_val.size) == 0;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       return PyUpb_Message_IsEqual(val1.msg_val, val2.msg_val,
                                    upb_FieldDef_MessageSubDef(f));
     default:
@@ -287,7 +287,7 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
 
   const upb_MessageDef *entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef *val_f = upb_MessageDef_Field(entry_m, 1);
-  size_t iter = UPB_MAP_BEGIN;
+  size_t iter = kUpb_Map_Begin;
 
   while (upb_mapiter_next(map1, &iter)) {
     upb_msgval key = upb_mapiter_key(map1, iter);

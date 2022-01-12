@@ -119,7 +119,7 @@ static void test_utf8(void) {
 
 static void check_string_map_empty(
     protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
-  size_t iter = UPB_MAP_BEGIN;
+  size_t iter = kUpb_Map_Begin;
 
   ASSERT(
       protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_size(
@@ -148,7 +148,7 @@ static void check_string_map_one_entry(
           msg, test_str_view3, &str));
 
   /* Test that iteration reveals a single k/v pair in the map. */
-  iter = UPB_MAP_BEGIN;
+  iter = kUpb_Map_Begin;
   const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
       msg, &iter);
   ASSERT(const_ent);
@@ -227,7 +227,7 @@ static void test_string_map(void) {
       msg, test_str_view3, test_str_view4, arena);
 
   /* Test iteration */
-  iter = UPB_MAP_BEGIN;
+  iter = kUpb_Map_Begin;
   count = 0;
 
   while (
@@ -261,7 +261,7 @@ static void test_string_map(void) {
 
 static void check_int32_map_empty(
     protobuf_test_messages_proto3_TestAllTypesProto3 *msg) {
-  size_t iter = UPB_MAP_BEGIN;
+  size_t iter = kUpb_Map_Begin;
 
   ASSERT(
       protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_size(
@@ -290,7 +290,7 @@ static void check_int32_map_one_entry(
           msg, test_int32_3, &val));
 
   /* Test that iteration reveals a single k/v pair in the map. */
-  iter = UPB_MAP_BEGIN;
+  iter = kUpb_Map_Begin;
   const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_next(
       msg, &iter);
   ASSERT(const_ent);
@@ -345,7 +345,7 @@ static void test_int32_map(void) {
       msg, test_int32_3, test_int32_4, arena);
 
   /* Test iteration */
-  iter = UPB_MAP_BEGIN;
+  iter = kUpb_Map_Begin;
   count = 0;
 
   while (

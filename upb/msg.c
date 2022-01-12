@@ -53,7 +53,7 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
   upb_msg_internal *in = upb_msg_getinternal(msg);
   if (!in->internal) {
     /* No internal data, allocate from scratch. */
-    size_t size = UPB_MAX(128, _upb_lg2ceilsize(need + overhead));
+    size_t size = UPB_MAX(128, _upb_Log2Ceilingsize(need + overhead));
     upb_msg_internaldata *internal = upb_Arena_Malloc(arena, size);
     if (!internal) return false;
     internal->size = size;
@@ -62,7 +62,7 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
     in->internal = internal;
   } else if (in->internal->ext_begin - in->internal->unknown_end < need) {
     /* Internal data is too small, reallocate. */
-    size_t new_size = _upb_lg2ceilsize(in->internal->size + need);
+    size_t new_size = _upb_Log2Ceilingsize(in->internal->size + need);
     size_t ext_bytes = in->internal->size - in->internal->ext_begin;
     size_t new_ext_begin = new_size - ext_bytes;
     upb_msg_internaldata *internal =
@@ -295,7 +295,7 @@ static int _upb_mapsorter_cmpstr(const void *_a, const void *_b) {
 
 #undef UPB_COMPARE_INTEGERS
 
-bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_descriptortype_t key_type,
+bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
                             const upb_map *map, _upb_sortedmap *sorted) {
   int map_size = _upb_map_size(map);
   sorted->start = s->size;
@@ -304,7 +304,7 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_descriptortype_t key_type,
 
   /* Grow s->entries if necessary. */
   if (sorted->end > s->cap) {
-    s->cap = _upb_lg2ceilsize(sorted->end);
+    s->cap = _upb_Log2Ceilingsize(sorted->end);
     s->entries = realloc(s->entries, s->cap * sizeof(*s->entries));
     if (!s->entries) return false;
   }
@@ -328,30 +328,30 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_descriptortype_t key_type,
   int (*compar)(const void *, const void *);
 
   switch (key_type) {
-    case UPB_DESCRIPTOR_TYPE_INT64:
-    case UPB_DESCRIPTOR_TYPE_SFIXED64:
-    case UPB_DESCRIPTOR_TYPE_SINT64:
+    case upb_FieldType_Int64:
+    case upb_FieldType_SFixed64:
+    case upb_FieldType_SInt64:
       compar = _upb_mapsorter_cmpi64;
       break;
-    case UPB_DESCRIPTOR_TYPE_UINT64:
-    case UPB_DESCRIPTOR_TYPE_FIXED64:
+    case upb_FieldType_UInt64:
+    case upb_FieldType_Fixed64:
       compar = _upb_mapsorter_cmpu64;
       break;
-    case UPB_DESCRIPTOR_TYPE_INT32:
-    case UPB_DESCRIPTOR_TYPE_SINT32:
-    case UPB_DESCRIPTOR_TYPE_SFIXED32:
-    case UPB_DESCRIPTOR_TYPE_ENUM:
+    case upb_FieldType_Int32:
+    case upb_FieldType_SInt32:
+    case upb_FieldType_SFixed32:
+    case upb_FieldType_Enum:
       compar = _upb_mapsorter_cmpi32;
       break;
-    case UPB_DESCRIPTOR_TYPE_UINT32:
-    case UPB_DESCRIPTOR_TYPE_FIXED32:
+    case upb_FieldType_UInt32:
+    case upb_FieldType_Fixed32:
       compar = _upb_mapsorter_cmpu32;
       break;
-    case UPB_DESCRIPTOR_TYPE_BOOL:
+    case upb_FieldType_Bool:
       compar = _upb_mapsorter_cmpbool;
       break;
-    case UPB_DESCRIPTOR_TYPE_STRING:
-    case UPB_DESCRIPTOR_TYPE_BYTES:
+    case upb_FieldType_String:
+    case upb_FieldType_Bytes:
       compar = _upb_mapsorter_cmpstr;
       break;
     default:

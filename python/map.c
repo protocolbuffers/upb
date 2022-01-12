@@ -292,7 +292,7 @@ static PyObject* PyUpb_MapContainer_Repr(PyObject* _self) {
     const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
     const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
-    size_t iter = UPB_MAP_BEGIN;
+    size_t iter = kUpb_Map_Begin;
     while (upb_mapiter_next(map, &iter)) {
       PyObject* key =
           PyUpb_UpbToPy(upb_mapiter_key(map, iter), key_f, self->arena);
@@ -432,7 +432,7 @@ static PyObject* PyUpb_MapIterator_New(PyUpb_MapContainer* map) {
   PyUpb_MapIterator* iter =
       (void*)PyType_GenericAlloc(state->map_iterator_type, 0);
   iter->map = map;
-  iter->iter = UPB_MAP_BEGIN;
+  iter->iter = kUpb_Map_Begin;
   iter->version = map->version;
   Py_INCREF(map);
   return &iter->ob_base;

@@ -55,9 +55,9 @@ class FieldDefPtr {
   const upb_FieldDef* ptr() const { return ptr_; }
   explicit operator bool() const { return ptr_ != nullptr; }
 
-  typedef upb_fieldtype_t Type;
-  typedef upb_label_t Label;
-  typedef upb_descriptortype_t DescriptorType;
+  typedef upb_CType Type;
+  typedef upb_Label Label;
+  typedef upb_FieldType DescriptorType;
 
   const char* full_name() const { return upb_FieldDef_FullName(ptr_); }
 
@@ -115,7 +115,7 @@ class FieldDefPtr {
 
   // Returns the enum or submessage def for this field, if any.  The field's
   // type must match (ie. you may only call enum_subdef() for fields where
-  // type() == UPB_TYPE_ENUM).
+  // type() == kUpb_CType_Enum).
   EnumDefPtr enum_subdef() const;
   MessageDefPtr message_subdef() const;
 

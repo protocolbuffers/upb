@@ -83,13 +83,13 @@ static const uint8_t desctype_to_mapsize[] = {
     8,                  /* SINT64 */
 };
 
-static const unsigned FIXED32_OK_MASK = (1 << UPB_DTYPE_FLOAT) |
-                                        (1 << UPB_DTYPE_FIXED32) |
-                                        (1 << UPB_DTYPE_SFIXED32);
+static const unsigned FIXED32_OK_MASK = (1 << upb_FieldType_Float) |
+                                        (1 << upb_FieldType_Fixed32) |
+                                        (1 << upb_FieldType_SFixed32);
 
-static const unsigned FIXED64_OK_MASK = (1 << UPB_DTYPE_DOUBLE) |
-                                        (1 << UPB_DTYPE_FIXED64) |
-                                        (1 << UPB_DTYPE_SFIXED64);
+static const unsigned FIXED64_OK_MASK = (1 << upb_FieldType_Double) |
+                                        (1 << upb_FieldType_Fixed64) |
+                                        (1 << upb_FieldType_SFixed64);
 
 /* Three fake field types for MessageSet. */
 #define TYPE_MSGSET_ITEM 19
@@ -266,7 +266,7 @@ static const char *decode_tag(upb_decstate *d, const char *ptr, uint32_t *val) {
 }
 
 static void decode_munge_int32(wireval *val) {
-  if (!_upb_isle()) {
+  if (!_upb_IsLittleEndian()) {
     /* The next stage will memcpy(dst, &val, 4) */
     val->uint32_val = val->uint64_val;
   }
@@ -274,22 +274,22 @@ static void decode_munge_int32(wireval *val) {
 
 static void decode_munge(int type, wireval *val) {
   switch (type) {
-    case UPB_DESCRIPTOR_TYPE_BOOL:
+    case upb_FieldType_Bool:
       val->bool_val = val->uint64_val != 0;
       break;
-    case UPB_DESCRIPTOR_TYPE_SINT32: {
+    case upb_FieldType_SInt32: {
       uint32_t n = val->uint64_val;
       val->uint32_val = (n >> 1) ^ -(int32_t)(n & 1);
       break;
     }
-    case UPB_DESCRIPTOR_TYPE_SINT64: {
+    case upb_FieldType_SInt64: {
       uint64_t n = val->uint64_val;
       val->uint64_val = (n >> 1) ^ -(int64_t)(n & 1);
       break;
     }
-    case UPB_DESCRIPTOR_TYPE_INT32:
-    case UPB_DESCRIPTOR_TYPE_UINT32:
-    case UPB_DESCRIPTOR_TYPE_ENUM:
+    case upb_FieldType_Int32:
+    case upb_FieldType_UInt32:
+    case upb_FieldType_Enum:
       decode_munge_int32(val);
       break;
   }
@@ -397,7 +397,7 @@ static bool decode_checkenum_slow(upb_decstate *d, const char *ptr, upb_msg *msg
   // just re-encode the tag here.
   char buf[20];
   char *end = buf;
-  uint32_t tag = ((uint32_t)field->number << 3) | UPB_WIRE_TYPE_VARINT;
+  uint32_t tag = ((uint32_t)field->number << 3) | kUpb_WireType_Varint;
   end = encode_varint32(tag, end);
   end = encode_varint32(v, end);
 
@@ -449,7 +449,7 @@ static const char *decode_fixed_packed(upb_decstate *d, const char *ptr,
   arr->len += count;
   // Note: if/when the decoder supports multi-buffer input, we will need to
   // handle buffer seams here.
-  if (_upb_isle()) {
+  if (_upb_IsLittleEndian()) {
     memcpy(mem, ptr, val->size);
     ptr += val->size;
   } else {
@@ -459,13 +459,13 @@ static const char *decode_fixed_packed(upb_decstate *d, const char *ptr,
       if (lg2 == 2) {
         uint32_t val;
         memcpy(&val, ptr, sizeof(val));
-        val = _upb_be_swap32(val);
+        val = _upb_BigEndian_Swap32(val);
         memcpy(dst, &val, sizeof(val));
       } else {
         UPB_ASSERT(lg2 == 3);
         uint64_t val;
         memcpy(&val, ptr, sizeof(val));
-        val = _upb_be_swap64(val);
+        val = _upb_BigEndian_Swap64(val);
         memcpy(dst, &val, sizeof(val));
       }
       ptr += 1 << lg2;
@@ -568,7 +568,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       *UPB_PTR_AT(_upb_array_ptr(arr), arr->len * sizeof(void *), upb_msg *) =
           submsg;
       arr->len++;
-      if (UPB_UNLIKELY(field->descriptortype == UPB_DTYPE_GROUP)) {
+      if (UPB_UNLIKELY(field->descriptortype == upb_FieldType_Group)) {
         return decode_togroup(d, ptr, submsg, subs, field);
       } else {
         return decode_tosubmsg(d, ptr, submsg, subs, field, val->size);
@@ -616,8 +616,8 @@ static const char *decode_tomap(upb_decstate *d, const char *ptr, upb_msg *msg,
   /* Parse map entry. */
   memset(&ent, 0, sizeof(ent));
 
-  if (entry->fields[1].descriptortype == UPB_DESCRIPTOR_TYPE_MESSAGE ||
-      entry->fields[1].descriptortype == UPB_DESCRIPTOR_TYPE_GROUP) {
+  if (entry->fields[1].descriptortype == upb_FieldType_Message ||
+      entry->fields[1].descriptortype == upb_FieldType_Group) {
     /* Create proactively to handle the case where it doesn't appear. */
     ent.v.val = upb_value_ptr(_upb_msg_new(entry->subs[0].submsg, &d->arena));
   }
@@ -661,7 +661,7 @@ static const char *decode_tomsg(upb_decstate *d, const char *ptr, upb_msg *msg,
         submsg = decode_newsubmsg(d, subs, field);
         *submsgp = submsg;
       }
-      if (UPB_UNLIKELY(type == UPB_DTYPE_GROUP)) {
+      if (UPB_UNLIKELY(type == upb_FieldType_Group)) {
         ptr = decode_togroup(d, ptr, submsg, subs, field);
       } else {
         ptr = decode_tosubmsg(d, ptr, submsg, subs, field, val->size);
@@ -699,7 +699,7 @@ const char *decode_checkrequired(upb_decstate *d, const char *ptr,
   }
   uint64_t msg_head;
   memcpy(&msg_head, msg, 8);
-  msg_head = _upb_be_swap64(msg_head);
+  msg_head = _upb_BigEndian_Swap64(msg_head);
   if (upb_msglayout_requiredmask(l) & ~msg_head) {
     d->missing_required = true;
   }
@@ -819,28 +819,28 @@ static const char *decode_wireval(upb_decstate *d, const char *ptr,
                                   const upb_msglayout_field *field,
                                   int wire_type, wireval *val, int *op) {
   switch (wire_type) {
-    case UPB_WIRE_TYPE_VARINT:
+    case kUpb_WireType_Varint:
       ptr = decode_varint64(d, ptr, &val->uint64_val);
       *op = varint_ops[field->descriptortype];
       decode_munge(field->descriptortype, val);
       return ptr;
-    case UPB_WIRE_TYPE_32BIT:
+    case kUpb_WireType_32Bit:
       memcpy(&val->uint32_val, ptr, 4);
-      val->uint32_val = _upb_be_swap32(val->uint32_val);
+      val->uint32_val = _upb_BigEndian_Swap32(val->uint32_val);
       *op = OP_SCALAR_LG2(2);
       if (((1 << field->descriptortype) & FIXED32_OK_MASK) == 0) {
         *op = OP_UNKNOWN;
       }
       return ptr + 4;
-    case UPB_WIRE_TYPE_64BIT:
+    case kUpb_WireType_64Bit:
       memcpy(&val->uint64_val, ptr, 8);
-      val->uint64_val = _upb_be_swap64(val->uint64_val);
+      val->uint64_val = _upb_BigEndian_Swap64(val->uint64_val);
       *op = OP_SCALAR_LG2(3);
       if (((1 << field->descriptortype) & FIXED64_OK_MASK) == 0) {
         *op = OP_UNKNOWN;
       }
       return ptr + 8;
-    case UPB_WIRE_TYPE_DELIMITED: {
+    case kUpb_WireType_Delimited: {
       int ndx = field->descriptortype;
       uint64_t size;
       if (_upb_getmode(field) == _UPB_MODE_ARRAY) ndx += TYPE_COUNT;
@@ -852,9 +852,9 @@ static const char *decode_wireval(upb_decstate *d, const char *ptr,
       val->size = size;
       return ptr;
     }
-    case UPB_WIRE_TYPE_START_GROUP:
+    case kUpb_WireType_StartGroup:
       val->uint32_val = field->number;
-      if (field->descriptortype == UPB_DTYPE_GROUP) {
+      if (field->descriptortype == upb_FieldType_Group) {
         *op = OP_SUBMSG;
       } else if (field->descriptortype == TYPE_MSGSET_ITEM) {
         *op = OP_MSGSET_ITEM;
@@ -917,18 +917,18 @@ static const char *decode_unknown(upb_decstate *d, const char *ptr,
   // significant speedups in benchmarks.
   const char *start = ptr;
 
-  if (wire_type == UPB_WIRE_TYPE_DELIMITED) ptr += val.size;
+  if (wire_type == kUpb_WireType_Delimited) ptr += val.size;
   if (msg) {
     switch (wire_type) {
-      case UPB_WIRE_TYPE_VARINT:
-      case UPB_WIRE_TYPE_DELIMITED:
+      case kUpb_WireType_Varint:
+      case kUpb_WireType_Delimited:
         start--;
         while (start[-1] & 0x80) start--;
         break;
-      case UPB_WIRE_TYPE_32BIT:
+      case kUpb_WireType_32Bit:
         start -= 4;
         break;
-      case UPB_WIRE_TYPE_64BIT:
+      case kUpb_WireType_64Bit:
         start -= 8;
         break;
       default:
@@ -940,7 +940,7 @@ static const char *decode_unknown(upb_decstate *d, const char *ptr,
     start = decode_reverse_skip_varint(start, tag);
     assert(start == d->debug_tagstart);
 
-    if (wire_type == UPB_WIRE_TYPE_START_GROUP) {
+    if (wire_type == kUpb_WireType_StartGroup) {
       d->unknown = start;
       d->unknown_msg = msg;
       ptr = decode_group(d, ptr, NULL, NULL, field_number);
@@ -951,7 +951,7 @@ static const char *decode_unknown(upb_decstate *d, const char *ptr,
     if (!_upb_msg_addunknown(msg, start, ptr - start, &d->arena)) {
       return decode_err(d, kUpb_DecodeStatus_OutOfMemory);
     }
-  } else if (wire_type == UPB_WIRE_TYPE_START_GROUP) {
+  } else if (wire_type == kUpb_WireType_StartGroup) {
     ptr = decode_group(d, ptr, NULL, NULL, field_number);
   }
   return ptr;
@@ -995,7 +995,7 @@ static const char *decode_msg(upb_decstate *d, const char *ptr, upb_msg *msg,
     d->debug_valstart = ptr;
 #endif
 
-    if (wire_type == UPB_WIRE_TYPE_END_GROUP) {
+    if (wire_type == kUpb_WireType_EndGroup) {
       d->end_group = field_number;
       return ptr;
     }

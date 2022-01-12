@@ -102,9 +102,9 @@ typedef enum {
 const google_protobuf_FieldOptions *upb_FieldDef_Options(const upb_FieldDef *f);
 bool upb_FieldDef_HasOptions(const upb_FieldDef *f);
 const char *upb_FieldDef_FullName(const upb_FieldDef *f);
-upb_fieldtype_t upb_FieldDef_CType(const upb_FieldDef *f);
-upb_descriptortype_t upb_FieldDef_Type(const upb_FieldDef *f);
-upb_label_t upb_FieldDef_Label(const upb_FieldDef *f);
+upb_CType upb_FieldDef_CType(const upb_FieldDef *f);
+upb_FieldType upb_FieldDef_Type(const upb_FieldDef *f);
+upb_Label upb_FieldDef_Label(const upb_FieldDef *f);
 uint32_t upb_FieldDef_Number(const upb_FieldDef *f);
 const char *upb_FieldDef_Name(const upb_FieldDef *f);
 const char *upb_FieldDef_JsonName(const upb_FieldDef *f);

@@ -240,94 +240,71 @@ UPB_INLINE upb_Arena *upb_Arena_New(void) {
 
 /* Constants ******************************************************************/
 
-/* Generic function type. */
-typedef void upb_func(void);
-
 /* A list of types as they are encoded on-the-wire. */
 typedef enum {
-  UPB_WIRE_TYPE_VARINT      = 0,
-  UPB_WIRE_TYPE_64BIT       = 1,
-  UPB_WIRE_TYPE_DELIMITED   = 2,
-  UPB_WIRE_TYPE_START_GROUP = 3,
-  UPB_WIRE_TYPE_END_GROUP   = 4,
-  UPB_WIRE_TYPE_32BIT       = 5
-} upb_wiretype_t;
+  kUpb_WireType_Varint      = 0,
+  kUpb_WireType_64Bit       = 1,
+  kUpb_WireType_Delimited   = 2,
+  kUpb_WireType_StartGroup = 3,
+  kUpb_WireType_EndGroup   = 4,
+  kUpb_WireType_32Bit       = 5
+} upb_WireType;
 
 /* The types a field can have.  Note that this list is not identical to the
  * types defined in descriptor.proto, which gives INT32 and SINT32 separate
  * types (we distinguish the two with the "integer encoding" enum below). */
 typedef enum {
-  UPB_TYPE_BOOL     = 1,
-  UPB_TYPE_FLOAT    = 2,
-  UPB_TYPE_INT32    = 3,
-  UPB_TYPE_UINT32   = 4,
-  UPB_TYPE_ENUM     = 5,  /* Enum values are int32. */
-  UPB_TYPE_MESSAGE  = 6,
-  UPB_TYPE_DOUBLE   = 7,
-  UPB_TYPE_INT64    = 8,
-  UPB_TYPE_UINT64   = 9,
-  UPB_TYPE_STRING   = 10,
-  UPB_TYPE_BYTES    = 11
-} upb_fieldtype_t;
+  kUpb_CType_Bool     = 1,
+  kUpb_CType_Float    = 2,
+  kUpb_CType_Int32    = 3,
+  kUpb_CType_UInt32   = 4,
+  kUpb_CType_Enum     = 5,  /* Enum values are int32. */
+  kUpb_CType_Message  = 6,
+  kUpb_CType_Double   = 7,
+  kUpb_CType_Int64    = 8,
+  kUpb_CType_UInt64   = 9,
+  kUpb_CType_String   = 10,
+  kUpb_CType_Bytes    = 11
+} upb_CType;
 
 /* The repeated-ness of each field; this matches descriptor.proto. */
 typedef enum {
-  UPB_LABEL_OPTIONAL = 1,
-  UPB_LABEL_REQUIRED = 2,
-  UPB_LABEL_REPEATED = 3
-} upb_label_t;
+  kUpb_Label_Optional = 1,
+  kUpb_Label_Required = 2,
+  kUpb_Label_Repeated = 3
+} upb_Label;
 
 /* Descriptor types, as defined in descriptor.proto. */
 typedef enum {
-  /* Old (long) names.  TODO(haberman): remove */
-  UPB_DESCRIPTOR_TYPE_DOUBLE   = 1,
-  UPB_DESCRIPTOR_TYPE_FLOAT    = 2,
-  UPB_DESCRIPTOR_TYPE_INT64    = 3,
-  UPB_DESCRIPTOR_TYPE_UINT64   = 4,
-  UPB_DESCRIPTOR_TYPE_INT32    = 5,
-  UPB_DESCRIPTOR_TYPE_FIXED64  = 6,
-  UPB_DESCRIPTOR_TYPE_FIXED32  = 7,
-  UPB_DESCRIPTOR_TYPE_BOOL     = 8,
-  UPB_DESCRIPTOR_TYPE_STRING   = 9,
-  UPB_DESCRIPTOR_TYPE_GROUP    = 10,
-  UPB_DESCRIPTOR_TYPE_MESSAGE  = 11,
-  UPB_DESCRIPTOR_TYPE_BYTES    = 12,
-  UPB_DESCRIPTOR_TYPE_UINT32   = 13,
-  UPB_DESCRIPTOR_TYPE_ENUM     = 14,
-  UPB_DESCRIPTOR_TYPE_SFIXED32 = 15,
-  UPB_DESCRIPTOR_TYPE_SFIXED64 = 16,
-  UPB_DESCRIPTOR_TYPE_SINT32   = 17,
-  UPB_DESCRIPTOR_TYPE_SINT64   = 18,
+  upb_FieldType_Double   = 1,
+  upb_FieldType_Float    = 2,
+  upb_FieldType_Int64    = 3,
+  upb_FieldType_UInt64   = 4,
+  upb_FieldType_Int32    = 5,
+  upb_FieldType_Fixed64  = 6,
+  upb_FieldType_Fixed32  = 7,
+  upb_FieldType_Bool     = 8,
+  upb_FieldType_String   = 9,
+  upb_FieldType_Group    = 10,
+  upb_FieldType_Message  = 11,
+  upb_FieldType_Bytes    = 12,
+  upb_FieldType_UInt32   = 13,
+  upb_FieldType_Enum     = 14,
+  upb_FieldType_SFixed32 = 15,
+  upb_FieldType_SFixed64 = 16,
+  upb_FieldType_SInt32   = 17,
+  upb_FieldType_SInt64   = 18
+} upb_FieldType;
 
-  UPB_DTYPE_DOUBLE   = 1,
-  UPB_DTYPE_FLOAT    = 2,
-  UPB_DTYPE_INT64    = 3,
-  UPB_DTYPE_UINT64   = 4,
-  UPB_DTYPE_INT32    = 5,
-  UPB_DTYPE_FIXED64  = 6,
-  UPB_DTYPE_FIXED32  = 7,
-  UPB_DTYPE_BOOL     = 8,
-  UPB_DTYPE_STRING   = 9,
-  UPB_DTYPE_GROUP    = 10,
-  UPB_DTYPE_MESSAGE  = 11,
-  UPB_DTYPE_BYTES    = 12,
-  UPB_DTYPE_UINT32   = 13,
-  UPB_DTYPE_ENUM     = 14,
-  UPB_DTYPE_SFIXED32 = 15,
-  UPB_DTYPE_SFIXED64 = 16,
-  UPB_DTYPE_SINT32   = 17,
-  UPB_DTYPE_SINT64   = 18
-} upb_descriptortype_t;
+#define kUpb_Map_Begin ((size_t)-1)
 
-#define UPB_MAP_BEGIN ((size_t)-1)
-
-UPB_INLINE bool _upb_isle(void) {
+UPB_INLINE bool _upb_IsLittleEndian(void) {
   int x = 1;
   return *(char*)&x == 1;
 }
 
-UPB_INLINE uint32_t _upb_be_swap32(uint32_t val) {
-  if (_upb_isle()) {
+UPB_INLINE uint32_t _upb_BigEndian_Swap32(uint32_t val) {
+  if (_upb_IsLittleEndian()) {
     return val;
   } else {
     return ((val & 0xff) << 24) | ((val & 0xff00) << 8) |
@@ -335,15 +312,15 @@ UPB_INLINE uint32_t _upb_be_swap32(uint32_t val) {
   }
 }
 
-UPB_INLINE uint64_t _upb_be_swap64(uint64_t val) {
-  if (_upb_isle()) {
+UPB_INLINE uint64_t _upb_BigEndian_Swap64(uint64_t val) {
+  if (_upb_IsLittleEndian()) {
     return val;
   } else {
-    return ((uint64_t)_upb_be_swap32(val) << 32) | _upb_be_swap32(val >> 32);
+    return ((uint64_t)_upb_BigEndian_Swap32(val) << 32) | _upb_BigEndian_Swap32(val >> 32);
   }
 }
 
-UPB_INLINE int _upb_lg2ceil(int x) {
+UPB_INLINE int _upb_Log2Ceiling(int x) {
   if (x <= 1) return 0;
 #ifdef __GNUC__
   return 32 - __builtin_clz(x - 1);
@@ -354,8 +331,8 @@ UPB_INLINE int _upb_lg2ceil(int x) {
 #endif
 }
 
-UPB_INLINE int _upb_lg2ceilsize(int x) {
-  return 1 << _upb_lg2ceil(x);
+UPB_INLINE int _upb_Log2Ceilingsize(int x) {
+  return 1 << _upb_Log2Ceiling(x);
 }
 
 #include "upb/port_undef.inc"

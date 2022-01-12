@@ -901,17 +901,17 @@ static PyObject* PyUpb_FieldDescriptor_GetCppType(PyUpb_DescriptorBase* self,
   };
   static const uint8_t cpp_types[] = {
     -1,
-    [UPB_TYPE_INT32] = CPPTYPE_INT32,
-    [UPB_TYPE_INT64] = CPPTYPE_INT64,
-    [UPB_TYPE_UINT32] = CPPTYPE_UINT32,
-    [UPB_TYPE_UINT64] = CPPTYPE_UINT64,
-    [UPB_TYPE_DOUBLE] = CPPTYPE_DOUBLE,
-    [UPB_TYPE_FLOAT] = CPPTYPE_FLOAT,
-    [UPB_TYPE_BOOL] = CPPTYPE_BOOL,
-    [UPB_TYPE_ENUM] = CPPTYPE_ENUM,
-    [UPB_TYPE_STRING] = CPPTYPE_STRING,
-    [UPB_TYPE_BYTES] = CPPTYPE_STRING,
-    [UPB_TYPE_MESSAGE] = CPPTYPE_MESSAGE,
+    [kUpb_CType_Int32] = CPPTYPE_INT32,
+    [kUpb_CType_Int64] = CPPTYPE_INT64,
+    [kUpb_CType_UInt32] = CPPTYPE_UINT32,
+    [kUpb_CType_UInt64] = CPPTYPE_UINT64,
+    [kUpb_CType_Double] = CPPTYPE_DOUBLE,
+    [kUpb_CType_Float] = CPPTYPE_FLOAT,
+    [kUpb_CType_Bool] = CPPTYPE_BOOL,
+    [kUpb_CType_Enum] = CPPTYPE_ENUM,
+    [kUpb_CType_String] = CPPTYPE_STRING,
+    [kUpb_CType_Bytes] = CPPTYPE_STRING,
+    [kUpb_CType_Message] = CPPTYPE_MESSAGE,
   };
   return PyLong_FromLong(cpp_types[upb_FieldDef_CType(self->def)]);
 }

@@ -113,8 +113,8 @@ static int lupb_FieldDef_ContainingType(lua_State *L) {
 
 static int lupb_FieldDef_Default(lua_State *L) {
   const upb_FieldDef *f = lupb_FieldDef_check(L, 1);
-  upb_fieldtype_t type = upb_FieldDef_CType(f);
-  if (type == UPB_TYPE_MESSAGE) {
+  upb_CType type = upb_FieldDef_CType(f);
+  if (type == kUpb_CType_Message) {
     return luaL_error(L, "Message fields do not have explicit defaults.");
   }
   lupb_pushmsgval(L, 0, type, upb_FieldDef_Default(f));
@@ -912,40 +912,40 @@ void lupb_def_registertypes(lua_State *L) {
   lupb_register_type(L, LUPB_SYMTAB,   lupb_DefPool_m,   lupb_DefPool_mm);
 
   /* Register constants. */
-  lupb_setfieldi(L, "LABEL_OPTIONAL", UPB_LABEL_OPTIONAL);
-  lupb_setfieldi(L, "LABEL_REQUIRED", UPB_LABEL_REQUIRED);
-  lupb_setfieldi(L, "LABEL_REPEATED", UPB_LABEL_REPEATED);
+  lupb_setfieldi(L, "LABEL_OPTIONAL", kUpb_Label_Optional);
+  lupb_setfieldi(L, "LABEL_REQUIRED", kUpb_Label_Required);
+  lupb_setfieldi(L, "LABEL_REPEATED", kUpb_Label_Repeated);
 
-  lupb_setfieldi(L, "TYPE_DOUBLE",    UPB_TYPE_DOUBLE);
-  lupb_setfieldi(L, "TYPE_FLOAT",     UPB_TYPE_FLOAT);
-  lupb_setfieldi(L, "TYPE_INT64",     UPB_TYPE_INT64);
-  lupb_setfieldi(L, "TYPE_UINT64",    UPB_TYPE_UINT64);
-  lupb_setfieldi(L, "TYPE_INT32",     UPB_TYPE_INT32);
-  lupb_setfieldi(L, "TYPE_BOOL",      UPB_TYPE_BOOL);
-  lupb_setfieldi(L, "TYPE_STRING",    UPB_TYPE_STRING);
-  lupb_setfieldi(L, "TYPE_MESSAGE",   UPB_TYPE_MESSAGE);
-  lupb_setfieldi(L, "TYPE_BYTES",     UPB_TYPE_BYTES);
-  lupb_setfieldi(L, "TYPE_UINT32",    UPB_TYPE_UINT32);
-  lupb_setfieldi(L, "TYPE_ENUM",      UPB_TYPE_ENUM);
+  lupb_setfieldi(L, "TYPE_DOUBLE",    kUpb_CType_Double);
+  lupb_setfieldi(L, "TYPE_FLOAT",     kUpb_CType_Float);
+  lupb_setfieldi(L, "TYPE_INT64",     kUpb_CType_Int64);
+  lupb_setfieldi(L, "TYPE_UINT64",    kUpb_CType_UInt64);
+  lupb_setfieldi(L, "TYPE_INT32",     kUpb_CType_Int32);
+  lupb_setfieldi(L, "TYPE_BOOL",      kUpb_CType_Bool);
+  lupb_setfieldi(L, "TYPE_STRING",    kUpb_CType_String);
+  lupb_setfieldi(L, "TYPE_MESSAGE",   kUpb_CType_Message);
+  lupb_setfieldi(L, "TYPE_BYTES",     kUpb_CType_Bytes);
+  lupb_setfieldi(L, "TYPE_UINT32",    kUpb_CType_UInt32);
+  lupb_setfieldi(L, "TYPE_ENUM",      kUpb_CType_Enum);
 
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_DOUBLE",    UPB_DESCRIPTOR_TYPE_DOUBLE);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FLOAT",     UPB_DESCRIPTOR_TYPE_FLOAT);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_INT64",     UPB_DESCRIPTOR_TYPE_INT64);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_UINT64",    UPB_DESCRIPTOR_TYPE_UINT64);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_INT32",     UPB_DESCRIPTOR_TYPE_INT32);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FIXED64",   UPB_DESCRIPTOR_TYPE_FIXED64);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FIXED32",   UPB_DESCRIPTOR_TYPE_FIXED32);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_BOOL",      UPB_DESCRIPTOR_TYPE_BOOL);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_STRING",    UPB_DESCRIPTOR_TYPE_STRING);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_GROUP",     UPB_DESCRIPTOR_TYPE_GROUP);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_MESSAGE",   UPB_DESCRIPTOR_TYPE_MESSAGE);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_BYTES",     UPB_DESCRIPTOR_TYPE_BYTES);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_UINT32",    UPB_DESCRIPTOR_TYPE_UINT32);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_ENUM",      UPB_DESCRIPTOR_TYPE_ENUM);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SFIXED32",  UPB_DESCRIPTOR_TYPE_SFIXED32);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SFIXED64",  UPB_DESCRIPTOR_TYPE_SFIXED64);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT32",    UPB_DESCRIPTOR_TYPE_SINT32);
-  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT64",    UPB_DESCRIPTOR_TYPE_SINT64);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_DOUBLE",    upb_FieldType_Double);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FLOAT",     upb_FieldType_Float);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_INT64",     upb_FieldType_Int64);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_UINT64",    upb_FieldType_UInt64);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_INT32",     upb_FieldType_Int32);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FIXED64",   upb_FieldType_Fixed64);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_FIXED32",   upb_FieldType_Fixed32);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_BOOL",      upb_FieldType_Bool);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_STRING",    upb_FieldType_String);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_GROUP",     upb_FieldType_Group);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_MESSAGE",   upb_FieldType_Message);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_BYTES",     upb_FieldType_Bytes);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_UINT32",    upb_FieldType_UInt32);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_ENUM",      upb_FieldType_Enum);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SFIXED32",  upb_FieldType_SFixed32);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SFIXED64",  upb_FieldType_SFixed64);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT32",    upb_FieldType_SInt32);
+  lupb_setfieldi(L, "DESCRIPTOR_TYPE_SINT64",    upb_FieldType_SInt64);
 
   lupb_setfieldi(L, "SYNTAX_PROTO2",  kUpb_Syntax_Proto2);
   lupb_setfieldi(L, "SYNTAX_PROTO3",  kUpb_Syntax_Proto3);

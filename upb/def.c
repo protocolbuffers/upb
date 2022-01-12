@@ -84,8 +84,8 @@ struct upb_FieldDef {
   bool packed_;
   bool proto3_optional_;
   bool has_json_name_;
-  upb_descriptortype_t type_;
-  upb_label_t label_;
+  upb_FieldType type_;
+  upb_Label label_;
 };
 
 struct upb_ExtensionRange {
@@ -478,42 +478,42 @@ const char *upb_FieldDef_FullName(const upb_FieldDef *f) {
   return f->full_name;
 }
 
-upb_fieldtype_t upb_FieldDef_CType(const upb_FieldDef *f) {
+upb_CType upb_FieldDef_CType(const upb_FieldDef *f) {
   switch (f->type_) {
-    case UPB_DESCRIPTOR_TYPE_DOUBLE:
-      return UPB_TYPE_DOUBLE;
-    case UPB_DESCRIPTOR_TYPE_FLOAT:
-      return UPB_TYPE_FLOAT;
-    case UPB_DESCRIPTOR_TYPE_INT64:
-    case UPB_DESCRIPTOR_TYPE_SINT64:
-    case UPB_DESCRIPTOR_TYPE_SFIXED64:
-      return UPB_TYPE_INT64;
-    case UPB_DESCRIPTOR_TYPE_INT32:
-    case UPB_DESCRIPTOR_TYPE_SFIXED32:
-    case UPB_DESCRIPTOR_TYPE_SINT32:
-      return UPB_TYPE_INT32;
-    case UPB_DESCRIPTOR_TYPE_UINT64:
-    case UPB_DESCRIPTOR_TYPE_FIXED64:
-      return UPB_TYPE_UINT64;
-    case UPB_DESCRIPTOR_TYPE_UINT32:
-    case UPB_DESCRIPTOR_TYPE_FIXED32:
-      return UPB_TYPE_UINT32;
-    case UPB_DESCRIPTOR_TYPE_ENUM:
-      return UPB_TYPE_ENUM;
-    case UPB_DESCRIPTOR_TYPE_BOOL:
-      return UPB_TYPE_BOOL;
-    case UPB_DESCRIPTOR_TYPE_STRING:
-      return UPB_TYPE_STRING;
-    case UPB_DESCRIPTOR_TYPE_BYTES:
-      return UPB_TYPE_BYTES;
-    case UPB_DESCRIPTOR_TYPE_GROUP:
-    case UPB_DESCRIPTOR_TYPE_MESSAGE:
-      return UPB_TYPE_MESSAGE;
+    case upb_FieldType_Double:
+      return kUpb_CType_Double;
+    case upb_FieldType_Float:
+      return kUpb_CType_Float;
+    case upb_FieldType_Int64:
+    case upb_FieldType_SInt64:
+    case upb_FieldType_SFixed64:
+      return kUpb_CType_Int64;
+    case upb_FieldType_Int32:
+    case upb_FieldType_SFixed32:
+    case upb_FieldType_SInt32:
+      return kUpb_CType_Int32;
+    case upb_FieldType_UInt64:
+    case upb_FieldType_Fixed64:
+      return kUpb_CType_UInt64;
+    case upb_FieldType_UInt32:
+    case upb_FieldType_Fixed32:
+      return kUpb_CType_UInt32;
+    case upb_FieldType_Enum:
+      return kUpb_CType_Enum;
+    case upb_FieldType_Bool:
+      return kUpb_CType_Bool;
+    case upb_FieldType_String:
+      return kUpb_CType_String;
+    case upb_FieldType_Bytes:
+      return kUpb_CType_Bytes;
+    case upb_FieldType_Group:
+    case upb_FieldType_Message:
+      return kUpb_CType_Message;
   }
   UPB_UNREACHABLE();
 }
 
-upb_descriptortype_t upb_FieldDef_Type(const upb_FieldDef *f) {
+upb_FieldType upb_FieldDef_Type(const upb_FieldDef *f) {
   return f->type_;
 }
 
@@ -521,7 +521,7 @@ uint32_t upb_FieldDef_Index(const upb_FieldDef *f) {
   return f->index_;
 }
 
-upb_label_t upb_FieldDef_Label(const upb_FieldDef *f) {
+upb_Label upb_FieldDef_Label(const upb_FieldDef *f) {
   return f->label_;
 }
 
@@ -576,23 +576,23 @@ upb_msgval upb_FieldDef_Default(const upb_FieldDef *f) {
   upb_msgval ret;
 
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return (upb_msgval){.bool_val = f->defaultval.boolean};
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       return (upb_msgval){.int64_val = f->defaultval.sint};
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       return (upb_msgval){.uint64_val = f->defaultval.uint};
-    case UPB_TYPE_ENUM:
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Enum:
+    case kUpb_CType_Int32:
       return (upb_msgval){.int32_val = (int32_t)f->defaultval.sint};
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       return (upb_msgval){.uint32_val = (uint32_t)f->defaultval.uint};
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       return (upb_msgval){.float_val = f->defaultval.flt};
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       return (upb_msgval){.double_val = f->defaultval.dbl};
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES: {
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes: {
       str_t *str = f->defaultval.str;
       if (str) {
         return (upb_msgval){
@@ -609,11 +609,11 @@ upb_msgval upb_FieldDef_Default(const upb_FieldDef *f) {
 }
 
 const upb_MessageDef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f) {
-  return upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE ? f->sub.msgdef : NULL;
+  return upb_FieldDef_CType(f) == kUpb_CType_Message ? f->sub.msgdef : NULL;
 }
 
 const upb_EnumDef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f) {
-  return upb_FieldDef_CType(f) == UPB_TYPE_ENUM ? f->sub.enumdef : NULL;
+  return upb_FieldDef_CType(f) == kUpb_CType_Enum ? f->sub.enumdef : NULL;
 }
 
 const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f) {
@@ -631,16 +631,16 @@ bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f) {
 }
 
 bool upb_FieldDef_IsSubMessage(const upb_FieldDef *f) {
-  return upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE;
+  return upb_FieldDef_CType(f) == kUpb_CType_Message;
 }
 
 bool upb_FieldDef_IsString(const upb_FieldDef *f) {
-  return upb_FieldDef_CType(f) == UPB_TYPE_STRING ||
-         upb_FieldDef_CType(f) == UPB_TYPE_BYTES;
+  return upb_FieldDef_CType(f) == kUpb_CType_String ||
+         upb_FieldDef_CType(f) == kUpb_CType_Bytes;
 }
 
 bool upb_FieldDef_IsRepeated(const upb_FieldDef *f) {
-  return upb_FieldDef_Label(f) == UPB_LABEL_REPEATED;
+  return upb_FieldDef_Label(f) == kUpb_Label_Repeated;
 }
 
 bool upb_FieldDef_IsPrimitive(const upb_FieldDef *f) {
@@ -657,7 +657,7 @@ bool upb_FieldDef_HasDefault(const upb_FieldDef *f) {
 }
 
 bool upb_FieldDef_HasSubDef(const upb_FieldDef *f) {
-  return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_CType(f) == UPB_TYPE_ENUM;
+  return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_CType(f) == kUpb_CType_Enum;
 }
 
 bool upb_FieldDef_HasPresence(const upb_FieldDef *f) {
@@ -1327,23 +1327,23 @@ static size_t div_round_up(size_t n, size_t d) {
   return (n + d - 1) / d;
 }
 
-static size_t upb_msgval_sizeof(upb_fieldtype_t type) {
+static size_t upb_msgval_sizeof(upb_CType type) {
   switch (type) {
-    case UPB_TYPE_DOUBLE:
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_Double:
+    case kUpb_CType_Int64:
+    case kUpb_CType_UInt64:
       return 8;
-    case UPB_TYPE_ENUM:
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_UINT32:
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Enum:
+    case kUpb_CType_Int32:
+    case kUpb_CType_UInt32:
+    case kUpb_CType_Float:
       return 4;
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       return 1;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       return sizeof(void*);
-    case UPB_TYPE_BYTES:
-    case UPB_TYPE_STRING:
+    case kUpb_CType_Bytes:
+    case kUpb_CType_String:
       return sizeof(upb_StringView);
   }
   UPB_UNREACHABLE();
@@ -1402,11 +1402,11 @@ static uint8_t map_descriptortype(const upb_FieldDef *f) {
   uint8_t type = upb_FieldDef_Type(f);
   /* See TableDescriptorType() in upbc/generator.cc for details and
    * rationale of these exceptions. */
-  if (type == UPB_DTYPE_STRING && f->file->syntax == kUpb_Syntax_Proto2) {
-    return UPB_DTYPE_BYTES;
-  } else if (type == UPB_DTYPE_ENUM &&
+  if (type == upb_FieldType_String && f->file->syntax == kUpb_Syntax_Proto2) {
+    return upb_FieldType_Bytes;
+  } else if (type == upb_FieldType_Enum &&
              f->sub.enumdef->file->syntax == kUpb_Syntax_Proto3) {
-    return UPB_DTYPE_INT32;
+    return upb_FieldType_Int32;
   }
   return type;
 }
@@ -1472,7 +1472,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
     if (upb_FieldDef_IsSubMessage(f)) {
       sublayout_count++;
     }
-    if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
+    if (upb_FieldDef_CType(f) == kUpb_CType_Enum &&
         f->sub.enumdef->file->syntax == kUpb_Syntax_Proto2) {
       sublayout_count++;
     }
@@ -1519,7 +1519,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
     fields[1].offset = sizeof(upb_StringView);
     fields[1].submsg_index = 0;
 
-    if (upb_FieldDef_CType(val) == UPB_TYPE_MESSAGE) {
+    if (upb_FieldDef_CType(val) == kUpb_CType_Message) {
       subs[0].submsg = upb_FieldDef_MessageSubDef(val)->layout;
     }
 
@@ -1551,7 +1551,7 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = &m->fields[i];
     upb_msglayout_field *field = &fields[upb_FieldDef_Index(f)];
-    if (upb_FieldDef_Label(f) == UPB_LABEL_REQUIRED) {
+    if (upb_FieldDef_Label(f) == kUpb_Label_Required) {
       field->presence = ++hasbit;
       if (hasbit >= 63) {
         symtab_errf(ctx, "Message with >=63 required fields: %s",
@@ -1572,14 +1572,14 @@ static void make_layout(symtab_addctx *ctx, const upb_MessageDef *m) {
     if (upb_FieldDef_IsSubMessage(f)) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].submsg = upb_FieldDef_MessageSubDef(f)->layout;
-    } else if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
+    } else if (upb_FieldDef_CType(f) == kUpb_CType_Enum &&
                f->file->syntax == kUpb_Syntax_Proto2) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].subenum = upb_FieldDef_EnumSubDef(f)->layout;
       UPB_ASSERT(subs[field->submsg_index].subenum);
     }
 
-    if (upb_FieldDef_Label(f) == UPB_LABEL_REQUIRED) {
+    if (upb_FieldDef_Label(f) == kUpb_Label_Required) {
       /* Hasbit was already assigned. */
     } else if (upb_FieldDef_HasPresence(f) && !upb_FieldDef_RealContainingOneof(f)) {
       /* We don't use hasbit 0, so that 0 can indicate "no presence" in the
@@ -2017,12 +2017,12 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
   errno = 0;
 
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_INT64:
-    case UPB_TYPE_UINT32:
-    case UPB_TYPE_UINT64:
-    case UPB_TYPE_DOUBLE:
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Int32:
+    case kUpb_CType_Int64:
+    case kUpb_CType_UInt32:
+    case kUpb_CType_UInt64:
+    case kUpb_CType_Double:
+    case kUpb_CType_Float:
       /* Standard C number parsing functions expect null-terminated strings. */
       if (len >= sizeof(nullz) - 1) {
         symtab_errf(ctx, "Default too long: %.*s", (int)len, str);
@@ -2036,7 +2036,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
   }
 
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_INT32: {
+    case kUpb_CType_Int32: {
       long val = strtol(str, &end, 0);
       if (val > INT32_MAX || val < INT32_MIN || errno == ERANGE || *end) {
         goto invalid;
@@ -2044,7 +2044,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.sint = val;
       break;
     }
-    case UPB_TYPE_ENUM: {
+    case kUpb_CType_Enum: {
       const upb_EnumDef *e = f->sub.enumdef;
       const upb_EnumValueDef *ev = upb_EnumDef_FindValueByNameWithSize(e, str, len);
       if (!ev) {
@@ -2053,7 +2053,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.sint = ev->number;
       break;
     }
-    case UPB_TYPE_INT64: {
+    case kUpb_CType_Int64: {
       long long val = strtoll(str, &end, 0);
       if (val > INT64_MAX || val < INT64_MIN || errno == ERANGE || *end) {
         goto invalid;
@@ -2061,7 +2061,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.sint = val;
       break;
     }
-    case UPB_TYPE_UINT32: {
+    case kUpb_CType_UInt32: {
       unsigned long val = strtoul(str, &end, 0);
       if (val > UINT32_MAX || errno == ERANGE || *end) {
         goto invalid;
@@ -2069,7 +2069,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.uint = val;
       break;
     }
-    case UPB_TYPE_UINT64: {
+    case kUpb_CType_UInt64: {
       unsigned long long val = strtoull(str, &end, 0);
       if (val > UINT64_MAX || errno == ERANGE || *end) {
         goto invalid;
@@ -2077,7 +2077,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.uint = val;
       break;
     }
-    case UPB_TYPE_DOUBLE: {
+    case kUpb_CType_Double: {
       double val = strtod(str, &end);
       if (errno == ERANGE || *end) {
         goto invalid;
@@ -2085,7 +2085,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.dbl = val;
       break;
     }
-    case UPB_TYPE_FLOAT: {
+    case kUpb_CType_Float: {
       float val = strtof(str, &end);
       if (errno == ERANGE || *end) {
         goto invalid;
@@ -2093,7 +2093,7 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       f->defaultval.flt = val;
       break;
     }
-    case UPB_TYPE_BOOL: {
+    case kUpb_CType_Bool: {
       if (streql2(str, len, "false")) {
         f->defaultval.boolean = false;
       } else if (streql2(str, len, "true")) {
@@ -2103,13 +2103,13 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       }
       break;
     }
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       f->defaultval.str = newstr(ctx, str, len);
       break;
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_Bytes:
       f->defaultval.str = unescape(ctx, f, str, len);
       break;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       /* Should not have a default value. */
       symtab_errf(ctx, "Message should not have a default (%s)",
                   upb_FieldDef_FullName(f));
@@ -2124,28 +2124,28 @@ invalid:
 
 static void set_default_default(symtab_addctx *ctx, upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
-    case UPB_TYPE_INT32:
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int32:
+    case kUpb_CType_Int64:
       f->defaultval.sint = 0;
       break;
-    case UPB_TYPE_UINT64:
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt64:
+    case kUpb_CType_UInt32:
       f->defaultval.uint = 0;
       break;
-    case UPB_TYPE_DOUBLE:
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Double:
+    case kUpb_CType_Float:
       f->defaultval.dbl = 0;
       break;
-    case UPB_TYPE_STRING:
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_String:
+    case kUpb_CType_Bytes:
       f->defaultval.str = newstr(ctx, NULL, 0);
       break;
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       f->defaultval.boolean = false;
       break;
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Enum:
       f->defaultval.sint = f->sub.enumdef->values[0].number;
-    case UPB_TYPE_MESSAGE:
+    case kUpb_CType_Message:
       break;
   }
 }
@@ -2199,9 +2199,9 @@ static void create_fielddef(
 
   if (has_type) {
     switch (f->type_) {
-      case UPB_DTYPE_MESSAGE:
-      case UPB_DTYPE_GROUP:
-      case UPB_DTYPE_ENUM:
+      case upb_FieldType_Message:
+      case upb_FieldType_Group:
+      case upb_FieldType_Enum:
         if (!has_type_name) {
           symtab_errf(ctx, "field of type %d requires type name (%s)",
                       (int)f->type_, full_name);
@@ -2282,11 +2282,11 @@ static void create_fielddef(
     }
   }
 
-  if (f->type_ < UPB_DTYPE_DOUBLE || f->type_ > UPB_DTYPE_SINT64) {
+  if (f->type_ < upb_FieldType_Double || f->type_ > upb_FieldType_SInt64) {
     symtab_errf(ctx, "invalid type for field %s (%d)", f->full_name, f->type_);
   }
 
-  if (f->label_ < UPB_LABEL_OPTIONAL || f->label_ > UPB_LABEL_REPEATED) {
+  if (f->label_ < kUpb_Label_Optional || f->label_ > kUpb_Label_Repeated) {
     symtab_errf(ctx, "invalid label for field %s (%d)", f->full_name,
                 f->label_);
   }
@@ -2296,7 +2296,7 @@ static void create_fielddef(
    * to the field_proto until later when we can properly resolve it. */
   f->sub.unresolved = field_proto;
 
-  if (f->label_ == UPB_LABEL_REQUIRED && f->file->syntax == kUpb_Syntax_Proto3) {
+  if (f->label_ == kUpb_Label_Required && f->file->syntax == kUpb_Syntax_Proto3) {
     symtab_errf(ctx, "proto3 fields cannot be required (%s)", f->full_name);
   }
 
@@ -2306,7 +2306,7 @@ static void create_fielddef(
     upb_OneofDef *oneof;
     upb_value v = upb_value_constptr(f);
 
-    if (upb_FieldDef_Label(f) != UPB_LABEL_OPTIONAL) {
+    if (upb_FieldDef_Label(f) != kUpb_Label_Optional) {
       symtab_errf(ctx, "fields in oneof must have OPTIONAL label (%s)",
                   f->full_name);
     }
@@ -2344,7 +2344,7 @@ static void create_fielddef(
   } else {
     /* Repeated fields default to packed for proto3 only. */
     f->packed_ = upb_FieldDef_IsPrimitive(f) &&
-        f->label_ == UPB_LABEL_REPEATED && f->file->syntax == kUpb_Syntax_Proto3;
+        f->label_ == kUpb_Label_Repeated && f->file->syntax == kUpb_Syntax_Proto3;
   }
 }
 
@@ -2664,11 +2664,11 @@ static void resolve_subdef(symtab_addctx *ctx, const char *prefix,
       switch (type) {
         case UPB_DEFTYPE_ENUM:
           f->sub.enumdef = def;
-          f->type_ = UPB_DTYPE_ENUM;
+          f->type_ = upb_FieldType_Enum;
           break;
         case UPB_DEFTYPE_MSG:
           f->sub.msgdef = def;
-          f->type_ = UPB_DTYPE_MESSAGE;  // It appears there is no way of this
+          f->type_ = upb_FieldType_Message;  // It appears there is no way of this
                                          // being a group.
           break;
         default:
@@ -2676,13 +2676,13 @@ static void resolve_subdef(symtab_addctx *ctx, const char *prefix,
                       f->full_name);
       }
     }
-    case UPB_DTYPE_MESSAGE:
-    case UPB_DTYPE_GROUP:
+    case upb_FieldType_Message:
+    case upb_FieldType_Group:
       UPB_ASSERT(has_name);
       f->sub.msgdef =
           symtab_resolve(ctx, f->full_name, prefix, name, UPB_DEFTYPE_MSG);
       break;
-    case UPB_DTYPE_ENUM:
+    case upb_FieldType_Enum:
       UPB_ASSERT(has_name);
       f->sub.enumdef =
           symtab_resolve(ctx, f->full_name, prefix, name, UPB_DEFTYPE_ENUM);
@@ -2794,7 +2794,7 @@ static void resolve_msgdef(symtab_addctx *ctx, upb_MessageDef *m) {
   m->in_message_set = false;
   if (m->nested_ext_count == 1) {
     const upb_FieldDef *ext = &m->nested_exts[0];
-    if (ext->type_ == UPB_DTYPE_MESSAGE && ext->label_ == UPB_LABEL_OPTIONAL &&
+    if (ext->type_ == upb_FieldType_Message && ext->label_ == kUpb_Label_Optional &&
         ext->sub.msgdef == m &&
         google_protobuf_MessageOptions_message_set_wire_format(
             ext->msgdef->opts)) {

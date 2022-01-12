@@ -152,10 +152,10 @@ static void txtenc_string(txtenc *e, upb_StringView str, bool bytes) {
 
 static void txtenc_field(txtenc *e, upb_msgval val, const upb_FieldDef *f) {
   txtenc_indent(e);
-  upb_fieldtype_t type = upb_FieldDef_CType(f);
+  upb_CType type = upb_FieldDef_CType(f);
   const char* name = upb_FieldDef_Name(f);
 
-  if (type == UPB_TYPE_MESSAGE) {
+  if (type == kUpb_CType_Message) {
     txtenc_printf(e, "%s {", name);
     txtenc_endfield(e);
     e->indent_depth++;
@@ -170,34 +170,34 @@ static void txtenc_field(txtenc *e, upb_msgval val, const upb_FieldDef *f) {
   txtenc_printf(e, "%s: ", name);
 
   switch (type) {
-    case UPB_TYPE_BOOL:
+    case kUpb_CType_Bool:
       txtenc_putstr(e, val.bool_val ? "true" : "false");
       break;
-    case UPB_TYPE_FLOAT:
+    case kUpb_CType_Float:
       txtenc_printf(e, "%f", val.float_val);
       break;
-    case UPB_TYPE_DOUBLE:
+    case kUpb_CType_Double:
       txtenc_printf(e, "%f", val.double_val);
       break;
-    case UPB_TYPE_INT32:
+    case kUpb_CType_Int32:
       txtenc_printf(e, "%" PRId32, val.int32_val);
       break;
-    case UPB_TYPE_UINT32:
+    case kUpb_CType_UInt32:
       txtenc_printf(e, "%" PRIu32, val.uint32_val);
       break;
-    case UPB_TYPE_INT64:
+    case kUpb_CType_Int64:
       txtenc_printf(e, "%" PRId64, val.int64_val);
       break;
-    case UPB_TYPE_UINT64:
+    case kUpb_CType_UInt64:
       txtenc_printf(e, "%" PRIu64, val.uint64_val);
       break;
-    case UPB_TYPE_STRING:
+    case kUpb_CType_String:
       txtenc_string(e, val.str_val, false);
       break;
-    case UPB_TYPE_BYTES:
+    case kUpb_CType_Bytes:
       txtenc_string(e, val.str_val, true);
       break;
-    case UPB_TYPE_ENUM:
+    case kUpb_CType_Enum:
       txtenc_enum(val.int32_val, f, e);
       break;
     default:
@@ -257,7 +257,7 @@ static void txtenc_mapentry(txtenc *e, upb_msgval key, upb_msgval val,
  */
 static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
   if (e->options & UPB_TXTENC_NOSORT) {
-    size_t iter = UPB_MAP_BEGIN;
+    size_t iter = kUpb_Map_Begin;
     while (upb_mapiter_next(map, &iter)) {
       upb_msgval key = upb_mapiter_key(map, iter);
       upb_msgval val = upb_mapiter_value(map, iter);
@@ -319,7 +319,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
     CHK(tag_64 < UINT32_MAX);
     tag = (uint32_t)tag_64;
 
-    if ((tag & 7) == UPB_WIRE_TYPE_END_GROUP) {
+    if ((tag & 7) == kUpb_WireType_EndGroup) {
       CHK((tag >> 3) == (uint32_t)groupnum);
       return ptr;
     }
@@ -328,13 +328,13 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
     txtenc_printf(e, "%d: ", (int)(tag >> 3));
 
     switch (tag & 7) {
-      case UPB_WIRE_TYPE_VARINT: {
+      case kUpb_WireType_Varint: {
         uint64_t val;
         CHK(ptr = txtenc_parsevarint(ptr, end, &val));
         txtenc_printf(e, "%" PRIu64, val);
         break;
       }
-      case UPB_WIRE_TYPE_32BIT: {
+      case kUpb_WireType_32Bit: {
         uint32_t val;
         CHK(end - ptr >= 4);
         memcpy(&val, ptr, 4);
@@ -342,7 +342,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
         txtenc_printf(e, "0x%08" PRIu32, val);
         break;
       }
-      case UPB_WIRE_TYPE_64BIT: {
+      case kUpb_WireType_64Bit: {
         uint64_t val;
         CHK(end - ptr >= 8);
         memcpy(&val, ptr, 8);
@@ -350,7 +350,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
         txtenc_printf(e, "0x%016" PRIu64, val);
         break;
       }
-      case UPB_WIRE_TYPE_DELIMITED: {
+      case kUpb_WireType_Delimited: {
         uint64_t len;
         size_t avail = end - ptr;
         char *start = e->ptr;
@@ -379,7 +379,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
         ptr += len;
         break;
       }
-      case UPB_WIRE_TYPE_START_GROUP:
+      case kUpb_WireType_StartGroup:
         txtenc_putstr(e, "{");
         txtenc_endfield(e);
         e->indent_depth++;

@@ -116,12 +116,12 @@ static void encode_bytes(upb_encstate *e, const void *data, size_t len) {
 }
 
 static void encode_fixed64(upb_encstate *e, uint64_t val) {
-  val = _upb_be_swap64(val);
+  val = _upb_BigEndian_Swap64(val);
   encode_bytes(e, &val, sizeof(uint64_t));
 }
 
 static void encode_fixed32(upb_encstate *e, uint32_t val) {
-  val = _upb_be_swap32(val);
+  val = _upb_BigEndian_Swap32(val);
   encode_bytes(e, &val, sizeof(uint32_t));
 }
 
@@ -172,18 +172,18 @@ static void encode_fixedarray(upb_encstate *e, const upb_array *arr,
   const char* data = _upb_array_constptr(arr);
   const char* ptr = data + bytes - elem_size;
 
-  if (tag || !_upb_isle()) {
+  if (tag || !_upb_IsLittleEndian()) {
     while (true) {
       if (elem_size == 4) {
         uint32_t val;
         memcpy(&val, ptr, sizeof(val));
-        val = _upb_be_swap32(val);
+        val = _upb_BigEndian_Swap32(val);
         encode_bytes(e, &val, elem_size);
       } else {
         UPB_ASSERT(elem_size == 8);
         uint64_t val;
         memcpy(&val, ptr, sizeof(val));
-        val = _upb_be_swap64(val);
+        val = _upb_BigEndian_Swap64(val);
         encode_bytes(e, &val, elem_size);
       }
 
@@ -214,39 +214,39 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
   }
 
   switch (f->descriptortype) {
-    case UPB_DESCRIPTOR_TYPE_DOUBLE:
-      CASE(double, double, UPB_WIRE_TYPE_64BIT, val);
-    case UPB_DESCRIPTOR_TYPE_FLOAT:
-      CASE(float, float, UPB_WIRE_TYPE_32BIT, val);
-    case UPB_DESCRIPTOR_TYPE_INT64:
-    case UPB_DESCRIPTOR_TYPE_UINT64:
-      CASE(uint64_t, varint, UPB_WIRE_TYPE_VARINT, val);
-    case UPB_DESCRIPTOR_TYPE_UINT32:
-      CASE(uint32_t, varint, UPB_WIRE_TYPE_VARINT, val);
-    case UPB_DESCRIPTOR_TYPE_INT32:
-    case UPB_DESCRIPTOR_TYPE_ENUM:
-      CASE(int32_t, varint, UPB_WIRE_TYPE_VARINT, (int64_t)val);
-    case UPB_DESCRIPTOR_TYPE_SFIXED64:
-    case UPB_DESCRIPTOR_TYPE_FIXED64:
-      CASE(uint64_t, fixed64, UPB_WIRE_TYPE_64BIT, val);
-    case UPB_DESCRIPTOR_TYPE_FIXED32:
-    case UPB_DESCRIPTOR_TYPE_SFIXED32:
-      CASE(uint32_t, fixed32, UPB_WIRE_TYPE_32BIT, val);
-    case UPB_DESCRIPTOR_TYPE_BOOL:
-      CASE(bool, varint, UPB_WIRE_TYPE_VARINT, val);
-    case UPB_DESCRIPTOR_TYPE_SINT32:
-      CASE(int32_t, varint, UPB_WIRE_TYPE_VARINT, encode_zz32(val));
-    case UPB_DESCRIPTOR_TYPE_SINT64:
-      CASE(int64_t, varint, UPB_WIRE_TYPE_VARINT, encode_zz64(val));
-    case UPB_DESCRIPTOR_TYPE_STRING:
-    case UPB_DESCRIPTOR_TYPE_BYTES: {
+    case upb_FieldType_Double:
+      CASE(double, double, kUpb_WireType_64Bit, val);
+    case upb_FieldType_Float:
+      CASE(float, float, kUpb_WireType_32Bit, val);
+    case upb_FieldType_Int64:
+    case upb_FieldType_UInt64:
+      CASE(uint64_t, varint, kUpb_WireType_Varint, val);
+    case upb_FieldType_UInt32:
+      CASE(uint32_t, varint, kUpb_WireType_Varint, val);
+    case upb_FieldType_Int32:
+    case upb_FieldType_Enum:
+      CASE(int32_t, varint, kUpb_WireType_Varint, (int64_t)val);
+    case upb_FieldType_SFixed64:
+    case upb_FieldType_Fixed64:
+      CASE(uint64_t, fixed64, kUpb_WireType_64Bit, val);
+    case upb_FieldType_Fixed32:
+    case upb_FieldType_SFixed32:
+      CASE(uint32_t, fixed32, kUpb_WireType_32Bit, val);
+    case upb_FieldType_Bool:
+      CASE(bool, varint, kUpb_WireType_Varint, val);
+    case upb_FieldType_SInt32:
+      CASE(int32_t, varint, kUpb_WireType_Varint, encode_zz32(val));
+    case upb_FieldType_SInt64:
+      CASE(int64_t, varint, kUpb_WireType_Varint, encode_zz64(val));
+    case upb_FieldType_String:
+    case upb_FieldType_Bytes: {
       upb_StringView view = *(upb_StringView*)field_mem;
       encode_bytes(e, view.data, view.size);
       encode_varint(e, view.size);
-      wire_type = UPB_WIRE_TYPE_DELIMITED;
+      wire_type = kUpb_WireType_Delimited;
       break;
     }
-    case UPB_DESCRIPTOR_TYPE_GROUP: {
+    case upb_FieldType_Group: {
       size_t size;
       void *submsg = *(void **)field_mem;
       const upb_msglayout *subm = subs[f->submsg_index].submsg;
@@ -254,13 +254,13 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
         return;
       }
       if (--e->depth == 0) encode_err(e);
-      encode_tag(e, f->number, UPB_WIRE_TYPE_END_GROUP);
+      encode_tag(e, f->number, kUpb_WireType_EndGroup);
       encode_message(e, submsg, subm, &size);
-      wire_type = UPB_WIRE_TYPE_START_GROUP;
+      wire_type = kUpb_WireType_StartGroup;
       e->depth++;
       break;
     }
-    case UPB_DESCRIPTOR_TYPE_MESSAGE: {
+    case upb_FieldType_Message: {
       size_t size;
       void *submsg = *(void **)field_mem;
       const upb_msglayout *subm = subs[f->submsg_index].submsg;
@@ -270,7 +270,7 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
       if (--e->depth == 0) encode_err(e);
       encode_message(e, submsg, subm, &size);
       encode_varint(e, size);
-      wire_type = UPB_WIRE_TYPE_DELIMITED;
+      wire_type = kUpb_WireType_Delimited;
       e->depth++;
       break;
     }
@@ -297,7 +297,7 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
   {                                                                      \
     const ctype *start = _upb_array_constptr(arr);                       \
     const ctype *ptr = start + arr->len;                                 \
-    uint32_t tag = packed ? 0 : (f->number << 3) | UPB_WIRE_TYPE_VARINT; \
+    uint32_t tag = packed ? 0 : (f->number << 3) | kUpb_WireType_Varint; \
     do {                                                                 \
       ptr--;                                                             \
       encode_varint(e, encode);                                          \
@@ -309,47 +309,47 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
 #define TAG(wire_type) (packed ? 0 : (f->number << 3 | wire_type))
 
   switch (f->descriptortype) {
-    case UPB_DESCRIPTOR_TYPE_DOUBLE:
-      encode_fixedarray(e, arr, sizeof(double), TAG(UPB_WIRE_TYPE_64BIT));
+    case upb_FieldType_Double:
+      encode_fixedarray(e, arr, sizeof(double), TAG(kUpb_WireType_64Bit));
       break;
-    case UPB_DESCRIPTOR_TYPE_FLOAT:
-      encode_fixedarray(e, arr, sizeof(float), TAG(UPB_WIRE_TYPE_32BIT));
+    case upb_FieldType_Float:
+      encode_fixedarray(e, arr, sizeof(float), TAG(kUpb_WireType_32Bit));
       break;
-    case UPB_DESCRIPTOR_TYPE_SFIXED64:
-    case UPB_DESCRIPTOR_TYPE_FIXED64:
-      encode_fixedarray(e, arr, sizeof(uint64_t), TAG(UPB_WIRE_TYPE_64BIT));
+    case upb_FieldType_SFixed64:
+    case upb_FieldType_Fixed64:
+      encode_fixedarray(e, arr, sizeof(uint64_t), TAG(kUpb_WireType_64Bit));
       break;
-    case UPB_DESCRIPTOR_TYPE_FIXED32:
-    case UPB_DESCRIPTOR_TYPE_SFIXED32:
-      encode_fixedarray(e, arr, sizeof(uint32_t), TAG(UPB_WIRE_TYPE_32BIT));
+    case upb_FieldType_Fixed32:
+    case upb_FieldType_SFixed32:
+      encode_fixedarray(e, arr, sizeof(uint32_t), TAG(kUpb_WireType_32Bit));
       break;
-    case UPB_DESCRIPTOR_TYPE_INT64:
-    case UPB_DESCRIPTOR_TYPE_UINT64:
+    case upb_FieldType_Int64:
+    case upb_FieldType_UInt64:
       VARINT_CASE(uint64_t, *ptr);
-    case UPB_DESCRIPTOR_TYPE_UINT32:
+    case upb_FieldType_UInt32:
       VARINT_CASE(uint32_t, *ptr);
-    case UPB_DESCRIPTOR_TYPE_INT32:
-    case UPB_DESCRIPTOR_TYPE_ENUM:
+    case upb_FieldType_Int32:
+    case upb_FieldType_Enum:
       VARINT_CASE(int32_t, (int64_t)*ptr);
-    case UPB_DESCRIPTOR_TYPE_BOOL:
+    case upb_FieldType_Bool:
       VARINT_CASE(bool, *ptr);
-    case UPB_DESCRIPTOR_TYPE_SINT32:
+    case upb_FieldType_SInt32:
       VARINT_CASE(int32_t, encode_zz32(*ptr));
-    case UPB_DESCRIPTOR_TYPE_SINT64:
+    case upb_FieldType_SInt64:
       VARINT_CASE(int64_t, encode_zz64(*ptr));
-    case UPB_DESCRIPTOR_TYPE_STRING:
-    case UPB_DESCRIPTOR_TYPE_BYTES: {
+    case upb_FieldType_String:
+    case upb_FieldType_Bytes: {
       const upb_StringView *start = _upb_array_constptr(arr);
       const upb_StringView *ptr = start + arr->len;
       do {
         ptr--;
         encode_bytes(e, ptr->data, ptr->size);
         encode_varint(e, ptr->size);
-        encode_tag(e, f->number, UPB_WIRE_TYPE_DELIMITED);
+        encode_tag(e, f->number, kUpb_WireType_Delimited);
       } while (ptr != start);
       return;
     }
-    case UPB_DESCRIPTOR_TYPE_GROUP: {
+    case upb_FieldType_Group: {
       const void *const*start = _upb_array_constptr(arr);
       const void *const*ptr = start + arr->len;
       const upb_msglayout *subm = subs[f->submsg_index].submsg;
@@ -357,14 +357,14 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
       do {
         size_t size;
         ptr--;
-        encode_tag(e, f->number, UPB_WIRE_TYPE_END_GROUP);
+        encode_tag(e, f->number, kUpb_WireType_EndGroup);
         encode_message(e, *ptr, subm, &size);
-        encode_tag(e, f->number, UPB_WIRE_TYPE_START_GROUP);
+        encode_tag(e, f->number, kUpb_WireType_StartGroup);
       } while (ptr != start);
       e->depth++;
       return;
     }
-    case UPB_DESCRIPTOR_TYPE_MESSAGE: {
+    case upb_FieldType_Message: {
       const void *const*start = _upb_array_constptr(arr);
       const void *const*ptr = start + arr->len;
       const upb_msglayout *subm = subs[f->submsg_index].submsg;
@@ -374,7 +374,7 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
         ptr--;
         encode_message(e, *ptr, subm, &size);
         encode_varint(e, size);
-        encode_tag(e, f->number, UPB_WIRE_TYPE_DELIMITED);
+        encode_tag(e, f->number, kUpb_WireType_Delimited);
       } while (ptr != start);
       e->depth++;
       return;
@@ -384,7 +384,7 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
 
   if (packed) {
     encode_varint(e, e->limit - e->ptr - pre_len);
-    encode_tag(e, f->number, UPB_WIRE_TYPE_DELIMITED);
+    encode_tag(e, f->number, kUpb_WireType_Delimited);
   }
 }
 
@@ -399,7 +399,7 @@ static void encode_mapentry(upb_encstate *e, uint32_t number,
   encode_scalar(e, &ent->k, layout->subs, key_field);
   size = (e->limit - e->ptr) - pre_len;
   encode_varint(e, size);
-  encode_tag(e, number, UPB_WIRE_TYPE_DELIMITED);
+  encode_tag(e, number, kUpb_WireType_Delimited);
 }
 
 static void encode_map(upb_encstate *e, const upb_msg *msg,
@@ -498,13 +498,13 @@ static void encode_field(upb_encstate *e, const upb_msg *msg,
  * } */
 static void encode_msgset_item(upb_encstate *e, const upb_msg_ext *ext) {
   size_t size;
-  encode_tag(e, 1, UPB_WIRE_TYPE_END_GROUP);
+  encode_tag(e, 1, kUpb_WireType_EndGroup);
   encode_message(e, ext->data.ptr, ext->ext->sub.submsg, &size);
   encode_varint(e, size);
-  encode_tag(e, 3, UPB_WIRE_TYPE_DELIMITED);
+  encode_tag(e, 3, kUpb_WireType_Delimited);
   encode_varint(e, ext->ext->field.number);
-  encode_tag(e, 2, UPB_WIRE_TYPE_VARINT);
-  encode_tag(e, 1, UPB_WIRE_TYPE_START_GROUP);
+  encode_tag(e, 2, kUpb_WireType_Varint);
+  encode_tag(e, 1, kUpb_WireType_StartGroup);
 }
 
 static void encode_message(upb_encstate *e, const upb_msg *msg,
@@ -514,7 +514,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
   if ((e->options & UPB_ENCODE_CHECKREQUIRED) && m->required_count) {
     uint64_t msg_head;
     memcpy(&msg_head, msg, 8);
-    msg_head = _upb_be_swap64(msg_head);
+    msg_head = _upb_BigEndian_Swap64(msg_head);
     if (upb_msglayout_requiredmask(m) & ~msg_head) {
       encode_err(e);
     }
