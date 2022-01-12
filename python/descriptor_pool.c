@@ -514,7 +514,7 @@ static PyObject* PyUpb_DescriptorPool_FindExtensionByNumber(PyObject* _self,
     return NULL;
   }
 
-  const upb_FieldDef* f = upb_DefPool_FindExtensionByNamebynum(
+  const upb_FieldDef* f = upb_DefPool_FindExtensionByNumber(
       self->symtab, PyUpb_Descriptor_GetDef(message_descriptor), number);
   if (f == NULL) {
     return PyErr_Format(PyExc_KeyError, "Couldn't find Extension %d", number);

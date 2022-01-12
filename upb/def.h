@@ -368,10 +368,11 @@ const upb_FileDef* upb_DefPool_AddFile(
     upb_Status* status);
 size_t _upb_DefPool_BytesLoaded(const upb_DefPool* s);
 upb_Arena* _upb_DefPool_Arena(const upb_DefPool* s);
-const upb_FieldDef* _upb_DefPool_FindExtensionByNamefield(
+const upb_FieldDef* _upb_DefPool_FindExtensionByMiniTable(
     const upb_DefPool* s, const upb_MiniTable_Extension* ext);
-const upb_FieldDef* upb_DefPool_FindExtensionByNamebynum(
-    const upb_DefPool* s, const upb_MessageDef* m, int32_t fieldnum);
+const upb_FieldDef* upb_DefPool_FindExtensionByNumber(const upb_DefPool* s,
+                                                      const upb_MessageDef* m,
+                                                      int32_t fieldnum);
 const upb_extreg* upb_DefPool_ExtensionRegistry(const upb_DefPool* s);
 const upb_FieldDef** upb_DefPool_GetAllExtensions(const upb_DefPool* s,
                                                   const upb_MessageDef* m,

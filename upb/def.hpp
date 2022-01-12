@@ -384,15 +384,15 @@ class SymbolTable {
 
   // Finds an entry in the symbol table with this exact name.  If not found,
   // returns NULL.
-  MessageDefPtr LookupMessage(const char* sym) const {
+  MessageDefPtr FindMessageByName(const char* sym) const {
     return MessageDefPtr(upb_DefPool_FindMessageByName(ptr_.get(), sym));
   }
 
-  EnumDefPtr LookupEnum(const char* sym) const {
+  EnumDefPtr FindEnumByName(const char* sym) const {
     return EnumDefPtr(upb_DefPool_FindEnumByName(ptr_.get(), sym));
   }
 
-  FileDefPtr LookupFile(const char* name) const {
+  FileDefPtr FindFileByName(const char* name) const {
     return FileDefPtr(upb_DefPool_FindFileByName(ptr_.get(), name));
   }
 

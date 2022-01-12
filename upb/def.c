@@ -3138,7 +3138,7 @@ size_t _upb_DefPool_BytesLoaded(const upb_DefPool* s) {
 
 upb_Arena* _upb_DefPool_Arena(const upb_DefPool* s) { return s->arena; }
 
-const upb_FieldDef* _upb_DefPool_FindExtensionByNamefield(
+const upb_FieldDef* _upb_DefPool_FindExtensionByMiniTable(
     const upb_DefPool* s, const upb_MiniTable_Extension* ext) {
   upb_value v;
   bool ok = upb_inttable_lookup(&s->exts, (uintptr_t)ext, &v);
@@ -3146,11 +3146,12 @@ const upb_FieldDef* _upb_DefPool_FindExtensionByNamefield(
   return upb_value_getconstptr(v);
 }
 
-const upb_FieldDef* upb_DefPool_FindExtensionByNamebynum(
-    const upb_DefPool* s, const upb_MessageDef* m, int32_t fieldnum) {
+const upb_FieldDef* upb_DefPool_FindExtensionByNumber(const upb_DefPool* s,
+                                                      const upb_MessageDef* m,
+                                                      int32_t fieldnum) {
   const upb_MiniTable* l = upb_MessageDef_MiniTable(m);
   const upb_MiniTable_Extension* ext = _upb_extreg_get(s->extreg, l, fieldnum);
-  return ext ? _upb_DefPool_FindExtensionByNamefield(s, ext) : NULL;
+  return ext ? _upb_DefPool_FindExtensionByMiniTable(s, ext) : NULL;
 }
 
 bool _upb_DefPool_registerlayout(upb_DefPool* s, const char* filename,

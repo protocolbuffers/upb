@@ -74,7 +74,7 @@ static PyObject* PyUpb_ExtensionDict_FindExtensionByNumber(PyObject* _self,
   const upb_MiniTable_Extension* ext =
       (upb_MiniTable_Extension*)_upb_extreg_get(reg, l, number);
   if (ext) {
-    const upb_FieldDef* f = _upb_DefPool_FindExtensionByNamefield(symtab, ext);
+    const upb_FieldDef* f = _upb_DefPool_FindExtensionByMiniTable(symtab, ext);
     return PyUpb_FieldDescriptor_Get(f);
   } else {
     Py_RETURN_NONE;

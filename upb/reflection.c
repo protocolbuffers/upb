@@ -285,7 +285,7 @@ bool upb_Message_Next(const upb_msg* msg, const upb_MessageDef* m,
     if (i - n < count) {
       ext += count - 1 - (i - n);
       memcpy(out_val, &ext->data, sizeof(*out_val));
-      *out_f = _upb_DefPool_FindExtensionByNamefield(ext_pool, ext->ext);
+      *out_f = _upb_DefPool_FindExtensionByMiniTable(ext_pool, ext->ext);
       *iter = i;
       return true;
     }
