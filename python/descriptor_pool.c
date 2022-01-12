@@ -50,7 +50,7 @@ PyObject* PyUpb_DescriptorPool_GetDefaultPool() {
   return s->default_pool;
 }
 
-const upb_msgdef* PyUpb_DescriptorPool_GetFileProtoDef(void) {
+const upb_MessageDef* PyUpb_DescriptorPool_GetFileProtoDef(void) {
   PyUpb_ModuleState* s = PyUpb_ModuleState_Get();
   if (!s->c_descriptor_symtab) {
     s->c_descriptor_symtab = upb_symtab_new();
@@ -215,7 +215,7 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
       PyErr_SetNone(PyExc_MemoryError);
       goto done;
     }
-    const upb_msgdef* m = PyUpb_DescriptorPool_GetFileProtoDef();
+    const upb_MessageDef* m = PyUpb_DescriptorPool_GetFileProtoDef();
     if (PyUpb_Message_IsEqual(proto, existing, m)) {
       Py_INCREF(Py_None);
       result = Py_None;
@@ -249,9 +249,9 @@ static PyObject* PyUpb_DescriptorPool_DoAdd(PyObject* _self,
                                             PyObject* file_desc) {
   PyObject* subargs = PyTuple_New(0);
   if (!PyUpb_CMessage_Check(file_desc)) return NULL;
-  const upb_msgdef* m = PyUpb_CMessage_GetMsgdef(file_desc);
+  const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(file_desc);
   const char* file_proto_name = "google.protobuf.FileDescriptorProto";
-  if (strcmp(upb_msgdef_fullname(m), file_proto_name) != 0) {
+  if (strcmp(upb_MessageDef_FullName(m), file_proto_name) != 0) {
     return PyErr_Format(PyExc_TypeError, "Can only add FileDescriptorProto");
   }
   PyObject* serialized =
@@ -360,7 +360,7 @@ static PyObject* PyUpb_DescriptorPool_FindMessageTypeByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_msgdef* m = upb_symtab_lookupmsg(self->symtab, name);
+  const upb_MessageDef* m = upb_symtab_lookupmsg(self->symtab, name);
   if (m == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
     m = upb_symtab_lookupmsg(self->symtab, name);
@@ -401,10 +401,10 @@ static PyObject* PyUpb_DescriptorPool_FindFieldByName(PyObject* _self,
       PyUpb_DescriptorPool_SplitSymbolName(name, &parent_size);
   const upb_FieldDef* f = NULL;
   if (child) {
-    const upb_msgdef* parent =
+    const upb_MessageDef* parent =
         upb_symtab_lookupmsg2(self->symtab, name, parent_size);
     if (parent) {
-      f = upb_msgdef_ntofz(parent, child);
+      f = upb_MessageDef_FindFieldByName(parent, child);
     }
   }
 
@@ -457,14 +457,14 @@ static PyObject* PyUpb_DescriptorPool_FindOneofByName(PyObject* _self,
   const char* child = PyUpb_DescriptorPool_SplitSymbolName(name, &parent_size);
 
   if (child) {
-    const upb_msgdef* parent =
+    const upb_MessageDef* parent =
         upb_symtab_lookupmsg2(self->symtab, name, parent_size);
     if (parent == NULL && self->db) {
       if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
       parent = upb_symtab_lookupmsg2(self->symtab, name, parent_size);
     }
     if (parent) {
-      const upb_OneofDef* o = upb_msgdef_ntooz(parent, child);
+      const upb_OneofDef* o = upb_MessageDef_FindOneofByName(parent, child);
       return PyUpb_OneofDescriptor_Get(o);
     }
   }
@@ -527,7 +527,7 @@ static PyObject* PyUpb_DescriptorPool_FindExtensionByNumber(PyObject* _self,
 static PyObject* PyUpb_DescriptorPool_FindAllExtensions(PyObject* _self,
                                                         PyObject* msg_desc) {
   PyUpb_DescriptorPool* self = (PyUpb_DescriptorPool*)_self;
-  const upb_msgdef* m = PyUpb_Descriptor_GetDef(msg_desc);
+  const upb_MessageDef* m = PyUpb_Descriptor_GetDef(msg_desc);
   size_t n;
   const upb_FieldDef** ext = upb_symtab_getallexts(self->symtab, m, &n);
   PyObject* ret = PyList_New(n);

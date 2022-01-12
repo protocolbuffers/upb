@@ -105,7 +105,7 @@ void AddMessages(const protobuf::Descriptor* message,
 
 // Ordering must match upb/def.c!
 //
-// The ordering is significant because each upb_msgdef* will point at the
+// The ordering is significant because each upb_MessageDef* will point at the
 // corresponding upb_msglayout and we just iterate through the list without
 // any search or lookup.
 std::vector<const protobuf::Descriptor*> SortedMessages(
@@ -130,7 +130,7 @@ void AddExtensionsFromMessage(
 
 // Ordering must match upb/def.c!
 //
-// The ordering is significant because each upb_fielddef* will point at the
+// The ordering is significant because each upb_FieldDef* will point at the
 // corresponding upb_msglayout_ext and we just iterate through the list without
 // any search or lookup.
 std::vector<const protobuf::FieldDescriptor*> SortedExtensions(

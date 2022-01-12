@@ -398,7 +398,7 @@ static int lupb_array_new(lua_State *L) {
     larray = lupb_newuserdata(L, sizeof(*larray), 1, LUPB_ARRAY);
     larray->type = type;
   } else {
-    lupb_msgdef_check(L, 1);
+    lupb_MessageDef_check(L, 1);
     larray = lupb_newuserdata(L, sizeof(*larray), 2, LUPB_ARRAY);
     larray->type = UPB_TYPE_MESSAGE;
     lua_pushvalue(L, 1);
@@ -519,7 +519,7 @@ static int lupb_map_new(lua_State *L) {
     lmap = lupb_newuserdata(L, sizeof(*lmap), 1, LUPB_MAP);
     lmap->value_type = lupb_checkfieldtype(L, 2);
   } else {
-    lupb_msgdef_check(L, 2);
+    lupb_MessageDef_check(L, 2);
     lmap = lupb_newuserdata(L, sizeof(*lmap), 2, LUPB_MAP);
     lmap->value_type = UPB_TYPE_MESSAGE;
     lua_pushvalue(L, 2);
@@ -653,9 +653,9 @@ static upb_msg *lupb_msg_check(lua_State *L, int narg) {
   return msg->msg;
 }
 
-static const upb_msgdef *lupb_msg_getmsgdef(lua_State *L, int msg) {
+static const upb_MessageDef *lupb_msg_getmsgdef(lua_State *L, int msg) {
   lua_getiuservalue(L, msg, LUPB_MSGDEF_INDEX);
-  const upb_msgdef *m = lupb_msgdef_check(L, -1);
+  const upb_MessageDef *m = lupb_MessageDef_check(L, -1);
   lua_pop(L, 1);
   return m;
 }
@@ -663,8 +663,8 @@ static const upb_msgdef *lupb_msg_getmsgdef(lua_State *L, int msg) {
 static const upb_FieldDef *lupb_msg_tofield(lua_State *L, int msg, int field) {
   size_t len;
   const char *fieldname = luaL_checklstring(L, field, &len);
-  const upb_msgdef *m = lupb_msg_getmsgdef(L, msg);
-  return upb_msgdef_ntof(m, fieldname, len);
+  const upb_MessageDef *m = lupb_msg_getmsgdef(L, msg);
+  return upb_MessageDef_FindFieldByNameWithSize(m, fieldname, len);
 }
 
 static const upb_FieldDef *lupb_msg_checkfield(lua_State *L, int msg,
@@ -677,7 +677,7 @@ static const upb_FieldDef *lupb_msg_checkfield(lua_State *L, int msg,
 }
 
 upb_msg *lupb_msg_pushnew(lua_State *L, int narg) {
-  const upb_msgdef *m = lupb_msgdef_check(L, narg);
+  const upb_MessageDef *m = lupb_MessageDef_check(L, narg);
   lupb_msg *lmsg = lupb_newuserdata(L, sizeof(lupb_msg), 2, LUPB_MSG);
   upb_arena *arena = lupb_arena_pushnew(L);
 
@@ -720,7 +720,7 @@ static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
     /* Wrapper needs a reference to the msgdef. */
     void* ud = lupb_newuserdata(L, size, 2, type);
     lua_getiuservalue(L, narg, LUPB_MSGDEF_INDEX);
-    lupb_msgdef_pushsubmsgdef(L, f);
+    lupb_MessageDef_pushsubmsgdef(L, f);
     lua_setiuservalue(L, -2, LUPB_MSGDEF_INDEX);
     return ud;
   } else {
@@ -736,9 +736,9 @@ static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
 static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_FieldDef *f,
                                 upb_mutmsgval val) {
   if (upb_FieldDef_IsMap(f)) {
-    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_FieldDef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
-    const upb_FieldDef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
+    const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
+    const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_KEY);
+    const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_VALUE);
     lupb_map *lmap = lupb_msg_newud(L, narg, sizeof(*lmap), LUPB_MAP, val_f);
     lmap->key_type = upb_FieldDef_CType(key_f);
     lmap->value_type = upb_FieldDef_CType(val_f);
@@ -771,7 +771,7 @@ static void lupb_msg_typechecksubmsg(lua_State *L, int narg, int msgarg,
   /* Typecheck this map's msgdef against this message field. */
   lua_getiuservalue(L, narg, LUPB_MSGDEF_INDEX);
   lua_getiuservalue(L, msgarg, LUPB_MSGDEF_INDEX);
-  lupb_msgdef_pushsubmsgdef(L, f);
+  lupb_MessageDef_pushsubmsgdef(L, f);
   luaL_argcheck(L, lua_rawequal(L, -1, -2), narg, "message type mismatch");
   lua_pop(L, 2);
 }
@@ -779,13 +779,13 @@ static void lupb_msg_typechecksubmsg(lua_State *L, int narg, int msgarg,
 /* lupb_msg Public API */
 
 /**
- * lupb_msgdef_call
+ * lupb_MessageDef_call
  *
  * Handles:
  *   new_msg = MessageClass()
  *   new_msg = MessageClass{foo = "bar", baz = 3, quux = {foo = 3}}
  */
-int lupb_msgdef_call(lua_State *L) {
+int lupb_MessageDef_call(lua_State *L) {
   int arg_count = lua_gettop(L);
   lupb_msg_pushnew(L, 1);
 
@@ -847,9 +847,9 @@ static int lupb_msg_newindex(lua_State *L) {
 
   if (upb_FieldDef_IsMap(f)) {
     lupb_map *lmap = lupb_map_check(L, 3);
-    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_FieldDef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
-    const upb_FieldDef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
+    const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
+    const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_KEY);
+    const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, UPB_MAPENTRY_VALUE);
     upb_fieldtype_t key_type = upb_FieldDef_CType(key_f);
     upb_fieldtype_t value_type = upb_FieldDef_CType(val_f);
     luaL_argcheck(L, lmap->key_type == key_type, 3, "key type mismatch");
@@ -896,12 +896,12 @@ static int lupb_msg_newindex(lua_State *L) {
  */
 static int lupb_msg_tostring(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_msgdef *m;
+  const upb_MessageDef *m;
   char buf[1024];
   size_t size;
 
   lua_getiuservalue(L, 1, LUPB_MSGDEF_INDEX);
-  m = lupb_msgdef_check(L, -1);
+  m = lupb_MessageDef_check(L, -1);
 
   size = upb_text_encode(msg, m, NULL, 0, buf, sizeof(buf));
 
@@ -948,9 +948,9 @@ static int lupb_getoptions(lua_State *L, int narg) {
  */
 static int lupb_decode(lua_State *L) {
   size_t len;
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   const char *pb = lua_tolstring(L, 2, &len);
-  const upb_msglayout *layout = upb_msgdef_layout(m);
+  const upb_msglayout *layout = upb_MessageDef_Layout(m);
   upb_msg *msg = lupb_msg_pushnew(L, 1);
   upb_arena *arena = lupb_arenaget(L, -1);
   char *buf;
@@ -978,8 +978,8 @@ static int lupb_decode(lua_State *L) {
  */
 static int lupb_encode(lua_State *L) {
   const upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_msgdef *m = lupb_msg_getmsgdef(L, 1);
-  const upb_msglayout *layout = upb_msgdef_layout(m);
+  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_msglayout *layout = upb_MessageDef_Layout(m);
   int options = lupb_getoptions(L, 2);
   upb_arena *arena;
   size_t size;
@@ -1006,7 +1006,7 @@ static int lupb_encode(lua_State *L) {
  */
 static int lupb_jsondecode(lua_State *L) {
   size_t len;
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   const char *json = lua_tolstring(L, 2, &len);
   int options = lupb_getoptions(L, 3);
   upb_msg *msg;
@@ -1030,7 +1030,7 @@ static int lupb_jsondecode(lua_State *L) {
  */
 static int lupb_jsonencode(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_msgdef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
   int options = lupb_getoptions(L, 2);
   char buf[1024];
   size_t size;
@@ -1061,7 +1061,7 @@ static int lupb_jsonencode(lua_State *L) {
  */
 static int lupb_textencode(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_msgdef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
   int options = lupb_getoptions(L, 2);
   char buf[1024];
   size_t size;

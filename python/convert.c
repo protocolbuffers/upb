@@ -242,7 +242,7 @@ bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
 }
 
 bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
-                           const upb_msgdef *m);
+                           const upb_MessageDef *m);
 
 // -----------------------------------------------------------------------------
 // Equal
@@ -285,8 +285,8 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
   if (size1 != size2) return false;
   if (size1 == 0) return true;
 
-  const upb_msgdef *entry_m = upb_FieldDef_MessageSubDef(f);
-  const upb_FieldDef *val_f = upb_msgdef_field(entry_m, 1);
+  const upb_MessageDef *entry_m = upb_FieldDef_MessageSubDef(f);
+  const upb_FieldDef *val_f = upb_MessageDef_Field(entry_m, 1);
   size_t iter = UPB_MAP_BEGIN;
 
   while (upb_mapiter_next(map1, &iter)) {
@@ -339,7 +339,7 @@ bool PyUpb_Array_IsEqual(const upb_array *arr1, const upb_array *arr2,
 }
 
 bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
-                           const upb_msgdef *m) {
+                           const upb_MessageDef *m) {
   if (msg1 == msg2) return true;
   if (upb_msg_extcount(msg1) != upb_msg_extcount(msg2)) return false;
 
@@ -360,7 +360,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
   //
   // We don't need to visit all of msg2's extensions, because we verified up
   // front that both messages have the same number of extensions.
-  const upb_symtab* symtab = upb_filedef_symtab(upb_msgdef_file(m));
+  const upb_symtab* symtab = upb_filedef_symtab(upb_MessageDef_File(m));
   const upb_FieldDef *f1, *f2;
   upb_msgval val1, val2;
   size_t iter1 = UPB_MSG_BEGIN;

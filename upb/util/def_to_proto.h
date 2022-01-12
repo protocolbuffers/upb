@@ -38,7 +38,7 @@ extern "C" {
 // Ultimately the goal is that a round-trip proto->def->proto is lossless.  Each
 // function returns a new proto created in arena `a`, or NULL if memory
 // allocation failed.
-google_protobuf_DescriptorProto* upb_MessageDef_ToProto(const upb_msgdef* m,
+google_protobuf_DescriptorProto* upb_MessageDef_ToProto(const upb_MessageDef* m,
                                                         upb_arena* a);
 google_protobuf_EnumDescriptorProto* upb_EnumDef_ToProto(const upb_enumdef* e,
                                                          upb_arena* a);

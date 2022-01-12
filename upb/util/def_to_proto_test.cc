@@ -58,7 +58,7 @@ const google::protobuf::Descriptor* AddMessageDescriptor(
 // Converts a upb `msg` (with type `msgdef`) into a protobuf Message object from
 // the given factory and descriptor.
 std::unique_ptr<google::protobuf::Message> ToProto(
-    const upb_msg* msg, const upb_msgdef* msgdef,
+    const upb_msg* msg, const upb_MessageDef* msgdef,
     const google::protobuf::Descriptor* desc,
     google::protobuf::MessageFactory* factory) {
   upb::Arena arena;
@@ -67,7 +67,7 @@ std::unique_ptr<google::protobuf::Message> ToProto(
       factory->GetPrototype(desc)->New());
   size_t size;
   const char* buf =
-      upb_encode(msg, upb_msgdef_layout(msgdef), arena.ptr(), &size);
+      upb_encode(msg, upb_MessageDef_Layout(msgdef), arena.ptr(), &size);
   google_msg->ParseFromArray(buf, size);
   return google_msg;
 }

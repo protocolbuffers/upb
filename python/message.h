@@ -45,7 +45,7 @@ void PyUpb_CMessage_SetConcreteSubobj(PyObject* _self, const upb_FieldDef* f,
 // Gets a Python wrapper object for message `u_msg` of type `m`, returning a
 // cached wrapper if one was previously created.  If a new object is created,
 // it will reference `arena`, which must own `u_msg`.
-PyObject* PyUpb_CMessage_Get(upb_msg* u_msg, const upb_msgdef* m,
+PyObject* PyUpb_CMessage_Get(upb_msg* u_msg, const upb_MessageDef* m,
                              PyObject* arena);
 
 // Verifies that a Python object is a message.  Sets a TypeError exception and
@@ -56,8 +56,8 @@ bool PyUpb_CMessage_Check(PyObject* self);
 // Otherwise returns NULL.
 upb_msg* PyUpb_CMessage_GetIfReified(PyObject* _self);
 
-// Returns the `upb_msgdef` for a given CMessage.
-const upb_msgdef* PyUpb_CMessage_GetMsgdef(PyObject* self);
+// Returns the `upb_MessageDef` for a given CMessage.
+const upb_MessageDef* PyUpb_CMessage_GetMsgdef(PyObject* self);
 
 // Functions that match the corresponding methods on the message object.
 PyObject* PyUpb_CMessage_MergeFrom(PyObject* self, PyObject* arg);

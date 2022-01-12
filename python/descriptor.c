@@ -113,7 +113,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     // Find the correct options message.
     PyObject* default_pool = PyUpb_DescriptorPool_GetDefaultPool();
     const upb_symtab* symtab = PyUpb_DescriptorPool_GetSymtab(default_pool);
-    const upb_msgdef* m = upb_symtab_lookupmsg(symtab, msg_name);
+    const upb_MessageDef* m = upb_symtab_lookupmsg(symtab, msg_name);
     assert(m);
 
     // Copy the options message from C to Python using serialize+parse.
@@ -126,7 +126,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     char* pb = upb_encode(opts, layout, arena, &size);
     upb_msg* opts2 = upb_msg_new(m, arena);
     assert(opts2);
-    bool ok = _upb_decode(pb, size, opts2, upb_msgdef_layout(m),
+    bool ok = _upb_decode(pb, size, opts2, upb_MessageDef_Layout(m),
                           upb_symtab_extreg(symtab), 0,
                           arena) == kUpb_DecodeStatus_Ok;
     (void)ok;
@@ -187,14 +187,14 @@ static void PyUpb_DescriptorBase_Dealloc(PyUpb_DescriptorBase* base) {
 // Descriptor
 // -----------------------------------------------------------------------------
 
-PyObject* PyUpb_Descriptor_Get(const upb_msgdef* m) {
+PyObject* PyUpb_Descriptor_Get(const upb_MessageDef* m) {
   assert(m);
-  const upb_filedef* file = upb_msgdef_file(m);
+  const upb_filedef* file = upb_MessageDef_File(m);
   return PyUpb_DescriptorBase_Get(kPyUpb_Descriptor, m, file);
 }
 
-PyObject* PyUpb_Descriptor_GetClass(const upb_msgdef* m) {
-  PyObject* ret = PyUpb_ObjCache_Get(upb_msgdef_layout(m));
+PyObject* PyUpb_Descriptor_GetClass(const upb_MessageDef* m) {
+  PyObject* ret = PyUpb_ObjCache_Get(upb_MessageDef_Layout(m));
   assert(ret);
   return ret;
 }
@@ -203,35 +203,35 @@ PyObject* PyUpb_Descriptor_GetClass(const upb_msgdef* m) {
 // a message.  This uses the symtab's table, which requires that the symtab is
 // not being mutated concurrently.  We can guarantee this for Python-owned
 // symtabs, but upb cannot guarantee it in general for an arbitrary
-// `const upb_msgdef*`.
+// `const upb_MessageDef*`.
 
-static const void* PyUpb_Descriptor_LookupNestedMessage(const upb_msgdef* m,
+static const void* PyUpb_Descriptor_LookupNestedMessage(const upb_MessageDef* m,
                                                         const char* name) {
-  const upb_filedef* filedef = upb_msgdef_file(m);
+  const upb_filedef* filedef = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(filedef);
-  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_msgdef_fullname(m), name);
-  const upb_msgdef* ret =
+  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_MessageDef_FullName(m), name);
+  const upb_MessageDef* ret =
       upb_symtab_lookupmsg(symtab, PyUnicode_AsUTF8AndSize(qname, NULL));
   Py_DECREF(qname);
   return ret;
 }
 
-static const void* PyUpb_Descriptor_LookupNestedEnum(const upb_msgdef* m,
+static const void* PyUpb_Descriptor_LookupNestedEnum(const upb_MessageDef* m,
                                                      const char* name) {
-  const upb_filedef* filedef = upb_msgdef_file(m);
+  const upb_filedef* filedef = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(filedef);
-  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_msgdef_fullname(m), name);
+  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_MessageDef_FullName(m), name);
   const upb_enumdef* ret =
       upb_symtab_lookupenum(symtab, PyUnicode_AsUTF8AndSize(qname, NULL));
   Py_DECREF(qname);
   return ret;
 }
 
-static const void* PyUpb_Descriptor_LookupNestedExtension(const upb_msgdef* m,
+static const void* PyUpb_Descriptor_LookupNestedExtension(const upb_MessageDef* m,
                                                           const char* name) {
-  const upb_filedef* filedef = upb_msgdef_file(m);
+  const upb_filedef* filedef = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(filedef);
-  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_msgdef_fullname(m), name);
+  PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_MessageDef_FullName(m), name);
   const upb_FieldDef* ret =
       upb_symtab_lookupext(symtab, PyUnicode_AsUTF8AndSize(qname, NULL));
   Py_DECREF(qname);
@@ -241,11 +241,11 @@ static const void* PyUpb_Descriptor_LookupNestedExtension(const upb_msgdef* m,
 static PyObject* PyUpb_Descriptor_GetExtensionRanges(PyObject* _self,
                                                      void* closure) {
   PyUpb_DescriptorBase* self = (PyUpb_DescriptorBase*)_self;
-  int n = upb_msgdef_extrangecount(self->def);
+  int n = upb_MessageDef_ExtensionRangeCount(self->def);
   PyObject* range_list = PyList_New(n);
 
   for (int i = 0; i < n; i++) {
-    const upb_extrange* range = upb_msgdef_extrange(self->def, i);
+    const upb_extrange* range = upb_MessageDef_ExtensionRange(self->def, i);
     PyObject* start = PyLong_FromLong(upb_extrange_start(range));
     PyObject* end = PyLong_FromLong(upb_extrange_end(range));
     PyList_SetItem(range_list, i, PyTuple_Pack(2, start, end));
@@ -258,8 +258,8 @@ static PyObject* PyUpb_Descriptor_GetExtensions(PyObject* _self,
                                                 void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_msgdef_nestedextcount,
-      (void*)&upb_msgdef_nestedext,
+      (void*)&upb_MessageDef_NestedExtensionCount,
+      (void*)&upb_MessageDef_NestedExtension,
       (void*)&PyUpb_FieldDescriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -270,8 +270,8 @@ static PyObject* PyUpb_Descriptor_GetExtensionsByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_nestedextcount,
-          (void*)&upb_msgdef_nestedext,
+          (void*)&upb_MessageDef_NestedExtensionCount,
+          (void*)&upb_MessageDef_NestedExtension,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
       (void*)&PyUpb_Descriptor_LookupNestedExtension,
@@ -283,8 +283,8 @@ static PyObject* PyUpb_Descriptor_GetExtensionsByName(PyObject* _self,
 static PyObject* PyUpb_Descriptor_GetEnumTypes(PyObject* _self, void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_msgdef_nestedenumcount,
-      (void*)&upb_msgdef_nestedenum,
+      (void*)&upb_MessageDef_NestedEnumCount,
+      (void*)&upb_MessageDef_NestedEnum,
       (void*)&PyUpb_EnumDescriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -293,8 +293,8 @@ static PyObject* PyUpb_Descriptor_GetEnumTypes(PyObject* _self, void* closure) {
 static PyObject* PyUpb_Descriptor_GetOneofs(PyObject* _self, void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_msgdef_oneofcount,
-      (void*)&upb_msgdef_oneof,
+      (void*)&upb_MessageDef_OneofCount,
+      (void*)&upb_MessageDef_Oneof,
       (void*)&PyUpb_OneofDescriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -303,7 +303,7 @@ static PyObject* PyUpb_Descriptor_GetOneofs(PyObject* _self, void* closure) {
 static PyObject* PyUpb_Descriptor_GetOptions(PyObject* _self, PyObject* args) {
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_DescriptorBase_GetOptions(
-      self, upb_msgdef_options(self->def),
+      self, upb_MessageDef_Options(self->def),
       &google_protobuf_MessageOptions_msginit,
       "google.protobuf.MessageOptions");
 }
@@ -340,11 +340,11 @@ static PyObject* PyUpb_Descriptor_GetFieldsByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_fieldcount,
-          (void*)&upb_msgdef_field,
+          (void*)&upb_MessageDef_FieldCount,
+          (void*)&upb_MessageDef_Field,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
-      (void*)&upb_msgdef_ntofz,
+      (void*)&upb_MessageDef_FindFieldByName,
       (void*)&upb_FieldDef_Name,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -355,11 +355,11 @@ static PyObject* PyUpb_Descriptor_GetFieldsByCamelCaseName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_fieldcount,
-          (void*)&upb_msgdef_field,
+          (void*)&upb_MessageDef_FieldCount,
+          (void*)&upb_MessageDef_Field,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
-      (void*)&upb_msgdef_lookupjsonnamez,
+      (void*)&upb_MessageDef_FindByJsonName,
       (void*)&upb_FieldDef_JsonName,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -369,11 +369,11 @@ static PyObject* PyUpb_Descriptor_GetFieldsByNumber(PyObject* _self,
                                                     void* closure) {
   static PyUpb_ByNumberMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_fieldcount,
-          (void*)&upb_msgdef_field,
+          (void*)&upb_MessageDef_FieldCount,
+          (void*)&upb_MessageDef_Field,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
-      (void*)&upb_msgdef_itof,
+      (void*)&upb_MessageDef_FindFieldByNumberWithSize,
       (void*)&upb_FieldDef_Number,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
@@ -384,8 +384,8 @@ static PyObject* PyUpb_Descriptor_GetNestedTypes(PyObject* _self,
                                                  void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_msgdef_nestedmsgcount,
-      (void*)&upb_msgdef_nestedmsg,
+      (void*)&upb_MessageDef_NestedMessageCount,
+      (void*)&upb_MessageDef_NestedMessage,
       (void*)&PyUpb_Descriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -396,12 +396,12 @@ static PyObject* PyUpb_Descriptor_GetNestedTypesByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_nestedmsgcount,
-          (void*)&upb_msgdef_nestedmsg,
+          (void*)&upb_MessageDef_NestedMessageCount,
+          (void*)&upb_MessageDef_NestedMessage,
           (void*)&PyUpb_Descriptor_Get,
       },
       (void*)&PyUpb_Descriptor_LookupNestedMessage,
-      (void*)&upb_msgdef_name,
+      (void*)&upb_MessageDef_Name,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
 }
@@ -411,13 +411,13 @@ static PyObject* PyUpb_Descriptor_GetContainingType(PyObject* _self,
   // upb does not natively store the lexical parent of a message type, but we
   // can derive it with some string manipulation and a lookup.
   PyUpb_DescriptorBase* self = (void*)_self;
-  const upb_msgdef* m = self->def;
-  const upb_filedef* file = upb_msgdef_file(m);
+  const upb_MessageDef* m = self->def;
+  const upb_filedef* file = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(file);
-  const char* full_name = upb_msgdef_fullname(m);
+  const char* full_name = upb_MessageDef_FullName(m);
   const char* last_dot = strrchr(full_name, '.');
   if (!last_dot) Py_RETURN_NONE;
-  const upb_msgdef* parent =
+  const upb_MessageDef* parent =
       upb_symtab_lookupmsg2(symtab, full_name, last_dot - full_name);
   if (!parent) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(parent);
@@ -428,8 +428,8 @@ static PyObject* PyUpb_Descriptor_GetEnumTypesByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_nestedenumcount,
-          (void*)&upb_msgdef_nestedenum,
+          (void*)&upb_MessageDef_NestedEnumCount,
+          (void*)&upb_MessageDef_NestedEnum,
           (void*)&PyUpb_EnumDescriptor_Get,
       },
       (void*)&PyUpb_Descriptor_LookupNestedEnum,
@@ -441,7 +441,7 @@ static PyObject* PyUpb_Descriptor_GetEnumTypesByName(PyObject* _self,
 static PyObject* PyUpb_Descriptor_GetIsExtendable(PyObject* _self,
                                                   void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  if (upb_msgdef_extrangecount(self->def) > 0) {
+  if (upb_MessageDef_ExtensionRangeCount(self->def) > 0) {
     Py_RETURN_TRUE;
   } else {
     Py_RETURN_FALSE;
@@ -449,26 +449,26 @@ static PyObject* PyUpb_Descriptor_GetIsExtendable(PyObject* _self,
 }
 
 static PyObject* PyUpb_Descriptor_GetFullName(PyObject* self, void* closure) {
-  const upb_msgdef* msgdef = PyUpb_Descriptor_GetDef(self);
-  return PyUnicode_FromString(upb_msgdef_fullname(msgdef));
+  const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
+  return PyUnicode_FromString(upb_MessageDef_FullName(msgdef));
 }
 
 static PyObject* PyUpb_Descriptor_GetConcreteClass(PyObject* self,
                                                    void* closure) {
-  const upb_msgdef* msgdef = PyUpb_Descriptor_GetDef(self);
+  const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
   return PyUpb_Descriptor_GetClass(msgdef);
 }
 
 static PyObject* PyUpb_Descriptor_GetFile(PyObject* self, void* closure) {
-  const upb_msgdef* msgdef = PyUpb_Descriptor_GetDef(self);
-  return PyUpb_FileDescriptor_Get(upb_msgdef_file(msgdef));
+  const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
+  return PyUpb_FileDescriptor_Get(upb_MessageDef_File(msgdef));
 }
 
 static PyObject* PyUpb_Descriptor_GetFields(PyObject* _self, void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_GenericSequence_Funcs funcs = {
-      (void*)&upb_msgdef_fieldcount,
-      (void*)&upb_msgdef_field,
+      (void*)&upb_MessageDef_FieldCount,
+      (void*)&upb_MessageDef_Field,
       (void*)&PyUpb_FieldDescriptor_Get,
   };
   return PyUpb_GenericSequence_New(&funcs, self->def, self->pool);
@@ -477,12 +477,12 @@ static PyObject* PyUpb_Descriptor_GetFields(PyObject* _self, void* closure) {
 static PyObject* PyUpb_Descriptor_GetHasOptions(PyObject* _self,
                                                 void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  return PyBool_FromLong(upb_msgdef_hasoptions(self->def));
+  return PyBool_FromLong(upb_MessageDef_HasOptions(self->def));
 }
 
 static PyObject* PyUpb_Descriptor_GetName(PyObject* self, void* closure) {
-  const upb_msgdef* msgdef = PyUpb_Descriptor_GetDef(self);
-  return PyUnicode_FromString(upb_msgdef_name(msgdef));
+  const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
+  return PyUnicode_FromString(upb_MessageDef_Name(msgdef));
 }
 
 static PyObject* PyUpb_Descriptor_GetEnumValuesByName(PyObject* _self,
@@ -509,9 +509,9 @@ static PyObject* PyUpb_Descriptor_GetEnumValuesByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   PyObject* ret = PyDict_New();
   if (!ret) return NULL;
-  int enum_count = upb_msgdef_nestedenumcount(self->def);
+  int enum_count = upb_MessageDef_NestedEnumCount(self->def);
   for (int i = 0; i < enum_count; i++) {
-    const upb_enumdef* e = upb_msgdef_nestedenum(self->def, i);
+    const upb_enumdef* e = upb_MessageDef_NestedEnum(self->def, i);
     int value_count = upb_enumdef_valuecount(e);
     for (int j = 0; j < value_count; j++) {
       // Collisions should be impossible here, as uniqueness is checked by
@@ -543,20 +543,20 @@ static PyObject* PyUpb_Descriptor_GetOneofsByName(PyObject* _self,
   PyUpb_DescriptorBase* self = (void*)_self;
   static PyUpb_ByNameMap_Funcs funcs = {
       {
-          (void*)&upb_msgdef_oneofcount,
-          (void*)&upb_msgdef_oneof,
+          (void*)&upb_MessageDef_OneofCount,
+          (void*)&upb_MessageDef_Oneof,
           (void*)&PyUpb_OneofDescriptor_Get,
       },
-      (void*)&upb_msgdef_ntooz,
+      (void*)&upb_MessageDef_FindOneofByName,
       (void*)&upb_OneofDef_Name,
   };
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
 }
 
 static PyObject* PyUpb_Descriptor_GetSyntax(PyObject* self, void* closure) {
-  const upb_msgdef* msgdef = PyUpb_Descriptor_GetDef(self);
+  const upb_MessageDef* msgdef = PyUpb_Descriptor_GetDef(self);
   const char* syntax =
-      upb_msgdef_syntax(msgdef) == UPB_SYNTAX_PROTO2 ? "proto2" : "proto3";
+      upb_MessageDef_Syntax(msgdef) == UPB_SYNTAX_PROTO2 ? "proto2" : "proto3";
   return PyUnicode_InternFromString(syntax);
 }
 
@@ -617,7 +617,7 @@ static PyType_Spec PyUpb_Descriptor_Spec = {
     PyUpb_Descriptor_Slots,
 };
 
-const upb_msgdef* PyUpb_Descriptor_GetDef(PyObject* _self) {
+const upb_MessageDef* PyUpb_Descriptor_GetDef(PyObject* _self) {
   PyUpb_DescriptorBase* self =
       PyUpb_DescriptorBase_Check(_self, kPyUpb_Descriptor);
   return self ? self->def : NULL;
@@ -698,7 +698,7 @@ static PyObject* PyUpb_EnumDescriptor_GetValuesByNumber(PyObject* _self,
 static PyObject* PyUpb_EnumDescriptor_GetContainingType(PyObject* _self,
                                                         void* closure) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  const upb_msgdef* m = upb_enumdef_containingtype(self->def);
+  const upb_MessageDef* m = upb_enumdef_containingtype(self->def);
   if (!m) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(m);
 }
@@ -938,7 +938,7 @@ static PyObject* PyUpb_FieldDescriptor_GetIndex(PyUpb_DescriptorBase* self,
 
 static PyObject* PyUpb_FieldDescriptor_GetMessageType(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* subdef = upb_FieldDef_MessageSubDef(self->def);
+  const upb_MessageDef* subdef = upb_FieldDef_MessageSubDef(self->def);
   if (!subdef) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(subdef);
 }
@@ -952,14 +952,14 @@ static PyObject* PyUpb_FieldDescriptor_GetEnumType(PyUpb_DescriptorBase* self,
 
 static PyObject* PyUpb_FieldDescriptor_GetContainingType(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* m = upb_FieldDef_ContainingType(self->def);
+  const upb_MessageDef* m = upb_FieldDef_ContainingType(self->def);
   if (!m) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(m);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetExtensionScope(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_msgdef* m = upb_FieldDef_ExtensionScope(self->def);
+  const upb_MessageDef* m = upb_FieldDef_ExtensionScope(self->def);
   if (!m) Py_RETURN_NONE;
   return PyUpb_Descriptor_Get(m);
 }
@@ -1142,7 +1142,7 @@ static PyObject* PyUpb_FileDescriptor_GetMessageTypesByName(PyObject* _self,
           (void*)&PyUpb_Descriptor_Get,
       },
       (void*)&PyUpb_FileDescriptor_LookupMessage,
-      (void*)&upb_msgdef_name,
+      (void*)&upb_MessageDef_Name,
   };
   PyUpb_DescriptorBase* self = (void*)_self;
   return PyUpb_ByNameMap_New(&funcs, self->def, self->pool);
@@ -1393,7 +1393,7 @@ const upb_OneofDef* PyUpb_OneofDescriptor_GetDef(PyObject* _self) {
 }
 
 PyObject* PyUpb_OneofDescriptor_Get(const upb_OneofDef* oneof) {
-  const upb_filedef* file = upb_msgdef_file(upb_OneofDef_ContainingType(oneof));
+  const upb_filedef* file = upb_MessageDef_File(upb_OneofDef_ContainingType(oneof));
   return PyUpb_DescriptorBase_Get(kPyUpb_OneofDescriptor, oneof, file);
 }
 
@@ -1406,7 +1406,7 @@ static PyObject* PyUpb_OneofDescriptor_GetFullName(PyObject* self,
                                                    void* closure) {
   const upb_OneofDef* oneof = PyUpb_OneofDescriptor_GetDef(self);
   return PyUnicode_FromFormat(
-      "%s.%s", upb_msgdef_fullname(upb_OneofDef_ContainingType(oneof)),
+      "%s.%s", upb_MessageDef_FullName(upb_OneofDef_ContainingType(oneof)),
       upb_OneofDef_Name(oneof));
 }
 

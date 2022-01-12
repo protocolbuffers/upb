@@ -63,7 +63,7 @@ upb_msgval upb_FieldDef_Default(const upb_FieldDef *f);
 /** upb_msg *******************************************************************/
 
 /* Creates a new message of the given type in the given arena. */
-upb_msg *upb_msg_new(const upb_msgdef *m, upb_arena *a);
+upb_msg *upb_msg_new(const upb_MessageDef *m, upb_arena *a);
 
 /* Returns the value associated with this field. */
 upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f);
@@ -93,7 +93,7 @@ bool upb_msg_set(upb_msg *msg, const upb_FieldDef *f, upb_msgval val,
 void upb_msg_clearfield(upb_msg *msg, const upb_FieldDef *f);
 
 /* Clear all data and unknown fields. */
-void upb_msg_clear(upb_msg *msg, const upb_msgdef *m);
+void upb_msg_clear(upb_msg *msg, const upb_MessageDef *m);
 
 /* Iterate over present fields.
  *
@@ -110,12 +110,12 @@ void upb_msg_clear(upb_msg *msg, const upb_msgdef *m);
  */
 
 #define UPB_MSG_BEGIN -1
-bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
+bool upb_msg_next(const upb_msg *msg, const upb_MessageDef *m,
                   const upb_symtab *ext_pool, const upb_FieldDef **f,
                   upb_msgval *val, size_t *iter);
 
 /* Clears all unknown field data from this message and all submessages. */
-bool upb_msg_discardunknown(upb_msg *msg, const upb_msgdef *m, int maxdepth);
+bool upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth);
 
 /** upb_array *****************************************************************/
 

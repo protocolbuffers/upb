@@ -93,11 +93,11 @@ void lupb_pushuint32(lua_State *L, uint32_t val);
 
 /** From def.c. ***************************************************************/
 
-const upb_msgdef *lupb_msgdef_check(lua_State *L, int narg);
+const upb_MessageDef *lupb_MessageDef_check(lua_State *L, int narg);
 const upb_enumdef *lupb_enumdef_check(lua_State *L, int narg);
 const upb_FieldDef *lupb_FieldDef_check(lua_State *L, int narg);
 upb_symtab *lupb_symtab_check(lua_State *L, int narg);
-void lupb_msgdef_pushsubmsgdef(lua_State *L, const upb_FieldDef *f);
+void lupb_MessageDef_pushsubmsgdef(lua_State *L, const upb_FieldDef *f);
 
 void lupb_def_registertypes(lua_State *L);
 
@@ -105,7 +105,7 @@ void lupb_def_registertypes(lua_State *L);
 
 void lupb_pushmsgval(lua_State* L, int container, upb_fieldtype_t type,
                      upb_msgval val);
-int lupb_msgdef_call(lua_State *L);
+int lupb_MessageDef_call(lua_State *L);
 upb_arena *lupb_arena_pushnew(lua_State *L);
 
 void lupb_msg_registertypes(lua_State *L);

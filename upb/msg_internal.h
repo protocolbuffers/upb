@@ -52,7 +52,7 @@ extern "C" {
 
 /** upb_msglayout *************************************************************/
 
-/* upb_msglayout represents the memory layout of a given upb_msgdef.  The
+/* upb_msglayout represents the memory layout of a given upb_MessageDef.  The
  * members are public so generated code can initialize them, but users MUST NOT
  * read or write any of its members. */
 

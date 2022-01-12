@@ -54,7 +54,7 @@ static void lupb_symtab_pushwrapper(lua_State *L, int narg, const void *def,
 #define LUPB_SYMTAB_INDEX 1
 
 typedef struct {
-  const void* def;   /* upb_msgdef, upb_enumdef, upb_OneofDef, etc. */
+  const void* def;   /* upb_MessageDef, upb_enumdef, upb_OneofDef, etc. */
 } lupb_wrapper;
 
 static const void *lupb_wrapper_check(lua_State *L, int narg,
@@ -78,14 +78,14 @@ static void lupb_wrapper_pushwrapper(lua_State *L, int narg, const void *def,
   lua_replace(L, -2);  /* Remove symtab from stack. */
 }
 
-/* lupb_msgdef_pushsubmsgdef()
+/* lupb_MessageDef_pushsubmsgdef()
  *
  * Pops the msgdef wrapper at the top of the stack and replaces it with a msgdef
  * wrapper for field |f| of this msgdef (submsg may not be direct, for example it
  * may be the submessage of the map value).
  */
-void lupb_msgdef_pushsubmsgdef(lua_State *L, const upb_FieldDef *f) {
-  const upb_msgdef *m = upb_FieldDef_MessageSubDef(f);
+void lupb_MessageDef_pushsubmsgdef(lua_State *L, const upb_FieldDef *f) {
+  const upb_MessageDef *m = upb_FieldDef_MessageSubDef(f);
   assert(m);
   lupb_wrapper_pushwrapper(L, -1, m, LUPB_MSGDEF);
   lua_replace(L, -2);  /* Replace msgdef with submsgdef. */
@@ -106,7 +106,7 @@ static int lupb_FieldDef_ContainingOneof(lua_State *L) {
 
 static int lupb_FieldDef_ContainingType(lua_State *L) {
   const upb_FieldDef *f = lupb_FieldDef_check(L, 1);
-  const upb_msgdef *m = upb_FieldDef_ContainingType(f);
+  const upb_MessageDef *m = upb_FieldDef_ContainingType(f);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
@@ -176,7 +176,7 @@ static int lupb_FieldDef_IsPacked(lua_State *L) {
 
 static int lupb_FieldDef_MessageSubDef(lua_State *L) {
   const upb_FieldDef *f = lupb_FieldDef_check(L, 1);
-  const upb_msgdef *m = upb_FieldDef_MessageSubDef(f);
+  const upb_MessageDef *m = upb_FieldDef_MessageSubDef(f);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
@@ -220,7 +220,7 @@ const upb_OneofDef *lupb_OneofDef_check(lua_State *L, int narg) {
 
 static int lupb_OneofDef_ContainingType(lua_State *L) {
   const upb_OneofDef *o = lupb_OneofDef_check(L, 1);
-  const upb_msgdef *m = upb_OneofDef_ContainingType(o);
+  const upb_MessageDef *m = upb_OneofDef_ContainingType(o);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
@@ -281,7 +281,7 @@ static int lupb_OneofDef_lookupfield(lua_State *L) {
       f = upb_OneofDef_LookupNumber(o, lua_tointeger(L, 2));
       break;
     case LUA_TSTRING:
-      f = upb_OneofDef_LookupNameWithSizez(o, lua_tostring(L, 2));
+      f = upb_OneofDef_LookupName(o, lua_tostring(L, 2));
       break;
     default: {
       const char *msg = lua_pushfstring(L, "number or string expected, got %s",
@@ -315,64 +315,64 @@ static const struct luaL_Reg lupb_OneofDef_mm[] = {
 };
 
 
-/* lupb_msgdef ****************************************************************/
+/* lupb_MessageDef ****************************************************************/
 
 typedef struct {
-  const upb_msgdef *md;
-} lupb_msgdef;
+  const upb_MessageDef *md;
+} lupb_MessageDef;
 
-const upb_msgdef *lupb_msgdef_check(lua_State *L, int narg) {
+const upb_MessageDef *lupb_MessageDef_check(lua_State *L, int narg) {
   return lupb_wrapper_check(L, narg, LUPB_MSGDEF);
 }
 
-static int lupb_msgdef_fieldcount(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushinteger(L, upb_msgdef_fieldcount(m));
+static int lupb_MessageDef_FieldCount(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushinteger(L, upb_MessageDef_FieldCount(m));
   return 1;
 }
 
-static int lupb_msgdef_oneofcount(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushinteger(L, upb_msgdef_oneofcount(m));
+static int lupb_MessageDef_OneofCount(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushinteger(L, upb_MessageDef_OneofCount(m));
   return 1;
 }
 
-static bool lupb_msgdef_pushnested(lua_State *L, int msgdef, int name) {
-  const upb_msgdef *m = lupb_msgdef_check(L, msgdef);
+static bool lupb_MessageDef_pushnested(lua_State *L, int msgdef, int name) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, msgdef);
   lupb_wrapper_pushsymtab(L, msgdef);
   upb_symtab *symtab = lupb_symtab_check(L, -1);
   lua_pop(L, 1);
 
   /* Construct full package.Message.SubMessage name. */
-  lua_pushstring(L, upb_msgdef_fullname(m));
+  lua_pushstring(L, upb_MessageDef_FullName(m));
   lua_pushstring(L, ".");
   lua_pushvalue(L, name);
   lua_concat(L, 3);
   const char *nested_name = lua_tostring(L, -1);
 
   /* Try lookup. */
-  const upb_msgdef *nested = upb_symtab_lookupmsg(symtab, nested_name);
+  const upb_MessageDef *nested = upb_symtab_lookupmsg(symtab, nested_name);
   if (!nested) return false;
   lupb_wrapper_pushwrapper(L, msgdef, nested, LUPB_MSGDEF);
   return true;
 }
 
-/* lupb_msgdef_field()
+/* lupb_MessageDef_Field()
  *
  * Handles:
  *   msg.field(field_number) -> fielddef
  *   msg.field(field_name) -> fielddef
  */
-static int lupb_msgdef_field(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
+static int lupb_MessageDef_Field(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   const upb_FieldDef *f;
 
   switch (lua_type(L, 2)) {
     case LUA_TNUMBER:
-      f = upb_msgdef_itof(m, lua_tointeger(L, 2));
+      f = upb_MessageDef_FindFieldByNumberWithSize(m, lua_tointeger(L, 2));
       break;
     case LUA_TSTRING:
-      f = upb_msgdef_ntofz(m, lua_tostring(L, 2));
+      f = upb_MessageDef_FindFieldByName(m, lua_tostring(L, 2));
       break;
     default: {
       const char *msg = lua_pushfstring(L, "number or string expected, got %s",
@@ -385,17 +385,17 @@ static int lupb_msgdef_field(lua_State *L) {
   return 1;
 }
 
-/* lupb_msgdef_lookupname()
+/* lupb_MessageDef_FindByNameWithSize()
  *
  * Handles:
  *   msg.lookup_name(name) -> fielddef or oneofdef
  */
-static int lupb_msgdef_lookupname(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
+static int lupb_MessageDef_FindByNameWithSize(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   const upb_FieldDef *f;
   const upb_OneofDef *o;
 
-  if (!upb_msgdef_lookupnamez(m, lua_tostring(L, 2), &f, &o)) {
+  if (!upb_MessageDef_FindByName(m, lua_tostring(L, 2), &f, &o)) {
     lua_pushnil(L);
   } else if (o) {
     lupb_wrapper_pushwrapper(L, 1, o, LUPB_ONEOFDEF);
@@ -406,30 +406,30 @@ static int lupb_msgdef_lookupname(lua_State *L) {
   return 1;
 }
 
-/* lupb_msgdef_name()
+/* lupb_MessageDef_Name()
  *
  * Handles:
  *   msg.name() -> string
  */
-static int lupb_msgdef_name(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushstring(L, upb_msgdef_name(m));
+static int lupb_MessageDef_Name(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushstring(L, upb_MessageDef_Name(m));
   return 1;
 }
 
 static int lupb_msgfielditer_next(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, lua_upvalueindex(1));
+  const upb_MessageDef *m = lupb_MessageDef_check(L, lua_upvalueindex(1));
   int *index = lua_touserdata(L, lua_upvalueindex(2));
   const upb_FieldDef *f;
-  if (*index == upb_msgdef_fieldcount(m)) return 0;
-  f = upb_msgdef_field(m, (*index)++);
+  if (*index == upb_MessageDef_FieldCount(m)) return 0;
+  f = upb_MessageDef_Field(m, (*index)++);
   lupb_wrapper_pushwrapper(L, lua_upvalueindex(1), f, LUPB_FIELDDEF);
   return 1;
 }
 
-static int lupb_msgdef_fields(lua_State *L) {
+static int lupb_MessageDef_Fields(lua_State *L) {
   int *index = lua_newuserdata(L, sizeof(int));
-  lupb_msgdef_check(L, 1);
+  lupb_MessageDef_check(L, 1);
   *index = 0;
 
   /* Closure upvalues are: msgdef, index. */
@@ -437,39 +437,39 @@ static int lupb_msgdef_fields(lua_State *L) {
   return 1;
 }
 
-static int lupb_msgdef_file(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  const upb_filedef *file = upb_msgdef_file(m);
+static int lupb_MessageDef_File(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  const upb_filedef *file = upb_MessageDef_File(m);
   lupb_wrapper_pushwrapper(L, 1, file, LUPB_FILEDEF);
   return 1;
 }
 
-static int lupb_msgdef_fullname(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushstring(L, upb_msgdef_fullname(m));
+static int lupb_MessageDef_FullName(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushstring(L, upb_MessageDef_FullName(m));
   return 1;
 }
 
-static int lupb_msgdef_index(lua_State *L) {
-  if (!lupb_msgdef_pushnested(L, 1, 2)) {
+static int lupb_MessageDef_index(lua_State *L) {
+  if (!lupb_MessageDef_pushnested(L, 1, 2)) {
     luaL_error(L, "No such nested message");
   }
   return 1;
 }
 
 static int lupb_msgoneofiter_next(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, lua_upvalueindex(1));
+  const upb_MessageDef *m = lupb_MessageDef_check(L, lua_upvalueindex(1));
   int *index = lua_touserdata(L, lua_upvalueindex(2));
   const upb_OneofDef *o;
-  if (*index == upb_msgdef_oneofcount(m)) return 0;
-  o = upb_msgdef_oneof(m, (*index)++);
+  if (*index == upb_MessageDef_OneofCount(m)) return 0;
+  o = upb_MessageDef_Oneof(m, (*index)++);
   lupb_wrapper_pushwrapper(L, lua_upvalueindex(1), o, LUPB_ONEOFDEF);
   return 1;
 }
 
-static int lupb_msgdef_oneofs(lua_State *L) {
+static int lupb_MessageDef_Oneofs(lua_State *L) {
   int *index = lua_newuserdata(L, sizeof(int));
-  lupb_msgdef_check(L, 1);
+  lupb_MessageDef_check(L, 1);
   *index = 0;
 
   /* Closure upvalues are: msgdef, index. */
@@ -477,45 +477,46 @@ static int lupb_msgdef_oneofs(lua_State *L) {
   return 1;
 }
 
-static int lupb_msgdef_mapentry(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushboolean(L, upb_msgdef_mapentry(m));
+static int lupb_MessageDef_IsMapEntry(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushboolean(L, upb_MessageDef_IsMapEntry(m));
   return 1;
 }
 
-static int lupb_msgdef_syntax(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
-  lua_pushinteger(L, upb_msgdef_syntax(m));
+static int lupb_MessageDef_Syntax(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
+  lua_pushinteger(L, upb_MessageDef_Syntax(m));
   return 1;
 }
 
-static int lupb_msgdef_tostring(lua_State *L) {
-  const upb_msgdef *m = lupb_msgdef_check(L, 1);
+static int lupb_MessageDef_tostring(lua_State *L) {
+  const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
   lua_pushfstring(L, "<upb.MessageDef name=%s, field_count=%d>",
-                  upb_msgdef_fullname(m), (int)upb_msgdef_numfields(m));
+                  upb_MessageDef_FullName(m),
+                  (int)upb_MessageDef_FieldCount(m));
   return 1;
 }
 
-static const struct luaL_Reg lupb_msgdef_mm[] = {
-  {"__call", lupb_msgdef_call},
-  {"__index", lupb_msgdef_index},
-  {"__len", lupb_msgdef_fieldcount},
-  {"__tostring", lupb_msgdef_tostring},
+static const struct luaL_Reg lupb_MessageDef_mm[] = {
+  {"__call", lupb_MessageDef_call},
+  {"__index", lupb_MessageDef_index},
+  {"__len", lupb_MessageDef_FieldCount},
+  {"__tostring", lupb_MessageDef_tostring},
   {NULL, NULL}
 };
 
-static const struct luaL_Reg lupb_msgdef_m[] = {
-  {"field", lupb_msgdef_field},
-  {"fields", lupb_msgdef_fields},
-  {"field_count", lupb_msgdef_fieldcount},
-  {"file", lupb_msgdef_file},
-  {"full_name", lupb_msgdef_fullname},
-  {"lookup_name", lupb_msgdef_lookupname},
-  {"name", lupb_msgdef_name},
-  {"oneof_count", lupb_msgdef_oneofcount},
-  {"oneofs", lupb_msgdef_oneofs},
-  {"syntax", lupb_msgdef_syntax},
-  {"_map_entry", lupb_msgdef_mapentry},
+static const struct luaL_Reg lupb_MessageDef_m[] = {
+  {"field", lupb_MessageDef_Field},
+  {"fields", lupb_MessageDef_Fields},
+  {"field_count", lupb_MessageDef_FieldCount},
+  {"file", lupb_MessageDef_File},
+  {"full_name", lupb_MessageDef_FullName},
+  {"lookup_name", lupb_MessageDef_FindByNameWithSize},
+  {"name", lupb_MessageDef_Name},
+  {"oneof_count", lupb_MessageDef_OneofCount},
+  {"oneofs", lupb_MessageDef_Oneofs},
+  {"syntax", lupb_MessageDef_Syntax},
+  {"_map_entry", lupb_MessageDef_IsMapEntry},
   {NULL, NULL}
 };
 
@@ -676,7 +677,7 @@ static int lupb_filedef_enumcount(lua_State *L) {
 static int lupb_filedef_msg(lua_State *L) {
   const upb_filedef *f = lupb_filedef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_msgdef *m = upb_filedef_toplvlmsg(f, index);
+  const upb_MessageDef *m = upb_filedef_toplvlmsg(f, index);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
@@ -868,7 +869,7 @@ static int lupb_symtab_addset(lua_State *L) {
 
 static int lupb_symtab_lookupmsg(lua_State *L) {
   const upb_symtab *s = lupb_symtab_check(L, 1);
-  const upb_msgdef *m = upb_symtab_lookupmsg(s, luaL_checkstring(L, 2));
+  const upb_MessageDef *m = upb_symtab_lookupmsg(s, luaL_checkstring(L, 2));
   lupb_symtab_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
@@ -927,7 +928,7 @@ void lupb_def_registertypes(lua_State *L) {
   lupb_register_type(L, LUPB_ENUMVALDEF, lupb_enumvaldef_m,  NULL);
   lupb_register_type(L, LUPB_FIELDDEF, lupb_FieldDef_m, NULL);
   lupb_register_type(L, LUPB_FILEDEF,  lupb_filedef_m,  NULL);
-  lupb_register_type(L, LUPB_MSGDEF,   lupb_msgdef_m,   lupb_msgdef_mm);
+  lupb_register_type(L, LUPB_MSGDEF,   lupb_MessageDef_m,   lupb_MessageDef_mm);
   lupb_register_type(L, LUPB_ONEOFDEF, lupb_OneofDef_m, lupb_OneofDef_mm);
   lupb_register_type(L, LUPB_SYMTAB,   lupb_symtab_m,   lupb_symtab_mm);
 

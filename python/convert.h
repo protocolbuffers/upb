@@ -53,7 +53,7 @@ bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_FieldDef *f);
 
 // Returns true if the given messages (of type `m`) are equal.
 bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
-                           const upb_msgdef *m);
+                           const upb_MessageDef *m);
 
 // Returns true if the two arrays (with element type `f`) are equal.
 bool PyUpb_Array_IsEqual(const upb_array *arr1, const upb_array *arr2,

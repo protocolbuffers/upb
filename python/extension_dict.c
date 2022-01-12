@@ -52,8 +52,8 @@ static PyObject* PyUpb_ExtensionDict_FindExtensionByName(PyObject* _self,
                                                          PyObject* key) {
   PyUpb_ExtensionDict* self = (PyUpb_ExtensionDict*)_self;
   const char* name = PyUpb_GetStrData(key);
-  const upb_msgdef* m = PyUpb_CMessage_GetMsgdef(self->msg);
-  const upb_filedef* file = upb_msgdef_file(m);
+  const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(self->msg);
+  const upb_filedef* file = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(file);
   const upb_FieldDef* ext = upb_symtab_lookupext(symtab, name);
   if (ext) {
@@ -66,9 +66,9 @@ static PyObject* PyUpb_ExtensionDict_FindExtensionByName(PyObject* _self,
 static PyObject* PyUpb_ExtensionDict_FindExtensionByNumber(PyObject* _self,
                                                            PyObject* arg) {
   PyUpb_ExtensionDict* self = (PyUpb_ExtensionDict*)_self;
-  const upb_msgdef* m = PyUpb_CMessage_GetMsgdef(self->msg);
-  const upb_msglayout* l = upb_msgdef_layout(m);
-  const upb_filedef* file = upb_msgdef_file(m);
+  const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(self->msg);
+  const upb_msglayout* l = upb_MessageDef_Layout(m);
+  const upb_filedef* file = upb_MessageDef_File(m);
   const upb_symtab* symtab = upb_filedef_symtab(file);
   const upb_extreg* reg = upb_symtab_extreg(symtab);
   int64_t number = PyLong_AsLong(arg);
@@ -192,8 +192,8 @@ PyObject* PyUpb_ExtensionIterator_IterNext(PyObject* _self) {
   PyUpb_ExtensionIterator* self = (PyUpb_ExtensionIterator*)_self;
   upb_msg* msg = PyUpb_CMessage_GetIfReified(self->msg);
   if (!msg) return NULL;
-  const upb_msgdef* m = PyUpb_CMessage_GetMsgdef(self->msg);
-  const upb_symtab* symtab = upb_filedef_symtab(upb_msgdef_file(m));
+  const upb_MessageDef* m = PyUpb_CMessage_GetMsgdef(self->msg);
+  const upb_symtab* symtab = upb_filedef_symtab(upb_MessageDef_File(m));
   while (true) {
     const upb_FieldDef* f;
     upb_msgval val;

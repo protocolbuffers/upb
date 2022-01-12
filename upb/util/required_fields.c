@@ -132,7 +132,7 @@ size_t upb_FieldPath_ToText(upb_FieldPathEntry** path, char* buf, size_t size) {
     ptr++;
 
     if (upb_FieldDef_IsMap(f)) {
-      const upb_FieldDef *key_f = upb_msgdef_field(upb_FieldDef_MessageSubDef(f), 0);
+      const upb_FieldDef *key_f = upb_MessageDef_Field(upb_FieldDef_MessageSubDef(f), 0);
       upb_FieldPath_PutMapKey(&appender, ptr->map_key, key_f);
       ptr++;
     } else if (upb_FieldDef_IsRepeated(f)) {
@@ -198,10 +198,10 @@ static void upb_FindContext_Pop(upb_FindContext* ctx) {
 
 static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
                                         const upb_msg* msg,
-                                        const upb_msgdef* m) {
+                                        const upb_MessageDef* m) {
   // Iterate over all fields to see if any required fields are missing.
-  for (int i = 0, n = upb_msgdef_fieldcount(m); i < n; i++) {
-    const upb_FieldDef* f = upb_msgdef_field(m, i);
+  for (int i = 0, n = upb_MessageDef_FieldCount(m); i < n; i++) {
+    const upb_FieldDef* f = upb_MessageDef_Field(m, i);
     if (upb_FieldDef_Label(f) != UPB_LABEL_REQUIRED) continue;
 
     if (!msg || !upb_msg_has(msg, f)) {
@@ -226,7 +226,7 @@ static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
 
 static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
                                                const upb_msg* msg,
-                                               const upb_msgdef* m) {
+                                               const upb_MessageDef* m) {
   // OPT: add markers in the schema for where we can avoid iterating:
   // 1. messages with no required fields.
   // 2. messages that cannot possibly reach any required fields.
@@ -249,12 +249,12 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
     if (!upb_FieldDef_IsSubMessage(f)) continue;
 
     upb_FindContext_Push(ctx, (upb_FieldPathEntry){.field = f});
-    const upb_msgdef* sub_m = upb_FieldDef_MessageSubDef(f);
+    const upb_MessageDef* sub_m = upb_FieldDef_MessageSubDef(f);
 
     if (upb_FieldDef_IsMap(f)) {
       // Map field.
-      const upb_FieldDef* val_f = upb_msgdef_field(sub_m, 1);
-      const upb_msgdef* val_m = upb_FieldDef_MessageSubDef(val_f);
+      const upb_FieldDef* val_f = upb_MessageDef_Field(sub_m, 1);
+      const upb_MessageDef* val_m = upb_FieldDef_MessageSubDef(val_f);
       if (!val_m) continue;
       const upb_map* map = val.map_val;
       size_t iter = UPB_MAP_BEGIN;
@@ -283,7 +283,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
   }
 }
 
-bool upb_util_HasUnsetRequired(const upb_msg* msg, const upb_msgdef* m,
+bool upb_util_HasUnsetRequired(const upb_msg* msg, const upb_MessageDef* m,
                                const upb_symtab* ext_pool,
                                upb_FieldPathEntry** fields) {
   upb_FindContext ctx;

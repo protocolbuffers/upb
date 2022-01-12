@@ -46,7 +46,7 @@ typedef struct {
   _upb_mapsorter sorter;
 } txtenc;
 
-static void txtenc_msg(txtenc *e, const upb_msg *msg, const upb_msgdef *m);
+static void txtenc_msg(txtenc *e, const upb_msg *msg, const upb_MessageDef *m);
 
 static void txtenc_putbytes(txtenc *e, const void *data, size_t len) {
   size_t have = e->end - e->ptr;
@@ -226,9 +226,9 @@ static void txtenc_array(txtenc *e, const upb_array *arr,
 
 static void txtenc_mapentry(txtenc *e, upb_msgval key, upb_msgval val,
                             const upb_FieldDef *f) {
-  const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-  const upb_FieldDef *key_f = upb_msgdef_field(entry, 0);
-  const upb_FieldDef *val_f = upb_msgdef_field(entry, 1);
+  const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
+  const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
+  const upb_FieldDef *val_f = upb_MessageDef_Field(entry, 1);
   txtenc_indent(e);
   txtenc_printf(e, "%s {", upb_FieldDef_Name(f));
   txtenc_endfield(e);
@@ -264,8 +264,8 @@ static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
       txtenc_mapentry(e, key, val, f);
     }
   } else {
-    const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_FieldDef *key_f = upb_msgdef_field(entry, 0);
+    const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
+    const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
     _upb_sortedmap sorted;
     upb_map_entry ent;
 
@@ -398,7 +398,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
 #undef CHK
 
 static void txtenc_msg(txtenc *e, const upb_msg *msg,
-                       const upb_msgdef *m) {
+                       const upb_MessageDef *m) {
   size_t iter = UPB_MSG_BEGIN;
   const upb_FieldDef *f;
   upb_msgval val;
@@ -437,7 +437,7 @@ size_t txtenc_nullz(txtenc *e, size_t size) {
   return ret;
 }
 
-size_t upb_text_encode(const upb_msg *msg, const upb_msgdef *m,
+size_t upb_text_encode(const upb_msg *msg, const upb_MessageDef *m,
                        const upb_symtab *ext_pool, int options, char *buf,
                        size_t size) {
   txtenc e;
