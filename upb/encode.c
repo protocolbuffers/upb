@@ -240,7 +240,7 @@ static void encode_scalar(upb_encstate *e, const void *_field_mem,
       CASE(int64_t, varint, UPB_WIRE_TYPE_VARINT, encode_zz64(val));
     case UPB_DESCRIPTOR_TYPE_STRING:
     case UPB_DESCRIPTOR_TYPE_BYTES: {
-      upb_strview view = *(upb_strview*)field_mem;
+      upb_StringView view = *(upb_StringView*)field_mem;
       encode_bytes(e, view.data, view.size);
       encode_varint(e, view.size);
       wire_type = UPB_WIRE_TYPE_DELIMITED;
@@ -339,8 +339,8 @@ static void encode_array(upb_encstate *e, const upb_msg *msg,
       VARINT_CASE(int64_t, encode_zz64(*ptr));
     case UPB_DESCRIPTOR_TYPE_STRING:
     case UPB_DESCRIPTOR_TYPE_BYTES: {
-      const upb_strview *start = _upb_array_constptr(arr);
-      const upb_strview *ptr = start + arr->len;
+      const upb_StringView *start = _upb_array_constptr(arr);
+      const upb_StringView *ptr = start + arr->len;
       do {
         ptr--;
         encode_bytes(e, ptr->data, ptr->size);
@@ -424,7 +424,7 @@ static void encode_map(upb_encstate *e, const upb_msg *msg,
     upb_strtable_iter i;
     upb_strtable_begin(&i, &map->table);
     for(; !upb_strtable_done(&i); upb_strtable_next(&i)) {
-      upb_strview key = upb_strtable_iter_key(&i);
+      upb_StringView key = upb_strtable_iter_key(&i);
       const upb_value val = upb_strtable_iter_value(&i);
       upb_map_entry ent;
       _upb_map_fromkey(key, &ent.k, map->key_size);
@@ -457,7 +457,7 @@ static bool encode_shouldencode(upb_encstate *e, const upb_msg *msg,
         return u64 != 0;
       }
       case _UPB_REP_STRVIEW: {
-        const upb_strview *str = (const upb_strview*)mem;
+        const upb_StringView *str = (const upb_StringView*)mem;
         return str->size != 0;
       }
       default:

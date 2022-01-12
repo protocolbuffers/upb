@@ -85,7 +85,7 @@ typedef struct {
 } ctx;
 
 bool parse_proto(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
-  upb_strview proto =
+  upb_StringView proto =
       conformance_ConformanceRequest_protobuf_payload(c->request);
   if (upb_decode(proto.data, proto.size, msg, upb_MessageDef_Layout(m), c->arena) ==
       kUpb_DecodeStatus_Ok) {
@@ -93,7 +93,7 @@ bool parse_proto(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
   } else {
     static const char msg[] = "Parse error";
     conformance_ConformanceResponse_set_parse_error(
-        c->response, upb_strview_make(msg, strlen(msg)));
+        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
     return false;
   }
 }
@@ -103,11 +103,11 @@ void serialize_proto(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) 
   char *data = upb_encode(msg, upb_MessageDef_Layout(m), c->arena, &len);
   if (data) {
     conformance_ConformanceResponse_set_protobuf_payload(
-        c->response, upb_strview_make(data, len));
+        c->response, upb_StringView_FromStringAndSize(data, len));
   } else {
     static const char msg[] = "Error serializing.";
     conformance_ConformanceResponse_set_serialize_error(
-        c->response, upb_strview_make(msg, strlen(msg)));
+        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
   }
 }
 
@@ -126,11 +126,11 @@ void serialize_text(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   len2 = upb_text_encode(msg, m, c->symtab, opts, data, len + 1);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_text_payload(
-      c->response, upb_strview_make(data, len));
+      c->response, upb_StringView_FromStringAndSize(data, len));
 }
 
 bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
-  upb_strview json =
+  upb_StringView json =
       conformance_ConformanceRequest_json_payload(c->request);
   upb_Status status;
   int opts = 0;
@@ -151,7 +151,7 @@ bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_parse_error(c->response,
-                                                    upb_strview_makez(err));
+                                                    upb_StringView_FromStringAndSizez(err));
     return false;
   }
 }
@@ -173,7 +173,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_serialize_error(c->response,
-                                                        upb_strview_makez(err));
+                                                        upb_StringView_FromStringAndSizez(err));
     return;
   }
 
@@ -181,7 +181,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   len2 = upb_json_encode(msg, m, c->symtab, opts, data, len + 1, &status);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_json_payload(
-      c->response, upb_strview_make(data, len));
+      c->response, upb_StringView_FromStringAndSize(data, len));
 }
 
 bool parse_input(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
@@ -196,7 +196,7 @@ bool parse_input(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
     default: {
       static const char msg[] = "Unsupported input format.";
       conformance_ConformanceResponse_set_skipped(
-          c->response, upb_strview_make(msg, strlen(msg)));
+          c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
       return false;
     }
   }
@@ -219,7 +219,7 @@ void write_output(const upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
     default: {
       static const char msg[] = "Unsupported output format.";
       conformance_ConformanceResponse_set_skipped(
-          c->response, upb_strview_make(msg, strlen(msg)));
+          c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
       break;
     }
   }
@@ -227,23 +227,23 @@ void write_output(const upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
 
 void DoTest(const ctx* c) {
   upb_msg *msg;
-  upb_strview name = conformance_ConformanceRequest_message_type(c->request);
+  upb_StringView name = conformance_ConformanceRequest_message_type(c->request);
   const upb_MessageDef *m = upb_DefPool_FindMessageByNameWithSize(c->symtab, name.data, name.size);
 #if 0
   // Handy code for limiting conformance tests to a single input payload.
   // This is a hack since the conformance runner doesn't give an easy way to
   // specify what test should be run.
   const char skip[] = "\343>\010\301\002\344>\230?\001\230?\002\230?\003";
-  upb_strview skip_str = upb_strview_make(skip, sizeof(skip) - 1);
-  upb_strview pb_payload =
+  upb_StringView skip_str = upb_StringView_FromStringAndSize(skip, sizeof(skip) - 1);
+  upb_StringView pb_payload =
       conformance_ConformanceRequest_protobuf_payload(c->request);
-  if (!upb_strview_eql(pb_payload, skip_str)) m = NULL;
+  if (!upb_StringView_IsEqual(pb_payload, skip_str)) m = NULL;
 #endif
 
   if (!m) {
     static const char msg[] = "Unknown message type.";
     conformance_ConformanceResponse_set_skipped(
-        c->response, upb_strview_make(msg, strlen(msg)));
+        c->response, upb_StringView_FromStringAndSize(msg, strlen(msg)));
     return;
   }
 

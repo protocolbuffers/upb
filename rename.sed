@@ -231,3 +231,12 @@ s/upb_status_vseterrf/upb_Status_VSetErrorFormat/g;
 s/upb_status_vappenderrf/upb_Status_VAppendErrorFormat/g;
 s/upb_status/upb_Status/g;
 s/UPB_STATUS_MAX_MESSAGE/_kUpb_Status_MaxMessage/g;
+
+s/upb_strview_make/upb_StringView_FromStringAndSize/g;
+s/upb_strview_makez/upb_StringView_FromCString/g;
+s/upb_strview_eql/upb_StringView_IsEqual/g;
+s/upb_strview/upb_StringView/g;
+
+s/UPB_STRVIEW_INIT/UPB_STRINGVIEW_INIT/g;
+s/UPB_STRVIEW_FORMAT/UPB_STRINGVIEW_FORMAT/g;
+s/UPB_STRVIEW_ARGS/UPB_STRINGVIEW_ARGS/g;

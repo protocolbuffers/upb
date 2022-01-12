@@ -41,10 +41,10 @@ const char test_str2[] = "12345678910";
 const char test_str3[] = "rstlnezxcvbnm";
 const char test_str4[] = "just another test string";
 
-const upb_strview test_str_view = {test_str, sizeof(test_str) - 1};
-const upb_strview test_str_view2 = {test_str2, sizeof(test_str2) - 1};
-const upb_strview test_str_view3 = {test_str3, sizeof(test_str3) - 1};
-const upb_strview test_str_view4 = {test_str4, sizeof(test_str4) - 1};
+const upb_StringView test_str_view = {test_str, sizeof(test_str) - 1};
+const upb_StringView test_str_view2 = {test_str2, sizeof(test_str2) - 1};
+const upb_StringView test_str_view3 = {test_str3, sizeof(test_str3) - 1};
+const upb_StringView test_str_view4 = {test_str4, sizeof(test_str4) - 1};
 
 const int32_t test_int32 = 10;
 const int32_t test_int32_2 = -20;
@@ -56,8 +56,8 @@ static void test_scalars(void) {
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg2;
-  upb_strview serialized;
-  upb_strview val;
+  upb_StringView serialized;
+  upb_StringView val;
 
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_int32(msg, 10);
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_int64(msg, 20);
@@ -90,16 +90,16 @@ static void test_scalars(void) {
   ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_optional_bool(
              msg2) == 1);
   val = protobuf_test_messages_proto3_TestAllTypesProto3_optional_string(msg2);
-  ASSERT(upb_strview_eql(val, test_str_view));
+  ASSERT(upb_StringView_IsEqual(val, test_str_view));
 
   upb_arena_free(arena);
 }
 
 static void test_utf8(void) {
   const char invalid_utf8[] = "\xff";
-  const upb_strview invalid_utf8_view = upb_strview_make(invalid_utf8, 1);
+  const upb_StringView invalid_utf8_view = upb_StringView_FromStringAndSize(invalid_utf8, 1);
   upb_arena *arena = upb_arena_new();
-  upb_strview serialized;
+  upb_StringView serialized;
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg2;
@@ -134,14 +134,14 @@ static void check_string_map_one_entry(
   const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry
       *const_ent;
   size_t iter;
-  upb_strview str;
+  upb_StringView str;
 
   ASSERT(
       protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_size(
           msg) == 1);
   ASSERT(protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_get(
       msg, test_str_view, &str));
-  ASSERT(upb_strview_eql(str, test_str_view2));
+  ASSERT(upb_StringView_IsEqual(str, test_str_view2));
 
   ASSERT(
       !protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_get(
@@ -152,11 +152,11 @@ static void check_string_map_one_entry(
   const_ent = protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
       msg, &iter);
   ASSERT(const_ent);
-  ASSERT(upb_strview_eql(
+  ASSERT(upb_StringView_IsEqual(
       test_str_view,
       protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry_key(
           const_ent)));
-  ASSERT(upb_strview_eql(
+  ASSERT(upb_StringView_IsEqual(
       test_str_view2,
       protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry_value(
           const_ent)));
@@ -168,7 +168,7 @@ static void check_string_map_one_entry(
 
 static void test_string_double_map(void) {
   upb_arena *arena = upb_arena_new();
-  upb_strview serialized;
+  upb_StringView serialized;
   upb_test_MapTest *msg = upb_test_MapTest_new(arena);
   upb_test_MapTest *msg2;
   double val;
@@ -234,19 +234,19 @@ static void test_string_map(void) {
       (const_ent =
            protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_next(
                msg, &iter)) != NULL) {
-    upb_strview key =
+    upb_StringView key =
         protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry_key(
             const_ent);
-    upb_strview val =
+    upb_StringView val =
         protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry_value(
             const_ent);
 
     count++;
-    if (upb_strview_eql(key, test_str_view)) {
-      ASSERT(upb_strview_eql(val, test_str_view2));
+    if (upb_StringView_IsEqual(key, test_str_view)) {
+      ASSERT(upb_StringView_IsEqual(val, test_str_view2));
     } else {
-      ASSERT(upb_strview_eql(key, test_str_view3));
-      ASSERT(upb_strview_eql(val, test_str_view4));
+      ASSERT(upb_StringView_IsEqual(key, test_str_view3));
+      ASSERT(upb_StringView_IsEqual(val, test_str_view4));
     }
   }
 
@@ -503,7 +503,7 @@ void test_arena_decode(void) {
   // Tests against a bug that previously existed when passing an arena to
   // upb_decode().
   char large_string[1024] = {0};
-  upb_strview large_string_view = {large_string, sizeof(large_string)};
+  upb_StringView large_string_view = {large_string, sizeof(large_string)};
   upb_arena *tmp = upb_arena_new();
 
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
@@ -512,7 +512,7 @@ void test_arena_decode(void) {
   protobuf_test_messages_proto3_TestAllTypesProto3_set_optional_bytes(
       msg, large_string_view);
 
-  upb_strview serialized;
+  upb_StringView serialized;
   serialized.data = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
       msg, tmp, &serialized.size);
 

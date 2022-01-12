@@ -67,32 +67,32 @@ void upb_Status_VSetErrorFormat(upb_Status *status, const char *fmt, va_list arg
 void upb_Status_VAppendErrorFormat(upb_Status *status, const char *fmt, va_list args)
     UPB_PRINTF(2, 0);
 
-/** upb_strview ************************************************************/
+/** upb_StringView ************************************************************/
 
 typedef struct {
   const char *data;
   size_t size;
-} upb_strview;
+} upb_StringView;
 
-UPB_INLINE upb_strview upb_strview_make(const char *data, size_t size) {
-  upb_strview ret;
+UPB_INLINE upb_StringView upb_StringView_FromStringAndSize(const char *data, size_t size) {
+  upb_StringView ret;
   ret.data = data;
   ret.size = size;
   return ret;
 }
 
-UPB_INLINE upb_strview upb_strview_makez(const char *data) {
-  return upb_strview_make(data, strlen(data));
+UPB_INLINE upb_StringView upb_StringView_FromStringAndSizez(const char *data) {
+  return upb_StringView_FromStringAndSize(data, strlen(data));
 }
 
-UPB_INLINE bool upb_strview_eql(upb_strview a, upb_strview b) {
+UPB_INLINE bool upb_StringView_IsEqual(upb_StringView a, upb_StringView b) {
   return a.size == b.size && memcmp(a.data, b.data, a.size) == 0;
 }
 
-#define UPB_STRVIEW_INIT(ptr, len) {ptr, len}
+#define UPB_STRINGVIEW_INIT(ptr, len) {ptr, len}
 
-#define UPB_STRVIEW_FORMAT "%.*s"
-#define UPB_STRVIEW_ARGS(view) (int)(view).size, (view).data
+#define UPB_STRINGVIEW_FORMAT "%.*s"
+#define UPB_STRINGVIEW_ARGS(view) (int)(view).size, (view).data
 
 /** upb_alloc *****************************************************************/
 

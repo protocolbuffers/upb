@@ -59,28 +59,28 @@ typedef struct {
     google_protobuf_##desc_type##_set_options(proto, dst);                  \
   }
 
-static upb_strview strviewdup2(upb_ToProto_Context *ctx, upb_strview str) {
+static upb_StringView strviewdup2(upb_ToProto_Context *ctx, upb_StringView str) {
   char *p = upb_arena_malloc(ctx->arena, str.size);
   CHK_OOM(p);
   memcpy(p, str.data, str.size);
-  return (upb_strview){.data = p, .size = str.size};
+  return (upb_StringView){.data = p, .size = str.size};
 }
 
-static upb_strview strviewdup(upb_ToProto_Context *ctx, const char *s) {
-  return strviewdup2(ctx, (upb_strview){.data = s, .size = strlen(s)});
+static upb_StringView strviewdup(upb_ToProto_Context *ctx, const char *s) {
+  return strviewdup2(ctx, (upb_StringView){.data = s, .size = strlen(s)});
 }
 
-static upb_strview qual_dup(upb_ToProto_Context *ctx, const char *s) {
+static upb_StringView qual_dup(upb_ToProto_Context *ctx, const char *s) {
   size_t n = strlen(s);
   char *p = upb_arena_malloc(ctx->arena, n + 1);
   CHK_OOM(p);
   p[0] = '.';
   memcpy(p + 1, s, n);
-  return (upb_strview){.data = p, .size = n + 1};
+  return (upb_StringView){.data = p, .size = n + 1};
 }
 
 UPB_PRINTF(2, 3)
-static upb_strview printf_dup(upb_ToProto_Context *ctx, const char *fmt, ...) {
+static upb_StringView printf_dup(upb_ToProto_Context *ctx, const char *fmt, ...) {
   const size_t max = 32;
   char *p = upb_arena_malloc(ctx->arena, max);
   CHK_OOM(p);
@@ -89,14 +89,14 @@ static upb_strview printf_dup(upb_ToProto_Context *ctx, const char *fmt, ...) {
   size_t n = vsnprintf(p, max, fmt, args);
   va_end(args);
   UPB_ASSERT(n < max);
-  return (upb_strview){.data = p, .size = n};
+  return (upb_StringView){.data = p, .size = n};
 }
 
 static bool upb_isprint(char ch) {
   return ch >= 0x20 && ch <= 0x7f;
 }
 
-static upb_strview default_bytes(upb_ToProto_Context* ctx, upb_strview val) {
+static upb_StringView default_bytes(upb_ToProto_Context* ctx, upb_StringView val) {
   size_t n = 0;
   for (size_t i = 0; i < val.size; i++) {
     n += upb_isprint(val.data[i]) ? 1 : 4;  // '\123'
@@ -117,10 +117,10 @@ static upb_strview default_bytes(upb_ToProto_Context* ctx, upb_strview val) {
       *dst++ = '0' + (ch & 0x7);
     }
   }
-  return (upb_strview){.data = p, .size = n};
+  return (upb_StringView){.data = p, .size = n};
 }
 
-static upb_strview default_string(upb_ToProto_Context *ctx,
+static upb_StringView default_string(upb_ToProto_Context *ctx,
                                   const upb_FieldDef *f) {
   upb_msgval d = upb_FieldDef_Default(f);
   switch (upb_FieldDef_CType(f)) {
@@ -436,7 +436,7 @@ static google_protobuf_FileDescriptorProto *filedef_toproto(
 
   size_t n;
   n = upb_FileDef_DependencyCount(f);
-  upb_strview *deps = google_protobuf_FileDescriptorProto_resize_dependency(
+  upb_StringView *deps = google_protobuf_FileDescriptorProto_resize_dependency(
       proto, n, ctx->arena);
   for (int i = 0; i < n; i++) {
     deps[i] = strviewdup(ctx, upb_FileDef_Name(upb_FileDef_Dependency(f, i)));

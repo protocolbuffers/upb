@@ -651,13 +651,13 @@ TAGBYTES(p)
 typedef const char *fastdecode_copystr_func(struct upb_decstate *d,
                                             const char *ptr, upb_msg *msg,
                                             const upb_msglayout *table,
-                                            uint64_t hasbits, upb_strview *dst);
+                                            uint64_t hasbits, upb_StringView *dst);
 
 UPB_NOINLINE
 static const char *fastdecode_verifyutf8(upb_decstate *d, const char *ptr,
                                          upb_msg *msg, intptr_t table,
                                          uint64_t hasbits, uint64_t data) {
-  upb_strview *dst = (upb_strview*)data;
+  upb_StringView *dst = (upb_StringView*)data;
   if (!decode_verifyutf8_inl(dst->data, dst->size)) {
     return fastdecode_err(d, kUpb_DecodeStatus_BadUtf8);
   }
@@ -702,7 +702,7 @@ static const char *fastdecode_longstring_utf8(struct upb_decstate *d,
                                               const char *ptr, upb_msg *msg,
                                               intptr_t table, uint64_t hasbits,
                                               uint64_t data) {
-  upb_strview *dst = (upb_strview*)data;
+  upb_StringView *dst = (upb_StringView*)data;
   FASTDECODE_LONGSTRING(d, ptr, msg, table, hasbits, dst, true);
 }
 
@@ -712,13 +712,13 @@ static const char *fastdecode_longstring_noutf8(struct upb_decstate *d,
                                                 intptr_t table,
                                                 uint64_t hasbits,
                                                 uint64_t data) {
-  upb_strview *dst = (upb_strview*)data;
+  upb_StringView *dst = (upb_StringView*)data;
   FASTDECODE_LONGSTRING(d, ptr, msg, table, hasbits, dst, false);
 }
 
 UPB_FORCEINLINE
 static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
-                              int copy, char *data, upb_strview *dst) {
+                              int copy, char *data, upb_StringView *dst) {
   d->arena.head.ptr += copy;
   dst->data = data;
   UPB_UNPOISON_MEMORY_REGION(data, copy);
@@ -728,7 +728,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
 
 #define FASTDECODE_COPYSTRING(d, ptr, msg, table, hasbits, data, tagbytes,     \
                               card, validate_utf8)                             \
-  upb_strview *dst;                                                            \
+  upb_StringView *dst;                                                            \
   fastdecode_arr farr;                                                         \
   int64_t size;                                                                \
   size_t arena_has;                                                            \
@@ -739,11 +739,11 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
   UPB_ASSERT(fastdecode_checktag(data, tagbytes));                             \
                                                                                \
   dst = fastdecode_getfield(d, ptr, msg, &data, &hasbits, &farr,               \
-                            sizeof(upb_strview), card);                        \
+                            sizeof(upb_StringView), card);                        \
                                                                                \
   again:                                                                       \
   if (card == CARD_r) {                                                        \
-    dst = fastdecode_resizearr(d, dst, &farr, sizeof(upb_strview));            \
+    dst = fastdecode_resizearr(d, dst, &farr, sizeof(upb_StringView));            \
   }                                                                            \
                                                                                \
   size = (uint8_t)ptr[tagbytes];                                               \
@@ -779,7 +779,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
       return fastdecode_err(d, kUpb_DecodeStatus_BadUtf8);                     \
     }                                                                          \
     fastdecode_nextret ret = fastdecode_nextrepeated(                          \
-        d, dst, &ptr, &farr, data, tagbytes, sizeof(upb_strview));             \
+        d, dst, &ptr, &farr, data, tagbytes, sizeof(upb_StringView));             \
     switch (ret.next) {                                                        \
       case FD_NEXT_SAMEFIELD:                                                  \
         dst = ret.dst;                                                         \
@@ -801,7 +801,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
                                                                                \
   longstr:                                                                     \
   if (card == CARD_r) {                                                        \
-    fastdecode_commitarr(dst + 1, &farr, sizeof(upb_strview));                 \
+    fastdecode_commitarr(dst + 1, &farr, sizeof(upb_StringView));                 \
   }                                                                            \
   ptr--;                                                                       \
   if (validate_utf8) {                                                         \
@@ -814,7 +814,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
 
 #define FASTDECODE_STRING(d, ptr, msg, table, hasbits, data, tagbytes, card,   \
                           copyfunc, validate_utf8)                             \
-  upb_strview *dst;                                                            \
+  upb_StringView *dst;                                                            \
   fastdecode_arr farr;                                                         \
   int64_t size;                                                                \
                                                                                \
@@ -827,11 +827,11 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
   }                                                                            \
                                                                                \
   dst = fastdecode_getfield(d, ptr, msg, &data, &hasbits, &farr,               \
-                            sizeof(upb_strview), card);                        \
+                            sizeof(upb_StringView), card);                        \
                                                                                \
   again:                                                                       \
   if (card == CARD_r) {                                                        \
-    dst = fastdecode_resizearr(d, dst, &farr, sizeof(upb_strview));            \
+    dst = fastdecode_resizearr(d, dst, &farr, sizeof(upb_StringView));            \
   }                                                                            \
                                                                                \
   size = (int8_t)ptr[tagbytes];                                                \
@@ -857,7 +857,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
       return fastdecode_err(d, kUpb_DecodeStatus_BadUtf8);                     \
     }                                                                          \
     fastdecode_nextret ret = fastdecode_nextrepeated(                          \
-        d, dst, &ptr, &farr, data, tagbytes, sizeof(upb_strview));             \
+        d, dst, &ptr, &farr, data, tagbytes, sizeof(upb_StringView));             \
     switch (ret.next) {                                                        \
       case FD_NEXT_SAMEFIELD:                                                  \
         dst = ret.dst;                                                         \
@@ -865,7 +865,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
           /* Buffer flipped and we can't alias any more. Bounce to */          \
           /* copyfunc(), but via dispatch since we need to reload table */     \
           /* data also. */                                                     \
-          fastdecode_commitarr(dst, &farr, sizeof(upb_strview));               \
+          fastdecode_commitarr(dst, &farr, sizeof(upb_StringView));               \
           data = ret.tag;                                                      \
           UPB_MUSTTAIL return fastdecode_tagdispatch(UPB_PARSE_ARGS);          \
         }                                                                      \

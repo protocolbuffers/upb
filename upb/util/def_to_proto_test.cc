@@ -116,7 +116,7 @@ void CheckFile(const upb::FileDefPtr file,
 TEST(DefToProto, Test) {
   upb::Arena arena;
   upb::SymbolTable symtab;
-  upb_strview test_file_desc =
+  upb_StringView test_file_desc =
       upb_util_def_to_proto_test_proto_upbdefinit.descriptor;
   const auto* file_desc = google_protobuf_FileDescriptorProto_parse(
       test_file_desc.data, test_file_desc.size, arena.ptr());

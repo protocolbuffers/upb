@@ -111,7 +111,7 @@ static void txtenc_enum(int32_t val, const upb_FieldDef *f, txtenc *e) {
   }
 }
 
-static void txtenc_string(txtenc *e, upb_strview str, bool bytes) {
+static void txtenc_string(txtenc *e, upb_StringView str, bool bytes) {
   const char *ptr = str.data;
   const char *end = ptr + str.size;
   txtenc_putstr(e, "\"");
@@ -368,7 +368,7 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
           txtenc_putstr(e, "}");
         } else {
           /* Didn't work out, print as raw bytes. */
-          upb_strview str;
+          upb_StringView str;
           e->indent_depth--;
           e->ptr = start;
           e->overflow = start_overflow;

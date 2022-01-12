@@ -41,7 +41,7 @@ typedef struct {
     uint64_t varint;
     uint64_t uint64;
     uint32_t uint32;
-    upb_strview delimited;
+    upb_StringView delimited;
     upb_UnknownFields* group;
   } data;
 } upb_UnknownField;
@@ -245,7 +245,7 @@ static bool upb_UnknownFields_IsEqual(const upb_UnknownFields *uf1,
         if (f1->data.uint32 != f2->data.uint32) return false;
         break;
       case UPB_WIRE_TYPE_DELIMITED:
-        if (!upb_strview_eql(f1->data.delimited, f2->data.delimited)) {
+        if (!upb_StringView_IsEqual(f1->data.delimited, f2->data.delimited)) {
           return false;
         }
         break;

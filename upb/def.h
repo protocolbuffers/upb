@@ -370,7 +370,7 @@ typedef struct _upb_DefPool_Init {
   struct _upb_DefPool_Init **deps;     /* Dependencies of this file. */
   const upb_msglayout_file *layout;
   const char *filename;
-  upb_strview descriptor;         /* Serialized descriptor. */
+  upb_StringView descriptor;         /* Serialized descriptor. */
 } _upb_DefPool_Init;
 
 bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init);

@@ -313,7 +313,7 @@ const char *decode_isdonefallback(upb_decstate *d, const char *ptr,
 }
 
 static const char *decode_readstr(upb_decstate *d, const char *ptr, int size,
-                                  upb_strview *str) {
+                                  upb_StringView *str) {
   if (d->options & kUpb_DecodeOption_AliasString) {
     str->data = ptr;
   } else {
@@ -558,7 +558,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
       /* Fallthrough. */
     case OP_BYTES: {
       /* Append bytes. */
-      upb_strview *str = (upb_strview*)_upb_array_ptr(arr) + arr->len;
+      upb_StringView *str = (upb_StringView*)_upb_array_ptr(arr) + arr->len;
       arr->len++;
       return decode_readstr(d, ptr, val->size, str);
     }
@@ -608,7 +608,7 @@ static const char *decode_tomap(upb_decstate *d, const char *ptr, upb_msg *msg,
     char key_size = desctype_to_mapsize[key_field->descriptortype];
     char val_size = desctype_to_mapsize[val_field->descriptortype];
     UPB_ASSERT(key_field->offset == 0);
-    UPB_ASSERT(val_field->offset == sizeof(upb_strview));
+    UPB_ASSERT(val_field->offset == sizeof(upb_StringView));
     map = _upb_map_new(&d->arena, key_size, val_size);
     *map_p = map;
   }

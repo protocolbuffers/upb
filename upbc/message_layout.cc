@@ -67,7 +67,7 @@ MessageLayout::SizeAndAlign MessageLayout::SizeOfUnwrapped(
     case protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       return {{4, 8}, {4, 8}};  // Pointer to message.
     case protobuf::FieldDescriptor::CPPTYPE_STRING:
-      return {{8, 16}, {4, 8}};  // upb_strview
+      return {{8, 16}, {4, 8}};  // upb_StringView
     case protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return {{1, 1}, {1, 1}};
     case protobuf::FieldDescriptor::CPPTYPE_FLOAT:
@@ -138,7 +138,7 @@ void MessageLayout::ComputeLayout(const protobuf::Descriptor* descriptor) {
     // Map entries aren't actually stored, they are only used during parsing.
     // For parsing, it helps a lot if all map entry messages have the same
     // layout.
-    SizeAndAlign size{{8, 16}, {4, 8}};  // upb_strview
+    SizeAndAlign size{{8, 16}, {4, 8}};  // upb_StringView
     field_offsets_[descriptor->FindFieldByNumber(1)] = Place(size);
     field_offsets_[descriptor->FindFieldByNumber(2)] = Place(size);
   } else {

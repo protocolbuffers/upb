@@ -142,7 +142,7 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   output("  deps,\n");
   output("  &$0,\n", FileLayoutName(file));
   output("  \"$0\",\n", file->name());
-  output("  UPB_STRVIEW_INIT(descriptor, $0)\n", file_data.size());
+  output("  UPB_STRINGVIEW_INIT(descriptor, $0)\n", file_data.size());
   output("};\n");
 }
 

@@ -213,7 +213,7 @@ static void jsonenc_enum(int32_t val, const upb_FieldDef *f, jsonenc *e) {
   }
 }
 
-static void jsonenc_bytes(jsonenc *e, upb_strview str) {
+static void jsonenc_bytes(jsonenc *e, upb_StringView str) {
   /* This is the regular base64, not the "web-safe" version. */
   static const char base64[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -252,7 +252,7 @@ static void jsonenc_bytes(jsonenc *e, upb_strview str) {
   jsonenc_putstr(e, "\"");
 }
 
-static void jsonenc_stringbody(jsonenc *e, upb_strview str) {
+static void jsonenc_stringbody(jsonenc *e, upb_StringView str) {
   const char *ptr = str.data;
   const char *end = UPB_PTRADD(ptr, str.size);
 
@@ -293,7 +293,7 @@ static void jsonenc_stringbody(jsonenc *e, upb_strview str) {
   }
 }
 
-static void jsonenc_string(jsonenc *e, upb_strview str) {
+static void jsonenc_string(jsonenc *e, upb_StringView str) {
   jsonenc_putstr(e, "\"");
   jsonenc_stringbody(e, str);
   jsonenc_putstr(e, "\"");
@@ -328,7 +328,7 @@ static void jsonenc_wrapper(jsonenc *e, const upb_msg *msg,
   jsonenc_scalar(e, val, val_f);
 }
 
-static const upb_MessageDef *jsonenc_getanymsg(jsonenc *e, upb_strview type_url) {
+static const upb_MessageDef *jsonenc_getanymsg(jsonenc *e, upb_StringView type_url) {
   /* Find last '/', if any. */
   const char *end = type_url.data + type_url.size;
   const char *ptr = end;
@@ -361,14 +361,14 @@ static const upb_MessageDef *jsonenc_getanymsg(jsonenc *e, upb_strview type_url)
 
 badurl:
   jsonenc_errf(
-      e, "Bad type URL: " UPB_STRVIEW_FORMAT, UPB_STRVIEW_ARGS(type_url));
+      e, "Bad type URL: " UPB_STRINGVIEW_FORMAT, UPB_STRINGVIEW_ARGS(type_url));
 }
 
 static void jsonenc_any(jsonenc *e, const upb_msg *msg, const upb_MessageDef *m) {
   const upb_FieldDef *type_url_f = upb_MessageDef_FindFieldByNumberWithSize(m, 1);
   const upb_FieldDef *value_f = upb_MessageDef_FindFieldByNumberWithSize(m, 2);
-  upb_strview type_url = upb_msg_get(msg, type_url_f).str_val;
-  upb_strview value = upb_msg_get(msg, value_f).str_val;
+  upb_StringView type_url = upb_msg_get(msg, type_url_f).str_val;
+  upb_StringView value = upb_msg_get(msg, value_f).str_val;
   const upb_MessageDef *any_m = jsonenc_getanymsg(e, type_url);
   const upb_msglayout *any_layout = upb_MessageDef_Layout(any_m);
   upb_arena *arena = jsonenc_arena(e);
@@ -402,7 +402,7 @@ static void jsonenc_putsep(jsonenc *e, const char *str, bool *first) {
   }
 }
 
-static void jsonenc_fieldpath(jsonenc *e, upb_strview path) {
+static void jsonenc_fieldpath(jsonenc *e, upb_StringView path) {
   const char *ptr = path.data;
   const char *end = ptr + path.size;
 

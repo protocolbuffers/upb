@@ -49,7 +49,7 @@ typedef union {
   const upb_map* map_val;
   const upb_msg* msg_val;
   const upb_array* array_val;
-  upb_strview str_val;
+  upb_StringView str_val;
 } upb_msgval;
 
 typedef union {

@@ -307,7 +307,7 @@ bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
 typedef struct {
   const upb_msglayout_ext *ext;
   union {
-    upb_strview str;
+    upb_StringView str;
     void *ptr;
     char scalar_data[8];
   } data;
@@ -567,11 +567,11 @@ typedef struct {
 typedef struct {
   upb_msg_internal internal;
   union {
-    upb_strview str;  /* For str/bytes. */
+    upb_StringView str;  /* For str/bytes. */
     upb_value val;    /* For all other types. */
   } k;
   union {
-    upb_strview str;  /* For str/bytes. */
+    upb_StringView str;  /* For str/bytes. */
     upb_value val;    /* For all other types. */
   } v;
 } upb_map_entry;
@@ -588,15 +588,15 @@ upb_map *_upb_map_new(upb_arena *a, size_t key_size, size_t value_size);
  * from other types when stored in a map.
  */
 
-UPB_INLINE upb_strview _upb_map_tokey(const void *key, size_t size) {
+UPB_INLINE upb_StringView _upb_map_tokey(const void *key, size_t size) {
   if (size == UPB_MAPTYPE_STRING) {
-    return *(upb_strview*)key;
+    return *(upb_StringView*)key;
   } else {
-    return upb_strview_make((const char*)key, size);
+    return upb_StringView_FromStringAndSize((const char*)key, size);
   }
 }
 
-UPB_INLINE void _upb_map_fromkey(upb_strview key, void* out, size_t size) {
+UPB_INLINE void _upb_map_fromkey(upb_StringView key, void* out, size_t size) {
   if (size == UPB_MAPTYPE_STRING) {
     memcpy(out, &key, sizeof(key));
   } else {
@@ -607,9 +607,9 @@ UPB_INLINE void _upb_map_fromkey(upb_strview key, void* out, size_t size) {
 UPB_INLINE bool _upb_map_tovalue(const void *val, size_t size, upb_value *msgval,
                                  upb_arena *a) {
   if (size == UPB_MAPTYPE_STRING) {
-    upb_strview *strp = (upb_strview*)upb_arena_malloc(a, sizeof(*strp));
+    upb_StringView *strp = (upb_StringView*)upb_arena_malloc(a, sizeof(*strp));
     if (!strp) return false;
-    *strp = *(upb_strview*)val;
+    *strp = *(upb_StringView*)val;
     *msgval = upb_value_ptr(strp);
   } else {
     memcpy(msgval, val, size);
@@ -619,8 +619,8 @@ UPB_INLINE bool _upb_map_tovalue(const void *val, size_t size, upb_value *msgval
 
 UPB_INLINE void _upb_map_fromvalue(upb_value val, void* out, size_t size) {
   if (size == UPB_MAPTYPE_STRING) {
-    const upb_strview *strp = (const upb_strview*)upb_value_getptr(val);
-    memcpy(out, strp, sizeof(upb_strview));
+    const upb_StringView *strp = (const upb_StringView*)upb_value_getptr(val);
+    memcpy(out, strp, sizeof(upb_StringView));
   } else {
     memcpy(out, &val, size);
   }
@@ -635,7 +635,7 @@ UPB_INLINE size_t _upb_map_size(const upb_map *map) {
 UPB_INLINE bool _upb_map_get(const upb_map *map, const void *key,
                              size_t key_size, void *val, size_t val_size) {
   upb_value tabval;
-  upb_strview k = _upb_map_tokey(key, key_size);
+  upb_StringView k = _upb_map_tokey(key, key_size);
   bool ret = upb_strtable_lookup2(&map->table, k.data, k.size, &tabval);
   if (ret && val) {
     _upb_map_fromvalue(tabval, val, val_size);
@@ -655,7 +655,7 @@ UPB_INLINE void* _upb_map_next(const upb_map *map, size_t *iter) {
 
 UPB_INLINE bool _upb_map_set(upb_map *map, const void *key, size_t key_size,
                              void *val, size_t val_size, upb_arena *a) {
-  upb_strview strkey = _upb_map_tokey(key, key_size);
+  upb_StringView strkey = _upb_map_tokey(key, key_size);
   upb_value tabval = {0};
   if (!_upb_map_tovalue(val, val_size, &tabval, a)) return false;
 
@@ -665,7 +665,7 @@ UPB_INLINE bool _upb_map_set(upb_map *map, const void *key, size_t key_size,
 }
 
 UPB_INLINE bool _upb_map_delete(upb_map *map, const void *key, size_t key_size) {
-  upb_strview k = _upb_map_tokey(key, key_size);
+  upb_StringView k = _upb_map_tokey(key, key_size);
   return upb_strtable_remove2(&map->table, k.data, k.size, NULL);
 }
 
@@ -723,7 +723,7 @@ UPB_INLINE void _upb_msg_map_clear(upb_msg *msg, size_t ofs) {
 UPB_INLINE void _upb_msg_map_key(const void* msg, void* key, size_t size) {
   const upb_tabent *ent = (const upb_tabent*)msg;
   uint32_t u32len;
-  upb_strview k;
+  upb_StringView k;
   k.data = upb_tabstr(ent->key, &u32len);
   k.size = u32len;
   _upb_map_fromkey(k, key, size);
@@ -738,9 +738,9 @@ UPB_INLINE void _upb_msg_map_value(const void* msg, void* val, size_t size) {
 UPB_INLINE void _upb_msg_map_set_value(void* msg, const void* val, size_t size) {
   upb_tabent *ent = (upb_tabent*)msg;
   /* This is like _upb_map_tovalue() except the entry already exists so we can
-   * reuse the allocated upb_strview for string fields. */
+   * reuse the allocated upb_StringView for string fields. */
   if (size == UPB_MAPTYPE_STRING) {
-    upb_strview *strp = (upb_strview*)(uintptr_t)ent->val.val;
+    upb_StringView *strp = (upb_StringView*)(uintptr_t)ent->val.val;
     memcpy(strp, val, sizeof(*strp));
   } else {
     memcpy(&ent->val.val, val, size);
@@ -787,7 +787,7 @@ UPB_INLINE bool _upb_sortedmap_next(_upb_mapsorter *s, const upb_map *map,
                                     upb_map_entry *ent) {
   if (sorted->pos == sorted->end) return false;
   const upb_tabent *tabent = s->entries[sorted->pos++];
-  upb_strview key = upb_tabstrview(tabent->key);
+  upb_StringView key = upb_tabstrview(tabent->key);
   _upb_map_fromkey(key, &ent->k, map->key_size);
   upb_value val = {tabent->val.val};
   _upb_map_fromvalue(val, &ent->v, map->val_size);

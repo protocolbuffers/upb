@@ -145,8 +145,8 @@ UPB_INLINE char *upb_tabstr(upb_tabkey key, uint32_t *len) {
   return mem + sizeof(*len);
 }
 
-UPB_INLINE upb_strview upb_tabstrview(upb_tabkey key) {
-  upb_strview ret;
+UPB_INLINE upb_StringView upb_tabstrview(upb_tabkey key) {
+  upb_StringView ret;
   uint32_t len;
   ret.data = upb_tabstr(key, &len);
   ret.size = len;
@@ -287,7 +287,7 @@ void upb_inttable_removeiter(upb_inttable *t, intptr_t *iter);
 /* Iteration over strtable.
  *
  *   intptr_t iter = UPB_INTTABLE_BEGIN;
- *   upb_strview key;
+ *   upb_StringView key;
  *   upb_value val;
  *   while (upb_strtable_next2(t, &key, &val, &iter)) {
  *      // ...
@@ -296,7 +296,7 @@ void upb_inttable_removeiter(upb_inttable *t, intptr_t *iter);
 
 #define UPB_STRTABLE_BEGIN -1
 
-bool upb_strtable_next2(const upb_strtable *t, upb_strview *key, upb_value *val,
+bool upb_strtable_next2(const upb_strtable *t, upb_StringView *key, upb_value *val,
                         intptr_t *iter);
 void upb_strtable_removeiter(upb_strtable *t, intptr_t *iter);
 
@@ -343,7 +343,7 @@ typedef struct {
 void upb_strtable_begin(upb_strtable_iter *i, const upb_strtable *t);
 void upb_strtable_next(upb_strtable_iter *i);
 bool upb_strtable_done(const upb_strtable_iter *i);
-upb_strview upb_strtable_iter_key(const upb_strtable_iter *i);
+upb_StringView upb_strtable_iter_key(const upb_strtable_iter *i);
 upb_value upb_strtable_iter_value(const upb_strtable_iter *i);
 void upb_strtable_iter_setdone(upb_strtable_iter *i);
 bool upb_strtable_iter_isequal(const upb_strtable_iter *i1,

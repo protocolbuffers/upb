@@ -44,10 +44,10 @@ static size_t get_field_size(const upb_msglayout_field *f) {
     8, /* UPB_DESCRIPTOR_TYPE_FIXED64 */
     4, /* UPB_DESCRIPTOR_TYPE_FIXED32 */
     1, /* UPB_DESCRIPTOR_TYPE_BOOL */
-    sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_STRING */
+    sizeof(upb_StringView), /* UPB_DESCRIPTOR_TYPE_STRING */
     sizeof(void*), /* UPB_DESCRIPTOR_TYPE_GROUP */
     sizeof(void*), /* UPB_DESCRIPTOR_TYPE_MESSAGE */
-    sizeof(upb_strview), /* UPB_DESCRIPTOR_TYPE_BYTES */
+    sizeof(upb_StringView), /* UPB_DESCRIPTOR_TYPE_BYTES */
     4, /* UPB_DESCRIPTOR_TYPE_UINT32 */
     4, /* UPB_DESCRIPTOR_TYPE_ENUM */
     4, /* UPB_DESCRIPTOR_TYPE_SFIXED32 */

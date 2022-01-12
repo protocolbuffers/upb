@@ -165,7 +165,7 @@ bool PyUpb_DescriptorPool_CheckNoDatabase(PyObject* _self) {
 static bool PyUpb_DescriptorPool_LoadDependentFiles(
     PyUpb_DescriptorPool* self, google_protobuf_FileDescriptorProto* proto) {
   size_t n;
-  const upb_strview* deps =
+  const upb_StringView* deps =
       google_protobuf_FileDescriptorProto_dependency(proto, &n);
   for (size_t i = 0; i < n; i++) {
     const upb_FileDef* dep =
@@ -202,7 +202,7 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
     goto done;
   }
 
-  upb_strview name = google_protobuf_FileDescriptorProto_name(proto);
+  upb_StringView name = google_protobuf_FileDescriptorProto_name(proto);
   const upb_FileDef* file =
       upb_DefPool_FindFileByNameWithSize(self->symtab, name.data, name.size);
 

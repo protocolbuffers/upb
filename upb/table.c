@@ -480,7 +480,7 @@ bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_arena *a) {
     return false;
   upb_strtable_begin(&i, t);
   for ( ; !upb_strtable_done(&i); upb_strtable_next(&i)) {
-    upb_strview key = upb_strtable_iter_key(&i);
+    upb_StringView key = upb_strtable_iter_key(&i);
     upb_strtable_insert(&new_table, key.data, key.size,
                         upb_strtable_iter_value(&i), a);
   }
@@ -540,8 +540,8 @@ bool upb_strtable_done(const upb_strtable_iter *i) {
          upb_tabent_isempty(str_tabent(i));
 }
 
-upb_strview upb_strtable_iter_key(const upb_strtable_iter *i) {
-  upb_strview key;
+upb_StringView upb_strtable_iter_key(const upb_strtable_iter *i) {
+  upb_StringView key;
   uint32_t len;
   UPB_ASSERT(!upb_strtable_done(i));
   key.data = upb_tabstr(str_tabent(i)->key, &len);
@@ -860,7 +860,7 @@ void upb_inttable_removeiter(upb_inttable *t, intptr_t *iter) {
   }
 }
 
-bool upb_strtable_next2(const upb_strtable *t, upb_strview *key, upb_value *val,
+bool upb_strtable_next2(const upb_strtable *t, upb_StringView *key, upb_value *val,
                         intptr_t *iter) {
   size_t tab_idx = next(&t->t, *iter);
   if (tab_idx < upb_table_size(&t->t)) {
