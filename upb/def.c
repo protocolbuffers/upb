@@ -55,7 +55,7 @@ static const char *opt_default = &opt_default_buf[sizeof(void*)];
 
 struct upb_FieldDef {
   const google_protobuf_FieldOptions *opts;
-  const upb_filedef *file;
+  const upb_FileDef *file;
   const upb_MessageDef *msgdef;
   const char *full_name;
   const char *json_name;
@@ -97,7 +97,7 @@ struct upb_ExtensionRange {
 struct upb_MessageDef {
   const google_protobuf_MessageOptions *opts;
   const upb_msglayout *layout;
-  const upb_filedef *file;
+  const upb_FileDef *file;
   const upb_MessageDef *containing_type;
   const char *full_name;
 
@@ -128,7 +128,7 @@ struct upb_MessageDef {
 struct upb_EnumDef {
   const google_protobuf_EnumOptions *opts;
   const upb_enumlayout *layout;  // Only for proto2.
-  const upb_filedef *file;
+  const upb_FileDef *file;
   const upb_MessageDef *containing_type;  // Could be merged with "file".
   const char *full_name;
   upb_strtable ntoi;
@@ -156,12 +156,12 @@ struct upb_OneofDef {
   upb_inttable itof;
 };
 
-struct upb_filedef {
+struct upb_FileDef {
   const google_protobuf_FileOptions *opts;
   const char *name;
   const char *package;
 
-  const upb_filedef **deps;
+  const upb_FileDef **deps;
   const int32_t* public_deps;
   const int32_t* weak_deps;
   const upb_MessageDef *top_lvl_msgs;
@@ -194,7 +194,7 @@ struct upb_methoddef {
 
 struct upb_servicedef {
   const google_protobuf_ServiceOptions *opts;
-  const upb_filedef *file;
+  const upb_FileDef *file;
   const char *full_name;
   upb_methoddef *methods;
   int method_count;
@@ -204,7 +204,7 @@ struct upb_servicedef {
 struct upb_symtab {
   upb_arena *arena;
   upb_strtable syms;  /* full_name -> packed def ptr */
-  upb_strtable files;  /* file_name -> upb_filedef* */
+  upb_strtable files;  /* file_name -> upb_FileDef* */
   upb_inttable exts;   /* upb_msglayout_ext* -> upb_FieldDef* */
   upb_extreg *extreg;
   size_t bytes_loaded;
@@ -376,7 +376,7 @@ const char *upb_EnumDef_Name(const upb_EnumDef *e) {
   return shortdefname(e->full_name);
 }
 
-const upb_filedef *upb_EnumDef_File(const upb_EnumDef *e) {
+const upb_FileDef *upb_EnumDef_File(const upb_EnumDef *e) {
   return e->file;
 }
 
@@ -555,7 +555,7 @@ bool upb_FieldDef_HasJsonName(const upb_FieldDef *f) {
   return f->has_json_name_;
 }
 
-const upb_filedef *upb_FieldDef_File(const upb_FieldDef *f) {
+const upb_FileDef *upb_FieldDef_File(const upb_FieldDef *f) {
   return f->file;
 }
 
@@ -698,7 +698,7 @@ const char *upb_MessageDef_FullName(const upb_MessageDef *m) {
   return m->full_name;
 }
 
-const upb_filedef *upb_MessageDef_File(const upb_MessageDef *m) {
+const upb_FileDef *upb_MessageDef_File(const upb_MessageDef *m) {
   return m->file;
 }
 
@@ -904,100 +904,100 @@ const upb_FieldDef *upb_OneofDef_LookupNumber(const upb_OneofDef *o, uint32_t nu
                                                   : NULL;
 }
 
-/* upb_filedef ****************************************************************/
+/* upb_FileDef ****************************************************************/
 
-const google_protobuf_FileOptions *upb_filedef_options(const upb_filedef *f) {
+const google_protobuf_FileOptions *upb_FileDef_Options(const upb_FileDef *f) {
   return f->opts;
 }
 
-bool upb_filedef_hasoptions(const upb_filedef *f) {
+bool upb_FileDef_HasOptions(const upb_FileDef *f) {
   return f->opts != (void*)opt_default;
 }
 
-const char *upb_filedef_name(const upb_filedef *f) {
+const char *upb_FileDef_Name(const upb_FileDef *f) {
   return f->name;
 }
 
-const char *upb_filedef_package(const upb_filedef *f) {
+const char *upb_FileDef_Package(const upb_FileDef *f) {
   return f->package;
 }
 
-upb_syntax_t upb_filedef_syntax(const upb_filedef *f) {
+upb_syntax_t upb_FileDef_Syntax(const upb_FileDef *f) {
   return f->syntax;
 }
 
-int upb_filedef_toplvlmsgcount(const upb_filedef *f) {
+int upb_FileDef_TopLevelMessageCount(const upb_FileDef *f) {
   return f->top_lvl_msg_count;
 }
 
-int upb_filedef_depcount(const upb_filedef *f) {
+int upb_FileDef_DependencyCount(const upb_FileDef *f) {
   return f->dep_count;
 }
 
-int upb_filedef_publicdepcount(const upb_filedef *f) {
+int upb_FileDef_PublicDependencyCount(const upb_FileDef *f) {
   return f->public_dep_count;
 }
 
-int upb_filedef_weakdepcount(const upb_filedef *f) {
+int upb_FileDef_WeakDependencyCount(const upb_FileDef *f) {
   return f->weak_dep_count;
 }
 
-const int32_t *_upb_filedef_publicdepnums(const upb_filedef *f) {
+const int32_t *_upb_FileDef_PublicDependencynums(const upb_FileDef *f) {
   return f->public_deps;
 }
 
-const int32_t *_upb_filedef_weakdepnums(const upb_filedef *f) {
+const int32_t *_upb_FileDef_WeakDependencynums(const upb_FileDef *f) {
   return f->weak_deps;
 }
 
-int upb_filedef_toplvlenumcount(const upb_filedef *f) {
+int upb_FileDef_TopLevelEnumCount(const upb_FileDef *f) {
   return f->top_lvl_enum_count;
 }
 
-int upb_filedef_toplvlextcount(const upb_filedef *f) {
+int upb_FileDef_TopLevelExtensionCount(const upb_FileDef *f) {
   return f->top_lvl_ext_count;
 }
 
-int upb_filedef_servicecount(const upb_filedef *f) {
+int upb_FileDef_ServiceCount(const upb_FileDef *f) {
   return f->service_count;
 }
 
-const upb_filedef *upb_filedef_dep(const upb_filedef *f, int i) {
+const upb_FileDef *upb_FileDef_Dependency(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->dep_count);
   return f->deps[i];
 }
 
-const upb_filedef *upb_filedef_publicdep(const upb_filedef *f, int i) {
+const upb_FileDef *upb_FileDef_PublicDependency(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->public_dep_count);
   return f->deps[f->public_deps[i]];
 }
 
-const upb_filedef *upb_filedef_weakdep(const upb_filedef *f, int i) {
+const upb_FileDef *upb_FileDef_WeakDependency(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->public_dep_count);
   return f->deps[f->weak_deps[i]];
 }
 
-const upb_MessageDef *upb_filedef_toplvlmsg(const upb_filedef *f, int i) {
+const upb_MessageDef *upb_FileDef_TopLevelMessage(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->top_lvl_msg_count);
   return &f->top_lvl_msgs[i];
 }
 
-const upb_EnumDef *upb_filedef_toplvlenum(const upb_filedef *f, int i) {
+const upb_EnumDef *upb_FileDef_TopLevelEnum(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->top_lvl_enum_count);
   return &f->top_lvl_enums[i];
 }
 
-const upb_FieldDef *upb_filedef_toplvlext(const upb_filedef *f, int i) {
+const upb_FieldDef *upb_FileDef_TopLevelExtension(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->top_lvl_ext_count);
   return &f->top_lvl_exts[i];
 }
 
-const upb_servicedef *upb_filedef_service(const upb_filedef *f, int i) {
+const upb_servicedef *upb_FileDef_Service(const upb_FileDef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->service_count);
   return &f->services[i];
 }
 
-const upb_symtab *upb_filedef_symtab(const upb_filedef *f) {
+const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f) {
   return f->symtab;
 }
 
@@ -1063,7 +1063,7 @@ int upb_servicedef_index(const upb_servicedef *s) {
   return s->index;
 }
 
-const upb_filedef *upb_servicedef_file(const upb_servicedef *s) {
+const upb_FileDef *upb_servicedef_file(const upb_servicedef *s) {
   return s->file;
 }
 
@@ -1154,7 +1154,7 @@ const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUMVAL);
 }
 
-const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s,
+const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s,
                                          const char *name) {
   upb_value v;
   return upb_strtable_lookup(&s->files, name, &v)
@@ -1162,7 +1162,7 @@ const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s,
              : NULL;
 }
 
-const upb_filedef *upb_symtab_lookupfile2(const upb_symtab *s, const char *name,
+const upb_FileDef *upb_symtab_lookupfile2(const upb_symtab *s, const char *name,
                                           size_t len) {
   upb_value v;
   return upb_strtable_lookup2(&s->files, name, len, &v)
@@ -1198,7 +1198,7 @@ const upb_servicedef *upb_symtab_lookupservice(const upb_symtab *s,
   return symtab_lookup(s, name, UPB_DEFTYPE_SERVICE);
 }
 
-const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
+const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
                                                const char *name) {
   upb_value v;
   // TODO(haberman): non-extension fields and oneofs.
@@ -1255,7 +1255,7 @@ const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
 
 typedef struct {
   upb_symtab *symtab;
-  upb_filedef *file;              /* File we are building. */
+  upb_FileDef *file;              /* File we are building. */
   upb_arena *arena;               /* Allocate defs here. */
   upb_arena *tmp_arena;                 /* For temporary allocations. */
   const upb_msglayout_file *layout;  /* NULL if we should build layouts. */
@@ -1766,7 +1766,7 @@ static char* makejsonname(symtab_addctx *ctx, const char* name) {
 }
 
 /* Adds a symbol |v| to the symtab, which must be a def pointer previously packed
- * with pack_def().  The def's pointer to upb_filedef* must be set before adding,
+ * with pack_def().  The def's pointer to upb_FileDef* must be set before adding,
  * so we know which entries to remove if building this file fails. */
 static void symtab_add(symtab_addctx *ctx, const char *name, upb_value v) {
   // TODO: table should support an operation "tryinsert" to avoid the double
@@ -2841,7 +2841,7 @@ static int count_exts_in_msg(const google_protobuf_DescriptorProto *msg_proto) {
 }
 
 static void build_filedef(
-    symtab_addctx *ctx, upb_filedef *file,
+    symtab_addctx *ctx, upb_FileDef *file,
     const google_protobuf_FileDescriptorProto *file_proto) {
   const google_protobuf_DescriptorProto *const *msgs;
   const google_protobuf_EnumDescriptorProto *const *enums;
@@ -3004,12 +3004,12 @@ static void build_filedef(
   }
 }
 
-static void remove_filedef(upb_symtab *s, upb_filedef *file) {
+static void remove_filedef(upb_symtab *s, upb_FileDef *file) {
   intptr_t iter = UPB_INTTABLE_BEGIN;
   upb_strview key;
   upb_value val;
   while (upb_strtable_next2(&s->syms, &key, &val, &iter)) {
-    const upb_filedef *f;
+    const upb_FileDef *f;
     switch (deftype(val)) {
       case UPB_DEFTYPE_EXT:
         f = upb_FieldDef_File(unpack_def(val, UPB_DEFTYPE_EXT));
@@ -3035,7 +3035,7 @@ static void remove_filedef(upb_symtab *s, upb_filedef *file) {
   }
 }
 
-static const upb_filedef *_upb_symtab_addfile(
+static const upb_FileDef *_upb_symtab_addfile(
     upb_symtab *s, const google_protobuf_FileDescriptorProto *file_proto,
     const upb_msglayout_file *layout, upb_status *status) {
   symtab_addctx ctx;
@@ -3096,7 +3096,7 @@ static const upb_filedef *_upb_symtab_addfile(
   return ctx.file;
 }
 
-  const upb_filedef *upb_symtab_addfile(
+  const upb_FileDef *upb_symtab_addfile(
       upb_symtab * s, const google_protobuf_FileDescriptorProto *file_proto,
       upb_status *status) {
     return _upb_symtab_addfile(s, file_proto, NULL, status);

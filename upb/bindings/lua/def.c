@@ -439,7 +439,7 @@ static int lupb_MessageDef_Fields(lua_State *L) {
 
 static int lupb_MessageDef_File(lua_State *L) {
   const upb_MessageDef *m = lupb_MessageDef_check(L, 1);
-  const upb_filedef *file = upb_MessageDef_File(m);
+  const upb_FileDef *file = upb_MessageDef_File(m);
   lupb_wrapper_pushwrapper(L, 1, file, LUPB_FILEDEF);
   return 1;
 }
@@ -535,7 +535,7 @@ static int lupb_EnumDef_len(lua_State *L) {
 
 static int lupb_EnumDef_File(lua_State *L) {
   const upb_EnumDef *e = lupb_EnumDef_check(L, 1);
-  const upb_filedef *file = upb_EnumDef_File(e);
+  const upb_FileDef *file = upb_EnumDef_File(e);
   lupb_wrapper_pushwrapper(L, 1, file, LUPB_FILEDEF);
   return 1;
 }
@@ -619,90 +619,90 @@ static const struct luaL_Reg lupb_enumvaldef_m[] = {
   {NULL, NULL}
 };
 
-/* lupb_filedef ***************************************************************/
+/* lupb_FileDef ***************************************************************/
 
-const upb_filedef *lupb_filedef_check(lua_State *L, int narg) {
+const upb_FileDef *lupb_FileDef_check(lua_State *L, int narg) {
   return lupb_wrapper_check(L, narg, LUPB_FILEDEF);
 }
 
-static int lupb_filedef_dep(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
+static int lupb_FileDef_Dependency(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_filedef *dep = upb_filedef_dep(f, index);
+  const upb_FileDef *dep = upb_FileDef_Dependency(f, index);
   lupb_wrapper_pushwrapper(L, 1, dep, LUPB_FILEDEF);
   return 1;
 }
 
-static int lupb_filedef_depcount(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_depcount(f));
+static int lupb_FileDef_DependencyCount(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushnumber(L, upb_FileDef_DependencyCount(f));
   return 1;
 }
 
-static int lupb_filedef_enum(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
+static int lupb_FileDef_enum(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_EnumDef *e = upb_filedef_toplvlenum(f, index);
+  const upb_EnumDef *e = upb_FileDef_TopLevelEnum(f, index);
   lupb_wrapper_pushwrapper(L, 1, e, LUPB_ENUMDEF);
   return 1;
 }
 
-static int lupb_filedef_enumcount(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_toplvlenumcount(f));
+static int lupb_FileDef_enumcount(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushnumber(L, upb_FileDef_TopLevelEnumCount(f));
   return 1;
 }
 
-static int lupb_filedef_msg(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
+static int lupb_FileDef_msg(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
   int index = luaL_checkint(L, 2);
-  const upb_MessageDef *m = upb_filedef_toplvlmsg(f, index);
+  const upb_MessageDef *m = upb_FileDef_TopLevelMessage(f, index);
   lupb_wrapper_pushwrapper(L, 1, m, LUPB_MSGDEF);
   return 1;
 }
 
-static int lupb_filedef_msgcount(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_toplvlmsgcount(f));
+static int lupb_FileDef_msgcount(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushnumber(L, upb_FileDef_TopLevelMessageCount(f));
   return 1;
 }
 
-static int lupb_filedef_name(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushstring(L, upb_filedef_name(f));
+static int lupb_FileDef_Name(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushstring(L, upb_FileDef_Name(f));
   return 1;
 }
 
-static int lupb_filedef_package(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushstring(L, upb_filedef_package(f));
+static int lupb_FileDef_Package(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushstring(L, upb_FileDef_Package(f));
   return 1;
 }
 
-static int lupb_filedef_symtab(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  const upb_symtab *symtab = upb_filedef_symtab(f);
+static int lupb_FileDef_Pool(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  const upb_symtab *symtab = upb_FileDef_Pool(f);
   lupb_wrapper_pushwrapper(L, 1, symtab, LUPB_SYMTAB);
   return 1;
 }
 
-static int lupb_filedef_syntax(lua_State *L) {
-  const upb_filedef *f = lupb_filedef_check(L, 1);
-  lua_pushnumber(L, upb_filedef_syntax(f));
+static int lupb_FileDef_Syntax(lua_State *L) {
+  const upb_FileDef *f = lupb_FileDef_check(L, 1);
+  lua_pushnumber(L, upb_FileDef_Syntax(f));
   return 1;
 }
 
-static const struct luaL_Reg lupb_filedef_m[] = {
-  {"dep", lupb_filedef_dep},
-  {"depcount", lupb_filedef_depcount},
-  {"enum", lupb_filedef_enum},
-  {"enumcount", lupb_filedef_enumcount},
-  {"msg", lupb_filedef_msg},
-  {"msgcount", lupb_filedef_msgcount},
-  {"name", lupb_filedef_name},
-  {"package", lupb_filedef_package},
-  {"symtab", lupb_filedef_symtab},
-  {"syntax", lupb_filedef_syntax},
+static const struct luaL_Reg lupb_FileDef_m[] = {
+  {"dep", lupb_FileDef_Dependency},
+  {"depcount", lupb_FileDef_DependencyCount},
+  {"enum", lupb_FileDef_enum},
+  {"enumcount", lupb_FileDef_enumcount},
+  {"msg", lupb_FileDef_msg},
+  {"msgcount", lupb_FileDef_msgcount},
+  {"name", lupb_FileDef_Name},
+  {"package", lupb_FileDef_Package},
+  {"symtab", lupb_FileDef_Pool},
+  {"syntax", lupb_FileDef_Syntax},
   {NULL, NULL}
 };
 
@@ -803,7 +803,7 @@ static int lupb_symtab_addfile(lua_State *L) {
   const char *str = luaL_checklstring(L, 2, &len);
   upb_arena *arena = lupb_arena_pushnew(L);
   const google_protobuf_FileDescriptorProto *file;
-  const upb_filedef *file_def;
+  const upb_FileDef *file_def;
   upb_status status;
 
   upb_status_clear(&status);
@@ -906,7 +906,7 @@ void lupb_def_registertypes(lua_State *L) {
   lupb_register_type(L, LUPB_ENUMDEF,  lupb_EnumDef_m,  lupb_EnumDef_mm);
   lupb_register_type(L, LUPB_ENUMVALDEF, lupb_enumvaldef_m,  NULL);
   lupb_register_type(L, LUPB_FIELDDEF, lupb_FieldDef_m, NULL);
-  lupb_register_type(L, LUPB_FILEDEF,  lupb_filedef_m,  NULL);
+  lupb_register_type(L, LUPB_FILEDEF,  lupb_FileDef_m,  NULL);
   lupb_register_type(L, LUPB_MSGDEF,   lupb_MessageDef_m,   lupb_MessageDef_mm);
   lupb_register_type(L, LUPB_ONEOFDEF, lupb_OneofDef_m, lupb_OneofDef_mm);
   lupb_register_type(L, LUPB_SYMTAB,   lupb_symtab_m,   lupb_symtab_mm);

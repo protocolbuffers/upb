@@ -343,38 +343,38 @@ class EnumDefPtr {
 // read the values of file-level options.
 class FileDefPtr {
  public:
-  explicit FileDefPtr(const upb_filedef* ptr) : ptr_(ptr) {}
+  explicit FileDefPtr(const upb_FileDef* ptr) : ptr_(ptr) {}
 
-  const upb_filedef* ptr() const { return ptr_; }
+  const upb_FileDef* ptr() const { return ptr_; }
   explicit operator bool() const { return ptr_ != nullptr; }
 
   // Get/set name of the file (eg. "foo/bar.proto").
-  const char* name() const { return upb_filedef_name(ptr_); }
+  const char* name() const { return upb_FileDef_Name(ptr_); }
 
   // Package name for definitions inside the file (eg. "foo.bar").
-  const char* package() const { return upb_filedef_package(ptr_); }
+  const char* package() const { return upb_FileDef_Package(ptr_); }
 
   // Sets the php class prefix which is prepended to all php generated classes
   // from this .proto. Default is empty.
-  const char* phpprefix() const { return upb_filedef_phpprefix(ptr_); }
+  const char* phpprefix() const { return upb_FileDef_phpprefix(ptr_); }
 
   // Use this option to change the namespace of php generated classes. Default
   // is empty. When this option is empty, the package name will be used for
   // determining the namespace.
-  const char* phpnamespace() const { return upb_filedef_phpnamespace(ptr_); }
+  const char* phpnamespace() const { return upb_FileDef_phpnamespace(ptr_); }
 
   // Syntax for the file.  Defaults to proto2.
-  upb_syntax_t syntax() const { return upb_filedef_syntax(ptr_); }
+  upb_syntax_t syntax() const { return upb_FileDef_Syntax(ptr_); }
 
   // Get the list of dependencies from the file.  These are returned in the
   // order that they were added to the FileDefPtr.
-  int dependency_count() const { return upb_filedef_depcount(ptr_); }
+  int dependency_count() const { return upb_FileDef_DependencyCount(ptr_); }
   const FileDefPtr dependency(int index) const {
-    return FileDefPtr(upb_filedef_dep(ptr_, index));
+    return FileDefPtr(upb_FileDef_Dependency(ptr_, index));
   }
 
  private:
-  const upb_filedef* ptr_;
+  const upb_FileDef* ptr_;
 };
 
 // Non-const methods in upb::SymbolTable are NOT thread-safe.

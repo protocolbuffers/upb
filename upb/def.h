@@ -31,7 +31,7 @@
  *
  * - upb_MessageDef: describes a "message" construct.
  * - upb_FieldDef: describes a message field.
- * - upb_filedef: describes a .proto file and its defs.
+ * - upb_FileDef: describes a .proto file and its defs.
  * - upb_EnumDef: describes an enum.
  * - upb_OneofDef: describes a oneof.
  *
@@ -60,8 +60,8 @@ struct upb_ExtensionRange;
 typedef struct upb_ExtensionRange upb_ExtensionRange;
 struct upb_FieldDef;
 typedef struct upb_FieldDef upb_FieldDef;
-struct upb_filedef;
-typedef struct upb_filedef upb_filedef;
+struct upb_FileDef;
+typedef struct upb_FileDef upb_FileDef;
 struct upb_methoddef;
 typedef struct upb_methoddef upb_methoddef;
 struct upb_MessageDef;
@@ -124,7 +124,7 @@ const char *upb_FieldDef_JsonName(const upb_FieldDef *f);
 bool upb_FieldDef_HasJsonName(const upb_FieldDef *f);
 bool upb_FieldDef_IsExtension(const upb_FieldDef *f);
 bool upb_FieldDef_IsPacked(const upb_FieldDef *f);
-const upb_filedef *upb_FieldDef_File(const upb_FieldDef *f);
+const upb_FileDef *upb_FieldDef_File(const upb_FieldDef *f);
 const upb_MessageDef *upb_FieldDef_ContainingType(const upb_FieldDef *f);
 const upb_MessageDef *upb_FieldDef_ExtensionScope(const upb_FieldDef *f);
 const upb_OneofDef *upb_FieldDef_ContainingOneof(const upb_FieldDef *f);
@@ -188,7 +188,7 @@ const upb_FieldDef *upb_OneofDef_LookupNumber(const upb_OneofDef *o, uint32_t nu
 const google_protobuf_MessageOptions *upb_MessageDef_Options(const upb_MessageDef *m);
 bool upb_MessageDef_HasOptions(const upb_MessageDef *m);
 const char *upb_MessageDef_FullName(const upb_MessageDef *m);
-const upb_filedef *upb_MessageDef_File(const upb_MessageDef *m);
+const upb_FileDef *upb_MessageDef_File(const upb_MessageDef *m);
 const upb_MessageDef *upb_MessageDef_ContainingType(const upb_MessageDef *m);
 const char *upb_MessageDef_Name(const upb_MessageDef *m);
 upb_syntax_t upb_MessageDef_Syntax(const upb_MessageDef *m);
@@ -264,7 +264,7 @@ const google_protobuf_EnumOptions *upb_EnumDef_Options(const upb_EnumDef *e);
 bool upb_EnumDef_HasOptions(const upb_EnumDef *e);
 const char *upb_EnumDef_FullName(const upb_EnumDef *e);
 const char *upb_EnumDef_Name(const upb_EnumDef *e);
-const upb_filedef *upb_EnumDef_File(const upb_EnumDef *e);
+const upb_FileDef *upb_EnumDef_File(const upb_EnumDef *e);
 const upb_MessageDef *upb_EnumDef_ContainingType(const upb_EnumDef *e);
 int32_t upb_EnumDef_Default(const upb_EnumDef *e);
 int upb_EnumDef_ValueCount(const upb_EnumDef *e);
@@ -292,32 +292,32 @@ int32_t upb_EnumValueDef_Number(const upb_EnumValueDef *e);
 uint32_t upb_EnumValueDef_Index(const upb_EnumValueDef *e);
 const upb_EnumDef *upb_EnumValueDef_Enum(const upb_EnumValueDef *e);
 
-/* upb_filedef ****************************************************************/
+/* upb_FileDef ****************************************************************/
 
-const google_protobuf_FileOptions *upb_filedef_options(const upb_filedef *f);
-bool upb_filedef_hasoptions(const upb_filedef *f);
-const char *upb_filedef_name(const upb_filedef *f);
-const char *upb_filedef_package(const upb_filedef *f);
-const char *upb_filedef_phpprefix(const upb_filedef *f);
-const char *upb_filedef_phpnamespace(const upb_filedef *f);
-upb_syntax_t upb_filedef_syntax(const upb_filedef *f);
-int upb_filedef_depcount(const upb_filedef *f);
-int upb_filedef_publicdepcount(const upb_filedef *f);
-int upb_filedef_weakdepcount(const upb_filedef *f);
-int upb_filedef_toplvlmsgcount(const upb_filedef *f);
-int upb_filedef_toplvlenumcount(const upb_filedef *f);
-int upb_filedef_toplvlextcount(const upb_filedef *f);
-int upb_filedef_servicecount(const upb_filedef *f);
-const upb_filedef *upb_filedef_dep(const upb_filedef *f, int i);
-const upb_filedef *upb_filedef_publicdep(const upb_filedef *f, int i);
-const upb_filedef *upb_filedef_weakdep(const upb_filedef *f, int i);
-const upb_MessageDef *upb_filedef_toplvlmsg(const upb_filedef *f, int i);
-const upb_EnumDef *upb_filedef_toplvlenum(const upb_filedef *f, int i);
-const upb_FieldDef *upb_filedef_toplvlext(const upb_filedef *f, int i);
-const upb_servicedef *upb_filedef_service(const upb_filedef *f, int i);
-const upb_symtab *upb_filedef_symtab(const upb_filedef *f);
-const int32_t *_upb_filedef_publicdepnums(const upb_filedef *f);
-const int32_t *_upb_filedef_weakdepnums(const upb_filedef *f);
+const google_protobuf_FileOptions *upb_FileDef_Options(const upb_FileDef *f);
+bool upb_FileDef_HasOptions(const upb_FileDef *f);
+const char *upb_FileDef_Name(const upb_FileDef *f);
+const char *upb_FileDef_Package(const upb_FileDef *f);
+const char *upb_FileDef_phpprefix(const upb_FileDef *f);
+const char *upb_FileDef_phpnamespace(const upb_FileDef *f);
+upb_syntax_t upb_FileDef_Syntax(const upb_FileDef *f);
+int upb_FileDef_DependencyCount(const upb_FileDef *f);
+int upb_FileDef_PublicDependencyCount(const upb_FileDef *f);
+int upb_FileDef_WeakDependencyCount(const upb_FileDef *f);
+int upb_FileDef_TopLevelMessageCount(const upb_FileDef *f);
+int upb_FileDef_TopLevelEnumCount(const upb_FileDef *f);
+int upb_FileDef_TopLevelExtensionCount(const upb_FileDef *f);
+int upb_FileDef_ServiceCount(const upb_FileDef *f);
+const upb_FileDef *upb_FileDef_Dependency(const upb_FileDef *f, int i);
+const upb_FileDef *upb_FileDef_PublicDependency(const upb_FileDef *f, int i);
+const upb_FileDef *upb_FileDef_WeakDependency(const upb_FileDef *f, int i);
+const upb_MessageDef *upb_FileDef_TopLevelMessage(const upb_FileDef *f, int i);
+const upb_EnumDef *upb_FileDef_TopLevelEnum(const upb_FileDef *f, int i);
+const upb_FieldDef *upb_FileDef_TopLevelExtension(const upb_FileDef *f, int i);
+const upb_servicedef *upb_FileDef_Service(const upb_FileDef *f, int i);
+const upb_symtab *upb_FileDef_Pool(const upb_FileDef *f);
+const int32_t *_upb_FileDef_PublicDependencynums(const upb_FileDef *f);
+const int32_t *_upb_FileDef_WeakDependencynums(const upb_FileDef *f);
 
 /* upb_methoddef **************************************************************/
 
@@ -340,7 +340,7 @@ bool upb_servicedef_hasoptions(const upb_servicedef *s);
 const char *upb_servicedef_fullname(const upb_servicedef *s);
 const char *upb_servicedef_name(const upb_servicedef *s);
 int upb_servicedef_index(const upb_servicedef *s);
-const upb_filedef *upb_servicedef_file(const upb_servicedef *s);
+const upb_FileDef *upb_servicedef_file(const upb_servicedef *s);
 int upb_servicedef_methodcount(const upb_servicedef *s);
 const upb_methoddef *upb_servicedef_method(const upb_servicedef *s, int i);
 const upb_methoddef *upb_servicedef_lookupmethod(const upb_servicedef *s,
@@ -359,14 +359,14 @@ const upb_EnumValueDef *upb_symtab_lookupenumval(const upb_symtab *s,
 const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
 const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,
                                          size_t len);
-const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
+const upb_FileDef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
 const upb_servicedef *upb_symtab_lookupservice(const upb_symtab *s,
                                                const char *name);
-const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
+const upb_FileDef *upb_symtab_lookupfileforsym(const upb_symtab *s,
                                                const char *name);
-const upb_filedef *upb_symtab_lookupfile2(
+const upb_FileDef *upb_symtab_lookupfile2(
     const upb_symtab *s, const char *name, size_t len);
-const upb_filedef *upb_symtab_addfile(
+const upb_FileDef *upb_symtab_addfile(
     upb_symtab *s, const google_protobuf_FileDescriptorProto *file,
     upb_status *status);
 size_t _upb_symtab_bytesloaded(const upb_symtab *s);

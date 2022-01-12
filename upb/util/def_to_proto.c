@@ -412,84 +412,84 @@ static google_protobuf_ServiceDescriptorProto *servicedef_toproto(
 }
 
 static google_protobuf_FileDescriptorProto *filedef_toproto(
-    upb_ToProto_Context *ctx, const upb_filedef *f) {
+    upb_ToProto_Context *ctx, const upb_FileDef *f) {
   google_protobuf_FileDescriptorProto *proto =
       google_protobuf_FileDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_FileDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_filedef_name(f)));
+      proto, strviewdup(ctx, upb_FileDef_Name(f)));
 
-  const char* package = upb_filedef_package(f);
+  const char* package = upb_FileDef_Package(f);
   if (package) {
     size_t n = strlen(package);
     if (n) {
       google_protobuf_FileDescriptorProto_set_package(
-          proto, strviewdup(ctx, upb_filedef_package(f)));
+          proto, strviewdup(ctx, upb_FileDef_Package(f)));
     }
   }
 
-  if (upb_filedef_syntax(f) == UPB_SYNTAX_PROTO3) {
+  if (upb_FileDef_Syntax(f) == UPB_SYNTAX_PROTO3) {
     google_protobuf_FileDescriptorProto_set_syntax(proto,
                                                    strviewdup(ctx, "proto3"));
   }
 
   size_t n;
-  n = upb_filedef_depcount(f);
+  n = upb_FileDef_DependencyCount(f);
   upb_strview *deps = google_protobuf_FileDescriptorProto_resize_dependency(
       proto, n, ctx->arena);
   for (int i = 0; i < n; i++) {
-    deps[i] = strviewdup(ctx, upb_filedef_name(upb_filedef_dep(f, i)));
+    deps[i] = strviewdup(ctx, upb_FileDef_Name(upb_FileDef_Dependency(f, i)));
   }
 
-  n = upb_filedef_publicdepcount(f);
+  n = upb_FileDef_PublicDependencyCount(f);
   int32_t *public_deps =
       google_protobuf_FileDescriptorProto_resize_public_dependency(proto, n,
                                                                    ctx->arena);
-  const int32_t *public_dep_nums = _upb_filedef_publicdepnums(f);
+  const int32_t *public_dep_nums = _upb_FileDef_PublicDependencynums(f);
   memcpy(public_deps, public_dep_nums, n * sizeof(int32_t));
 
-  n = upb_filedef_weakdepcount(f);
+  n = upb_FileDef_WeakDependencyCount(f);
   int32_t *weak_deps =
       google_protobuf_FileDescriptorProto_resize_weak_dependency(proto, n,
                                                                  ctx->arena);
-  const int32_t *weak_dep_nums = _upb_filedef_weakdepnums(f);
+  const int32_t *weak_dep_nums = _upb_FileDef_WeakDependencynums(f);
   memcpy(weak_deps, weak_dep_nums, n * sizeof(int32_t));
 
-  n = upb_filedef_toplvlmsgcount(f);
+  n = upb_FileDef_TopLevelMessageCount(f);
   google_protobuf_DescriptorProto **msgs =
       google_protobuf_FileDescriptorProto_resize_message_type(proto, n,
                                                               ctx->arena);
   for (int i = 0; i < n; i++) {
-    msgs[i] = msgdef_toproto(ctx, upb_filedef_toplvlmsg(f, i));
+    msgs[i] = msgdef_toproto(ctx, upb_FileDef_TopLevelMessage(f, i));
   }
 
-  n = upb_filedef_toplvlenumcount(f);
+  n = upb_FileDef_TopLevelEnumCount(f);
   google_protobuf_EnumDescriptorProto **enums =
       google_protobuf_FileDescriptorProto_resize_enum_type(proto, n,
                                                            ctx->arena);
   for (int i = 0; i < n; i++) {
-    enums[i] = enumdef_toproto(ctx, upb_filedef_toplvlenum(f, i));
+    enums[i] = enumdef_toproto(ctx, upb_FileDef_TopLevelEnum(f, i));
   }
 
-  n = upb_filedef_servicecount(f);
+  n = upb_FileDef_ServiceCount(f);
   google_protobuf_ServiceDescriptorProto **services =
       google_protobuf_FileDescriptorProto_resize_service(proto, n, ctx->arena);
   for (int i = 0; i < n; i++) {
-    services[i] = servicedef_toproto(ctx, upb_filedef_service(f, i));
+    services[i] = servicedef_toproto(ctx, upb_FileDef_Service(f, i));
   }
 
-  n = upb_filedef_toplvlextcount(f);
+  n = upb_FileDef_TopLevelExtensionCount(f);
   google_protobuf_FieldDescriptorProto **exts =
       google_protobuf_FileDescriptorProto_resize_extension(proto, n,
                                                            ctx->arena);
   for (int i = 0; i < n; i++) {
-    exts[i] = fielddef_toproto(ctx, upb_filedef_toplvlext(f, i));
+    exts[i] = fielddef_toproto(ctx, upb_FileDef_TopLevelExtension(f, i));
   }
 
-  if (upb_filedef_hasoptions(f)) {
+  if (upb_FileDef_HasOptions(f)) {
     SET_OPTIONS(proto, FileDescriptorProto, FileOptions,
-                upb_filedef_options(f));
+                upb_FileDef_Options(f));
   }
 
   return proto;
@@ -530,7 +530,7 @@ google_protobuf_OneofDescriptorProto *upb_OneofDef_ToProto(
   return oneofdef_toproto(&ctx, o);
 }
 
-google_protobuf_FileDescriptorProto *upb_FileDef_ToProto(const upb_filedef *f,
+google_protobuf_FileDescriptorProto *upb_FileDef_ToProto(const upb_FileDef *f,
                                                          upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;

@@ -168,7 +168,7 @@ static bool PyUpb_DescriptorPool_LoadDependentFiles(
   const upb_strview* deps =
       google_protobuf_FileDescriptorProto_dependency(proto, &n);
   for (size_t i = 0; i < n; i++) {
-    const upb_filedef* dep =
+    const upb_FileDef* dep =
         upb_symtab_lookupfile2(self->symtab, deps[i].data, deps[i].size);
     if (!dep) {
       PyObject* filename =
@@ -203,7 +203,7 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
   }
 
   upb_strview name = google_protobuf_FileDescriptorProto_name(proto);
-  const upb_filedef* file =
+  const upb_FileDef* file =
       upb_symtab_lookupfile2(self->symtab, name.data, name.size);
 
   if (file) {
@@ -230,7 +230,7 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
   upb_status status;
   upb_status_clear(&status);
 
-  const upb_filedef* filedef = upb_symtab_addfile(self->symtab, proto, &status);
+  const upb_FileDef* filedef = upb_symtab_addfile(self->symtab, proto, &status);
   if (!filedef) {
     PyErr_Format(PyExc_TypeError,
                  "Couldn't build proto file into descriptor pool: %s",
@@ -310,7 +310,7 @@ static PyObject* PyUpb_DescriptorPool_FindFileByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_filedef* file = upb_symtab_lookupfile(self->symtab, name);
+  const upb_FileDef* file = upb_symtab_lookupfile(self->symtab, name);
   if (file == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadFilename(self, arg)) return NULL;
     file = upb_symtab_lookupfile(self->symtab, name);
@@ -494,7 +494,7 @@ static PyObject* PyUpb_DescriptorPool_FindFileContainingSymbol(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_filedef* f = upb_symtab_lookupfileforsym(self->symtab, name);
+  const upb_FileDef* f = upb_symtab_lookupfileforsym(self->symtab, name);
   if (f == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
     f = upb_symtab_lookupfileforsym(self->symtab, name);

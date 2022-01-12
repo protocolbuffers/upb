@@ -48,7 +48,7 @@ google_protobuf_FieldDescriptorProto* upb_FieldDef_ToProto(
     const upb_FieldDef* f, upb_arena* a);
 google_protobuf_OneofDescriptorProto* upb_OneofDef_ToProto(
     const upb_OneofDef* o, upb_arena* a);
-google_protobuf_FileDescriptorProto* upb_FileDef_ToProto(const upb_filedef* f,
+google_protobuf_FileDescriptorProto* upb_FileDef_ToProto(const upb_FileDef* f,
                                                          upb_arena* a);
 google_protobuf_MethodDescriptorProto* upb_MethodDef_ToProto(
     const upb_methoddef* m, upb_arena* a);
