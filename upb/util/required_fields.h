@@ -52,7 +52,7 @@ extern "C" {
 typedef union {
   const upb_FieldDef* field;
   size_t array_index;
-  upb_msgval map_key;
+  upb_MessageValue map_key;
 } upb_FieldPathEntry;
 
 // Writes a string representing `*path` to `buf` in the following textual format:

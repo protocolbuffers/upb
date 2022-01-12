@@ -379,7 +379,7 @@ void GenerateExtensionInHeader(const protobuf::FieldDescriptor* ext,
                                Output& output) {
   output(
       "UPB_INLINE bool $0_has_$1(const struct $2 *msg) { "
-      "return _upb_msg_getext(msg, &$3) != NULL; }\n",
+      "return _upb_Message_Getext(msg, &$3) != NULL; }\n",
       ExtensionIdentBase(ext), ext->name(), MessageName(ext->containing_type()),
       ExtensionLayout(ext));
 
@@ -387,7 +387,7 @@ void GenerateExtensionInHeader(const protobuf::FieldDescriptor* ext,
   } else if (ext->message_type()) {
     output(
         "UPB_INLINE $0 $1_$2(const struct $3 *msg) { "
-        "const upb_msg_ext *ext = _upb_msg_getext(msg, &$4); "
+        "const upb_msg_ext *ext = _upb_Message_Getext(msg, &$4); "
         "UPB_ASSERT(ext); return *UPB_PTR_AT(&ext->data, 0, $0); }\n",
         CTypeConst(ext), ExtensionIdentBase(ext), ext->name(),
         MessageName(ext->containing_type()), ExtensionLayout(ext),
@@ -395,7 +395,7 @@ void GenerateExtensionInHeader(const protobuf::FieldDescriptor* ext,
   } else {
     output(
         "UPB_INLINE $0 $1_$2(const struct $3 *msg) { "
-        "const upb_msg_ext *ext = _upb_msg_getext(msg, &$4); "
+        "const upb_msg_ext *ext = _upb_Message_Getext(msg, &$4); "
         "return ext ? *UPB_PTR_AT(&ext->data, 0, $0) : $5; }\n",
         CTypeConst(ext), ExtensionIdentBase(ext), ext->name(),
         MessageName(ext->containing_type()), ExtensionLayout(ext),
@@ -413,7 +413,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
     output(
         R"cc(
           UPB_INLINE $0 *$0_new(upb_Arena *arena) {
-            return ($0 *)_upb_msg_new(&$1, arena);
+            return ($0 *)_upb_Message_New(&$1, arena);
           }
           UPB_INLINE $0 *$0_parse(const char *buf, size_t size, upb_Arena *arena) {
             $0 *ret = $0_new(arena);
@@ -612,7 +612,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
       output(
           "UPB_INLINE $0* $1_resize_$2($1 *msg, size_t len, "
           "upb_Arena *arena) {\n"
-          "  return ($0*)_upb_array_resize_accessor2(msg, $3, len, $4, arena);\n"
+          "  return ($0*)_upb_Array_Resize_accessor2(msg, $3, len, $4, arena);\n"
           "}\n",
           CType(field), msg_name, field->name(),
           GetSizeInit(layout.GetFieldOffset(field)),
@@ -620,8 +620,8 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
       if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
         output(
             "UPB_INLINE struct $0* $1_add_$2($1 *msg, upb_Arena *arena) {\n"
-            "  struct $0* sub = (struct $0*)_upb_msg_new(&$3, arena);\n"
-            "  bool ok = _upb_array_append_accessor2(\n"
+            "  struct $0* sub = (struct $0*)_upb_Message_New(&$3, arena);\n"
+            "  bool ok = _upb_Array_Append_accessor2(\n"
             "      msg, $4, $5, &sub, arena);\n"
             "  if (!ok) return NULL;\n"
             "  return sub;\n"
@@ -633,7 +633,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
       } else {
         output(
             "UPB_INLINE bool $1_add_$2($1 *msg, $0 val, upb_Arena *arena) {\n"
-            "  return _upb_array_append_accessor2(msg, $3, $4, &val,\n"
+            "  return _upb_Array_Append_accessor2(msg, $3, $4, &val,\n"
             "      arena);\n"
             "}\n",
             CType(field), msg_name, field->name(),
@@ -683,7 +683,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
             "UPB_INLINE struct $0* $1_mutable_$2($1 *msg, upb_Arena *arena) {\n"
             "  struct $0* sub = (struct $0*)$1_$2(msg);\n"
             "  if (sub == NULL) {\n"
-            "    sub = (struct $0*)_upb_msg_new(&$3, arena);\n"
+            "    sub = (struct $0*)_upb_Message_New(&$3, arena);\n"
             "    if (!sub) return NULL;\n"
             "    $1_set_$2(msg, sub);\n"
             "  }\n"

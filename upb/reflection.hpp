@@ -30,7 +30,7 @@
 
 namespace upb {
 
-typedef upb_msgval MessageValue;
+typedef upb_MessageValue MessageValue;
 
 }  // namespace upb
 

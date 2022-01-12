@@ -59,7 +59,7 @@ void upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
                         upb_Arena *arena);
 
 /* Returns a reference to the message's unknown data. */
-const char *upb_msg_getunknown(const upb_msg *msg, size_t *len);
+const char *upb_Message_Getunknown(const upb_msg *msg, size_t *len);
 
 /* Returns the number of extensions present in this message. */
 size_t upb_msg_extcount(const upb_msg *msg);

@@ -374,12 +374,12 @@ TEST(MessageTest, MaxRequiredFields) {
 
   upb::SymbolTable symtab;
   upb::MessageDefPtr m(upb_test_TestMaxRequiredFields_getmsgdef(symtab.ptr()));
-  upb_msgval val;
+  upb_MessageValue val;
   val.int32_val = 1;
   for (int i = 1; i <= 61; i++) {
     upb::FieldDefPtr f = m.FindFieldByNumber(i);
     ASSERT_TRUE(f);
-    upb_msg_set(test_msg, f.ptr(), val, arena.ptr());
+    upb_Message_Set(test_msg, f.ptr(), val, arena.ptr());
   }
 
   // Fails, field 63 still isn't set.
@@ -390,7 +390,7 @@ TEST(MessageTest, MaxRequiredFields) {
   // Succeeds, all required fields are set.
   upb::FieldDefPtr f = m.FindFieldByNumber(62);
   ASSERT_TRUE(f);
-  upb_msg_set(test_msg, f.ptr(), val, arena.ptr());
+  upb_Message_Set(test_msg, f.ptr(), val, arena.ptr());
   serialized = upb_test_TestMaxRequiredFields_serialize_ex(
       test_msg, UPB_ENCODE_CHECKREQUIRED, arena.ptr(), &size);
   ASSERT_TRUE(serialized != nullptr);

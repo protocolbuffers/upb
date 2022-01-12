@@ -522,7 +522,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
 
   if ((e->options & UPB_ENCODE_SKIPUNKNOWN) == 0) {
     size_t unknown_size;
-    const char *unknown = upb_msg_getunknown(msg, &unknown_size);
+    const char *unknown = upb_Message_Getunknown(msg, &unknown_size);
 
     if (unknown) {
       encode_bytes(e, unknown, unknown_size);
@@ -534,7 +534,7 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
      * these in field number order relative to normal fields or even to each
      * other. */
     size_t ext_count;
-    const upb_msg_ext *ext = _upb_msg_getexts(msg, &ext_count);
+    const upb_msg_ext *ext = _upb_Message_Getexts(msg, &ext_count);
     const upb_msg_ext *end = ext + ext_count;
     if (ext_count) {
       for (; ext != end; ext++) {

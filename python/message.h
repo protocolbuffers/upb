@@ -40,7 +40,7 @@ void PyUpb_CMessage_CacheDelete(PyObject* _self, const upb_FieldDef* f);
 // the "unset subobject" cache now that real data exists for it.  The caller
 // must also update the wrapper associated with `f` to point to `subobj` also.
 void PyUpb_CMessage_SetConcreteSubobj(PyObject* _self, const upb_FieldDef* f,
-                                      upb_msgval subobj);
+                                      upb_MessageValue subobj);
 
 // Gets a Python wrapper object for message `u_msg` of type `m`, returning a
 // cached wrapper if one was previously created.  If a new object is created,

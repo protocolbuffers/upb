@@ -38,18 +38,18 @@
 // will take a reference on `arena`; the caller must ensure that `val` belongs
 // to `arena`. If the conversion cannot be performed, returns NULL and sets a
 // Python error.
-PyObject *PyUpb_UpbToPy(upb_msgval val, const upb_FieldDef *f, PyObject *arena);
+PyObject *PyUpb_UpbToPy(upb_MessageValue val, const upb_FieldDef *f, PyObject *arena);
 
-// Converts `obj` to a upb_msgval `*val` according to the type information in
+// Converts `obj` to a upb_MessageValue `*val` according to the type information in
 // `f`. If `arena` is provided, any string data will be copied into `arena`,
 // otherwise the returned value will alias the Python-owned data (this can be
-// useful for an ephemeral upb_msgval).  If the conversion cannot be performed,
+// useful for an ephemeral upb_MessageValue).  If the conversion cannot be performed,
 // returns false.
-bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
+bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_MessageValue *val,
                    upb_Arena *arena);
 
 // Returns true if the given values (of type `f`) are equal.
-bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_FieldDef *f);
+bool PyUpb_ValueEq(upb_MessageValue val1, upb_MessageValue val2, const upb_FieldDef *f);
 
 // Returns true if the given messages (of type `m`) are equal.
 bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,

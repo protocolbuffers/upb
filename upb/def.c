@@ -571,34 +571,34 @@ const upb_OneofDef *upb_FieldDef_RealContainingOneof(const upb_FieldDef *f) {
   return oneof;
 }
 
-upb_msgval upb_FieldDef_Default(const upb_FieldDef *f) {
+upb_MessageValue upb_FieldDef_Default(const upb_FieldDef *f) {
   UPB_ASSERT(!upb_FieldDef_IsSubMessage(f));
-  upb_msgval ret;
+  upb_MessageValue ret;
 
   switch (upb_FieldDef_CType(f)) {
     case kUpb_CType_Bool:
-      return (upb_msgval){.bool_val = f->defaultval.boolean};
+      return (upb_MessageValue){.bool_val = f->defaultval.boolean};
     case kUpb_CType_Int64:
-      return (upb_msgval){.int64_val = f->defaultval.sint};
+      return (upb_MessageValue){.int64_val = f->defaultval.sint};
     case kUpb_CType_UInt64:
-      return (upb_msgval){.uint64_val = f->defaultval.uint};
+      return (upb_MessageValue){.uint64_val = f->defaultval.uint};
     case kUpb_CType_Enum:
     case kUpb_CType_Int32:
-      return (upb_msgval){.int32_val = (int32_t)f->defaultval.sint};
+      return (upb_MessageValue){.int32_val = (int32_t)f->defaultval.sint};
     case kUpb_CType_UInt32:
-      return (upb_msgval){.uint32_val = (uint32_t)f->defaultval.uint};
+      return (upb_MessageValue){.uint32_val = (uint32_t)f->defaultval.uint};
     case kUpb_CType_Float:
-      return (upb_msgval){.float_val = f->defaultval.flt};
+      return (upb_MessageValue){.float_val = f->defaultval.flt};
     case kUpb_CType_Double:
-      return (upb_msgval){.double_val = f->defaultval.dbl};
+      return (upb_MessageValue){.double_val = f->defaultval.dbl};
     case kUpb_CType_String:
     case kUpb_CType_Bytes: {
       str_t *str = f->defaultval.str;
       if (str) {
-        return (upb_msgval){
+        return (upb_MessageValue){
             .str_val = (upb_StringView){.data = str->str, .size = str->len}};
       } else {
-        return (upb_msgval){.str_val = (upb_StringView){.data = NULL, .size = 0}};
+        return (upb_MessageValue){.str_val = (upb_StringView){.data = NULL, .size = 0}};
       }
     }
     default:
@@ -1327,7 +1327,7 @@ static size_t div_round_up(size_t n, size_t d) {
   return (n + d - 1) / d;
 }
 
-static size_t upb_msgval_sizeof(upb_CType type) {
+static size_t upb_MessageValue_sizeof(upb_CType type) {
   switch (type) {
     case kUpb_CType_Double:
     case kUpb_CType_Int64:
@@ -1357,7 +1357,7 @@ static uint8_t upb_msg_fielddefsize(const upb_FieldDef *f) {
   } else if (upb_FieldDef_IsRepeated(f)) {
     return sizeof(void*);
   } else {
-    return upb_msgval_sizeof(upb_FieldDef_CType(f));
+    return upb_MessageValue_sizeof(upb_FieldDef_CType(f));
   }
 }
 

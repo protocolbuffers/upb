@@ -122,7 +122,7 @@ static upb_StringView default_bytes(upb_ToProto_Context* ctx, upb_StringView val
 
 static upb_StringView default_string(upb_ToProto_Context *ctx,
                                   const upb_FieldDef *f) {
-  upb_msgval d = upb_FieldDef_Default(f);
+  upb_MessageValue d = upb_FieldDef_Default(f);
   switch (upb_FieldDef_CType(f)) {
     case kUpb_CType_Bool:
       return strviewdup(ctx, d.bool_val ? "true" : "false");

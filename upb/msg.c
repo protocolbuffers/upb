@@ -35,22 +35,22 @@
 
 static const size_t overhead = sizeof(upb_msg_internaldata);
 
-static const upb_msg_internal *upb_msg_getinternal_const(const upb_msg *msg) {
+static const upb_msg_internal *upb_Message_Getinternal_const(const upb_msg *msg) {
   ptrdiff_t size = sizeof(upb_msg_internal);
   return (upb_msg_internal*)((char*)msg - size);
 }
 
-upb_msg *_upb_msg_new(const upb_msglayout *l, upb_Arena *a) {
-  return _upb_msg_new_inl(l, a);
+upb_msg *_upb_Message_New(const upb_msglayout *l, upb_Arena *a) {
+  return _upb_Message_New_inl(l, a);
 }
 
-void _upb_msg_clear(upb_msg *msg, const upb_msglayout *l) {
+void _upb_Message_Clear(upb_msg *msg, const upb_msglayout *l) {
   void *mem = UPB_PTR_AT(msg, -sizeof(upb_msg_internal), char);
   memset(mem, 0, upb_msg_sizeof(l));
 }
 
 static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
-  upb_msg_internal *in = upb_msg_getinternal(msg);
+  upb_msg_internal *in = upb_Message_Getinternal(msg);
   if (!in->internal) {
     /* No internal data, allocate from scratch. */
     size_t size = UPB_MAX(128, _upb_Log2Ceilingsize(need + overhead));
@@ -84,21 +84,21 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
 bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
                          upb_Arena *arena) {
   if (!realloc_internal(msg, len, arena)) return false;
-  upb_msg_internal *in = upb_msg_getinternal(msg);
+  upb_msg_internal *in = upb_Message_Getinternal(msg);
   memcpy(UPB_PTR_AT(in->internal, in->internal->unknown_end, char), data, len);
   in->internal->unknown_end += len;
   return true;
 }
 
-void _upb_msg_discardunknown_shallow(upb_msg *msg) {
-  upb_msg_internal *in = upb_msg_getinternal(msg);
+void _upb_Message_DiscardUnknown_shallow(upb_msg *msg) {
+  upb_msg_internal *in = upb_Message_Getinternal(msg);
   if (in->internal) {
     in->internal->unknown_end = overhead;
   }
 }
 
-const char *upb_msg_getunknown(const upb_msg *msg, size_t *len) {
-  const upb_msg_internal *in = upb_msg_getinternal_const(msg);
+const char *upb_Message_Getunknown(const upb_msg *msg, size_t *len) {
+  const upb_msg_internal *in = upb_Message_Getinternal_const(msg);
   if (in->internal) {
     *len = in->internal->unknown_end - overhead;
     return (char*)(in->internal + 1);
@@ -108,8 +108,8 @@ const char *upb_msg_getunknown(const upb_msg *msg, size_t *len) {
   }
 }
 
-const upb_msg_ext *_upb_msg_getexts(const upb_msg *msg, size_t *count) {
-  const upb_msg_internal *in = upb_msg_getinternal_const(msg);
+const upb_msg_ext *_upb_Message_Getexts(const upb_msg *msg, size_t *count) {
+  const upb_msg_internal *in = upb_Message_Getinternal_const(msg);
   if (in->internal) {
     *count =
         (in->internal->size - in->internal->ext_begin) / sizeof(upb_msg_ext);
@@ -120,10 +120,10 @@ const upb_msg_ext *_upb_msg_getexts(const upb_msg *msg, size_t *count) {
   }
 }
 
-const upb_msg_ext *_upb_msg_getext(const upb_msg *msg,
+const upb_msg_ext *_upb_Message_Getext(const upb_msg *msg,
                                    const upb_msglayout_ext *e) {
   size_t n;
-  const upb_msg_ext *ext = _upb_msg_getexts(msg, &n);
+  const upb_msg_ext *ext = _upb_Message_Getexts(msg, &n);
 
   /* For now we use linear search exclusively to find extensions. If this
    * becomes an issue due to messages with lots of extensions, we can introduce
@@ -137,24 +137,24 @@ const upb_msg_ext *_upb_msg_getext(const upb_msg *msg,
   return NULL;
 }
 
-void _upb_msg_clearext(upb_msg *msg, const upb_msglayout_ext *ext_l) {
-  upb_msg_internal *in = upb_msg_getinternal(msg);
+void _upb_Message_Clearext(upb_msg *msg, const upb_msglayout_ext *ext_l) {
+  upb_msg_internal *in = upb_Message_Getinternal(msg);
   if (!in->internal) return;
   const upb_msg_ext *base =
       UPB_PTR_AT(in->internal, in->internal->ext_begin, void);
-  upb_msg_ext *ext = (upb_msg_ext*)_upb_msg_getext(msg, ext_l);
+  upb_msg_ext *ext = (upb_msg_ext*)_upb_Message_Getext(msg, ext_l);
   if (ext) {
     *ext = *base;
     in->internal->ext_begin += sizeof(upb_msg_ext);
   }
 }
 
-upb_msg_ext *_upb_msg_getorcreateext(upb_msg *msg, const upb_msglayout_ext *e,
+upb_msg_ext *_upb_Message_Getorcreateext(upb_msg *msg, const upb_msglayout_ext *e,
                                      upb_Arena *arena) {
-  upb_msg_ext *ext = (upb_msg_ext*)_upb_msg_getext(msg, e);
+  upb_msg_ext *ext = (upb_msg_ext*)_upb_Message_Getext(msg, e);
   if (ext) return ext;
   if (!realloc_internal(msg, sizeof(upb_msg_ext), arena)) return NULL;
-  upb_msg_internal *in = upb_msg_getinternal(msg);
+  upb_msg_internal *in = upb_Message_Getinternal(msg);
   in->internal->ext_begin -= sizeof(upb_msg_ext);
   ext = UPB_PTR_AT(in->internal, in->internal->ext_begin, void);
   memset(ext, 0, sizeof(upb_msg_ext));
@@ -164,7 +164,7 @@ upb_msg_ext *_upb_msg_getorcreateext(upb_msg *msg, const upb_msglayout_ext *e,
 
 size_t upb_msg_extcount(const upb_msg *msg) {
   size_t count;
-  _upb_msg_getexts(msg, &count);
+  _upb_Message_Getexts(msg, &count);
   return count;
 }
 
@@ -196,28 +196,28 @@ static upb_array *getorcreate_array(upb_array **arr_ptr, int elem_size_lg2,
                                     upb_Arena *arena) {
   upb_array *arr = *arr_ptr;
   if (!arr) {
-    arr = _upb_array_new(arena, 4, elem_size_lg2);
+    arr = _upb_Array_New(arena, 4, elem_size_lg2);
     if (!arr) return NULL;
     *arr_ptr = arr;
   }
   return arr;
 }
 
-void *_upb_array_resize_fallback(upb_array **arr_ptr, size_t size,
+void *_upb_Array_Resize_fallback(upb_array **arr_ptr, size_t size,
                                  int elem_size_lg2, upb_Arena *arena) {
   upb_array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
-  return arr && _upb_array_resize(arr, size, arena) ? _upb_array_ptr(arr)
+  return arr && _upb_Array_Resize(arr, size, arena) ? _upb_array_ptr(arr)
                                                     : NULL;
 }
 
-bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
+bool _upb_Array_Append_fallback(upb_array **arr_ptr, const void *value,
                                 int elem_size_lg2, upb_Arena *arena) {
   upb_array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
   if (!arr) return false;
 
   size_t elems = arr->len;
 
-  if (!_upb_array_resize(arr, elems + 1, arena)) {
+  if (!_upb_Array_Resize(arr, elems + 1, arena)) {
     return false;
   }
 
@@ -228,7 +228,7 @@ bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
 
 /** upb_map *******************************************************************/
 
-upb_map *_upb_map_new(upb_Arena *a, size_t key_size, size_t value_size) {
+upb_map *_upb_Map_New(upb_Arena *a, size_t key_size, size_t value_size) {
   upb_map *map = upb_Arena_Malloc(a, sizeof(upb_map));
 
   if (!map) {
@@ -297,7 +297,7 @@ static int _upb_mapsorter_cmpstr(const void *_a, const void *_b) {
 
 bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_FieldType key_type,
                             const upb_map *map, _upb_sortedmap *sorted) {
-  int map_size = _upb_map_size(map);
+  int map_size = _upb_Map_Size(map);
   sorted->start = s->size;
   sorted->pos = sorted->start;
   sorted->end = sorted->start + map_size;

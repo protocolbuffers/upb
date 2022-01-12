@@ -124,7 +124,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     PyObject* py_arena = PyUpb_Arena_New();
     upb_Arena* arena = PyUpb_Arena_Get(py_arena);
     char* pb = upb_encode(opts, layout, arena, &size);
-    upb_msg* opts2 = upb_msg_new(m, arena);
+    upb_msg* opts2 = upb_Message_New(m, arena);
     assert(opts2);
     bool ok = _upb_decode(pb, size, opts2, upb_MessageDef_Layout(m),
                           upb_DefPool_ExtensionRegistry(symtab), 0,

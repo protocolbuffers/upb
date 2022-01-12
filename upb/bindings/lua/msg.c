@@ -118,7 +118,7 @@
 #define LUPB_ARENA_INDEX 1
 #define LUPB_MSGDEF_INDEX 2  /* For msg, and map/array that store msg */
 
-static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val);
+static void lupb_Message_Newmsgwrapper(lua_State *L, int narg, upb_MessageValue val);
 static upb_msg *lupb_msg_check(lua_State *L, int narg);
 
 static upb_CType lupb_checkfieldtype(lua_State *L, int narg) {
@@ -259,11 +259,11 @@ typedef enum {
 /**
  * lupb_tomsgval()
  *
- * Converts the given Lua value |narg| to a upb_msgval.
+ * Converts the given Lua value |narg| to a upb_MessageValue.
  */
-static upb_msgval lupb_tomsgval(lua_State *L, upb_CType type, int narg,
+static upb_MessageValue lupb_tomsgval(lua_State *L, upb_CType type, int narg,
                                 int container, lupb_copy_t copy) {
-  upb_msgval ret;
+  upb_MessageValue ret;
   switch (type) {
     case kUpb_CType_Int32:
     case kUpb_CType_Enum:
@@ -318,7 +318,7 @@ static upb_msgval lupb_tomsgval(lua_State *L, upb_CType type, int narg,
 }
 
 void lupb_pushmsgval(lua_State* L, int container, upb_CType type,
-                     upb_msgval val) {
+                     upb_MessageValue val) {
   switch (type) {
     case kUpb_CType_Int32:
     case kUpb_CType_Enum:
@@ -349,7 +349,7 @@ void lupb_pushmsgval(lua_State* L, int container, upb_CType type,
     case kUpb_CType_Message:
       assert(container);
       if (!lupb_cacheget(L, val.msg_val)) {
-        lupb_msg_newmsgwrapper(L, container, val);
+        lupb_Message_Newmsgwrapper(L, container, val);
       }
       return;
   }
@@ -382,13 +382,13 @@ static int lupb_array_checkindex(lua_State *L, int narg, uint32_t max) {
 
 /* lupb_array Public API */
 
-/* lupb_array_new():
+/* lupb_Array_New():
  *
  * Handles:
  *   Array(upb.TYPE_INT32)
  *   Array(message_type)
  */
-static int lupb_array_new(lua_State *L) {
+static int lupb_Array_New(lua_State *L) {
   int arg_count = lua_gettop(L);
   lupb_array *larray;
   upb_Arena *arena;
@@ -408,7 +408,7 @@ static int lupb_array_new(lua_State *L) {
   arena = lupb_Arena_pushnew(L);
   lua_setiuservalue(L, -2, LUPB_ARENA_INDEX);
 
-  larray->arr = upb_array_new(arena, larray->type);
+  larray->arr = upb_Array_New(arena, larray->type);
   lupb_cacheset(L, larray->arr);
 
   if (arg_count > 1) {
@@ -425,23 +425,23 @@ static int lupb_array_new(lua_State *L) {
   return 1;
 }
 
-/* lupb_array_newindex():
+/* lupb_Array_Newindex():
  *
  * Handles:
  *   array[idx] = val
  *
  * idx can be within the array or one past the end to extend.
  */
-static int lupb_array_newindex(lua_State *L) {
+static int lupb_Array_Newindex(lua_State *L) {
   lupb_array *larray = lupb_array_check(L, 1);
-  size_t size = upb_array_size(larray->arr);
+  size_t size = upb_Array_Size(larray->arr);
   uint32_t n = lupb_array_checkindex(L, 2, size + 1);
-  upb_msgval msgval = lupb_tomsgval(L, larray->type, 3, 1, LUPB_COPY);
+  upb_MessageValue msgval = lupb_tomsgval(L, larray->type, 3, 1, LUPB_COPY);
 
   if (n == size) {
-    upb_array_append(larray->arr, msgval, lupb_Arenaget(L, 1));
+    upb_Array_Append(larray->arr, msgval, lupb_Arenaget(L, 1));
   } else {
-    upb_array_set(larray->arr, n, msgval);
+    upb_Array_Set(larray->arr, n, msgval);
   }
 
   if (larray->type == kUpb_CType_Message) {
@@ -460,9 +460,9 @@ static int lupb_array_newindex(lua_State *L) {
  */
 static int lupb_array_index(lua_State *L) {
   lupb_array *larray = lupb_array_check(L, 1);
-  size_t size = upb_array_size(larray->arr);
+  size_t size = upb_Array_Size(larray->arr);
   uint32_t n = lupb_array_checkindex(L, 2, size);
-  upb_msgval val = upb_array_get(larray->arr, n);
+  upb_MessageValue val = upb_Array_Get(larray->arr, n);
 
   lupb_pushmsgval(L, 1, larray->type, val);
 
@@ -476,14 +476,14 @@ static int lupb_array_index(lua_State *L) {
  */
 static int lupb_array_len(lua_State *L) {
   lupb_array *larray = lupb_array_check(L, 1);
-  lua_pushnumber(L, upb_array_size(larray->arr));
+  lua_pushnumber(L, upb_Array_Size(larray->arr));
   return 1;
 }
 
 static const struct luaL_Reg lupb_array_mm[] = {
   {"__index", lupb_array_index},
   {"__len", lupb_array_len},
-  {"__newindex", lupb_array_newindex},
+  {"__newindex", lupb_Array_Newindex},
   {NULL, NULL}
 };
 
@@ -505,13 +505,13 @@ static lupb_map *lupb_map_check(lua_State *L, int narg) {
 /* lupb_map Public API */
 
 /**
- * lupb_map_new
+ * lupb_Map_New
  *
  * Handles:
  *   new_map = upb.Map(key_type, value_type)
  *   new_map = upb.Map(key_type, value_msgdef)
  */
-static int lupb_map_new(lua_State *L) {
+static int lupb_Map_New(lua_State *L) {
   upb_Arena *arena;
   lupb_map *lmap;
 
@@ -530,7 +530,7 @@ static int lupb_map_new(lua_State *L) {
   lua_setiuservalue(L, -2, LUPB_ARENA_INDEX);
 
   lmap->key_type = lupb_checkfieldtype(L, 1);
-  lmap->map = upb_map_new(arena, lmap->key_type, lmap->value_type);
+  lmap->map = upb_Map_New(arena, lmap->key_type, lmap->value_type);
   lupb_cacheset(L, lmap->map);
 
   return 1;
@@ -544,10 +544,10 @@ static int lupb_map_new(lua_State *L) {
  */
 static int lupb_map_index(lua_State *L) {
   lupb_map *lmap = lupb_map_check(L, 1);
-  upb_msgval key = lupb_tomsgval(L, lmap->key_type, 2, 1, LUPB_REF);
-  upb_msgval val;
+  upb_MessageValue key = lupb_tomsgval(L, lmap->key_type, 2, 1, LUPB_REF);
+  upb_MessageValue val;
 
-  if (upb_map_get(lmap->map, key, &val)) {
+  if (upb_Map_Get(lmap->map, key, &val)) {
     lupb_pushmsgval(L, 1, lmap->value_type, val);
   } else {
     lua_pushnil(L);
@@ -564,27 +564,27 @@ static int lupb_map_index(lua_State *L) {
  */
 static int lupb_map_len(lua_State *L) {
   lupb_map *lmap = lupb_map_check(L, 1);
-  lua_pushnumber(L, upb_map_size(lmap->map));
+  lua_pushnumber(L, upb_Map_Size(lmap->map));
   return 1;
 }
 
 /**
- * lupb_map_newindex
+ * lupb_Map_Newindex
  *
  * Handles:
  *   map[key] = val
  *   map[key] = nil  # to remove from map
  */
-static int lupb_map_newindex(lua_State *L) {
+static int lupb_Map_Newindex(lua_State *L) {
   lupb_map *lmap = lupb_map_check(L, 1);
   upb_map *map = lmap->map;
-  upb_msgval key = lupb_tomsgval(L, lmap->key_type, 2, 1, LUPB_REF);
+  upb_MessageValue key = lupb_tomsgval(L, lmap->key_type, 2, 1, LUPB_REF);
 
   if (lua_isnil(L, 3)) {
-    upb_map_delete(map, key);
+    upb_Map_Delete(map, key);
   } else {
-    upb_msgval val = lupb_tomsgval(L, lmap->value_type, 3, 1, LUPB_COPY);
-    upb_map_set(map, key, val, lupb_Arenaget(L, 1));
+    upb_MessageValue val = lupb_tomsgval(L, lmap->value_type, 3, 1, LUPB_COPY);
+    upb_Map_Set(map, key, val, lupb_Arenaget(L, 1));
     if (lmap->value_type == kUpb_CType_Message) {
       lupb_Arena_Fuseobjs(L, 1, 3);
     }
@@ -593,14 +593,14 @@ static int lupb_map_newindex(lua_State *L) {
   return 0;
 }
 
-static int lupb_mapiter_next(lua_State *L) {
+static int lupb_MapIterator_Next(lua_State *L) {
   int map = lua_upvalueindex(2);
   size_t *iter = lua_touserdata(L, lua_upvalueindex(1));
   lupb_map *lmap = lupb_map_check(L, map);
 
-  if (upb_mapiter_next(lmap->map, iter)) {
-    upb_msgval key = upb_mapiter_key(lmap->map, *iter);
-    upb_msgval val = upb_mapiter_value(lmap->map, *iter);
+  if (upb_MapIterator_Next(lmap->map, iter)) {
+    upb_MessageValue key = upb_MapIterator_Key(lmap->map, *iter);
+    upb_MessageValue val = upb_MapIterator_Value(lmap->map, *iter);
     lupb_pushmsgval(L, map, lmap->key_type, key);
     lupb_pushmsgval(L, map, lmap->value_type, val);
     return 2;
@@ -624,7 +624,7 @@ static int lupb_map_pairs(lua_State *L) {
   lua_pushvalue(L, 1);
 
   /* Upvalues are [iter, lupb_map]. */
-  lua_pushcclosure(L, &lupb_mapiter_next, 2);
+  lua_pushcclosure(L, &lupb_MapIterator_Next, 2);
 
   return 1;
 }
@@ -634,7 +634,7 @@ static int lupb_map_pairs(lua_State *L) {
 static const struct luaL_Reg lupb_map_mm[] = {
   {"__index", lupb_map_index},
   {"__len", lupb_map_len},
-  {"__newindex", lupb_map_newindex},
+  {"__newindex", lupb_Map_Newindex},
   {"__pairs", lupb_map_pairs},
   {NULL, NULL}
 };
@@ -653,7 +653,7 @@ static upb_msg *lupb_msg_check(lua_State *L, int narg) {
   return msg->msg;
 }
 
-static const upb_MessageDef *lupb_msg_getmsgdef(lua_State *L, int msg) {
+static const upb_MessageDef *lupb_Message_Getmsgdef(lua_State *L, int msg) {
   lua_getiuservalue(L, msg, LUPB_MSGDEF_INDEX);
   const upb_MessageDef *m = lupb_MessageDef_check(L, -1);
   lua_pop(L, 1);
@@ -663,7 +663,7 @@ static const upb_MessageDef *lupb_msg_getmsgdef(lua_State *L, int msg) {
 static const upb_FieldDef *lupb_msg_tofield(lua_State *L, int msg, int field) {
   size_t len;
   const char *fieldname = luaL_checklstring(L, field, &len);
-  const upb_MessageDef *m = lupb_msg_getmsgdef(L, msg);
+  const upb_MessageDef *m = lupb_Message_Getmsgdef(L, msg);
   return upb_MessageDef_FindFieldByNameWithSize(m, fieldname, len);
 }
 
@@ -685,18 +685,18 @@ upb_msg *lupb_msg_pushnew(lua_State *L, int narg) {
   lua_pushvalue(L, 1);
   lua_setiuservalue(L, -2, LUPB_MSGDEF_INDEX);
 
-  lmsg->msg = upb_msg_new(m, arena);
+  lmsg->msg = upb_Message_New(m, arena);
   lupb_cacheset(L, lmsg->msg);
   return lmsg->msg;
 }
 
 /**
- * lupb_msg_newmsgwrapper()
+ * lupb_Message_Newmsgwrapper()
  *
  * Creates a new wrapper for a message, copying the arena and msgdef references
  * from |narg| (which should be an array or map).
  */
-static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val) {
+static void lupb_Message_Newmsgwrapper(lua_State *L, int narg, upb_MessageValue val) {
   lupb_msg *lmsg = lupb_newuserdata(L, sizeof(*lmsg), 2, LUPB_MSG);
   lmsg->msg = (upb_msg*)val.msg_val;  /* XXX: cast isn't great. */
   lupb_cacheset(L, lmsg->msg);
@@ -709,12 +709,12 @@ static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val) {
 }
 
 /**
- * lupb_msg_newud()
+ * lupb_Message_Newud()
  *
  * Creates the Lua userdata for a new wrapper object, adding a reference to
  * the msgdef if necessary.
  */
-static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
+static void *lupb_Message_Newud(lua_State *L, int narg, size_t size,
                             const char *type, const upb_FieldDef *f) {
   if (upb_FieldDef_CType(f) == kUpb_CType_Message) {
     /* Wrapper needs a reference to the msgdef. */
@@ -729,26 +729,26 @@ static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
 }
 
 /**
- * lupb_msg_newwrapper()
+ * lupb_Message_Newwrapper()
  *
  * Creates a new Lua wrapper object to wrap the given array, map, or message.
  */
-static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_FieldDef *f,
-                                upb_mutmsgval val) {
+static void lupb_Message_Newwrapper(lua_State *L, int narg, const upb_FieldDef *f,
+                                upb_MutableMessageValue val) {
   if (upb_FieldDef_IsMap(f)) {
     const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef *key_f = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_KeyFieldNumber);
     const upb_FieldDef *val_f = upb_MessageDef_FindFieldByNumberWithSize(entry, kUpb_MapEntry_ValueFieldNumber);
-    lupb_map *lmap = lupb_msg_newud(L, narg, sizeof(*lmap), LUPB_MAP, val_f);
+    lupb_map *lmap = lupb_Message_Newud(L, narg, sizeof(*lmap), LUPB_MAP, val_f);
     lmap->key_type = upb_FieldDef_CType(key_f);
     lmap->value_type = upb_FieldDef_CType(val_f);
     lmap->map = val.map;
   } else if (upb_FieldDef_IsRepeated(f)) {
-    lupb_array *larr = lupb_msg_newud(L, narg, sizeof(*larr), LUPB_ARRAY, f);
+    lupb_array *larr = lupb_Message_Newud(L, narg, sizeof(*larr), LUPB_ARRAY, f);
     larr->type = upb_FieldDef_CType(f);
     larr->arr = val.array;
   } else {
-    lupb_msg *lmsg = lupb_msg_newud(L, narg, sizeof(*lmsg), LUPB_MSG, f);
+    lupb_msg *lmsg = lupb_Message_Newud(L, narg, sizeof(*lmsg), LUPB_MSG, f);
     lmsg->msg = val.msg;
   }
 
@@ -818,13 +818,13 @@ static int lupb_msg_index(lua_State *L) {
   if (upb_FieldDef_IsRepeated(f) || upb_FieldDef_IsSubMessage(f)) {
     /* Wrapped type; get or create wrapper. */
     upb_Arena *arena = upb_FieldDef_IsRepeated(f) ? lupb_Arenaget(L, 1) : NULL;
-    upb_mutmsgval val = upb_msg_mutable(msg, f, arena);
+    upb_MutableMessageValue val = upb_Message_Mutable(msg, f, arena);
     if (!lupb_cacheget(L, val.msg)) {
-      lupb_msg_newwrapper(L, 1, f, val);
+      lupb_Message_Newwrapper(L, 1, f, val);
     }
   } else {
     /* Value type, just push value and return .*/
-    upb_msgval val = upb_msg_get(msg, f);
+    upb_MessageValue val = upb_Message_Get(msg, f);
     lupb_pushmsgval(L, 0, upb_FieldDef_CType(f), val);
   }
 
@@ -832,17 +832,17 @@ static int lupb_msg_index(lua_State *L) {
 }
 
 /**
- * lupb_msg_newindex()
+ * lupb_Message_Newindex()
  *
  * Handles:
  *   msg.foo = bar
  *   msg["foo"] = bar
  *   msg[field_descriptor] = bar  # (for extensions) (TODO)
  */
-static int lupb_msg_newindex(lua_State *L) {
+static int lupb_Message_Newindex(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
   const upb_FieldDef *f = lupb_msg_checkfield(L, 1, 2);
-  upb_msgval msgval;
+  upb_MessageValue msgval;
   bool merge_arenas = true;
 
   if (upb_FieldDef_IsMap(f)) {
@@ -879,7 +879,7 @@ static int lupb_msg_newindex(lua_State *L) {
     lupb_Arena_Fuseobjs(L, 1, 3);
   }
 
-  upb_msg_set(msg, f, msgval, lupb_Arenaget(L, 1));
+  upb_Message_Set(msg, f, msgval, lupb_Arenaget(L, 1));
 
   /* Return the new value for chained assignments. */
   lua_pushvalue(L, 3);
@@ -919,7 +919,7 @@ static int lupb_msg_tostring(lua_State *L) {
 
 static const struct luaL_Reg lupb_msg_mm[] = {
   {"__index", lupb_msg_index},
-  {"__newindex", lupb_msg_newindex},
+  {"__newindex", lupb_Message_Newindex},
   {"__tostring", lupb_msg_tostring},
   {NULL, NULL}
 };
@@ -978,7 +978,7 @@ static int lupb_decode(lua_State *L) {
  */
 static int lupb_encode(lua_State *L) {
   const upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_MessageDef *m = lupb_Message_Getmsgdef(L, 1);
   const upb_msglayout *layout = upb_MessageDef_Layout(m);
   int options = lupb_getoptions(L, 2);
   upb_Arena *arena;
@@ -1030,7 +1030,7 @@ static int lupb_jsondecode(lua_State *L) {
  */
 static int lupb_jsonencode(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_MessageDef *m = lupb_Message_Getmsgdef(L, 1);
   int options = lupb_getoptions(L, 2);
   char buf[1024];
   size_t size;
@@ -1061,7 +1061,7 @@ static int lupb_jsonencode(lua_State *L) {
  */
 static int lupb_textencode(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_MessageDef *m = lupb_msg_getmsgdef(L, 1);
+  const upb_MessageDef *m = lupb_Message_Getmsgdef(L, 1);
   int options = lupb_getoptions(L, 2);
   char buf[1024];
   size_t size;
@@ -1086,8 +1086,8 @@ static void lupb_setfieldi(lua_State *L, const char *field, int i) {
 }
 
 static const struct luaL_Reg lupb_msg_toplevel_m[] = {
-  {"Array", lupb_array_new},
-  {"Map", lupb_map_new},
+  {"Array", lupb_Array_New},
+  {"Map", lupb_Map_New},
   {"decode", lupb_decode},
   {"encode", lupb_encode},
   {"json_decode", lupb_jsondecode},

@@ -150,7 +150,7 @@ static void txtenc_string(txtenc *e, upb_StringView str, bool bytes) {
   txtenc_putstr(e, "\"");
 }
 
-static void txtenc_field(txtenc *e, upb_msgval val, const upb_FieldDef *f) {
+static void txtenc_field(txtenc *e, upb_MessageValue val, const upb_FieldDef *f) {
   txtenc_indent(e);
   upb_CType type = upb_FieldDef_CType(f);
   const char* name = upb_FieldDef_Name(f);
@@ -217,14 +217,14 @@ static void txtenc_field(txtenc *e, upb_msgval val, const upb_FieldDef *f) {
 static void txtenc_array(txtenc *e, const upb_array *arr,
                          const upb_FieldDef *f) {
   size_t i;
-  size_t size = upb_array_size(arr);
+  size_t size = upb_Array_Size(arr);
 
   for (i = 0; i < size; i++) {
-    txtenc_field(e, upb_array_get(arr, i), f);
+    txtenc_field(e, upb_Array_Get(arr, i), f);
   }
 }
 
-static void txtenc_mapentry(txtenc *e, upb_msgval key, upb_msgval val,
+static void txtenc_mapentry(txtenc *e, upb_MessageValue key, upb_MessageValue val,
                             const upb_FieldDef *f) {
   const upb_MessageDef *entry = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef *key_f = upb_MessageDef_Field(entry, 0);
@@ -258,9 +258,9 @@ static void txtenc_mapentry(txtenc *e, upb_msgval key, upb_msgval val,
 static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
   if (e->options & UPB_TXTENC_NOSORT) {
     size_t iter = kUpb_Map_Begin;
-    while (upb_mapiter_next(map, &iter)) {
-      upb_msgval key = upb_mapiter_key(map, iter);
-      upb_msgval val = upb_mapiter_value(map, iter);
+    while (upb_MapIterator_Next(map, &iter)) {
+      upb_MessageValue key = upb_MapIterator_Key(map, iter);
+      upb_MessageValue val = upb_MapIterator_Value(map, iter);
       txtenc_mapentry(e, key, val, f);
     }
   } else {
@@ -272,7 +272,7 @@ static void txtenc_map(txtenc *e, const upb_map *map, const upb_FieldDef *f) {
     _upb_mapsorter_pushmap(&e->sorter, upb_FieldDef_Type(key_f), map,
                            &sorted);
     while (_upb_sortedmap_next(&e->sorter, map, &sorted, &ent)) {
-      upb_msgval key, val;
+      upb_MessageValue key, val;
       memcpy(&key, &ent.k, sizeof(key));
       memcpy(&val, &ent.v, sizeof(val));
       txtenc_mapentry(e, key, val, f);
@@ -399,11 +399,11 @@ static const char *txtenc_unknown(txtenc *e, const char *ptr, const char *end,
 
 static void txtenc_msg(txtenc *e, const upb_msg *msg,
                        const upb_MessageDef *m) {
-  size_t iter = UPB_MSG_BEGIN;
+  size_t iter = kUpb_Message_Begin;
   const upb_FieldDef *f;
-  upb_msgval val;
+  upb_MessageValue val;
 
-  while (upb_msg_next(msg, m, e->ext_pool, &f, &val, &iter)) {
+  while (upb_Message_Next(msg, m, e->ext_pool, &f, &val, &iter)) {
     if (upb_FieldDef_IsMap(f)) {
       txtenc_map(e, val.map_val, f);
     } else if (upb_FieldDef_IsRepeated(f)) {
@@ -415,7 +415,7 @@ static void txtenc_msg(txtenc *e, const upb_msg *msg,
 
   if ((e->options & UPB_TXTENC_SKIPUNKNOWN) == 0) {
     size_t len;
-    const char *ptr = upb_msg_getunknown(msg, &len);
+    const char *ptr = upb_Message_Getunknown(msg, &len);
     char *start = e->ptr;
     if (ptr) {
       if (!txtenc_unknown(e, ptr, ptr + len, -1)) {

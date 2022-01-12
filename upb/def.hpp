@@ -37,7 +37,7 @@
 
 namespace upb {
 
-typedef upb_msgval MessageValue;
+typedef upb_MessageValue MessageValue;
 
 class EnumDefPtr;
 class FileDefPtr;

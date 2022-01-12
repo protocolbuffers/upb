@@ -307,7 +307,7 @@ static void *fastdecode_getfield(upb_decstate *d, const char *ptr, upb_msg *msg,
       *(uint32_t*)msg |= *hasbits;
       *hasbits = 0;
       if (UPB_LIKELY(!*arr_p)) {
-        farr->arr = _upb_array_new(&d->arena, 8, elem_size_lg2);
+        farr->arr = _upb_Array_New(&d->arena, 8, elem_size_lg2);
         *arr_p = farr->arr;
       } else {
         farr->arr = *arr_p;
@@ -591,12 +591,12 @@ TAGBYTES(p)
   int elems = size / valbytes;                                              \
                                                                             \
   if (UPB_LIKELY(!arr)) {                                                   \
-    *arr_p = arr = _upb_array_new(&d->arena, elems, elem_size_lg2);         \
+    *arr_p = arr = _upb_Array_New(&d->arena, elems, elem_size_lg2);         \
     if (!arr) {                                                             \
       return fastdecode_err(d, kUpb_DecodeStatus_Malformed);                \
     }                                                                       \
   } else {                                                                  \
-    _upb_array_resize(arr, elems, &d->arena);                               \
+    _upb_Array_Resize(arr, elems, &d->arena);                               \
   }                                                                         \
                                                                             \
   char *dst = _upb_array_ptr(arr);                                          \

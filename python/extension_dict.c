@@ -95,10 +95,10 @@ static int PyUpb_ExtensionDict_Contains(PyObject* _self, PyObject* key) {
   upb_msg* msg = PyUpb_CMessage_GetIfReified(self->msg);
   if (!msg) return 0;
   if (upb_FieldDef_IsRepeated(f)) {
-    upb_msgval val = upb_msg_get(msg, f);
-    return upb_array_size(val.array_val) > 0;
+    upb_MessageValue val = upb_Message_Get(msg, f);
+    return upb_Array_Size(val.array_val) > 0;
   } else {
-    return upb_msg_has(msg, f);
+    return upb_Message_Has(msg, f);
   }
 }
 
@@ -177,7 +177,7 @@ static PyObject* PyUpb_ExtensionIterator_New(PyObject* _ext_dict) {
       (void*)PyType_GenericAlloc(state->extension_iterator_type, 0);
   if (!iter) return NULL;
   iter->msg = ext_dict->msg;
-  iter->iter = UPB_MSG_BEGIN;
+  iter->iter = kUpb_Message_Begin;
   Py_INCREF(iter->msg);
   return &iter->ob_base;
 }
@@ -196,8 +196,8 @@ PyObject* PyUpb_ExtensionIterator_IterNext(PyObject* _self) {
   const upb_DefPool* symtab = upb_FileDef_Pool(upb_MessageDef_File(m));
   while (true) {
     const upb_FieldDef* f;
-    upb_msgval val;
-    if (!upb_msg_next(msg, m, symtab, &f, &val, &self->iter)) return NULL;
+    upb_MessageValue val;
+    if (!upb_Message_Next(msg, m, symtab, &f, &val, &self->iter)) return NULL;
     if (upb_FieldDef_IsExtension(f)) return PyUpb_FieldDescriptor_Get(f);
   }
 }

@@ -298,7 +298,7 @@ static void decode_munge(int type, wireval *val) {
 static upb_msg *decode_newsubmsg(upb_decstate *d, const upb_msglayout_sub *subs,
                                  const upb_msglayout_field *field) {
   const upb_msglayout *subl = subs[field->submsg_index].submsg;
-  return _upb_msg_new_inl(subl, &d->arena);
+  return _upb_Message_New_inl(subl, &d->arena);
 }
 
 UPB_NOINLINE
@@ -539,7 +539,7 @@ static const char *decode_toarray(upb_decstate *d, const char *ptr,
     decode_reserve(d, arr, 1);
   } else {
     size_t lg2 = desctype_to_elem_size_lg2[field->descriptortype];
-    arr = _upb_array_new(&d->arena, 4, lg2);
+    arr = _upb_Array_New(&d->arena, 4, lg2);
     if (!arr) return decode_err(d, kUpb_DecodeStatus_OutOfMemory);
     *arrp = arr;
   }
@@ -609,7 +609,7 @@ static const char *decode_tomap(upb_decstate *d, const char *ptr, upb_msg *msg,
     char val_size = desctype_to_mapsize[val_field->descriptortype];
     UPB_ASSERT(key_field->offset == 0);
     UPB_ASSERT(val_field->offset == sizeof(upb_StringView));
-    map = _upb_map_new(&d->arena, key_size, val_size);
+    map = _upb_Map_New(&d->arena, key_size, val_size);
     *map_p = map;
   }
 
@@ -619,11 +619,11 @@ static const char *decode_tomap(upb_decstate *d, const char *ptr, upb_msg *msg,
   if (entry->fields[1].descriptortype == upb_FieldType_Message ||
       entry->fields[1].descriptortype == upb_FieldType_Group) {
     /* Create proactively to handle the case where it doesn't appear. */
-    ent.v.val = upb_value_ptr(_upb_msg_new(entry->subs[0].submsg, &d->arena));
+    ent.v.val = upb_value_ptr(_upb_Message_New(entry->subs[0].submsg, &d->arena));
   }
 
   ptr = decode_tosubmsg(d, ptr, &ent.k, subs, field, val->size);
-  _upb_map_set(map, &ent.k, map->key_size, &ent.v, map->val_size, &d->arena);
+  _upb_Map_Set(map, &ent.k, map->key_size, &ent.v, map->val_size, &d->arena);
   return ptr;
 }
 
@@ -878,7 +878,7 @@ static const char *decode_known(upb_decstate *d, const char *ptr, upb_msg *msg,
 
   if (UPB_UNLIKELY(mode & _UPB_MODE_IS_EXTENSION)) {
     const upb_msglayout_ext *ext_layout = (const upb_msglayout_ext*)field;
-    upb_msg_ext *ext = _upb_msg_getorcreateext(msg, ext_layout, &d->arena);
+    upb_msg_ext *ext = _upb_Message_Getorcreateext(msg, ext_layout, &d->arena);
         if (UPB_UNLIKELY(!ext)) return decode_err(d, kUpb_DecodeStatus_OutOfMemory);
     msg = &ext->data;
     subs = &ext->ext->sub;

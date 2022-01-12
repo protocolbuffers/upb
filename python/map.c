@@ -111,7 +111,7 @@ void PyUpb_MapContainer_Reify(PyObject* _self, upb_map* map) {
     const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
     const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
     const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
-    map = upb_map_new(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
+    map = upb_Map_New(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
   }
   PyUpb_ObjCache_Add(map, &self->ob_base);
   Py_DECREF(self->ptr.parent);
@@ -136,8 +136,8 @@ upb_map* PyUpb_MapContainer_EnsureReified(PyObject* _self) {
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
   const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
-  map = upb_map_new(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
-  upb_msgval msgval = {.map_val = map};
+  map = upb_Map_New(arena, upb_FieldDef_CType(key_f), upb_FieldDef_CType(val_f));
+  upb_MessageValue msgval = {.map_val = map};
   PyUpb_CMessage_SetConcreteSubobj(self->ptr.parent, f, msgval);
   PyUpb_MapContainer_Reify((PyObject*)self, map);
   return map;
@@ -152,14 +152,14 @@ int PyUpb_MapContainer_AssignSubscript(PyObject* _self, PyObject* key,
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
   const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
-  upb_msgval u_key, u_val;
+  upb_MessageValue u_key, u_val;
   if (!PyUpb_PyToUpb(key, key_f, &u_key, arena)) return -1;
 
   if (val) {
     if (!PyUpb_PyToUpb(val, val_f, &u_val, arena)) return -1;
-    upb_map_set(map, u_key, u_val, arena);
+    upb_Map_Set(map, u_key, u_val, arena);
   } else {
-    if (!upb_map_delete(map, u_key)) {
+    if (!upb_Map_Delete(map, u_key)) {
       PyErr_Format(PyExc_KeyError, "Key not present in map");
       return -1;
     }
@@ -175,17 +175,17 @@ PyObject* PyUpb_MapContainer_Subscript(PyObject* _self, PyObject* key) {
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
   const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
-  upb_msgval u_key, u_val;
+  upb_MessageValue u_key, u_val;
   if (!PyUpb_PyToUpb(key, key_f, &u_key, arena)) return NULL;
-  if (!map || !upb_map_get(map, u_key, &u_val)) {
+  if (!map || !upb_Map_Get(map, u_key, &u_val)) {
     map = PyUpb_MapContainer_EnsureReified(_self);
     upb_Arena* arena = PyUpb_Arena_Get(self->arena);
     if (upb_FieldDef_IsSubMessage(val_f)) {
-      u_val.msg_val = upb_msg_new(upb_FieldDef_MessageSubDef(val_f), arena);
+      u_val.msg_val = upb_Message_New(upb_FieldDef_MessageSubDef(val_f), arena);
     } else {
       memset(&u_val, 0, sizeof(u_val));
     }
-    upb_map_set(map, u_key, u_val, arena);
+    upb_Map_Set(map, u_key, u_val, arena);
   }
   return PyUpb_UpbToPy(u_val, val_f, self->arena);
 }
@@ -197,9 +197,9 @@ PyObject* PyUpb_MapContainer_Contains(PyObject* _self, PyObject* key) {
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self);
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
-  upb_msgval u_key;
+  upb_MessageValue u_key;
   if (!PyUpb_PyToUpb(key, key_f, &u_key, NULL)) return NULL;
-  if (upb_map_get(map, u_key, NULL)) {
+  if (upb_Map_Get(map, u_key, NULL)) {
     Py_RETURN_TRUE;
   } else {
     Py_RETURN_FALSE;
@@ -208,7 +208,7 @@ PyObject* PyUpb_MapContainer_Contains(PyObject* _self, PyObject* key) {
 
 PyObject* PyUpb_MapContainer_Clear(PyObject* _self, PyObject* key) {
   upb_map* map = PyUpb_MapContainer_EnsureReified(_self);
-  upb_map_clear(map);
+  upb_Map_Clear(map);
   Py_RETURN_NONE;
 }
 
@@ -229,9 +229,9 @@ static PyObject* PyUpb_MapContainer_Get(PyObject* _self, PyObject* args,
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
   const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
-  upb_msgval u_key, u_val;
+  upb_MessageValue u_key, u_val;
   if (!PyUpb_PyToUpb(key, key_f, &u_key, arena)) return NULL;
-  if (map && upb_map_get(map, u_key, &u_val)) {
+  if (map && upb_Map_Get(map, u_key, &u_val)) {
     return PyUpb_UpbToPy(u_val, val_f, self->arena);
   }
   if (default_value) {
@@ -252,7 +252,7 @@ static PyObject* PyUpb_MapContainer_GetEntryClass(PyObject* _self,
 Py_ssize_t PyUpb_MapContainer_Length(PyObject* _self) {
   PyUpb_MapContainer* self = (PyUpb_MapContainer*)_self;
   upb_map* map = PyUpb_MapContainer_GetIfReified(self);
-  return map ? upb_map_size(map) : 0;
+  return map ? upb_Map_Size(map) : 0;
 }
 
 PyUpb_MapContainer* PyUpb_MapContainer_Check(PyObject* _self) {
@@ -293,11 +293,11 @@ static PyObject* PyUpb_MapContainer_Repr(PyObject* _self) {
     const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);
     const upb_FieldDef* val_f = upb_MessageDef_Field(entry_m, 1);
     size_t iter = kUpb_Map_Begin;
-    while (upb_mapiter_next(map, &iter)) {
+    while (upb_MapIterator_Next(map, &iter)) {
       PyObject* key =
-          PyUpb_UpbToPy(upb_mapiter_key(map, iter), key_f, self->arena);
+          PyUpb_UpbToPy(upb_MapIterator_Key(map, iter), key_f, self->arena);
       PyObject* val =
-          PyUpb_UpbToPy(upb_mapiter_value(map, iter), val_f, self->arena);
+          PyUpb_UpbToPy(upb_MapIterator_Value(map, iter), val_f, self->arena);
       if (!key || !val) {
         Py_XDECREF(key);
         Py_XDECREF(val);
@@ -451,8 +451,8 @@ PyObject* PyUpb_MapIterator_IterNext(PyObject* _self) {
   }
   upb_map* map = PyUpb_MapContainer_GetIfReified(self->map);
   if (!map) return NULL;
-  if (!upb_mapiter_next(map, &self->iter)) return NULL;
-  upb_msgval key = upb_mapiter_key(map, self->iter);
+  if (!upb_MapIterator_Next(map, &self->iter)) return NULL;
+  upb_MessageValue key = upb_MapIterator_Key(map, self->iter);
   const upb_FieldDef* f = PyUpb_MapContainer_GetField(self->map);
   const upb_MessageDef* entry_m = upb_FieldDef_MessageSubDef(f);
   const upb_FieldDef* key_f = upb_MessageDef_Field(entry_m, 0);

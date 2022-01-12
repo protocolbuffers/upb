@@ -80,7 +80,7 @@ static size_t upb_FieldPath_NullTerminate(upb_PrintfAppender *d, size_t size) {
   return ret;
 }
 
-static void upb_FieldPath_PutMapKey(upb_PrintfAppender *a, upb_msgval map_key,
+static void upb_FieldPath_PutMapKey(upb_PrintfAppender *a, upb_MessageValue map_key,
                                     const upb_FieldDef *key_f) {
   switch (upb_FieldDef_CType(key_f)) {
     case kUpb_CType_Int32:
@@ -204,7 +204,7 @@ static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
     const upb_FieldDef* f = upb_MessageDef_Field(m, i);
     if (upb_FieldDef_Label(f) != kUpb_Label_Required) continue;
 
-    if (!msg || !upb_msg_has(msg, f)) {
+    if (!msg || !upb_Message_Has(msg, f)) {
       // A required field is missing.
       ctx->has_unset_required = true;
 
@@ -239,12 +239,12 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
   // in the previous loop.  We do this separately because this loop will also
   // find present extensions, which the previous loop will not.
   //
-  // TODO(haberman): consider changing upb_msg_next() to be capable of visiting
-  // extensions only, for example with a UPB_MSG_BEGINEXT constant.
-  size_t iter = UPB_MSG_BEGIN;
+  // TODO(haberman): consider changing upb_Message_Next() to be capable of visiting
+  // extensions only, for example with a kUpb_Message_BeginEXT constant.
+  size_t iter = kUpb_Message_Begin;
   const upb_FieldDef* f;
-  upb_msgval val;
-  while (upb_msg_next(msg, m, ctx->ext_pool, &f, &val, &iter)) {
+  upb_MessageValue val;
+  while (upb_Message_Next(msg, m, ctx->ext_pool, &f, &val, &iter)) {
     // Skip non-submessage fields.
     if (!upb_FieldDef_IsSubMessage(f)) continue;
 
@@ -258,9 +258,9 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
       if (!val_m) continue;
       const upb_map* map = val.map_val;
       size_t iter = kUpb_Map_Begin;
-      while (upb_mapiter_next(map, &iter)) {
-        upb_msgval key = upb_mapiter_key(map, iter);
-        upb_msgval map_val = upb_mapiter_value(map, iter);
+      while (upb_MapIterator_Next(map, &iter)) {
+        upb_MessageValue key = upb_MapIterator_Key(map, iter);
+        upb_MessageValue map_val = upb_MapIterator_Value(map, iter);
         upb_FindContext_Push(ctx, (upb_FieldPathEntry){.map_key = key});
         upb_util_FindUnsetRequiredInternal(ctx, map_val.msg_val, val_m);
         upb_FindContext_Pop(ctx);
@@ -268,8 +268,8 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
     } else if (upb_FieldDef_IsRepeated(f)) {
       // Repeated field.
       const upb_array* arr = val.array_val;
-      for (size_t i = 0, n = upb_array_size(arr); i < n; i++) {
-        upb_msgval elem = upb_array_get(arr, i);
+      for (size_t i = 0, n = upb_Array_Size(arr); i < n; i++) {
+        upb_MessageValue elem = upb_Array_Get(arr, i);
         upb_FindContext_Push(ctx, (upb_FieldPathEntry){.array_index = i});
         upb_util_FindUnsetRequiredInternal(ctx, elem.msg_val, sub_m);
         upb_FindContext_Pop(ctx);

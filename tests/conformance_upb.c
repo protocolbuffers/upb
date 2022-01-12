@@ -247,7 +247,7 @@ void DoTest(const ctx* c) {
     return;
   }
 
-  msg = upb_msg_new(m, c->arena);
+  msg = upb_Message_New(m, c->arena);
 
   if (parse_input(msg, m, c)) {
     write_output(msg, m, c);
