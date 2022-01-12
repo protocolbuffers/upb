@@ -40,7 +40,7 @@ extern "C" {
 // allocation failed.
 google_protobuf_DescriptorProto* upb_MessageDef_ToProto(const upb_MessageDef* m,
                                                         upb_arena* a);
-google_protobuf_EnumDescriptorProto* upb_EnumDef_ToProto(const upb_enumdef* e,
+google_protobuf_EnumDescriptorProto* upb_EnumDef_ToProto(const upb_EnumDef* e,
                                                          upb_arena* a);
 google_protobuf_EnumValueDescriptorProto* upb_EnumValueDef_ToProto(
     const upb_enumvaldef* e, upb_arena* a);

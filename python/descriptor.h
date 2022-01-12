@@ -53,7 +53,7 @@ PyObject* PyUpb_Descriptor_GetClass(const upb_MessageDef* m);
 // existing object if one already exists, otherwise a new object will be
 // created.  The caller always owns a ref on the returned object.
 PyObject* PyUpb_Descriptor_Get(const upb_MessageDef* msgdef);
-PyObject* PyUpb_EnumDescriptor_Get(const upb_enumdef* enumdef);
+PyObject* PyUpb_EnumDescriptor_Get(const upb_EnumDef* enumdef);
 PyObject* PyUpb_FieldDescriptor_Get(const upb_FieldDef* field);
 PyObject* PyUpb_FileDescriptor_Get(const upb_filedef* file);
 PyObject* PyUpb_OneofDescriptor_Get(const upb_OneofDef* oneof);

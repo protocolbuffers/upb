@@ -73,7 +73,7 @@ struct upb_FieldDef {
   } scope;
   union {
     const upb_MessageDef *msgdef;
-    const upb_enumdef *enumdef;
+    const upb_EnumDef *enumdef;
     const google_protobuf_FieldDescriptorProto *unresolved;
   } sub;
   uint32_t number_;
@@ -112,7 +112,7 @@ struct upb_MessageDef {
   const upb_OneofDef *oneofs;
   const upb_ExtensionRange *ext_ranges;
   const upb_MessageDef *nested_msgs;
-  const upb_enumdef *nested_enums;
+  const upb_EnumDef *nested_enums;
   const upb_FieldDef *nested_exts;
   int field_count;
   int real_oneof_count;
@@ -125,7 +125,7 @@ struct upb_MessageDef {
   upb_wellknowntype_t well_known_type;
 };
 
-struct upb_enumdef {
+struct upb_EnumDef {
   const google_protobuf_EnumOptions *opts;
   const upb_enumlayout *layout;  // Only for proto2.
   const upb_filedef *file;
@@ -140,7 +140,7 @@ struct upb_enumdef {
 
 struct upb_enumvaldef {
   const google_protobuf_EnumValueOptions *opts;
-  const upb_enumdef *parent;
+  const upb_EnumDef *parent;
   const char *full_name;
   int32_t number;
 };
@@ -165,7 +165,7 @@ struct upb_filedef {
   const int32_t* public_deps;
   const int32_t* weak_deps;
   const upb_MessageDef *top_lvl_msgs;
-  const upb_enumdef *top_lvl_enums;
+  const upb_EnumDef *top_lvl_enums;
   const upb_FieldDef *top_lvl_exts;
   const upb_servicedef *services;
   const upb_msglayout_ext **ext_layouts;
@@ -358,42 +358,42 @@ static void assign_msg_wellknowntype(upb_MessageDef *m) {
 }
 
 
-/* upb_enumdef ****************************************************************/
+/* upb_EnumDef ****************************************************************/
 
-const google_protobuf_EnumOptions *upb_enumdef_options(const upb_enumdef *e) {
+const google_protobuf_EnumOptions *upb_EnumDef_Options(const upb_EnumDef *e) {
   return e->opts;
 }
 
-bool upb_enumdef_hasoptions(const upb_enumdef *e) {
+bool upb_EnumDef_HasOptions(const upb_EnumDef *e) {
   return e->opts != (void*)opt_default;
 }
 
-const char *upb_enumdef_fullname(const upb_enumdef *e) {
+const char *upb_EnumDef_FullName(const upb_EnumDef *e) {
   return e->full_name;
 }
 
-const char *upb_enumdef_name(const upb_enumdef *e) {
+const char *upb_EnumDef_Name(const upb_EnumDef *e) {
   return shortdefname(e->full_name);
 }
 
-const upb_filedef *upb_enumdef_file(const upb_enumdef *e) {
+const upb_filedef *upb_EnumDef_File(const upb_EnumDef *e) {
   return e->file;
 }
 
-const upb_MessageDef *upb_enumdef_containingtype(const upb_enumdef *e) {
+const upb_MessageDef *upb_EnumDef_ContainingType(const upb_EnumDef *e) {
   return e->containing_type;
 }
 
-int32_t upb_enumdef_default(const upb_enumdef *e) {
-  UPB_ASSERT(upb_enumdef_lookupnum(e, e->defaultval));
+int32_t upb_EnumDef_Default(const upb_EnumDef *e) {
+  UPB_ASSERT(upb_EnumDef_FindValueByNumber(e, e->defaultval));
   return e->defaultval;
 }
 
-int upb_enumdef_valuecount(const upb_enumdef *e) {
+int upb_EnumDef_ValueCount(const upb_EnumDef *e) {
   return e->value_count;
 }
 
-const upb_enumvaldef *upb_enumdef_lookupname(const upb_enumdef *def,
+const upb_enumvaldef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *def,
                                              const char *name, size_t len) {
   upb_value v;
   return upb_strtable_lookup2(&def->ntoi, name, len, &v)
@@ -401,30 +401,30 @@ const upb_enumvaldef *upb_enumdef_lookupname(const upb_enumdef *def,
              : NULL;
 }
 
-const upb_enumvaldef *upb_enumdef_lookupnum(const upb_enumdef *def, int32_t num) {
+const upb_enumvaldef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *def, int32_t num) {
   upb_value v;
   return upb_inttable_lookup(&def->iton, num, &v) ? upb_value_getconstptr(v)
                                                   : NULL;
 }
 
-bool upb_enumdef_checknum(const upb_enumdef *e, int32_t num) {
-  // We could use upb_enumdef_lookupnum(e, num) != NULL, but we expect this to
+bool upb_EnumDef_CheckNumber(const upb_EnumDef *e, int32_t num) {
+  // We could use upb_EnumDef_FindValueByNumber(e, num) != NULL, but we expect this to
   // be faster (especially for small numbers).
   return _upb_enumlayout_checkval(e->layout, num);
 }
 
-const upb_enumvaldef *upb_enumdef_value(const upb_enumdef *e, int i) {
+const upb_enumvaldef *upb_EnumDef_Value(const upb_EnumDef *e, int i) {
   UPB_ASSERT(0 <= i && i < e->value_count);
   return &e->values[i];
 }
 
 // Deprecated functions.
 
-int upb_enumdef_numvals(const upb_enumdef *e) {
+int upb_EnumDef_numvals(const upb_EnumDef *e) {
   return (int)upb_strtable_count(&e->ntoi);
 }
 
-void upb_enum_begin(upb_enum_iter *i, const upb_enumdef *e) {
+void upb_enum_begin(upb_enum_iter *i, const upb_EnumDef *e) {
   /* We iterate over the ntoi table, to account for duplicate numbers. */
   upb_strtable_begin(i, &e->ntoi);
 }
@@ -452,7 +452,7 @@ bool upb_enumvaldef_hasoptions(const upb_enumvaldef *e) {
   return e->opts != (void*)opt_default;
 }
 
-const upb_enumdef *upb_enumvaldef_enum(const upb_enumvaldef *ev) {
+const upb_EnumDef *upb_enumvaldef_enum(const upb_enumvaldef *ev) {
   return ev->parent;
 }
 
@@ -641,7 +641,7 @@ const upb_MessageDef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE ? f->sub.msgdef : NULL;
 }
 
-const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f) {
+const upb_EnumDef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_ENUM ? f->sub.enumdef : NULL;
 }
 
@@ -860,7 +860,7 @@ const upb_MessageDef *upb_MessageDef_NestedMessage(const upb_MessageDef *m, int 
   return &m->nested_msgs[i];
 }
 
-const upb_enumdef *upb_MessageDef_NestedEnum(const upb_MessageDef *m, int i) {
+const upb_EnumDef *upb_MessageDef_NestedEnum(const upb_MessageDef *m, int i) {
   UPB_ASSERT(0 <= i && i < m->nested_enum_count);
   return &m->nested_enums[i];
 }
@@ -1005,7 +1005,7 @@ const upb_MessageDef *upb_filedef_toplvlmsg(const upb_filedef *f, int i) {
   return &f->top_lvl_msgs[i];
 }
 
-const upb_enumdef *upb_filedef_toplvlenum(const upb_filedef *f, int i) {
+const upb_EnumDef *upb_filedef_toplvlenum(const upb_filedef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->top_lvl_enum_count);
   return &f->top_lvl_enums[i];
 }
@@ -1168,7 +1168,7 @@ const upb_MessageDef *upb_symtab_lookupmsg2(const upb_symtab *s, const char *sym
   return symtab_lookup2(s, sym, len, UPB_DEFTYPE_MSG);
 }
 
-const upb_enumdef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym) {
+const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym) {
   return symtab_lookup(s, sym, UPB_DEFTYPE_ENUM);
 }
 
@@ -1236,12 +1236,12 @@ const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
         return upb_MessageDef_File(m);
       }
       case UPB_DEFTYPE_ENUM: {
-        const upb_enumdef *e = unpack_def(v, UPB_DEFTYPE_ENUM);
-        return upb_enumdef_file(e);
+        const upb_EnumDef *e = unpack_def(v, UPB_DEFTYPE_ENUM);
+        return upb_EnumDef_File(e);
       }
       case UPB_DEFTYPE_ENUMVAL: {
         const upb_enumvaldef *ev = unpack_def(v, UPB_DEFTYPE_ENUMVAL);
-        return upb_enumdef_file(upb_enumvaldef_enum(ev));
+        return upb_EnumDef_File(upb_enumvaldef_enum(ev));
       }
       case UPB_DEFTYPE_SERVICE: {
         const upb_servicedef *service = unpack_def(v, UPB_DEFTYPE_SERVICE);
@@ -2079,8 +2079,8 @@ static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
       break;
     }
     case UPB_TYPE_ENUM: {
-      const upb_enumdef *e = f->sub.enumdef;
-      const upb_enumvaldef *ev = upb_enumdef_lookupname(e, str, len);
+      const upb_EnumDef *e = f->sub.enumdef;
+      const upb_enumvaldef *ev = upb_EnumDef_FindValueByNameWithSize(e, str, len);
       if (!ev) {
         goto invalid;
       }
@@ -2446,7 +2446,7 @@ static int count_bits_debug(uint64_t x) {
   return n;
 }
 
-upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_enumdef *e) {
+upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_EnumDef *e) {
   int n = 0;
   uint64_t mask = 0;
 
@@ -2487,7 +2487,7 @@ upb_enumlayout *create_enumlayout(symtab_addctx *ctx, const upb_enumdef *e) {
 
 static void create_enumvaldef(
     symtab_addctx *ctx, const char *prefix,
-    const google_protobuf_EnumValueDescriptorProto *val_proto, upb_enumdef *e,
+    const google_protobuf_EnumValueDescriptorProto *val_proto, upb_EnumDef *e,
     int i) {
   upb_enumvaldef *val = (upb_enumvaldef *)&e->values[i];
   upb_strview name = google_protobuf_EnumValueDescriptorProto_name(val_proto);
@@ -2517,8 +2517,8 @@ static void create_enumdef(
     symtab_addctx *ctx, const char *prefix,
     const google_protobuf_EnumDescriptorProto *enum_proto,
     const upb_MessageDef *containing_type,
-    const upb_enumdef *_e) {
-  upb_enumdef *e = (upb_enumdef*)_e;;
+    const upb_EnumDef *_e) {
+  upb_EnumDef *e = (upb_EnumDef*)_e;;
   const google_protobuf_EnumValueDescriptorProto *const *values;
   upb_strview name;
   size_t i, n;
@@ -3041,10 +3041,10 @@ static void remove_filedef(upb_symtab *s, upb_filedef *file) {
         f = upb_MessageDef_File(unpack_def(val, UPB_DEFTYPE_MSG));
         break;
       case UPB_DEFTYPE_ENUM:
-        f = upb_enumdef_file(unpack_def(val, UPB_DEFTYPE_ENUM));
+        f = upb_EnumDef_File(unpack_def(val, UPB_DEFTYPE_ENUM));
         break;
       case UPB_DEFTYPE_ENUMVAL:
-        f = upb_enumdef_file(
+        f = upb_EnumDef_File(
             upb_enumvaldef_enum(unpack_def(val, UPB_DEFTYPE_ENUMVAL)));
         break;
       case UPB_DEFTYPE_SERVICE:

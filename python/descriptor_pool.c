@@ -428,7 +428,7 @@ static PyObject* PyUpb_DescriptorPool_FindEnumTypeByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_enumdef* e = upb_symtab_lookupenum(self->symtab, name);
+  const upb_EnumDef* e = upb_symtab_lookupenum(self->symtab, name);
   if (e == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
     e = upb_symtab_lookupenum(self->symtab, name);

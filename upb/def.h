@@ -32,7 +32,7 @@
  * - upb_MessageDef: describes a "message" construct.
  * - upb_FieldDef: describes a message field.
  * - upb_filedef: describes a .proto file and its defs.
- * - upb_enumdef: describes an enum.
+ * - upb_EnumDef: describes an enum.
  * - upb_OneofDef: describes a oneof.
  *
  * TODO: definitions of services.
@@ -52,8 +52,8 @@
 extern "C" {
 #endif  /* __cplusplus */
 
-struct upb_enumdef;
-typedef struct upb_enumdef upb_enumdef;
+struct upb_EnumDef;
+typedef struct upb_EnumDef upb_EnumDef;
 struct upb_enumvaldef;
 typedef struct upb_enumvaldef upb_enumvaldef;
 struct upb_ExtensionRange;
@@ -139,7 +139,7 @@ bool upb_FieldDef_HasDefault(const upb_FieldDef *f);
 bool upb_FieldDef_HasSubDef(const upb_FieldDef *f);
 bool upb_FieldDef_HasPresence(const upb_FieldDef *f);
 const upb_MessageDef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f);
-const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f);
+const upb_EnumDef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f);
 const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f);
 const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f);
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f);
@@ -227,7 +227,7 @@ int upb_MessageDef_NestedMessageCount(const upb_MessageDef *m);
 int upb_MessageDef_NestedEnumCount(const upb_MessageDef *m);
 int upb_MessageDef_NestedExtensionCount(const upb_MessageDef *m);
 const upb_MessageDef *upb_MessageDef_NestedMessage(const upb_MessageDef *m, int i);
-const upb_enumdef *upb_MessageDef_NestedEnum(const upb_MessageDef *m, int i);
+const upb_EnumDef *upb_MessageDef_NestedEnum(const upb_MessageDef *m, int i);
 const upb_FieldDef *upb_MessageDef_NestedExtension(const upb_MessageDef *m, int i);
 
 /* Lookup of either field or oneof by name.  Returns whether either was found.
@@ -258,28 +258,28 @@ bool upb_ExtensionRange_HasOptions(const upb_ExtensionRange *r);
 int32_t upb_ExtensionRange_Start(const upb_ExtensionRange *r);
 int32_t upb_ExtensionRange_End(const upb_ExtensionRange *r);
 
-/* upb_enumdef ****************************************************************/
+/* upb_EnumDef ****************************************************************/
 
 typedef upb_strtable_iter upb_enum_iter;
 
-const google_protobuf_EnumOptions *upb_enumdef_options(const upb_enumdef *e);
-bool upb_enumdef_hasoptions(const upb_enumdef *e);
-const char *upb_enumdef_fullname(const upb_enumdef *e);
-const char *upb_enumdef_name(const upb_enumdef *e);
-const upb_filedef *upb_enumdef_file(const upb_enumdef *e);
-const upb_MessageDef *upb_enumdef_containingtype(const upb_enumdef *e);
-int32_t upb_enumdef_default(const upb_enumdef *e);
-int upb_enumdef_valuecount(const upb_enumdef *e);
-const upb_enumvaldef *upb_enumdef_value(const upb_enumdef *e, int i);
+const google_protobuf_EnumOptions *upb_EnumDef_Options(const upb_EnumDef *e);
+bool upb_EnumDef_HasOptions(const upb_EnumDef *e);
+const char *upb_EnumDef_FullName(const upb_EnumDef *e);
+const char *upb_EnumDef_Name(const upb_EnumDef *e);
+const upb_filedef *upb_EnumDef_File(const upb_EnumDef *e);
+const upb_MessageDef *upb_EnumDef_ContainingType(const upb_EnumDef *e);
+int32_t upb_EnumDef_Default(const upb_EnumDef *e);
+int upb_EnumDef_ValueCount(const upb_EnumDef *e);
+const upb_enumvaldef *upb_EnumDef_Value(const upb_EnumDef *e, int i);
 
-const upb_enumvaldef *upb_enumdef_lookupname(const upb_enumdef *e,
+const upb_enumvaldef *upb_EnumDef_FindValueByNameWithSize(const upb_EnumDef *e,
                                              const char *name, size_t len);
-const upb_enumvaldef *upb_enumdef_lookupnum(const upb_enumdef *e, int32_t num);
-bool upb_enumdef_checknum(const upb_enumdef *e, int32_t num);
+const upb_enumvaldef *upb_EnumDef_FindValueByNumber(const upb_EnumDef *e, int32_t num);
+bool upb_EnumDef_CheckNumber(const upb_EnumDef *e, int32_t num);
 
 /* DEPRECATED, slated for removal */
-int upb_enumdef_numvals(const upb_enumdef *e);
-void upb_enum_begin(upb_enum_iter *iter, const upb_enumdef *e);
+int upb_EnumDef_numvals(const upb_EnumDef *e);
+void upb_enum_begin(upb_enum_iter *iter, const upb_EnumDef *e);
 void upb_enum_next(upb_enum_iter *iter);
 bool upb_enum_done(upb_enum_iter *iter);
 const char *upb_enum_iter_name(upb_enum_iter *iter);
@@ -287,9 +287,9 @@ int32_t upb_enum_iter_number(upb_enum_iter *iter);
 /* END DEPRECATED */
 
 // Convenience wrapper.
-UPB_INLINE const upb_enumvaldef *upb_enumdef_lookupnamez(const upb_enumdef *e,
+UPB_INLINE const upb_enumvaldef *upb_EnumDef_FindValueByName(const upb_EnumDef *e,
                                                          const char *name) {
-  return upb_enumdef_lookupname(e, name, strlen(name));
+  return upb_EnumDef_FindValueByNameWithSize(e, name, strlen(name));
 }
 
 /* upb_enumvaldef *************************************************************/
@@ -301,7 +301,7 @@ const char *upb_enumvaldef_fullname(const upb_enumvaldef *e);
 const char *upb_enumvaldef_name(const upb_enumvaldef *e);
 int32_t upb_enumvaldef_number(const upb_enumvaldef *e);
 uint32_t upb_enumvaldef_index(const upb_enumvaldef *e);
-const upb_enumdef *upb_enumvaldef_enum(const upb_enumvaldef *e);
+const upb_EnumDef *upb_enumvaldef_enum(const upb_enumvaldef *e);
 
 /* upb_filedef ****************************************************************/
 
@@ -323,7 +323,7 @@ const upb_filedef *upb_filedef_dep(const upb_filedef *f, int i);
 const upb_filedef *upb_filedef_publicdep(const upb_filedef *f, int i);
 const upb_filedef *upb_filedef_weakdep(const upb_filedef *f, int i);
 const upb_MessageDef *upb_filedef_toplvlmsg(const upb_filedef *f, int i);
-const upb_enumdef *upb_filedef_toplvlenum(const upb_filedef *f, int i);
+const upb_EnumDef *upb_filedef_toplvlenum(const upb_filedef *f, int i);
 const upb_FieldDef *upb_filedef_toplvlext(const upb_filedef *f, int i);
 const upb_servicedef *upb_filedef_service(const upb_filedef *f, int i);
 const upb_symtab *upb_filedef_symtab(const upb_filedef *f);
@@ -364,7 +364,7 @@ void upb_symtab_free(upb_symtab* s);
 const upb_MessageDef *upb_symtab_lookupmsg(const upb_symtab *s, const char *sym);
 const upb_MessageDef *upb_symtab_lookupmsg2(
     const upb_symtab *s, const char *sym, size_t len);
-const upb_enumdef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
+const upb_EnumDef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
 const upb_enumvaldef *upb_symtab_lookupenumval(const upb_symtab *s,
                                                const char *sym);
 const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);

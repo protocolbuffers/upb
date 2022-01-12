@@ -302,35 +302,35 @@ class EnumValDefPtr {
 class EnumDefPtr {
  public:
   EnumDefPtr() : ptr_(nullptr) {}
-  explicit EnumDefPtr(const upb_enumdef* ptr) : ptr_(ptr) {}
+  explicit EnumDefPtr(const upb_EnumDef* ptr) : ptr_(ptr) {}
 
-  const upb_enumdef* ptr() const { return ptr_; }
+  const upb_EnumDef* ptr() const { return ptr_; }
   explicit operator bool() const { return ptr_ != nullptr; }
 
-  const char* full_name() const { return upb_enumdef_fullname(ptr_); }
-  const char* name() const { return upb_enumdef_name(ptr_); }
+  const char* full_name() const { return upb_EnumDef_FullName(ptr_); }
+  const char* name() const { return upb_EnumDef_Name(ptr_); }
 
   // The value that is used as the default when no field default is specified.
   // If not set explicitly, the first value that was added will be used.
   // The default value must be a member of the enum.
   // Requires that value_count() > 0.
-  int32_t default_value() const { return upb_enumdef_default(ptr_); }
+  int32_t default_value() const { return upb_EnumDef_Default(ptr_); }
 
   // Returns the number of values currently defined in the enum.  Note that
   // multiple names can refer to the same number, so this may be greater than
   // the total number of unique numbers.
-  int value_count() const { return upb_enumdef_numvals(ptr_); }
+  int value_count() const { return upb_EnumDef_numvals(ptr_); }
 
   // Lookups from name to integer, returning true if found.
   EnumValDefPtr FindValueByName(const char* name) const {
-    return EnumValDefPtr(upb_enumdef_lookupnamez(ptr_, name));
+    return EnumValDefPtr(upb_EnumDef_FindValueByName(ptr_, name));
   }
 
   // Finds the name corresponding to the given number, or NULL if none was
   // found.  If more than one name corresponds to this number, returns the
   // first one that was added.
   EnumValDefPtr FindValueByNumber(int32_t num) const {
-    return EnumValDefPtr(upb_enumdef_lookupnum(ptr_, num));
+    return EnumValDefPtr(upb_EnumDef_FindValueByNumber(ptr_, num));
   }
 
   // Iteration over name/value pairs.  The order is undefined.
@@ -351,7 +351,7 @@ class EnumDefPtr {
   };
 
  private:
-  const upb_enumdef* ptr_;
+  const upb_EnumDef* ptr_;
 };
 
 // Class that represents a .proto file with some things defined in it.

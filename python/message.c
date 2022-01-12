@@ -1675,7 +1675,7 @@ static PyObject* PyUpb_MessageMeta_GetDynamicAttr(PyObject* self,
   const char* key = PyUpb_GetStrData(py_key);
   PyObject* ret = NULL;
   const upb_MessageDef* nested = upb_symtab_lookupmsg(symtab, key);
-  const upb_enumdef* enumdef;
+  const upb_EnumDef* enumdef;
   const upb_enumvaldef* enumval;
   const upb_FieldDef* ext;
 

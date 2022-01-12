@@ -127,8 +127,8 @@ static upb_strview default_string(upb_ToProto_Context *ctx,
     case UPB_TYPE_BOOL:
       return strviewdup(ctx, d.bool_val ? "true" : "false");
     case UPB_TYPE_ENUM: {
-      const upb_enumdef *e = upb_FieldDef_EnumSubDef(f);
-      const upb_enumvaldef *ev = upb_enumdef_lookupnum(e, d.int32_val);
+      const upb_EnumDef *e = upb_FieldDef_EnumSubDef(f);
+      const upb_enumvaldef *ev = upb_EnumDef_FindValueByNumber(e, d.int32_val);
       return strviewdup(ctx, upb_enumvaldef_name(ev));
     }
     case UPB_TYPE_INT64:
@@ -176,7 +176,7 @@ static google_protobuf_FieldDescriptorProto *fielddef_toproto(
         proto, qual_dup(ctx, upb_MessageDef_FullName(upb_FieldDef_MessageSubDef(f))));
   } else if (upb_FieldDef_CType(f) == UPB_TYPE_ENUM) {
     google_protobuf_FieldDescriptorProto_set_type_name(
-        proto, qual_dup(ctx, upb_enumdef_fullname(upb_FieldDef_EnumSubDef(f))));
+        proto, qual_dup(ctx, upb_EnumDef_FullName(upb_FieldDef_EnumSubDef(f))));
   }
 
   if (upb_FieldDef_IsExtension(f)) {
@@ -245,29 +245,29 @@ static google_protobuf_EnumValueDescriptorProto *enumvaldef_toproto(
 }
 
 static google_protobuf_EnumDescriptorProto *enumdef_toproto(
-    upb_ToProto_Context *ctx, const upb_enumdef *e) {
+    upb_ToProto_Context *ctx, const upb_EnumDef *e) {
   google_protobuf_EnumDescriptorProto *proto =
       google_protobuf_EnumDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
 
   google_protobuf_EnumDescriptorProto_set_name(
-      proto, strviewdup(ctx, upb_enumdef_name(e)));
+      proto, strviewdup(ctx, upb_EnumDef_Name(e)));
 
   int n;
 
-  n = upb_enumdef_valuecount(e);
+  n = upb_EnumDef_ValueCount(e);
   google_protobuf_EnumValueDescriptorProto **vals =
       google_protobuf_EnumDescriptorProto_resize_value(proto, n, ctx->arena);
   CHK_OOM(vals);
   for (int i = 0; i < n; i++) {
-    vals[i] = enumvaldef_toproto(ctx, upb_enumdef_value(e, i));
+    vals[i] = enumvaldef_toproto(ctx, upb_EnumDef_Value(e, i));
   }
 
   // TODO: reserved range, reserved name
 
-  if (upb_enumdef_hasoptions(e)) {
+  if (upb_EnumDef_HasOptions(e)) {
     SET_OPTIONS(proto, EnumDescriptorProto, EnumOptions,
-                upb_enumdef_options(e));
+                upb_EnumDef_Options(e));
   }
 
   return proto;
@@ -502,7 +502,7 @@ google_protobuf_DescriptorProto *upb_MessageDef_ToProto(const upb_MessageDef *m,
   return msgdef_toproto(&ctx, m);
 }
 
-google_protobuf_EnumDescriptorProto *upb_EnumDef_ToProto(const upb_enumdef *e,
+google_protobuf_EnumDescriptorProto *upb_EnumDef_ToProto(const upb_EnumDef *e,
                                                          upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;

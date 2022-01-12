@@ -198,12 +198,12 @@ static void jsonenc_duration(jsonenc *e, const upb_msg *msg, const upb_MessageDe
 }
 
 static void jsonenc_enum(int32_t val, const upb_FieldDef *f, jsonenc *e) {
-  const upb_enumdef *e_def = upb_FieldDef_EnumSubDef(f);
+  const upb_EnumDef *e_def = upb_FieldDef_EnumSubDef(f);
 
-  if (strcmp(upb_enumdef_fullname(e_def), "google.protobuf.NullValue") == 0) {
+  if (strcmp(upb_EnumDef_FullName(e_def), "google.protobuf.NullValue") == 0) {
     jsonenc_putstr(e, "null");
   } else {
-    const upb_enumvaldef *ev = upb_enumdef_lookupnum(e_def, val);
+    const upb_enumvaldef *ev = upb_EnumDef_FindValueByNumber(e_def, val);
 
     if (ev) {
       jsonenc_printf(e, "\"%s\"", upb_enumvaldef_name(ev));

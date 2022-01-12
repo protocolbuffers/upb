@@ -71,7 +71,7 @@ static bool jsondec_streql(upb_strview str, const char *lit) {
 
 static bool jsondec_isnullvalue(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
-         strcmp(upb_enumdef_fullname(upb_FieldDef_EnumSubDef(f)),
+         strcmp(upb_EnumDef_FullName(upb_FieldDef_EnumSubDef(f)),
                 "google.protobuf.NullValue") == 0;
 }
 
@@ -816,8 +816,8 @@ static upb_msgval jsondec_enum(jsondec *d, const upb_FieldDef *f) {
   switch (jsondec_peek(d)) {
     case JD_STRING: {
       upb_strview str = jsondec_string(d);
-      const upb_enumdef *e = upb_FieldDef_EnumSubDef(f);
-      const upb_enumvaldef *ev = upb_enumdef_lookupname(e, str.data, str.size);
+      const upb_EnumDef *e = upb_FieldDef_EnumSubDef(f);
+      const upb_enumvaldef *ev = upb_EnumDef_FindValueByNameWithSize(e, str.data, str.size);
       upb_msgval val;
       if (ev) {
         val.int32_val = upb_enumvaldef_number(ev);

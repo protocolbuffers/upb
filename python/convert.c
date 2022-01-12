@@ -157,12 +157,12 @@ static upb_msgval PyUpb_MaybeCopyString(const char *ptr, size_t size,
   return ret;
 }
 
-static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_enumdef *e,
+static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_EnumDef *e,
                               upb_msgval *val) {
   if (PyUnicode_Check(obj)) {
     Py_ssize_t size;
     const char *name = PyUnicode_AsUTF8AndSize(obj, &size);
-    const upb_enumvaldef *ev = upb_enumdef_lookupname(e, name, size);
+    const upb_enumvaldef *ev = upb_EnumDef_FindValueByNameWithSize(e, name, size);
     if (!ev) {
       PyErr_Format(PyExc_ValueError, "unknown enum label \"%s\"", name);
       return false;
@@ -172,8 +172,8 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_enumdef *e,
   } else {
     int32_t i32;
     if (!PyUpb_GetInt32(obj, &i32)) return false;
-    if (upb_filedef_syntax(upb_enumdef_file(e)) == UPB_SYNTAX_PROTO2 &&
-        !upb_enumdef_checknum(e, i32)) {
+    if (upb_filedef_syntax(upb_EnumDef_File(e)) == UPB_SYNTAX_PROTO2 &&
+        !upb_EnumDef_CheckNumber(e, i32)) {
       PyErr_Format(PyExc_ValueError, "invalid enumerator %d", (int)i32);
       return false;
     }

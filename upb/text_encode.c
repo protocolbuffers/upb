@@ -101,8 +101,8 @@ static void txtenc_endfield(txtenc *e) {
 }
 
 static void txtenc_enum(int32_t val, const upb_FieldDef *f, txtenc *e) {
-  const upb_enumdef *e_def = upb_FieldDef_EnumSubDef(f);
-  const upb_enumvaldef *ev = upb_enumdef_lookupnum(e_def, val);
+  const upb_EnumDef *e_def = upb_FieldDef_EnumSubDef(f);
+  const upb_enumvaldef *ev = upb_EnumDef_FindValueByNumber(e_def, val);
 
   if (ev) {
     txtenc_printf(e, "%s", upb_enumvaldef_name(ev));
