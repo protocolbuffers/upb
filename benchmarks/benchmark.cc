@@ -41,11 +41,11 @@ namespace protobuf = ::google::protobuf;
 /* A buffer big enough to parse descriptor.proto without going to heap. */
 char buf[65535];
 
-void CollectFileDescriptors(const upb_def_init* file,
+void CollectFileDescriptors(const _upb_DefPool_Init* file,
                             std::vector<upb_strview>& serialized_files,
-                            absl::flat_hash_set<const upb_def_init*>& seen) {
+                            absl::flat_hash_set<const _upb_DefPool_Init*>& seen) {
   if (!seen.insert(file).second) return;
-  for (upb_def_init **deps = file->deps; *deps; deps++) {
+  for (_upb_DefPool_Init **deps = file->deps; *deps; deps++) {
     CollectFileDescriptors(*deps, serialized_files, seen);
   }
   serialized_files.push_back(file->descriptor);
@@ -111,9 +111,9 @@ static void BM_LoadDescriptor_Proto2(benchmark::State& state) {
 BENCHMARK(BM_LoadDescriptor_Proto2);
 
 static void BM_LoadAdsDescriptor_Proto2(benchmark::State& state) {
-  extern upb_def_init google_ads_googleads_v7_services_google_ads_service_proto_upbdefinit;
+  extern _upb_DefPool_Init google_ads_googleads_v7_services_google_ads_service_proto_upbdefinit;
   std::vector<upb_strview> serialized_files;
-  absl::flat_hash_set<const upb_def_init*> seen_files;
+  absl::flat_hash_set<const _upb_DefPool_Init*> seen_files;
   CollectFileDescriptors(
       &google_ads_googleads_v7_services_google_ads_service_proto_upbdefinit,
       serialized_files, seen_files);

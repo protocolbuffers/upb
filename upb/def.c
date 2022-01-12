@@ -208,12 +208,6 @@ struct upb_DefPool {
   upb_inttable exts;   /* upb_msglayout_ext* -> upb_FieldDef* */
   upb_extreg *extreg;
   size_t bytes_loaded;
-
-  // For compatibility with proto2, we have to accept json_names that conflict
-  // with field names or other json_names.  This is very ill-advised, so we only
-  // allow this when it is needed (and hopefully these cases can be cleaned up
-  // and eliminated.  When this is enabled, the results are not well-defined.
-  bool allow_name_conflicts;
 };
 
 /* Inside a symtab we store tagged pointers to specific def types. */
@@ -1101,7 +1095,6 @@ upb_DefPool *upb_DefPool_New(void) {
 
   s->arena = upb_arena_new();
   s->bytes_loaded = 0;
-  s->allow_name_conflicts = false;
 
   if (!upb_strtable_init(&s->syms, 32, s->arena) ||
       !upb_strtable_init(&s->files, 4, s->arena) ||
@@ -1117,10 +1110,6 @@ err:
   upb_arena_free(s->arena);
   upb_gfree(s);
   return NULL;
-}
-
-void _upb_DefPool_allownameconflicts(upb_DefPool *s) {
-  s->allow_name_conflicts = true;
 }
 
 static const void *symtab_lookup(const upb_DefPool *s, const char *sym,
@@ -2247,13 +2236,7 @@ static void create_fielddef(
     json_size = strlen(json_name);
 
     if (upb_strtable_lookup(&m->ntof, shortname, &existing_v)) {
-      if (ctx->symtab->allow_name_conflicts &&
-          deftype(existing_v) == UPB_DEFTYPE_FIELD_JSONNAME) {
-        // Field name takes precedence over json name.
-        upb_strtable_remove(&m->ntof, shortname, NULL);
-      } else {
-        symtab_errf(ctx, "duplicate field name (%s)", shortname);
-      }
+      symtab_errf(ctx, "duplicate field name (%s)", shortname);
     }
 
     CHK_OOM(upb_strtable_insert(&m->ntof, name.data, name.size, field_v,
@@ -2261,9 +2244,7 @@ static void create_fielddef(
 
     if (strcmp(shortname, json_name) != 0) {
       if (upb_strtable_lookup(&m->ntof, json_name, &v)) {
-        if (!ctx->symtab->allow_name_conflicts) {
-          symtab_errf(ctx, "duplicate json_name (%s)", json_name);
-        }
+        symtab_errf(ctx, "duplicate json_name (%s)", json_name);
       } else {
         CHK_OOM(upb_strtable_insert(&m->ntof, json_name, json_size, json_v,
                                     ctx->arena));
@@ -3105,10 +3086,10 @@ static const upb_FileDef *_upb_DefPool_AddFile(
 /* Include here since we want most of this file to be stdio-free. */
 #include <stdio.h>
 
-bool _upb_DefPool_loaddefinit(upb_DefPool *s, const upb_def_init *init) {
+bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
   /* Since this function should never fail (it would indicate a bug in upb) we
    * print errors to stderr instead of returning error status to the user. */
-  upb_def_init **deps = init->deps;
+  _upb_DefPool_Init **deps = init->deps;
   google_protobuf_FileDescriptorProto *file;
   upb_arena *arena;
   upb_status status;
@@ -3122,7 +3103,7 @@ bool _upb_DefPool_loaddefinit(upb_DefPool *s, const upb_def_init *init) {
   arena = upb_arena_new();
 
   for (; *deps; deps++) {
-    if (!_upb_DefPool_loaddefinit(s, *deps)) goto err;
+    if (!_upb_DefPool_LoadDefInit(s, *deps)) goto err;
   }
 
   file = google_protobuf_FileDescriptorProto_parse_ex(

@@ -52,7 +52,7 @@ static std::string DefSourceFilename(std::string proto_filename) {
 void GenerateMessageDefAccessor(const protobuf::Descriptor* d, Output& output) {
   output("UPB_INLINE const upb_MessageDef *$0_getmsgdef(upb_DefPool *s) {\n",
          ToCIdent(d->full_name()));
-  output("  _upb_DefPool_loaddefinit(s, &$0);\n", DefInitSymbol(d->file()));
+  output("  _upb_DefPool_LoadDefInit(s, &$0);\n", DefInitSymbol(d->file()));
   output("  return upb_DefPool_FindMessageByName(s, \"$0\");\n", d->full_name());
   output("}\n");
   output("\n");
@@ -80,7 +80,7 @@ void WriteDefHeader(const protobuf::FileDescriptor* file, Output& output) {
   output("#include \"upb/port_def.inc\"\n");
   output("\n");
 
-  output("extern upb_def_init $0;\n", DefInitSymbol(file));
+  output("extern _upb_DefPool_Init $0;\n", DefInitSymbol(file));
   output("\n");
 
   for (int i = 0; i < file->message_type_count(); i++) {
@@ -108,7 +108,7 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   output("\n");
 
   for (int i = 0; i < file->dependency_count(); i++) {
-    output("extern upb_def_init $0;\n", DefInitSymbol(file->dependency(i)));
+    output("extern _upb_DefPool_Init $0;\n", DefInitSymbol(file->dependency(i)));
   }
 
   protobuf::FileDescriptorProto file_proto;
@@ -130,7 +130,7 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   }
   output("};\n\n");
 
-  output("static upb_def_init *deps[$0] = {\n", file->dependency_count() + 1);
+  output("static _upb_DefPool_Init *deps[$0] = {\n", file->dependency_count() + 1);
   for (int i = 0; i < file->dependency_count(); i++) {
     output("  &$0,\n", DefInitSymbol(file->dependency(i)));
   }
@@ -138,7 +138,7 @@ void WriteDefSource(const protobuf::FileDescriptor* file, Output& output) {
   output("};\n");
   output("\n");
 
-  output("upb_def_init $0 = {\n", DefInitSymbol(file));
+  output("_upb_DefPool_Init $0 = {\n", DefInitSymbol(file));
   output("  deps,\n");
   output("  &$0,\n", FileLayoutName(file));
   output("  \"$0\",\n", file->name());

@@ -183,3 +183,7 @@ s/upb_symtab_lookupextbynum/upb_DefPool_FindExtensionByNumber/g;
 s/upb_symtab_extreg/upb_DefPool_ExtensionRegistry/g;
 s/upb_symtab_getallexts/upb_DefPool_GetAllExtensions/g;
 s/upb_symtab/upb_DefPool/g;
+
+s/upb_def_init/_upb_DefPool_Init/g;
+
+s/_upb_DefPool_loaddefinit/_upb_DefPool_LoadDefInit/g;

@@ -379,15 +379,14 @@ const upb_FieldDef **upb_DefPool_GetAllExtensions(const upb_DefPool *s,
                                            const upb_MessageDef *m, size_t *count);
 
 /* For generated code only: loads a generated descriptor. */
-typedef struct upb_def_init {
-  struct upb_def_init **deps;     /* Dependencies of this file. */
+typedef struct _upb_DefPool_Init {
+  struct _upb_DefPool_Init **deps;     /* Dependencies of this file. */
   const upb_msglayout_file *layout;
   const char *filename;
   upb_strview descriptor;         /* Serialized descriptor. */
-} upb_def_init;
+} _upb_DefPool_Init;
 
-bool _upb_DefPool_loaddefinit(upb_DefPool *s, const upb_def_init *init);
-void _upb_DefPool_allownameconflicts(upb_DefPool *s);
+bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init);
 
 #include "upb/port_undef.inc"
 
