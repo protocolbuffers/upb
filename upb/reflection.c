@@ -91,7 +91,7 @@ static const char _upb_fieldtype_to_sizelg2[12] = {
 
 /** upb_msg *******************************************************************/
 
-upb_msg *upb_msg_new(const upb_MessageDef *m, upb_arena *a) {
+upb_msg *upb_msg_new(const upb_MessageDef *m, upb_Arena *a) {
   return _upb_msg_new(upb_MessageDef_Layout(m), a);
 }
 
@@ -158,7 +158,7 @@ upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f) {
 }
 
 upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_FieldDef *f,
-                              upb_arena *a) {
+                              upb_Arena *a) {
   UPB_ASSERT(upb_FieldDef_IsSubMessage(f) || upb_FieldDef_IsRepeated(f));
   if (upb_FieldDef_HasPresence(f) && !upb_msg_has(msg, f)) {
     // We need to skip the upb_msg_get() call in this case.
@@ -192,7 +192,7 @@ make:
 }
 
 bool upb_msg_set(upb_msg *msg, const upb_FieldDef *f, upb_msgval val,
-                 upb_arena *a) {
+                 upb_Arena *a) {
   if (upb_FieldDef_IsExtension(f)) {
     upb_msg_ext *ext =
         _upb_msg_getorcreateext(msg, _upb_FieldDef_ExtensionLayout(f), a);
@@ -342,7 +342,7 @@ bool upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth)
 
 /** upb_array *****************************************************************/
 
-upb_array *upb_array_new(upb_arena *a, upb_fieldtype_t type) {
+upb_array *upb_array_new(upb_Arena *a, upb_fieldtype_t type) {
   return _upb_array_new(a, 4, _upb_fieldtype_to_sizelg2[type]);
 }
 
@@ -366,7 +366,7 @@ void upb_array_set(upb_array *arr, size_t i, upb_msgval val) {
   memcpy(data + (i << lg2), &val, 1 << lg2);
 }
 
-bool upb_array_append(upb_array *arr, upb_msgval val, upb_arena *arena) {
+bool upb_array_append(upb_array *arr, upb_msgval val, upb_Arena *arena) {
   if (!upb_array_resize(arr, arr->len + 1, arena)) {
     return false;
   }
@@ -382,7 +382,7 @@ void upb_array_move(upb_array* arr, size_t dst_idx, size_t src_idx,
 }
 
 bool upb_array_insert(upb_array *arr, size_t i, size_t count,
-                      upb_arena *arena) {
+                      upb_Arena *arena) {
   UPB_ASSERT(i <= arr->len);
   UPB_ASSERT(count + arr->len >= count);
   size_t oldsize = arr->len;
@@ -405,13 +405,13 @@ void upb_array_delete(upb_array *arr, size_t i, size_t count) {
   arr->len -= count;
 }
 
-bool upb_array_resize(upb_array *arr, size_t size, upb_arena *arena) {
+bool upb_array_resize(upb_array *arr, size_t size, upb_Arena *arena) {
   return _upb_array_resize(arr, size, arena);
 }
 
 /** upb_map *******************************************************************/
 
-upb_map *upb_map_new(upb_arena *a, upb_fieldtype_t key_type,
+upb_map *upb_map_new(upb_Arena *a, upb_fieldtype_t key_type,
                      upb_fieldtype_t value_type) {
   return _upb_map_new(a, _upb_fieldtype_to_mapsize[key_type],
                       _upb_fieldtype_to_mapsize[value_type]);
@@ -430,7 +430,7 @@ void upb_map_clear(upb_map *map) {
 }
 
 bool upb_map_set(upb_map *map, upb_msgval key, upb_msgval val,
-                 upb_arena *arena) {
+                 upb_Arena *arena) {
   return _upb_map_set(map, &key, map->key_size, &val, map->val_size, arena);
 }
 

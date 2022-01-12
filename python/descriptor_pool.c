@@ -185,7 +185,7 @@ static bool PyUpb_DescriptorPool_LoadDependentFiles(
 static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
     PyObject* _self, PyObject* serialized_pb) {
   PyUpb_DescriptorPool* self = (PyUpb_DescriptorPool*)_self;
-  upb_arena* arena = upb_arena_new();
+  upb_Arena* arena = upb_Arena_New();
   if (!arena) PYUPB_RETURN_OOM;
   PyObject* result = NULL;
 
@@ -241,7 +241,7 @@ static PyObject* PyUpb_DescriptorPool_DoAddSerializedFile(
   result = PyUpb_FileDescriptor_Get(filedef);
 
 done:
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   return result;
 }
 

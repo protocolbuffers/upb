@@ -122,7 +122,7 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
     // layout as the C types that were compiled in.
     size_t size;
     PyObject* py_arena = PyUpb_Arena_New();
-    upb_arena* arena = PyUpb_Arena_Get(py_arena);
+    upb_Arena* arena = PyUpb_Arena_Get(py_arena);
     char* pb = upb_encode(opts, layout, arena, &size);
     upb_msg* opts2 = upb_msg_new(m, arena);
     assert(opts2);
@@ -140,12 +140,12 @@ static PyObject* PyUpb_DescriptorBase_GetOptions(PyUpb_DescriptorBase* self,
   return self->options;
 }
 
-typedef void* PyUpb_ToProto_Func(const void* def, upb_arena* arena);
+typedef void* PyUpb_ToProto_Func(const void* def, upb_Arena* arena);
 
 static PyObject* PyUpb_DescriptorBase_GetSerializedProto(
     PyObject* _self, PyUpb_ToProto_Func* func, const upb_msglayout* layout) {
   PyUpb_DescriptorBase* self = (void*)_self;
-  upb_arena* arena = upb_arena_new();
+  upb_Arena* arena = upb_Arena_New();
   if (!arena) PYUPB_RETURN_OOM;
   upb_msg* proto = func(self->def, arena);
   if (!proto) goto oom;
@@ -153,11 +153,11 @@ static PyObject* PyUpb_DescriptorBase_GetSerializedProto(
   char* pb = upb_encode(proto, layout, arena, &size);
   if (!pb) goto oom;
   PyObject* str = PyBytes_FromStringAndSize(pb, size);
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   return str;
 
 oom:
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   PyErr_SetNone(PyExc_MemoryError);
   return NULL;
 }

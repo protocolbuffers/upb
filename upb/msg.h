@@ -56,7 +56,7 @@ typedef struct upb_msglayout upb_msglayout;
 /* Adds unknown data (serialized protobuf data) to the given message.  The data
  * is copied into the message instance. */
 void upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                        upb_arena *arena);
+                        upb_Arena *arena);
 
 /* Returns a reference to the message's unknown data. */
 const char *upb_msg_getunknown(const upb_msg *msg, size_t *len);
@@ -104,7 +104,7 @@ typedef struct upb_extreg upb_extreg;
 
 /* Creates a upb_extreg in the given arena.  The arena must outlive any use of
  * the extreg. */
-upb_extreg *upb_extreg_new(upb_arena *arena);
+upb_extreg *upb_extreg_new(upb_Arena *arena);
 
 #ifdef __cplusplus
 }  /* extern "C" */

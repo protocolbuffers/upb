@@ -82,11 +82,11 @@ typedef enum {
 
 upb_DecodeStatus _upb_decode(const char *buf, size_t size, upb_msg *msg,
                              const upb_msglayout *l, const upb_extreg *extreg,
-                             int options, upb_arena *arena);
+                             int options, upb_Arena *arena);
 
 UPB_INLINE
 upb_DecodeStatus upb_decode(const char *buf, size_t size, upb_msg *msg,
-                            const upb_msglayout *l, upb_arena *arena) {
+                            const upb_msglayout *l, upb_Arena *arena) {
   return _upb_decode(buf, size, msg, l, NULL, 0, arena);
 }
 

@@ -106,7 +106,7 @@ void lupb_def_registertypes(lua_State *L);
 void lupb_pushmsgval(lua_State* L, int container, upb_fieldtype_t type,
                      upb_msgval val);
 int lupb_MessageDef_call(lua_State *L);
-upb_arena *lupb_arena_pushnew(lua_State *L);
+upb_Arena *lupb_Arena_pushnew(lua_State *L);
 
 void lupb_msg_registertypes(lua_State *L);
 

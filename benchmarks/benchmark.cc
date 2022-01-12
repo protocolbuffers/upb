@@ -53,18 +53,18 @@ void CollectFileDescriptors(const _upb_DefPool_Init* file,
 
 static void BM_ArenaOneAlloc(benchmark::State& state) {
   for (auto _ : state) {
-    upb_arena* arena = upb_arena_new();
-    upb_arena_malloc(arena, 1);
-    upb_arena_free(arena);
+    upb_Arena* arena = upb_Arena_New();
+    upb_Arena_Malloc(arena, 1);
+    upb_Arena_Free(arena);
   }
 }
 BENCHMARK(BM_ArenaOneAlloc);
 
 static void BM_ArenaInitialBlockOneAlloc(benchmark::State& state) {
   for (auto _ : state) {
-    upb_arena* arena = upb_arena_init(buf, sizeof(buf), NULL);
-    upb_arena_malloc(arena, 1);
-    upb_arena_free(arena);
+    upb_Arena* arena = upb_Arena_Init(buf, sizeof(buf), NULL);
+    upb_Arena_Malloc(arena, 1);
+    upb_Arena_Free(arena);
   }
 }
 BENCHMARK(BM_ArenaInitialBlockOneAlloc);
@@ -154,11 +154,11 @@ template <ArenaMode AMode, CopyStrings Copy>
 static void BM_Parse_Upb_FileDesc(benchmark::State& state) {
   size_t bytes = 0;
   for (auto _ : state) {
-    upb_arena *arena;
+    upb_Arena *arena;
     if (AMode == InitBlock) {
-      arena = upb_arena_init(buf, sizeof(buf), NULL);
+      arena = upb_Arena_Init(buf, sizeof(buf), NULL);
     } else {
-      arena = upb_arena_new();
+      arena = upb_Arena_New();
     }
     upb_benchmark_FileDescriptorProto* set =
         upb_benchmark_FileDescriptorProto_parse_ex(
@@ -169,7 +169,7 @@ static void BM_Parse_Upb_FileDesc(benchmark::State& state) {
       exit(1);
     }
     bytes += descriptor.size;
-    upb_arena_free(arena);
+    upb_Arena_Free(arena);
   }
   state.SetBytesProcessed(state.iterations() * descriptor.size);
 }
@@ -258,7 +258,7 @@ BENCHMARK(BM_SerializeDescriptor_Proto2);
 
 static void BM_SerializeDescriptor_Upb(benchmark::State& state) {
   int64_t total = 0;
-  upb_arena* arena = upb_arena_new();
+  upb_Arena* arena = upb_Arena_New();
   upb_benchmark_FileDescriptorProto* set =
       upb_benchmark_FileDescriptorProto_parse(descriptor.data, descriptor.size,
                                               arena);
@@ -267,7 +267,7 @@ static void BM_SerializeDescriptor_Upb(benchmark::State& state) {
     exit(1);
   }
   for (auto _ : state) {
-    upb_arena* enc_arena = upb_arena_init(buf, sizeof(buf), NULL);
+    upb_Arena* enc_arena = upb_Arena_Init(buf, sizeof(buf), NULL);
     size_t size;
     char* data =
         upb_benchmark_FileDescriptorProto_serialize(set, enc_arena, &size);

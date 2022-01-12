@@ -166,7 +166,7 @@ PyUpb_WeakMap *PyUpb_ObjCache_Instance(void);
 // -----------------------------------------------------------------------------
 
 PyObject *PyUpb_Arena_New(void);
-upb_arena *PyUpb_Arena_Get(PyObject *arena);
+upb_Arena *PyUpb_Arena_Get(PyObject *arena);
 
 // -----------------------------------------------------------------------------
 // Utilities

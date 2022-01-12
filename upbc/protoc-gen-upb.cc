@@ -412,10 +412,10 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
   if (!message->options().map_entry()) {
     output(
         R"cc(
-          UPB_INLINE $0 *$0_new(upb_arena *arena) {
+          UPB_INLINE $0 *$0_new(upb_Arena *arena) {
             return ($0 *)_upb_msg_new(&$1, arena);
           }
-          UPB_INLINE $0 *$0_parse(const char *buf, size_t size, upb_arena *arena) {
+          UPB_INLINE $0 *$0_parse(const char *buf, size_t size, upb_Arena *arena) {
             $0 *ret = $0_new(arena);
             if (!ret) return NULL;
             if (upb_decode(buf, size, ret, &$1, arena) != kUpb_DecodeStatus_Ok) {
@@ -425,7 +425,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           }
           UPB_INLINE $0 *$0_parse_ex(const char *buf, size_t size,
                                      const upb_extreg *extreg, int options,
-                                     upb_arena *arena) {
+                                     upb_Arena *arena) {
             $0 *ret = $0_new(arena);
             if (!ret) return NULL;
             if (_upb_decode(buf, size, ret, &$1, extreg, options, arena) !=
@@ -434,12 +434,12 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
             }
             return ret;
           }
-          UPB_INLINE char *$0_serialize(const $0 *msg, upb_arena *arena, size_t *len) {
+          UPB_INLINE char *$0_serialize(const $0 *msg, upb_Arena *arena, size_t *len) {
             return upb_encode(msg, &$1, arena, len);
           }
           UPB_INLINE char *$0_serialize_ex(const $0 *msg,
                                            int options,
-                                           upb_arena *arena,
+                                           upb_Arena *arena,
                                            size_t *len) {
             return upb_encode_ex(msg, &$1, options, arena, len);
           }
@@ -579,7 +579,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           msg_name, field->name(),
           GetSizeInit(layout.GetFieldOffset(field)));
       output(
-          "UPB_INLINE bool $0_$1_set($0 *msg, $2 key, $3 val, upb_arena *a) { "
+          "UPB_INLINE bool $0_$1_set($0 *msg, $2 key, $3 val, upb_Arena *a) { "
           "return _upb_msg_map_set(msg, $4, &key, $5, &val, $6, a); }\n",
           msg_name, field->name(), CType(key), CType(val),
           GetSizeInit(layout.GetFieldOffset(field)),
@@ -611,7 +611,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           GetSizeInit(layout.GetFieldOffset(field)));
       output(
           "UPB_INLINE $0* $1_resize_$2($1 *msg, size_t len, "
-          "upb_arena *arena) {\n"
+          "upb_Arena *arena) {\n"
           "  return ($0*)_upb_array_resize_accessor2(msg, $3, len, $4, arena);\n"
           "}\n",
           CType(field), msg_name, field->name(),
@@ -619,7 +619,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
           SizeLg2(field));
       if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
         output(
-            "UPB_INLINE struct $0* $1_add_$2($1 *msg, upb_arena *arena) {\n"
+            "UPB_INLINE struct $0* $1_add_$2($1 *msg, upb_Arena *arena) {\n"
             "  struct $0* sub = (struct $0*)_upb_msg_new(&$3, arena);\n"
             "  bool ok = _upb_array_append_accessor2(\n"
             "      msg, $4, $5, &sub, arena);\n"
@@ -632,7 +632,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
             SizeLg2(field));
       } else {
         output(
-            "UPB_INLINE bool $1_add_$2($1 *msg, $0 val, upb_arena *arena) {\n"
+            "UPB_INLINE bool $1_add_$2($1 *msg, $0 val, upb_Arena *arena) {\n"
             "  return _upb_array_append_accessor2(msg, $3, $4, &val,\n"
             "      arena);\n"
             "}\n",
@@ -680,7 +680,7 @@ void GenerateMessageInHeader(const protobuf::Descriptor* message, Output& output
       if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
           !message->options().map_entry()) {
         output(
-            "UPB_INLINE struct $0* $1_mutable_$2($1 *msg, upb_arena *arena) {\n"
+            "UPB_INLINE struct $0* $1_mutable_$2($1 *msg, upb_Arena *arena) {\n"
             "  struct $0* sub = (struct $0*)$1_$2(msg);\n"
             "  if (sub == NULL) {\n"
             "    sub = (struct $0*)_upb_msg_new(&$3, arena);\n"

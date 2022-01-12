@@ -54,7 +54,7 @@ struct upb_UnknownFields {
 
 typedef struct {
   const char *end;
-  upb_arena *arena;
+  upb_Arena *arena;
   upb_UnknownField *tmp;
   size_t tmp_size;
   int depth;
@@ -68,7 +68,7 @@ static void upb_UnknownFields_Grow(upb_UnknownField_Context *ctx,
   size_t old = (*ptr - *base);
   size_t new = UPB_MAX(4, old * 2);
 
-  *base = upb_arena_realloc(ctx->arena, *base, old * sizeof(**base),
+  *base = upb_Arena_Realloc(ctx->arena, *base, old * sizeof(**base),
                             new * sizeof(**base));
   if (!*base) UPB_LONGJMP(ctx->err, kUpb_UnknownCompareResult_OutOfMemory);
 
@@ -204,7 +204,7 @@ static upb_UnknownFields *upb_UnknownFields_DoBuild(
   }
 
   *buf = ptr;
-  upb_UnknownFields *ret = upb_arena_malloc(ctx->arena, sizeof(*ret));
+  upb_UnknownFields *ret = upb_Arena_Malloc(ctx->arena, sizeof(*ret));
   if (!ret) UPB_LONGJMP(ctx->err, kUpb_UnknownCompareResult_OutOfMemory);
   ret->fields = arr_base;
   ret->size = arr_ptr - arr_base;
@@ -271,7 +271,7 @@ upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char *buf1,
   if (memcmp(buf1, buf2, size1) == 0) return kUpb_UnknownCompareResult_Equal;
 
   upb_UnknownField_Context ctx = {
-    .arena = upb_arena_new(),
+    .arena = upb_Arena_New(),
     .depth = max_depth,
     .tmp = NULL,
     .tmp_size = 0,
@@ -295,7 +295,7 @@ upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char *buf1,
     }
   }
 
-  upb_arena_free(ctx.arena);
+  upb_Arena_Free(ctx.arena);
   free(ctx.tmp);
   return ret;
 }

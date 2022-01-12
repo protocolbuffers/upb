@@ -240,3 +240,17 @@ s/upb_strview/upb_StringView/g;
 s/UPB_STRVIEW_INIT/UPB_STRINGVIEW_INIT/g;
 s/UPB_STRVIEW_FORMAT/UPB_STRINGVIEW_FORMAT/g;
 s/UPB_STRVIEW_ARGS/UPB_STRINGVIEW_ARGS/g;
+
+s/upb_cleanup_func/upb_CleanupFunc/g;
+s/_upb_arena_head/_upb_ArenaHead/g;
+s/upb_arena_init/upb_Arena_Init/g;
+s/upb_arena_free/upb_Arena_Free/g;
+s/upb_arena_addcleanup/upb_Arena_AddCleanup/g;
+s/upb_arena_fuse/upb_Arena_Fuse/g;
+s/_upb_arena_slowmalloc/_upb_Arena_SlowMalloc/g;
+s/upb_arena_alloc/upb_Arena_Alloc/g;
+s/_upb_arenahas/_upb_ArenaHas/g;
+s/upb_arena_malloc/upb_Arena_Malloc/g;
+s/upb_arena_realloc/upb_Arena_Realloc/g;
+s/upb_arena_new/upb_Arena_New/g;
+s/upb_arena/upb_Arena/g;

@@ -82,12 +82,12 @@ void TestArena() {
       arena.Own(new Decrementer(&n));
 
       // Intersperse allocation and ensure we can write to it.
-      int* val = static_cast<int*>(upb_arena_malloc(arena.ptr(), sizeof(int)));
+      int* val = static_cast<int*>(upb_Arena_Malloc(arena.ptr(), sizeof(int)));
       *val = i;
     }
 
     // Test a large allocation.
-    upb_arena_malloc(arena.ptr(), 1000000);
+    upb_Arena_Malloc(arena.ptr(), 1000000);
   }
   ASSERT(n == 0);
 
@@ -98,8 +98,8 @@ void TestArena() {
 
     arena1.Fuse(arena2);
 
-    upb_arena_malloc(arena1.ptr(), 10000);
-    upb_arena_malloc(arena2.ptr(), 10000);
+    upb_Arena_Malloc(arena1.ptr(), 10000);
+    upb_Arena_Malloc(arena2.ptr(), 10000);
   }
 }
 
@@ -118,12 +118,12 @@ void TestInlinedArena() {
       arena.Own(new Decrementer(&n));
 
       // Intersperse allocation and ensure we can write to it.
-      int* val = static_cast<int*>(upb_arena_malloc(arena.ptr(), sizeof(int)));
+      int* val = static_cast<int*>(upb_Arena_Malloc(arena.ptr(), sizeof(int)));
       *val = i;
     }
 
     // Test a large allocation.
-    upb_arena_malloc(arena.ptr(), 1000000);
+    upb_Arena_Malloc(arena.ptr(), 1000000);
   }
   ASSERT(n == 0);
 }

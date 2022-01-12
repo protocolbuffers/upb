@@ -265,9 +265,9 @@ UPB_INLINE size_t upb_msg_sizeof(const upb_msglayout *l) {
   return l->size + sizeof(upb_msg_internal);
 }
 
-UPB_INLINE upb_msg *_upb_msg_new_inl(const upb_msglayout *l, upb_arena *a) {
+UPB_INLINE upb_msg *_upb_msg_new_inl(const upb_msglayout *l, upb_Arena *a) {
   size_t size = upb_msg_sizeof(l);
-  void *mem = upb_arena_malloc(a, size);
+  void *mem = upb_Arena_Malloc(a, size);
   upb_msg *msg;
   if (UPB_UNLIKELY(!mem)) return NULL;
   msg = UPB_PTR_AT(mem, sizeof(upb_msg_internal), upb_msg);
@@ -276,7 +276,7 @@ UPB_INLINE upb_msg *_upb_msg_new_inl(const upb_msglayout *l, upb_arena *a) {
 }
 
 /* Creates a new messages with the given layout on the given arena. */
-upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a);
+upb_msg *_upb_msg_new(const upb_msglayout *l, upb_Arena *a);
 
 UPB_INLINE upb_msg_internal *upb_msg_getinternal(upb_msg *msg) {
   ptrdiff_t size = sizeof(upb_msg_internal);
@@ -292,7 +292,7 @@ void _upb_msg_discardunknown_shallow(upb_msg *msg);
 /* Adds unknown data (serialized protobuf data) to the given message.  The data
  * is copied into the message instance. */
 bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                         upb_arena *arena);
+                         upb_Arena *arena);
 
 /** upb_msg_ext ***************************************************************/
 
@@ -317,7 +317,7 @@ typedef struct {
  * message instance. This logically replaces any previously-added extension with
  * this number */
 upb_msg_ext *_upb_msg_getorcreateext(upb_msg *msg, const upb_msglayout_ext *ext,
-                                     upb_arena *arena);
+                                     upb_Arena *arena);
 
 /* Returns an array of extensions for this message. Note: the array is
  * ordered in reverse relative to the order of creation. */
@@ -425,11 +425,11 @@ UPB_INLINE uintptr_t _upb_tag_arrptr(void* ptr, int elem_size_lg2) {
   return (uintptr_t)ptr | (unsigned)elem_size_lg2;
 }
 
-UPB_INLINE upb_array *_upb_array_new(upb_arena *a, size_t init_size,
+UPB_INLINE upb_array *_upb_array_new(upb_Arena *a, size_t init_size,
                                      int elem_size_lg2) {
   const size_t arr_size = UPB_ALIGN_UP(sizeof(upb_array), 8);
   const size_t bytes = sizeof(upb_array) + (init_size << elem_size_lg2);
-  upb_array *arr = (upb_array*)upb_arena_malloc(a, bytes);
+  upb_array *arr = (upb_array*)upb_Arena_Malloc(a, bytes);
   if (!arr) return NULL;
   arr->data = _upb_tag_arrptr(UPB_PTR_AT(arr, arr_size, void), elem_size_lg2);
   arr->len = 0;
@@ -438,22 +438,22 @@ UPB_INLINE upb_array *_upb_array_new(upb_arena *a, size_t init_size,
 }
 
 /* Resizes the capacity of the array to be at least min_size. */
-bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_arena *arena);
+bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_Arena *arena);
 
 /* Fallback functions for when the accessors require a resize. */
 void *_upb_array_resize_fallback(upb_array **arr_ptr, size_t size,
-                                 int elem_size_lg2, upb_arena *arena);
+                                 int elem_size_lg2, upb_Arena *arena);
 bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
-                                int elem_size_lg2, upb_arena *arena);
+                                int elem_size_lg2, upb_Arena *arena);
 
 UPB_INLINE bool _upb_array_reserve(upb_array *arr, size_t size,
-                                   upb_arena *arena) {
+                                   upb_Arena *arena) {
   if (arr->size < size) return _upb_array_realloc(arr, size, arena);
   return true;
 }
 
 UPB_INLINE bool _upb_array_resize(upb_array *arr, size_t size,
-                                  upb_arena *arena) {
+                                  upb_Arena *arena) {
   if (!_upb_array_reserve(arr, size, arena)) return false;
   arr->len = size;
   return true;
@@ -485,7 +485,7 @@ UPB_INLINE void *_upb_array_mutable_accessor(void *msg, size_t ofs,
 
 UPB_INLINE void *_upb_array_resize_accessor2(void *msg, size_t ofs, size_t size,
                                              int elem_size_lg2,
-                                             upb_arena *arena) {
+                                             upb_Arena *arena) {
   upb_array **arr_ptr = UPB_PTR_AT(msg, ofs, upb_array *);
   upb_array *arr = *arr_ptr;
   if (!arr || arr->size < size) {
@@ -498,7 +498,7 @@ UPB_INLINE void *_upb_array_resize_accessor2(void *msg, size_t ofs, size_t size,
 UPB_INLINE bool _upb_array_append_accessor2(void *msg, size_t ofs,
                                             int elem_size_lg2,
                                             const void *value,
-                                            upb_arena *arena) {
+                                            upb_Arena *arena) {
   upb_array **arr_ptr = UPB_PTR_AT(msg, ofs, upb_array *);
   size_t elem_size = 1 << elem_size_lg2;
   upb_array *arr = *arr_ptr;
@@ -536,13 +536,13 @@ UPB_INLINE int _upb_sizelg2(upb_fieldtype_t type) {
 }
 UPB_INLINE void *_upb_array_resize_accessor(void *msg, size_t ofs, size_t size,
                                              upb_fieldtype_t type,
-                                             upb_arena *arena) {
+                                             upb_Arena *arena) {
   return _upb_array_resize_accessor2(msg, ofs, size, _upb_sizelg2(type), arena);
 }
 UPB_INLINE bool _upb_array_append_accessor(void *msg, size_t ofs,
                                             size_t elem_size, upb_fieldtype_t type,
                                             const void *value,
-                                            upb_arena *arena) {
+                                            upb_Arena *arena) {
   (void)elem_size;
   return _upb_array_append_accessor2(msg, ofs, _upb_sizelg2(type), value,
                                      arena);
@@ -577,7 +577,7 @@ typedef struct {
 } upb_map_entry;
 
 /* Creates a new map on the given arena with this key/value type. */
-upb_map *_upb_map_new(upb_arena *a, size_t key_size, size_t value_size);
+upb_map *_upb_map_new(upb_Arena *a, size_t key_size, size_t value_size);
 
 /* Converting between internal table representation and user values.
  *
@@ -605,9 +605,9 @@ UPB_INLINE void _upb_map_fromkey(upb_StringView key, void* out, size_t size) {
 }
 
 UPB_INLINE bool _upb_map_tovalue(const void *val, size_t size, upb_value *msgval,
-                                 upb_arena *a) {
+                                 upb_Arena *a) {
   if (size == UPB_MAPTYPE_STRING) {
-    upb_StringView *strp = (upb_StringView*)upb_arena_malloc(a, sizeof(*strp));
+    upb_StringView *strp = (upb_StringView*)upb_Arena_Malloc(a, sizeof(*strp));
     if (!strp) return false;
     *strp = *(upb_StringView*)val;
     *msgval = upb_value_ptr(strp);
@@ -654,7 +654,7 @@ UPB_INLINE void* _upb_map_next(const upb_map *map, size_t *iter) {
 }
 
 UPB_INLINE bool _upb_map_set(upb_map *map, const void *key, size_t key_size,
-                             void *val, size_t val_size, upb_arena *a) {
+                             void *val, size_t val_size, upb_Arena *a) {
   upb_StringView strkey = _upb_map_tokey(key, key_size);
   upb_value tabval = {0};
   if (!_upb_map_tovalue(val, val_size, &tabval, a)) return false;
@@ -697,7 +697,7 @@ UPB_INLINE void *_upb_msg_map_next(const upb_msg *msg, size_t ofs,
 
 UPB_INLINE bool _upb_msg_map_set(upb_msg *msg, size_t ofs, const void *key,
                                  size_t key_size, void *val, size_t val_size,
-                                 upb_arena *arena) {
+                                 upb_Arena *arena) {
   upb_map **map = UPB_PTR_AT(msg, ofs, upb_map *);
   if (!*map) {
     *map = _upb_map_new(arena, key_size, val_size);

@@ -44,7 +44,7 @@
 
 typedef struct {
   const char *ptr, *end;
-  upb_arena *arena;  /* TODO: should we have a tmp arena for tmp data? */
+  upb_Arena *arena;  /* TODO: should we have a tmp arena for tmp data? */
   const upb_DefPool *symtab;
   int depth;
   upb_Status *status;
@@ -422,7 +422,7 @@ static void jsondec_resize(jsondec *d, char **buf, char **end, char **buf_end) {
   size_t len = *end - *buf;
   size_t size = UPB_MAX(8, 2 * oldsize);
 
-  *buf = upb_arena_realloc(d->arena, *buf, len, size);
+  *buf = upb_Arena_Realloc(d->arena, *buf, len, size);
   if (!*buf) jsondec_err(d, "Out of memory");
 
   *end = *buf + len;
@@ -1271,7 +1271,7 @@ static upb_StringView jsondec_mask(jsondec *d, const char *buf, const char *end)
     ptr++;
   }
 
-  out = upb_arena_malloc(d->arena, ret.size);
+  out = upb_Arena_Malloc(d->arena, ret.size);
   ptr = buf;
   ret.data = out;
 
@@ -1395,7 +1395,7 @@ static void jsondec_any(jsondec *d, upb_msg *msg, const upb_MessageDef *m) {
 
   if (pre_type_data) {
     size_t len = pre_type_end - pre_type_data + 1;
-    char *tmp = upb_arena_malloc(d->arena, len);
+    char *tmp = upb_Arena_Malloc(d->arena, len);
     const char *saved_ptr = d->ptr;
     const char *saved_end = d->end;
     memcpy(tmp, pre_type_data, len - 1);
@@ -1468,7 +1468,7 @@ static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_MessageDef *m)
 
 bool upb_json_decode(const char *buf, size_t size, upb_msg *msg,
                      const upb_MessageDef *m, const upb_DefPool *symtab,
-                     int options, upb_arena *arena, upb_Status *status) {
+                     int options, upb_Arena *arena, upb_Status *status) {
   jsondec d;
 
   if (size == 0) return true;

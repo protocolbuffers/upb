@@ -202,7 +202,7 @@ struct upb_ServiceDef {
 };
 
 struct upb_DefPool {
-  upb_arena *arena;
+  upb_Arena *arena;
   upb_strtable syms;  /* full_name -> packed def ptr */
   upb_strtable files;  /* file_name -> upb_FileDef* */
   upb_inttable exts;   /* upb_msglayout_ext* -> upb_FieldDef* */
@@ -1082,7 +1082,7 @@ const upb_MethodDef *upb_ServiceDef_FindMethodByName(const upb_ServiceDef *s,
 /* upb_DefPool *****************************************************************/
 
 void upb_DefPool_Free(upb_DefPool *s) {
-  upb_arena_free(s->arena);
+  upb_Arena_Free(s->arena);
   upb_gfree(s);
 }
 
@@ -1093,7 +1093,7 @@ upb_DefPool *upb_DefPool_New(void) {
     return NULL;
   }
 
-  s->arena = upb_arena_new();
+  s->arena = upb_Arena_New();
   s->bytes_loaded = 0;
 
   if (!upb_strtable_init(&s->syms, 32, s->arena) ||
@@ -1107,7 +1107,7 @@ upb_DefPool *upb_DefPool_New(void) {
   return s;
 
 err:
-  upb_arena_free(s->arena);
+  upb_Arena_Free(s->arena);
   upb_gfree(s);
   return NULL;
 }
@@ -1245,8 +1245,8 @@ const upb_FileDef *upb_DefPool_FindFileByNameforsym(const upb_DefPool *s,
 typedef struct {
   upb_DefPool *symtab;
   upb_FileDef *file;              /* File we are building. */
-  upb_arena *arena;               /* Allocate defs here. */
-  upb_arena *tmp_arena;                 /* For temporary allocations. */
+  upb_Arena *arena;               /* Allocate defs here. */
+  upb_Arena *tmp_arena;                 /* For temporary allocations. */
   const upb_msglayout_file *layout;  /* NULL if we should build layouts. */
   int enum_count;                 /* Count of enums built so far. */
   int msg_count;                  /* Count of messages built so far. */
@@ -1272,7 +1272,7 @@ static void symtab_oomerr(symtab_addctx *ctx) {
 
 void *symtab_alloc(symtab_addctx *ctx, size_t bytes) {
   if (bytes == 0) return NULL;
-  void *ret = upb_arena_malloc(ctx->arena, bytes);
+  void *ret = upb_Arena_Malloc(ctx->arena, bytes);
   if (!ret) symtab_oomerr(ctx);
   return ret;
 }
@@ -3047,12 +3047,12 @@ static const upb_FileDef *_upb_DefPool_AddFile(
   ctx.ext_count = 0;
   ctx.status = status;
   ctx.file = NULL;
-  ctx.arena = upb_arena_new();
-  ctx.tmp_arena = upb_arena_new();
+  ctx.arena = upb_Arena_New();
+  ctx.tmp_arena = upb_Arena_New();
 
   if (!ctx.arena || !ctx.tmp_arena) {
-    if (ctx.arena) upb_arena_free(ctx.arena);
-    if (ctx.tmp_arena) upb_arena_free(ctx.tmp_arena);
+    if (ctx.arena) upb_Arena_Free(ctx.arena);
+    if (ctx.tmp_arena) upb_Arena_Free(ctx.tmp_arena);
     upb_Status_setoom(status);
     return NULL;
   }
@@ -3069,11 +3069,11 @@ static const upb_FileDef *_upb_DefPool_AddFile(
     upb_strtable_insert(&s->files, name.data, name.size,
                         pack_def(ctx.file, UPB_DEFTYPE_FILE), ctx.arena);
     UPB_ASSERT(upb_Status_IsOk(status));
-    upb_arena_fuse(s->arena, ctx.arena);
+    upb_Arena_Fuse(s->arena, ctx.arena);
   }
 
-  upb_arena_free(ctx.arena);
-  upb_arena_free(ctx.tmp_arena);
+  upb_Arena_Free(ctx.arena);
+  upb_Arena_Free(ctx.tmp_arena);
   return ctx.file;
 }
 
@@ -3091,7 +3091,7 @@ bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
    * print errors to stderr instead of returning error status to the user. */
   _upb_DefPool_Init **deps = init->deps;
   google_protobuf_FileDescriptorProto *file;
-  upb_arena *arena;
+  upb_Arena *arena;
   upb_Status status;
 
   upb_Status_Clear(&status);
@@ -3100,7 +3100,7 @@ bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
     return true;
   }
 
-  arena = upb_arena_new();
+  arena = upb_Arena_New();
 
   for (; *deps; deps++) {
     if (!_upb_DefPool_LoadDefInit(s, *deps)) goto err;
@@ -3124,7 +3124,7 @@ bool _upb_DefPool_LoadDefInit(upb_DefPool *s, const _upb_DefPool_Init *init) {
     goto err;
   }
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   return true;
 
 err:
@@ -3132,7 +3132,7 @@ err:
           "Error loading compiled-in descriptor for file '%s' (this should "
           "never happen): %s\n",
           init->filename, upb_Status_ErrorMessage(&status));
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   return false;
 }
 
@@ -3140,7 +3140,7 @@ size_t _upb_DefPool_BytesLoaded(const upb_DefPool *s) {
   return s->bytes_loaded;
 }
 
-upb_arena *_upb_DefPool_Arena(const upb_DefPool *s) {
+upb_Arena *_upb_DefPool_Arena(const upb_DefPool *s) {
   return s->arena;
 }
 

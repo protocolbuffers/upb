@@ -378,7 +378,7 @@ static bool PyUpb_CMessage_InitMessageAttribute(PyObject* _self, PyObject* name,
 static bool PyUpb_CMessage_InitScalarAttribute(upb_msg* msg,
                                                const upb_FieldDef* f,
                                                PyObject* value,
-                                               upb_arena* arena) {
+                                               upb_Arena* arena) {
   upb_msgval msgval;
   assert(!PyErr_Occurred());
   if (!PyUpb_PyToUpb(value, f, &msgval, arena)) return false;
@@ -403,7 +403,7 @@ int PyUpb_CMessage_InitAttributes(PyObject* _self, PyObject* args,
   PyObject* value;
   PyUpb_CMessage_EnsureReified(self);
   upb_msg* msg = PyUpb_CMessage_GetMsg(self);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
 
   while (PyDict_Next(kwargs, &pos, &name, &value)) {
     assert(!PyErr_Occurred());
@@ -479,7 +479,7 @@ static bool PyUpb_CMessage_IsEqual(PyUpb_CMessage* m1, PyObject* _m2) {
 }
 
 static const upb_FieldDef* PyUpb_CMessage_InitAsMsg(PyUpb_CMessage* m,
-                                                    upb_arena* arena) {
+                                                    upb_Arena* arena) {
   const upb_FieldDef* f = PyUpb_CMessage_GetFieldDef(m);
   m->ptr.msg = upb_msg_new(upb_FieldDef_MessageSubDef(f), arena);
   m->def = (uintptr_t)upb_FieldDef_MessageSubDef(f);
@@ -489,7 +489,7 @@ static const upb_FieldDef* PyUpb_CMessage_InitAsMsg(PyUpb_CMessage* m,
 
 static void PyUpb_CMessage_SetField(PyUpb_CMessage* parent,
                                     const upb_FieldDef* f,
-                                    PyUpb_CMessage* child, upb_arena* arena) {
+                                    PyUpb_CMessage* child, upb_Arena* arena) {
   upb_msgval msgval = {.msg_val = PyUpb_CMessage_GetMsg(child)};
   upb_msg_set(PyUpb_CMessage_GetMsg(parent), f, msgval, arena);
   PyUpb_WeakMap_Delete(parent->unset_subobj_map, f);
@@ -517,7 +517,7 @@ static void PyUpb_CMessage_SetField(PyUpb_CMessage* parent,
  */
 void PyUpb_CMessage_EnsureReified(PyUpb_CMessage* self) {
   if (!PyUpb_CMessage_IsStub(self)) return;
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
 
   // This is a non-present message. We need to create a real upb_msg for this
   // object and every parent until we reach a present message.
@@ -838,7 +838,7 @@ int PyUpb_CMessage_SetFieldValue(PyObject* _self, const upb_FieldDef* field,
   PyUpb_CMessage_EnsureReified(self);
 
   upb_msgval val;
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   if (!PyUpb_PyToUpb(value, field, &val, arena)) {
     return -1;
   }
@@ -1098,7 +1098,7 @@ PyObject* PyUpb_CMessage_MergeFromString(PyObject* _self, PyObject* arg) {
   const upb_FileDef* file = upb_MessageDef_File(msgdef);
   const upb_extreg* extreg = upb_DefPool_ExtensionRegistry(upb_FileDef_Pool(file));
   const upb_msglayout* layout = upb_MessageDef_Layout(msgdef);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   int options =
       UPB_DECODE_MAXDEPTH(state->allow_oversize_protos ? UINT32_MAX : 100);
@@ -1367,7 +1367,7 @@ PyObject* PyUpb_CMessage_SerializeInternal(PyObject* _self, PyObject* args,
     return NULL;
   }
 
-  upb_arena* arena = upb_arena_new();
+  upb_Arena* arena = upb_Arena_New();
   const upb_msglayout* layout = upb_MessageDef_Layout(msgdef);
   size_t size = 0;
   // Python does not currently have any effective limit on serialization depth.
@@ -1392,7 +1392,7 @@ PyObject* PyUpb_CMessage_SerializeInternal(PyObject* _self, PyObject* args,
   ret = PyBytes_FromStringAndSize(pb, size);
 
 done:
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   return ret;
 }
 

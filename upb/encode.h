@@ -60,10 +60,10 @@ enum {
 #define UPB_ENCODE_MAXDEPTH(depth) ((depth) << 16)
 
 char *upb_encode_ex(const void *msg, const upb_msglayout *l, int options,
-                    upb_arena *arena, size_t *size);
+                    upb_Arena *arena, size_t *size);
 
 UPB_INLINE char *upb_encode(const void *msg, const upb_msglayout *l,
-                            upb_arena *arena, size_t *size) {
+                            upb_Arena *arena, size_t *size) {
   return upb_encode_ex(msg, l, 0, arena, size);
 }
 

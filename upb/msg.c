@@ -40,7 +40,7 @@ static const upb_msg_internal *upb_msg_getinternal_const(const upb_msg *msg) {
   return (upb_msg_internal*)((char*)msg - size);
 }
 
-upb_msg *_upb_msg_new(const upb_msglayout *l, upb_arena *a) {
+upb_msg *_upb_msg_new(const upb_msglayout *l, upb_Arena *a) {
   return _upb_msg_new_inl(l, a);
 }
 
@@ -49,12 +49,12 @@ void _upb_msg_clear(upb_msg *msg, const upb_msglayout *l) {
   memset(mem, 0, upb_msg_sizeof(l));
 }
 
-static bool realloc_internal(upb_msg *msg, size_t need, upb_arena *arena) {
+static bool realloc_internal(upb_msg *msg, size_t need, upb_Arena *arena) {
   upb_msg_internal *in = upb_msg_getinternal(msg);
   if (!in->internal) {
     /* No internal data, allocate from scratch. */
     size_t size = UPB_MAX(128, _upb_lg2ceilsize(need + overhead));
-    upb_msg_internaldata *internal = upb_arena_malloc(arena, size);
+    upb_msg_internaldata *internal = upb_Arena_Malloc(arena, size);
     if (!internal) return false;
     internal->size = size;
     internal->unknown_end = overhead;
@@ -66,7 +66,7 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_arena *arena) {
     size_t ext_bytes = in->internal->size - in->internal->ext_begin;
     size_t new_ext_begin = new_size - ext_bytes;
     upb_msg_internaldata *internal =
-        upb_arena_realloc(arena, in->internal, in->internal->size, new_size);
+        upb_Arena_Realloc(arena, in->internal, in->internal->size, new_size);
     if (!internal) return false;
     if (ext_bytes) {
       /* Need to move extension data to the end. */
@@ -82,7 +82,7 @@ static bool realloc_internal(upb_msg *msg, size_t need, upb_arena *arena) {
 }
 
 bool _upb_msg_addunknown(upb_msg *msg, const char *data, size_t len,
-                         upb_arena *arena) {
+                         upb_Arena *arena) {
   if (!realloc_internal(msg, len, arena)) return false;
   upb_msg_internal *in = upb_msg_getinternal(msg);
   memcpy(UPB_PTR_AT(in->internal, in->internal->unknown_end, char), data, len);
@@ -150,7 +150,7 @@ void _upb_msg_clearext(upb_msg *msg, const upb_msglayout_ext *ext_l) {
 }
 
 upb_msg_ext *_upb_msg_getorcreateext(upb_msg *msg, const upb_msglayout_ext *e,
-                                     upb_arena *arena) {
+                                     upb_Arena *arena) {
   upb_msg_ext *ext = (upb_msg_ext*)_upb_msg_getext(msg, e);
   if (ext) return ext;
   if (!realloc_internal(msg, sizeof(upb_msg_ext), arena)) return NULL;
@@ -170,7 +170,7 @@ size_t upb_msg_extcount(const upb_msg *msg) {
 
 /** upb_array *****************************************************************/
 
-bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_arena *arena) {
+bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_Arena *arena) {
   size_t new_size = UPB_MAX(arr->size, 4);
   int elem_size_lg2 = arr->data & 7;
   size_t old_bytes = arr->size << elem_size_lg2;
@@ -181,7 +181,7 @@ bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_arena *arena) {
   while (new_size < min_size) new_size *= 2;
 
   new_bytes = new_size << elem_size_lg2;
-  ptr = upb_arena_realloc(arena, ptr, old_bytes, new_bytes);
+  ptr = upb_Arena_Realloc(arena, ptr, old_bytes, new_bytes);
 
   if (!ptr) {
     return false;
@@ -193,7 +193,7 @@ bool _upb_array_realloc(upb_array *arr, size_t min_size, upb_arena *arena) {
 }
 
 static upb_array *getorcreate_array(upb_array **arr_ptr, int elem_size_lg2,
-                                    upb_arena *arena) {
+                                    upb_Arena *arena) {
   upb_array *arr = *arr_ptr;
   if (!arr) {
     arr = _upb_array_new(arena, 4, elem_size_lg2);
@@ -204,14 +204,14 @@ static upb_array *getorcreate_array(upb_array **arr_ptr, int elem_size_lg2,
 }
 
 void *_upb_array_resize_fallback(upb_array **arr_ptr, size_t size,
-                                 int elem_size_lg2, upb_arena *arena) {
+                                 int elem_size_lg2, upb_Arena *arena) {
   upb_array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
   return arr && _upb_array_resize(arr, size, arena) ? _upb_array_ptr(arr)
                                                     : NULL;
 }
 
 bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
-                                int elem_size_lg2, upb_arena *arena) {
+                                int elem_size_lg2, upb_Arena *arena) {
   upb_array *arr = getorcreate_array(arr_ptr, elem_size_lg2, arena);
   if (!arr) return false;
 
@@ -228,8 +228,8 @@ bool _upb_array_append_fallback(upb_array **arr_ptr, const void *value,
 
 /** upb_map *******************************************************************/
 
-upb_map *_upb_map_new(upb_arena *a, size_t key_size, size_t value_size) {
-  upb_map *map = upb_arena_malloc(a, sizeof(upb_map));
+upb_map *_upb_map_new(upb_Arena *a, size_t key_size, size_t value_size) {
+  upb_map *map = upb_Arena_Malloc(a, sizeof(upb_map));
 
   if (!map) {
     return NULL;
@@ -365,7 +365,7 @@ bool _upb_mapsorter_pushmap(_upb_mapsorter *s, upb_descriptortype_t key_type,
 /** upb_extreg ****************************************************************/
 
 struct upb_extreg {
-  upb_arena *arena;
+  upb_Arena *arena;
   upb_strtable exts;  /* Key is upb_msglayout* concatenated with fieldnum. */
 };
 
@@ -376,8 +376,8 @@ static void extreg_key(char *buf, const upb_msglayout *l, uint32_t fieldnum) {
   memcpy(buf + sizeof(l), &fieldnum, sizeof(fieldnum));
 }
 
-upb_extreg *upb_extreg_new(upb_arena *arena) {
-  upb_extreg *r = upb_arena_malloc(arena, sizeof(*r));
+upb_extreg *upb_extreg_new(upb_Arena *arena) {
+  upb_extreg *r = upb_Arena_Malloc(arena, sizeof(*r));
   if (!r) return NULL;
   r->arena = arena;
   if (!upb_strtable_init(&r->exts, 8, arena)) return NULL;

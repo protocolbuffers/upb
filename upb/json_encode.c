@@ -50,7 +50,7 @@ typedef struct {
   const upb_DefPool *ext_pool;
   jmp_buf err;
   upb_Status *status;
-  upb_arena *arena;
+  upb_Arena *arena;
 } jsonenc;
 
 static void jsonenc_msg(jsonenc *e, const upb_msg *msg, const upb_MessageDef *m);
@@ -75,10 +75,10 @@ UPB_NORETURN static void jsonenc_errf(jsonenc *e, const char *fmt, ...) {
   longjmp(e->err, 1);
 }
 
-static upb_arena *jsonenc_arena(jsonenc *e) {
+static upb_Arena *jsonenc_arena(jsonenc *e) {
   /* Create lazily, since it's only needed for Any */
   if (!e->arena) {
-    e->arena = upb_arena_new();
+    e->arena = upb_Arena_New();
   }
   return e->arena;
 }
@@ -371,7 +371,7 @@ static void jsonenc_any(jsonenc *e, const upb_msg *msg, const upb_MessageDef *m)
   upb_StringView value = upb_msg_get(msg, value_f).str_val;
   const upb_MessageDef *any_m = jsonenc_getanymsg(e, type_url);
   const upb_msglayout *any_layout = upb_MessageDef_Layout(any_m);
-  upb_arena *arena = jsonenc_arena(e);
+  upb_Arena *arena = jsonenc_arena(e);
   upb_msg *any = upb_msg_new(any_m, arena);
 
   if (upb_decode(value.data, value.size, any, any_layout, arena) !=
@@ -754,6 +754,6 @@ size_t upb_json_encode(const upb_msg *msg, const upb_MessageDef *m,
   if (setjmp(e.err)) return -1;
 
   jsonenc_msgfield(&e, msg, m);
-  if (e.arena) upb_arena_free(e.arena);
+  if (e.arena) upb_Arena_Free(e.arena);
   return jsonenc_nullz(&e, size);
 }

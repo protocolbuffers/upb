@@ -111,7 +111,7 @@ void PyUpb_RepeatedContainer_Reify(PyObject* _self, upb_array* arr) {
   assert(PyUpb_RepeatedContainer_IsStub(self));
   if (!arr) {
     const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
-    upb_arena* arena = PyUpb_Arena_Get(self->arena);
+    upb_Arena* arena = PyUpb_Arena_Get(self->arena);
     arr = upb_array_new(arena, upb_FieldDef_CType(f));
   }
   PyUpb_ObjCache_Add(arr, &self->ob_base);
@@ -127,7 +127,7 @@ upb_array* PyUpb_RepeatedContainer_EnsureReified(PyObject* _self) {
   if (arr) return arr;  // Already writable.
 
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   arr = upb_array_new(arena, upb_FieldDef_CType(f));
   PyUpb_CMessage_SetConcreteSubobj(self->ptr.parent, f,
                                    (upb_msgval){.array_val = arr});
@@ -338,7 +338,7 @@ static PyObject* PyUpb_RepeatedContainer_Subscript(PyObject* _self,
 static int PyUpb_RepeatedContainer_SetSubscript(
     PyUpb_RepeatedContainer* self, upb_array* arr, const upb_FieldDef* f,
     Py_ssize_t idx, Py_ssize_t count, Py_ssize_t step, PyObject* value) {
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   if (upb_FieldDef_IsSubMessage(f)) {
     PyErr_SetString(PyExc_TypeError, "does not support assignment");
     return -1;
@@ -494,7 +494,7 @@ static bool PyUpb_RepeatedContainer_Assign(PyObject* _self, PyObject* list) {
   upb_array* arr = PyUpb_RepeatedContainer_EnsureReified(_self);
   Py_ssize_t size = PyList_Size(list);
   bool submsg = upb_FieldDef_IsSubMessage(f);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   for (Py_ssize_t i = 0; i < size; ++i) {
     PyObject* obj = PyList_GetItem(list, i);
     upb_msgval msgval;
@@ -572,7 +572,7 @@ static PyObject* PyUpb_RepeatedCompositeContainer_AppendNew(PyObject* _self) {
   upb_array* arr = PyUpb_RepeatedContainer_EnsureReified(_self);
   if (!arr) return NULL;
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   const upb_MessageDef* m = upb_FieldDef_MessageSubDef(f);
   upb_msg* msg = upb_msg_new(m, arena);
   upb_msgval msgval = {.msg_val = msg};
@@ -624,7 +624,7 @@ static PyObject* PyUpb_RepeatedContainer_Insert(PyObject* _self,
 
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
   upb_msgval msgval;
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   if (upb_FieldDef_IsSubMessage(f)) {
     // Create message.
     const upb_MessageDef* m = upb_FieldDef_MessageSubDef(f);
@@ -698,7 +698,7 @@ static PyObject* PyUpb_RepeatedScalarContainer_Append(PyObject* _self,
                                                       PyObject* value) {
   PyUpb_RepeatedContainer* self = (PyUpb_RepeatedContainer*)_self;
   upb_array* arr = PyUpb_RepeatedContainer_EnsureReified(_self);
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
   upb_msgval msgval;
   if (!PyUpb_PyToUpb(value, f, &msgval, arena)) {
@@ -720,7 +720,7 @@ static int PyUpb_RepeatedScalarContainer_AssignItem(PyObject* _self,
   }
   const upb_FieldDef* f = PyUpb_RepeatedContainer_GetField(self);
   upb_msgval msgval;
-  upb_arena* arena = PyUpb_Arena_Get(self->arena);
+  upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   if (!PyUpb_PyToUpb(item, f, &msgval, arena)) {
     return -1;
   }

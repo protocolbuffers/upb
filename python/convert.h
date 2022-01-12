@@ -46,7 +46,7 @@ PyObject *PyUpb_UpbToPy(upb_msgval val, const upb_FieldDef *f, PyObject *arena);
 // useful for an ephemeral upb_msgval).  If the conversion cannot be performed,
 // returns false.
 bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
-                   upb_arena *arena);
+                   upb_Arena *arena);
 
 // Returns true if the given values (of type `f`) are equal.
 bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_FieldDef *f);

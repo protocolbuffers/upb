@@ -801,7 +801,7 @@ static int lupb_DefPool_AddFile(lua_State *L) {
   size_t len;
   upb_DefPool *s = lupb_DefPool_check(L, 1);
   const char *str = luaL_checklstring(L, 2, &len);
-  upb_arena *arena = lupb_arena_pushnew(L);
+  upb_Arena *arena = lupb_Arena_pushnew(L);
   const google_protobuf_FileDescriptorProto *file;
   const upb_FileDef *file_def;
   upb_Status status;
@@ -827,7 +827,7 @@ static int lupb_DefPool_addset(lua_State *L) {
   google_protobuf_FileDescriptorSet *set;
   upb_DefPool *s = lupb_DefPool_check(L, 1);
   const char *str = luaL_checklstring(L, 2, &len);
-  upb_arena *arena = lupb_arena_pushnew(L);
+  upb_Arena *arena = lupb_Arena_pushnew(L);
   upb_Status status;
 
   upb_Status_Clear(&status);

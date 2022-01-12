@@ -37,7 +37,7 @@
 #include "upb/port_def.inc"
 
 typedef struct {
-  upb_arena *arena;
+  upb_Arena *arena;
   jmp_buf err;
 } upb_ToProto_Context;
 
@@ -60,7 +60,7 @@ typedef struct {
   }
 
 static upb_StringView strviewdup2(upb_ToProto_Context *ctx, upb_StringView str) {
-  char *p = upb_arena_malloc(ctx->arena, str.size);
+  char *p = upb_Arena_Malloc(ctx->arena, str.size);
   CHK_OOM(p);
   memcpy(p, str.data, str.size);
   return (upb_StringView){.data = p, .size = str.size};
@@ -72,7 +72,7 @@ static upb_StringView strviewdup(upb_ToProto_Context *ctx, const char *s) {
 
 static upb_StringView qual_dup(upb_ToProto_Context *ctx, const char *s) {
   size_t n = strlen(s);
-  char *p = upb_arena_malloc(ctx->arena, n + 1);
+  char *p = upb_Arena_Malloc(ctx->arena, n + 1);
   CHK_OOM(p);
   p[0] = '.';
   memcpy(p + 1, s, n);
@@ -82,7 +82,7 @@ static upb_StringView qual_dup(upb_ToProto_Context *ctx, const char *s) {
 UPB_PRINTF(2, 3)
 static upb_StringView printf_dup(upb_ToProto_Context *ctx, const char *fmt, ...) {
   const size_t max = 32;
-  char *p = upb_arena_malloc(ctx->arena, max);
+  char *p = upb_Arena_Malloc(ctx->arena, max);
   CHK_OOM(p);
   va_list args;
   va_start(args, fmt);
@@ -101,7 +101,7 @@ static upb_StringView default_bytes(upb_ToProto_Context* ctx, upb_StringView val
   for (size_t i = 0; i < val.size; i++) {
     n += upb_isprint(val.data[i]) ? 1 : 4;  // '\123'
   }
-  char* p = upb_arena_malloc(ctx->arena, n);
+  char* p = upb_Arena_Malloc(ctx->arena, n);
   CHK_OOM(p);
   char* dst = p;
   const char* src = val.data;
@@ -496,56 +496,56 @@ static google_protobuf_FileDescriptorProto *filedef_toproto(
 }
 
 google_protobuf_DescriptorProto *upb_MessageDef_ToProto(const upb_MessageDef *m,
-                                                        upb_arena *a) {
+                                                        upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return msgdef_toproto(&ctx, m);
 }
 
 google_protobuf_EnumDescriptorProto *upb_EnumDef_ToProto(const upb_EnumDef *e,
-                                                         upb_arena *a) {
+                                                         upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return enumdef_toproto(&ctx, e);
 }
 
 google_protobuf_EnumValueDescriptorProto *upb_EnumValueDef_ToProto(
-    const upb_EnumValueDef *e, upb_arena *a) {
+    const upb_EnumValueDef *e, upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return enumvaldef_toproto(&ctx, e);
 }
 
 google_protobuf_FieldDescriptorProto *upb_FieldDef_ToProto(
-    const upb_FieldDef *f, upb_arena *a) {
+    const upb_FieldDef *f, upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return fielddef_toproto(&ctx, f);
 }
 
 google_protobuf_OneofDescriptorProto *upb_OneofDef_ToProto(
-    const upb_OneofDef *o, upb_arena *a) {
+    const upb_OneofDef *o, upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return oneofdef_toproto(&ctx, o);
 }
 
 google_protobuf_FileDescriptorProto *upb_FileDef_ToProto(const upb_FileDef *f,
-                                                         upb_arena *a) {
+                                                         upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return filedef_toproto(&ctx, f);
 }
 
 google_protobuf_MethodDescriptorProto *upb_MethodDef_ToProto(
-    const upb_MethodDef *m, upb_arena *a) {
+    const upb_MethodDef *m, upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return methoddef_toproto(&ctx, m);
 }
 
 google_protobuf_ServiceDescriptorProto *upb_ServiceDef_ToProto(
-    const upb_ServiceDef *s, upb_arena *a) {
+    const upb_ServiceDef *s, upb_Arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return servicedef_toproto(&ctx, s);

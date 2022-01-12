@@ -560,11 +560,11 @@ static void encode_message(upb_encstate *e, const upb_msg *msg,
 }
 
 char *upb_encode_ex(const void *msg, const upb_msglayout *l, int options,
-                    upb_arena *arena, size_t *size) {
+                    upb_Arena *arena, size_t *size) {
   upb_encstate e;
   unsigned depth = (unsigned)options >> 16;
 
-  e.alloc = upb_arena_alloc(arena);
+  e.alloc = upb_Arena_Alloc(arena);
   e.buf = NULL;
   e.limit = NULL;
   e.ptr = NULL;

@@ -52,7 +52,7 @@ const int32_t test_int32_3 = 30;
 const int32_t test_int32_4 = -40;
 
 static void test_scalars(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg2;
@@ -92,13 +92,13 @@ static void test_scalars(void) {
   val = protobuf_test_messages_proto3_TestAllTypesProto3_optional_string(msg2);
   ASSERT(upb_StringView_IsEqual(val, test_str_view));
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 static void test_utf8(void) {
   const char invalid_utf8[] = "\xff";
   const upb_StringView invalid_utf8_view = upb_StringView_FromStringAndSize(invalid_utf8, 1);
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   upb_StringView serialized;
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
@@ -114,7 +114,7 @@ static void test_utf8(void) {
       serialized.data, serialized.size, arena);
   ASSERT(msg2 == NULL);
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 static void check_string_map_empty(
@@ -167,7 +167,7 @@ static void check_string_map_one_entry(
 }
 
 static void test_string_double_map(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   upb_StringView serialized;
   upb_test_MapTest *msg = upb_test_MapTest_new(arena);
   upb_test_MapTest *msg2;
@@ -187,11 +187,11 @@ static void test_string_double_map(void) {
   ASSERT(upb_test_MapTest_map_string_double_get(msg2, test_str_view, &val));
   ASSERT(val == 1.5);
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 static void test_string_map(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   const protobuf_test_messages_proto3_TestAllTypesProto3_MapStringStringEntry
@@ -256,7 +256,7 @@ static void test_string_map(void) {
   protobuf_test_messages_proto3_TestAllTypesProto3_map_string_string_clear(msg);
   check_string_map_empty(msg);
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 static void check_int32_map_empty(
@@ -309,7 +309,7 @@ static void check_int32_map_one_entry(
 }
 
 static void test_int32_map(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   const protobuf_test_messages_proto3_TestAllTypesProto3_MapInt32Int32Entry
@@ -374,11 +374,11 @@ static void test_int32_map(void) {
   protobuf_test_messages_proto3_TestAllTypesProto3_map_int32_int32_clear(msg);
   check_int32_map_empty(msg);
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 void test_repeated(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(arena);
   size_t size;
@@ -393,11 +393,11 @@ void test_repeated(void) {
   ASSERT(size == 1);
   ASSERT(elems[0] == 5);
 
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 void test_null_decode_buf(void) {
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_parse(NULL, 0, arena);
   size_t size;
@@ -405,7 +405,7 @@ void test_null_decode_buf(void) {
   ASSERT(msg);
   protobuf_test_messages_proto3_TestAllTypesProto3_serialize(msg, arena, &size);
   ASSERT(size == 0);
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 void test_status_truncation(void) {
@@ -448,23 +448,23 @@ void test_arena_fuse(void) {
   int i3 = 5;
   int i4 = 5;
 
-  upb_arena *arena1 = upb_arena_new();
-  upb_arena *arena2 = upb_arena_new();
+  upb_Arena *arena1 = upb_Arena_New();
+  upb_Arena *arena2 = upb_Arena_New();
 
-  upb_arena_addcleanup(arena1, &i1, decrement_int);
-  upb_arena_addcleanup(arena2, &i2, decrement_int);
+  upb_Arena_AddCleanup(arena1, &i1, decrement_int);
+  upb_Arena_AddCleanup(arena2, &i2, decrement_int);
 
-  ASSERT(upb_arena_fuse(arena1, arena2));
+  ASSERT(upb_Arena_Fuse(arena1, arena2));
 
-  upb_arena_addcleanup(arena1, &i3, decrement_int);
-  upb_arena_addcleanup(arena2, &i4, decrement_int);
+  upb_Arena_AddCleanup(arena1, &i3, decrement_int);
+  upb_Arena_AddCleanup(arena2, &i4, decrement_int);
 
-  upb_arena_free(arena1);
+  upb_Arena_Free(arena1);
   ASSERT(i1 == 5);
   ASSERT(i2 == 5);
   ASSERT(i3 == 5);
   ASSERT(i4 == 5);
-  upb_arena_free(arena2);
+  upb_Arena_Free(arena2);
   ASSERT(i1 == 4);
   ASSERT(i2 == 4);
   ASSERT(i3 == 4);
@@ -481,22 +481,22 @@ upb_alloc test_alloc = {&test_allocfunc};
 void test_arena_fuse_with_initial_block(void) {
   char buf1[1024];
   char buf2[1024];
-  upb_arena *arenas[] = {upb_arena_init(buf1, 1024, &upb_alloc_global),
-                         upb_arena_init(buf2, 1024, &upb_alloc_global),
-                         upb_arena_init(NULL, 0, &test_alloc),
-                         upb_arena_init(NULL, 0, &upb_alloc_global)};
+  upb_Arena *arenas[] = {upb_Arena_Init(buf1, 1024, &upb_alloc_global),
+                         upb_Arena_Init(buf2, 1024, &upb_alloc_global),
+                         upb_Arena_Init(NULL, 0, &test_alloc),
+                         upb_Arena_Init(NULL, 0, &upb_alloc_global)};
   int size = sizeof(arenas)/sizeof(arenas[0]);
   for (int i = 0; i < size; ++i) {
     for (int j = 0; j < size; ++j) {
       if (i == j) {
-        ASSERT(upb_arena_fuse(arenas[i], arenas[j]));
+        ASSERT(upb_Arena_Fuse(arenas[i], arenas[j]));
       } else {
-        ASSERT(!upb_arena_fuse(arenas[i], arenas[j]));
+        ASSERT(!upb_Arena_Fuse(arenas[i], arenas[j]));
       }
     }
   }
 
-  for (int i = 0; i < size; ++i) upb_arena_free(arenas[i]);
+  for (int i = 0; i < size; ++i) upb_Arena_Free(arenas[i]);
 }
 
 void test_arena_decode(void) {
@@ -504,7 +504,7 @@ void test_arena_decode(void) {
   // upb_decode().
   char large_string[1024] = {0};
   upb_StringView large_string_view = {large_string, sizeof(large_string)};
-  upb_arena *tmp = upb_arena_new();
+  upb_Arena *tmp = upb_Arena_New();
 
   protobuf_test_messages_proto3_TestAllTypesProto3 *msg =
       protobuf_test_messages_proto3_TestAllTypesProto3_new(tmp);
@@ -516,37 +516,37 @@ void test_arena_decode(void) {
   serialized.data = protobuf_test_messages_proto3_TestAllTypesProto3_serialize(
       msg, tmp, &serialized.size);
 
-  upb_arena *arena = upb_arena_new();
+  upb_Arena *arena = upb_Arena_New();
   // Parse the large payload, forcing an arena block to be allocated. This used
-  // to corrupt the cleanup list, preventing subsequent upb_arena_addcleanup()
+  // to corrupt the cleanup list, preventing subsequent upb_Arena_AddCleanup()
   // calls from working properly.
   protobuf_test_messages_proto3_TestAllTypesProto3_parse(
       serialized.data, serialized.size, arena);
 
   int i1 = 5;
-  upb_arena_addcleanup(arena, &i1, decrement_int);
+  upb_Arena_AddCleanup(arena, &i1, decrement_int);
   ASSERT(i1 == 5);
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
   ASSERT(i1 == 4);
 
-  upb_arena_free(tmp);
+  upb_Arena_Free(tmp);
 }
 
 void test_arena_unaligned(void) {
   char buf1[1024];
   // Force the pointer to be unaligned.
   char *unaligned_buf_ptr = (char*)((uintptr_t)buf1 | 7);
-  upb_arena *arena = upb_arena_init(
+  upb_Arena *arena = upb_Arena_Init(
       unaligned_buf_ptr, &buf1[sizeof(buf1)] - unaligned_buf_ptr, NULL);
-  char *mem = upb_arena_malloc(arena, 5);
+  char *mem = upb_Arena_Malloc(arena, 5);
   ASSERT(((uintptr_t)mem & 15) == 0);
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 
   // Try the same, but with a size so small that aligning up will overflow.
-  arena = upb_arena_init(unaligned_buf_ptr, 5, &upb_alloc_global);
-  mem = upb_arena_malloc(arena, 5);
+  arena = upb_Arena_Init(unaligned_buf_ptr, 5, &upb_alloc_global);
+  mem = upb_Arena_Malloc(arena, 5);
   ASSERT(((uintptr_t)mem & 15) == 0);
-  upb_arena_free(arena);
+  upb_Arena_Free(arena);
 }
 
 int run_tests(int argc, char *argv[]) {

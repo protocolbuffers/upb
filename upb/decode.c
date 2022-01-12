@@ -317,7 +317,7 @@ static const char *decode_readstr(upb_decstate *d, const char *ptr, int size,
   if (d->options & kUpb_DecodeOption_AliasString) {
     str->data = ptr;
   } else {
-    char *data =  upb_arena_malloc(&d->arena, size);
+    char *data =  upb_Arena_Malloc(&d->arena, size);
     if (!data) return decode_err(d, kUpb_DecodeStatus_OutOfMemory);
     memcpy(data, ptr, size);
     str->data = data;
@@ -1048,7 +1048,7 @@ static upb_DecodeStatus decode_top(struct upb_decstate *d, const char *buf,
 
 upb_DecodeStatus _upb_decode(const char *buf, size_t size, void *msg,
                              const upb_msglayout *l, const upb_extreg *extreg,
-                             int options, upb_arena *arena) {
+                             int options, upb_Arena *arena) {
   upb_decstate state;
   unsigned depth = (unsigned)options >> 16;
 

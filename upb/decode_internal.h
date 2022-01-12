@@ -57,7 +57,7 @@ typedef struct upb_decstate {
   uint16_t options;
   bool missing_required;
   char patch[32];
-  upb_arena arena;
+  upb_Arena arena;
   jmp_buf err;
 
 #ifndef NDEBUG

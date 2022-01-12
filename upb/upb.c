@@ -108,7 +108,7 @@ static uintptr_t upb_cleanup_metadata(uint32_t *cleanup,
 
 upb_alloc upb_alloc_global = {&upb_global_allocfunc};
 
-/* upb_arena ******************************************************************/
+/* upb_Arena ******************************************************************/
 
 /* Be conservative and choose 16 in case anyone is using SSE. */
 
@@ -120,24 +120,24 @@ struct mem_block {
 };
 
 typedef struct cleanup_ent {
-  upb_cleanup_func *cleanup;
+  upb_CleanupFunc *cleanup;
   void *ud;
 } cleanup_ent;
 
 static const size_t memblock_reserve = UPB_ALIGN_UP(sizeof(mem_block), 16);
 
-static upb_arena *arena_findroot(upb_arena *a) {
+static upb_Arena *arena_findroot(upb_Arena *a) {
   /* Path splitting keeps time complexity down, see:
    *   https://en.wikipedia.org/wiki/Disjoint-set_data_structure */
   while (a->parent != a) {
-    upb_arena *next = a->parent;
+    upb_Arena *next = a->parent;
     a->parent = next->parent;
     a = next;
   }
   return a;
 }
 
-static void upb_arena_addblock(upb_arena *a, upb_arena *root, void *ptr,
+static void upb_Arena_addblock(upb_Arena *a, upb_Arena *root, void *ptr,
                                size_t size) {
   mem_block *block = ptr;
 
@@ -157,33 +157,33 @@ static void upb_arena_addblock(upb_arena *a, upb_arena *root, void *ptr,
   UPB_POISON_MEMORY_REGION(a->head.ptr, a->head.end - a->head.ptr);
 }
 
-static bool upb_arena_allocblock(upb_arena *a, size_t size) {
-  upb_arena *root = arena_findroot(a);
+static bool upb_Arena_Allocblock(upb_Arena *a, size_t size) {
+  upb_Arena *root = arena_findroot(a);
   size_t block_size = UPB_MAX(size, a->last_size * 2) + memblock_reserve;
   mem_block *block = upb_malloc(root->block_alloc, block_size);
 
   if (!block) return false;
-  upb_arena_addblock(a, root, block, block_size);
+  upb_Arena_addblock(a, root, block, block_size);
   return true;
 }
 
-void *_upb_arena_slowmalloc(upb_arena *a, size_t size) {
-  if (!upb_arena_allocblock(a, size)) return NULL;  /* Out of memory. */
-  UPB_ASSERT(_upb_arenahas(a) >= size);
-  return upb_arena_malloc(a, size);
+void *_upb_Arena_SlowMalloc(upb_Arena *a, size_t size) {
+  if (!upb_Arena_Allocblock(a, size)) return NULL;  /* Out of memory. */
+  UPB_ASSERT(_upb_ArenaHas(a) >= size);
+  return upb_Arena_Malloc(a, size);
 }
 
-static void *upb_arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
+static void *upb_Arena_doalloc(upb_alloc *alloc, void *ptr, size_t oldsize,
                                size_t size) {
-  upb_arena *a = (upb_arena*)alloc;  /* upb_alloc is initial member. */
-  return upb_arena_realloc(a, ptr, oldsize, size);
+  upb_Arena *a = (upb_Arena*)alloc;  /* upb_alloc is initial member. */
+  return upb_Arena_Realloc(a, ptr, oldsize, size);
 }
 
 /* Public Arena API ***********************************************************/
 
-upb_arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
-  const size_t first_block_overhead = sizeof(upb_arena) + memblock_reserve;
-  upb_arena *a;
+upb_Arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
+  const size_t first_block_overhead = sizeof(upb_Arena) + memblock_reserve;
+  upb_Arena *a;
 
   /* We need to malloc the initial block. */
   n = first_block_overhead + 256;
@@ -191,10 +191,10 @@ upb_arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
     return NULL;
   }
 
-  a = UPB_PTR_AT(mem, n - sizeof(*a), upb_arena);
+  a = UPB_PTR_AT(mem, n - sizeof(*a), upb_Arena);
   n -= sizeof(*a);
 
-  a->head.alloc.func = &upb_arena_doalloc;
+  a->head.alloc.func = &upb_Arena_doalloc;
   a->block_alloc = alloc;
   a->parent = a;
   a->refcount = 1;
@@ -202,13 +202,13 @@ upb_arena *arena_initslow(void *mem, size_t n, upb_alloc *alloc) {
   a->freelist_tail = NULL;
   a->cleanup_metadata = upb_cleanup_metadata(NULL, false);
 
-  upb_arena_addblock(a, a, mem, n);
+  upb_Arena_addblock(a, a, mem, n);
 
   return a;
 }
 
-upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
-  upb_arena *a;
+upb_Arena *upb_Arena_Init(void *mem, size_t n, upb_alloc *alloc) {
+  upb_Arena *a;
 
   if (n) {
     /* Align initial pointer up so that we return properly-aligned pointers. */
@@ -220,15 +220,15 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
 
   /* Round block size down to alignof(*a) since we will allocate the arena
    * itself at the end. */
-  n = UPB_ALIGN_DOWN(n, UPB_ALIGN_OF(upb_arena));
+  n = UPB_ALIGN_DOWN(n, UPB_ALIGN_OF(upb_Arena));
 
-  if (UPB_UNLIKELY(n < sizeof(upb_arena))) {
+  if (UPB_UNLIKELY(n < sizeof(upb_Arena))) {
     return arena_initslow(mem, n, alloc);
   }
 
-  a = UPB_PTR_AT(mem, n - sizeof(*a), upb_arena);
+  a = UPB_PTR_AT(mem, n - sizeof(*a), upb_Arena);
 
-  a->head.alloc.func = &upb_arena_doalloc;
+  a->head.alloc.func = &upb_Arena_doalloc;
   a->block_alloc = alloc;
   a->parent = a;
   a->refcount = 1;
@@ -241,7 +241,7 @@ upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc) {
   return a;
 }
 
-static void arena_dofree(upb_arena *a) {
+static void arena_dofree(upb_Arena *a) {
   mem_block *block = a->freelist;
   UPB_ASSERT(a->parent == a);
   UPB_ASSERT(a->refcount == 0);
@@ -264,18 +264,18 @@ static void arena_dofree(upb_arena *a) {
   }
 }
 
-void upb_arena_free(upb_arena *a) {
+void upb_Arena_Free(upb_Arena *a) {
   a = arena_findroot(a);
   if (--a->refcount == 0) arena_dofree(a);
 }
 
-bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
+bool upb_Arena_AddCleanup(upb_Arena *a, void *ud, upb_CleanupFunc *func) {
   cleanup_ent *ent;
   uint32_t* cleanups = upb_cleanup_pointer(a->cleanup_metadata);
 
-  if (!cleanups || _upb_arenahas(a) < sizeof(cleanup_ent)) {
-    if (!upb_arena_allocblock(a, 128)) return false;  /* Out of memory. */
-    UPB_ASSERT(_upb_arenahas(a) >= sizeof(cleanup_ent));
+  if (!cleanups || _upb_ArenaHas(a) < sizeof(cleanup_ent)) {
+    if (!upb_Arena_Allocblock(a, 128)) return false;  /* Out of memory. */
+    UPB_ASSERT(_upb_ArenaHas(a) >= sizeof(cleanup_ent));
     cleanups = upb_cleanup_pointer(a->cleanup_metadata);
   }
 
@@ -290,9 +290,9 @@ bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func) {
   return true;
 }
 
-bool upb_arena_fuse(upb_arena *a1, upb_arena *a2) {
-  upb_arena *r1 = arena_findroot(a1);
-  upb_arena *r2 = arena_findroot(a2);
+bool upb_Arena_Fuse(upb_Arena *a1, upb_Arena *a2) {
+  upb_Arena *r1 = arena_findroot(a1);
+  upb_Arena *r2 = arena_findroot(a2);
 
   if (r1 == r2) return true;  /* Already fused. */
 
@@ -306,7 +306,7 @@ bool upb_arena_fuse(upb_arena *a1, upb_arena *a2) {
   /* We want to join the smaller tree to the larger tree.
    * So swap first if they are backwards. */
   if (r1->refcount < r2->refcount) {
-    upb_arena *tmp = r1;
+    upb_Arena *tmp = r1;
     r1 = r2;
     r2 = tmp;
   }

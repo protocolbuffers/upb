@@ -222,7 +222,7 @@ static void *fastdecode_resizearr(upb_decstate *d, void *dst,
     size_t new_size = old_size * 2;
     size_t new_bytes = new_size * valbytes;
     char *old_ptr = _upb_array_ptr(farr->arr);
-    char *new_ptr = upb_arena_realloc(&d->arena, old_ptr, old_bytes, new_bytes);
+    char *new_ptr = upb_Arena_Realloc(&d->arena, old_ptr, old_bytes, new_bytes);
     uint8_t elem_size_lg2 = __builtin_ctz(valbytes);
     farr->arr->size = new_size;
     farr->arr->data = _upb_array_tagptr(new_ptr, elem_size_lg2);
@@ -680,7 +680,7 @@ static const char *fastdecode_verifyutf8(upb_decstate *d, const char *ptr,
     dst->data = ptr;                                                           \
     dst->size = size;                                                          \
   } else {                                                                     \
-    char *data = upb_arena_malloc(&d->arena, size);                            \
+    char *data = upb_Arena_Malloc(&d->arena, size);                            \
     if (!data) {                                                               \
       return fastdecode_err(d, kUpb_DecodeStatus_OutOfMemory);                 \
     }                                                                          \
@@ -751,7 +751,7 @@ static void fastdecode_docopy(upb_decstate *d, const char *ptr, uint32_t size,
   dst->size = size;                                                            \
                                                                                \
   buf = d->arena.head.ptr;                                                     \
-  arena_has = _upb_arenahas(&d->arena);                                        \
+  arena_has = _upb_ArenaHas(&d->arena);                                        \
   common_has = UPB_MIN(arena_has, (d->end - ptr) + 16);                        \
                                                                                \
   if (UPB_LIKELY(size <= 15 - tagbytes)) {                                     \
@@ -931,7 +931,7 @@ upb_msg *decode_newmsg_ceil(upb_decstate *d, const upb_msglayout *l,
   size_t size = l->size + sizeof(upb_msg_internal);
   char *msg_data;
   if (UPB_LIKELY(msg_ceil_bytes > 0 &&
-                 _upb_arenahas(&d->arena) >= msg_ceil_bytes)) {
+                 _upb_ArenaHas(&d->arena) >= msg_ceil_bytes)) {
     UPB_ASSERT(size <= (size_t)msg_ceil_bytes);
     msg_data = d->arena.head.ptr;
     d->arena.head.ptr += size;
@@ -939,7 +939,7 @@ upb_msg *decode_newmsg_ceil(upb_decstate *d, const upb_msglayout *l,
     memset(msg_data, 0, msg_ceil_bytes);
     UPB_POISON_MEMORY_REGION(msg_data + size, msg_ceil_bytes - size);
   } else {
-    msg_data = (char*)upb_arena_malloc(&d->arena, size);
+    msg_data = (char*)upb_Arena_Malloc(&d->arena, size);
     memset(msg_data, 0, size);
   }
   return msg_data + sizeof(upb_msg_internal);

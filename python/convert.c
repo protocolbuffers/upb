@@ -144,11 +144,11 @@ static bool PyUpb_GetUint32(PyObject *obj, uint32_t *val) {
 // If `arena` is specified, copies the string data into the given arena.
 // Otherwise aliases the given data.
 static upb_msgval PyUpb_MaybeCopyString(const char *ptr, size_t size,
-                                        upb_arena *arena) {
+                                        upb_Arena *arena) {
   upb_msgval ret;
   ret.str_val.size = size;
   if (arena) {
-    char *buf = upb_arena_malloc(arena, size);
+    char *buf = upb_Arena_Malloc(arena, size);
     memcpy(buf, ptr, size);
     ret.str_val.data = buf;
   } else {
@@ -183,7 +183,7 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_EnumDef *e,
 }
 
 bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
-                   upb_arena *arena) {
+                   upb_Arena *arena) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_ENUM:
       return PyUpb_PyToUpbEnum(obj, upb_FieldDef_EnumSubDef(f), val);

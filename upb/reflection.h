@@ -63,7 +63,7 @@ upb_msgval upb_FieldDef_Default(const upb_FieldDef *f);
 /** upb_msg *******************************************************************/
 
 /* Creates a new message of the given type in the given arena. */
-upb_msg *upb_msg_new(const upb_MessageDef *m, upb_arena *a);
+upb_msg *upb_msg_new(const upb_MessageDef *m, upb_Arena *a);
 
 /* Returns the value associated with this field. */
 upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f);
@@ -71,7 +71,7 @@ upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f);
 /* Returns a mutable pointer to a map, array, or submessage value.  If the given
  * arena is non-NULL this will construct a new object if it was not previously
  * present.  May not be called for primitive fields. */
-upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_FieldDef *f, upb_arena *a);
+upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_FieldDef *f, upb_Arena *a);
 
 /* May only be called for fields where upb_FieldDef_HasPresence(f) == true. */
 bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f);
@@ -86,7 +86,7 @@ const upb_FieldDef *upb_msg_whichoneof(const upb_msg *msg,
  *
  * Returns false if allocation fails. */
 bool upb_msg_set(upb_msg *msg, const upb_FieldDef *f, upb_msgval val,
-                 upb_arena *a);
+                 upb_Arena *a);
 
 
 /* Clears any field presence and sets the value back to its default. */
@@ -120,7 +120,7 @@ bool upb_msg_discardunknown(upb_msg *msg, const upb_MessageDef *m, int maxdepth)
 /** upb_array *****************************************************************/
 
 /* Creates a new array on the given arena that holds elements of this type. */
-upb_array *upb_array_new(upb_arena *a, upb_fieldtype_t type);
+upb_array *upb_array_new(upb_Arena *a, upb_fieldtype_t type);
 
 /* Returns the size of the array. */
 size_t upb_array_size(const upb_array *arr);
@@ -132,7 +132,7 @@ upb_msgval upb_array_get(const upb_array *arr, size_t i);
 void upb_array_set(upb_array *arr, size_t i, upb_msgval val);
 
 /* Appends an element to the array.  Returns false on allocation failure. */
-bool upb_array_append(upb_array *array, upb_msgval val, upb_arena *arena);
+bool upb_array_append(upb_array *array, upb_msgval val, upb_Arena *arena);
 
 /* Moves elements within the array using memmove(). Like memmove(), the source
  * and destination elements may be overlapping. */
@@ -144,7 +144,7 @@ void upb_array_move(upb_array* array, size_t dst_idx, size_t src_idx,
  * `upb_array_set()`.
  * REQUIRES: `i <= upb_array_size(arr)` */
 bool upb_array_insert(upb_array *array, size_t i, size_t count,
-                      upb_arena *arena);
+                      upb_Arena *arena);
 
 /* Deletes one or more elements from the array.  Existing elements are shifted
  * left.
@@ -153,12 +153,12 @@ void upb_array_delete(upb_array *array, size_t i, size_t count);
 
 /* Changes the size of a vector.  New elements are initialized to empty/0.
  * Returns false on allocation failure. */
-bool upb_array_resize(upb_array *array, size_t size, upb_arena *arena);
+bool upb_array_resize(upb_array *array, size_t size, upb_Arena *arena);
 
 /** upb_map *******************************************************************/
 
 /* Creates a new map on the given arena with the given key/value size. */
-upb_map *upb_map_new(upb_arena *a, upb_fieldtype_t key_type,
+upb_map *upb_map_new(upb_Arena *a, upb_fieldtype_t key_type,
                      upb_fieldtype_t value_type);
 
 /* Returns the number of entries in the map. */
@@ -175,7 +175,7 @@ void upb_map_clear(upb_map *map);
 /* Sets the given key to the given value.  Returns true if this was a new key in
  * the map, or false if an existing key was replaced. */
 bool upb_map_set(upb_map *map, upb_msgval key, upb_msgval val,
-                 upb_arena *arena);
+                 upb_Arena *arena);
 
 /* Deletes this key from the table.  Returns true if the key was present. */
 bool upb_map_delete(upb_map *map, upb_msgval key);

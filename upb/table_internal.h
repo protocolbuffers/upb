@@ -66,7 +66,7 @@ typedef struct {
 
 /* Variant that works with a length-delimited rather than NULL-delimited string,
  * as supported by strtable. */
-char *upb_strdup2(const char *s, size_t len, upb_arena *a);
+char *upb_strdup2(const char *s, size_t len, upb_Arena *a);
 
 UPB_INLINE void _upb_value_setval(upb_value *v, uint64_t val) {
   v->val = val;
@@ -207,8 +207,8 @@ UPB_INLINE bool upb_tabent_isempty(const upb_tabent *e) {
 
 /* Initialize and uninitialize a table, respectively.  If memory allocation
  * failed, false is returned that the table is uninitialized. */
-bool upb_inttable_init(upb_inttable *table, upb_arena *a);
-bool upb_strtable_init(upb_strtable *table, size_t expected_size, upb_arena *a);
+bool upb_inttable_init(upb_inttable *table, upb_Arena *a);
+bool upb_strtable_init(upb_strtable *table, size_t expected_size, upb_Arena *a);
 
 /* Returns the number of values in the table. */
 size_t upb_inttable_count(const upb_inttable *t);
@@ -226,9 +226,9 @@ void upb_strtable_clear(upb_strtable *t);
  * If a table resize was required but memory allocation failed, false is
  * returned and the table is unchanged. */
 bool upb_inttable_insert(upb_inttable *t, uintptr_t key, upb_value val,
-                         upb_arena *a);
+                         upb_Arena *a);
 bool upb_strtable_insert(upb_strtable *t, const char *key, size_t len,
-                         upb_value val, upb_arena *a);
+                         upb_value val, upb_Arena *a);
 
 /* Looks up key in this table, returning "true" if the key was found.
  * If v is non-NULL, copies the value for this key into *v. */
@@ -261,10 +261,10 @@ bool upb_inttable_replace(upb_inttable *t, uintptr_t key, upb_value val);
 /* Optimizes the table for the current set of entries, for both memory use and
  * lookup time.  Client should call this after all entries have been inserted;
  * inserting more entries is legal, but will likely require a table resize. */
-void upb_inttable_compact(upb_inttable *t, upb_arena *a);
+void upb_inttable_compact(upb_inttable *t, upb_Arena *a);
 
 /* Exposed for testing only. */
-bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_arena *a);
+bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_Arena *a);
 
 /* Iterators ******************************************************************/
 

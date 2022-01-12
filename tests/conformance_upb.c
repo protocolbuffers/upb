@@ -80,7 +80,7 @@ void CheckedWrite(int fd, const void *buf, size_t len) {
 typedef struct {
   const conformance_ConformanceRequest *request;
   conformance_ConformanceResponse *response;
-  upb_arena *arena;
+  upb_Arena *arena;
   const upb_DefPool *symtab;
 } ctx;
 
@@ -122,7 +122,7 @@ void serialize_text(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   }
 
   len = upb_text_encode(msg, m, c->symtab, opts, NULL, 0);
-  data = upb_arena_malloc(c->arena, len + 1);
+  data = upb_Arena_Malloc(c->arena, len + 1);
   len2 = upb_text_encode(msg, m, c->symtab, opts, data, len + 1);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_text_payload(
@@ -147,7 +147,7 @@ bool parse_json(upb_msg *msg, const upb_MessageDef *m, const ctx* c) {
   } else {
     const char *inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
-    char *err = upb_arena_malloc(c->arena, len + 1);
+    char *err = upb_Arena_Malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_parse_error(c->response,
@@ -169,7 +169,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
   if (len == (size_t)-1) {
     const char *inerr = upb_Status_ErrorMessage(&status);
     size_t len = strlen(inerr);
-    char *err = upb_arena_malloc(c->arena, len + 1);
+    char *err = upb_Arena_Malloc(c->arena, len + 1);
     memcpy(err, inerr, strlen(inerr));
     err[len] = '\0';
     conformance_ConformanceResponse_set_serialize_error(c->response,
@@ -177,7 +177,7 @@ void serialize_json(const upb_msg *msg, const upb_MessageDef *m, const ctx *c) {
     return;
   }
 
-  data = upb_arena_malloc(c->arena, len + 1);
+  data = upb_Arena_Malloc(c->arena, len + 1);
   len2 = upb_json_encode(msg, m, c->symtab, opts, data, len + 1, &status);
   UPB_ASSERT(len == len2);
   conformance_ConformanceResponse_set_json_payload(
@@ -275,8 +275,8 @@ bool DoTestIo(upb_DefPool *symtab) {
   }
 
   c.symtab = symtab;
-  c.arena = upb_arena_new();
-  input = upb_arena_malloc(c.arena, input_size);
+  c.arena = upb_Arena_New();
+  input = upb_Arena_Malloc(c.arena, input_size);
 
   if (!CheckedRead(STDIN_FILENO, input, input_size)) {
     fprintf(stderr, "conformance_upb: unexpected EOF on stdin.\n");
@@ -310,7 +310,7 @@ bool DoTestIo(upb_DefPool *symtab) {
     fprintf(stderr, "\n");
   }
 
-  upb_arena_free(c.arena);
+  upb_Arena_Free(c.arena);
 
   return true;
 }

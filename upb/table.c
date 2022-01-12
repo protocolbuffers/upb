@@ -67,7 +67,7 @@ static int log2ceil(uint64_t v) {
   return UPB_MIN(UPB_MAXARRSIZE, ret);
 }
 
-char *upb_strdup2(const char *s, size_t len, upb_arena *a) {
+char *upb_strdup2(const char *s, size_t len, upb_Arena *a) {
   size_t n;
   char *p;
 
@@ -76,7 +76,7 @@ char *upb_strdup2(const char *s, size_t len, upb_arena *a) {
   /* Always null-terminate, even if binary data; but don't rely on the input to
    * have a null-terminating byte since it may be a raw binary buffer. */
   n = len + 1;
-  p = upb_arena_malloc(a, n);
+  p = upb_Arena_Malloc(a, n);
   if (p) {
     memcpy(p, s, len);
     p[len] = 0;
@@ -128,7 +128,7 @@ static bool isfull(upb_table *t) {
   return t->count == t->max_count;
 }
 
-static bool init(upb_table *t, uint8_t size_lg2, upb_arena *a) {
+static bool init(upb_table *t, uint8_t size_lg2, upb_Arena *a) {
   size_t bytes;
 
   t->count = 0;
@@ -137,7 +137,7 @@ static bool init(upb_table *t, uint8_t size_lg2, upb_arena *a) {
   t->max_count = upb_table_size(t) * MAX_LOAD;
   bytes = upb_table_size(t) * sizeof(upb_tabent);
   if (bytes > 0) {
-    t->entries = upb_arena_malloc(a, bytes);
+    t->entries = upb_Arena_Malloc(a, bytes);
     if (!t->entries) return false;
     memset(t->entries, 0, bytes);
   } else {
@@ -297,9 +297,9 @@ static size_t begin(const upb_table *t) {
 
 /* A simple "subclass" of upb_table that only adds a hash function for strings. */
 
-static upb_tabkey strcopy(lookupkey_t k2, upb_arena *a) {
+static upb_tabkey strcopy(lookupkey_t k2, upb_Arena *a) {
   uint32_t len = (uint32_t) k2.str.len;
-  char *str = upb_arena_malloc(a, k2.str.len + sizeof(uint32_t) + 1);
+  char *str = upb_Arena_Malloc(a, k2.str.len + sizeof(uint32_t) + 1);
   if (str == NULL) return 0;
   memcpy(str, &len, sizeof(uint32_t));
   if (k2.str.len) memcpy(str + sizeof(uint32_t), k2.str.str, k2.str.len);
@@ -458,7 +458,7 @@ static bool streql(upb_tabkey k1, lookupkey_t k2) {
   return len == k2.str.len && (len == 0 || memcmp(str, k2.str.str, len) == 0);
 }
 
-bool upb_strtable_init(upb_strtable *t, size_t expected_size, upb_arena *a) {
+bool upb_strtable_init(upb_strtable *t, size_t expected_size, upb_Arena *a) {
   // Multiply by approximate reciprocal of MAX_LOAD (0.85), with pow2 denominator.
   size_t need_entries = (expected_size + 1) * 1204 / 1024;
   UPB_ASSERT(need_entries >= expected_size * 0.85);
@@ -472,7 +472,7 @@ void upb_strtable_clear(upb_strtable *t) {
   memset((char*)t->t.entries, 0, bytes);
 }
 
-bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_arena *a) {
+bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_Arena *a) {
   upb_strtable new_table;
   upb_strtable_iter i;
 
@@ -489,7 +489,7 @@ bool upb_strtable_resize(upb_strtable *t, size_t size_lg2, upb_arena *a) {
 }
 
 bool upb_strtable_insert(upb_strtable *t, const char *k, size_t len,
-                         upb_value v, upb_arena *a) {
+                         upb_value v, upb_Arena *a) {
   lookupkey_t key;
   upb_tabkey tabkey;
   uint32_t hash;
@@ -618,7 +618,7 @@ static void check(upb_inttable *t) {
 }
 
 bool upb_inttable_sizedinit(upb_inttable *t, size_t asize, int hsize_lg2,
-                            upb_arena *a) {
+                            upb_Arena *a) {
   size_t array_bytes;
 
   if (!init(&t->t, hsize_lg2, a)) return false;
@@ -627,7 +627,7 @@ bool upb_inttable_sizedinit(upb_inttable *t, size_t asize, int hsize_lg2,
   t->array_size = UPB_MAX(1, asize);
   t->array_count = 0;
   array_bytes = t->array_size * sizeof(upb_value);
-  t->array = upb_arena_malloc(a, array_bytes);
+  t->array = upb_Arena_Malloc(a, array_bytes);
   if (!t->array) {
     return false;
   }
@@ -636,12 +636,12 @@ bool upb_inttable_sizedinit(upb_inttable *t, size_t asize, int hsize_lg2,
   return true;
 }
 
-bool upb_inttable_init(upb_inttable *t, upb_arena *a) {
+bool upb_inttable_init(upb_inttable *t, upb_Arena *a) {
   return upb_inttable_sizedinit(t, 0, 4, a);
 }
 
 bool upb_inttable_insert(upb_inttable *t, uintptr_t key, upb_value val,
-                         upb_arena *a) {
+                         upb_Arena *a) {
   upb_tabval tabval;
   tabval.val = val.val;
   UPB_ASSERT(upb_arrhas(tabval));  /* This will reject (uint64_t)-1.  Fix this. */
@@ -715,7 +715,7 @@ bool upb_inttable_remove(upb_inttable *t, uintptr_t key, upb_value *val) {
   return success;
 }
 
-void upb_inttable_compact(upb_inttable *t, upb_arena *a) {
+void upb_inttable_compact(upb_inttable *t, upb_Arena *a) {
   /* A power-of-two histogram of the table keys. */
   size_t counts[UPB_MAXARRSIZE + 1] = {0};
 

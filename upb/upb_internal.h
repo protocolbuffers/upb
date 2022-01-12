@@ -33,8 +33,8 @@
 struct mem_block;
 typedef struct mem_block mem_block;
 
-struct upb_arena {
-  _upb_arena_head head;
+struct upb_Arena {
+  _upb_ArenaHead head;
   /* Stores cleanup metadata for this arena.
    * - a pointer to the current cleanup counter.
    * - a boolean indicating if there is an unowned initial block.  */
@@ -49,7 +49,7 @@ struct upb_arena {
    * arena (root points to itself). The root tracks how many live arenas
    * reference it. */
   uint32_t refcount;  /* Only used when a->parent == a */
-  struct upb_arena *parent;
+  struct upb_Arena *parent;
 
   /* Linked list of blocks to free/cleanup. */
   mem_block *freelist, *freelist_tail;

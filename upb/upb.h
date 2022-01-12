@@ -152,57 +152,57 @@ UPB_INLINE void upb_gfree(void *ptr) {
   upb_free(&upb_alloc_global, ptr);
 }
 
-/* upb_arena ******************************************************************/
+/* upb_Arena ******************************************************************/
 
-/* upb_arena is a specific allocator implementation that uses arena allocation.
+/* upb_Arena is a specific allocator implementation that uses arena allocation.
  * The user provides an allocator that will be used to allocate the underlying
  * arena blocks.  Arenas by nature do not require the individual allocations
  * to be freed.  However the Arena does allow users to register cleanup
  * functions that will run when the arena is destroyed.
  *
- * A upb_arena is *not* thread-safe.
+ * A upb_Arena is *not* thread-safe.
  *
  * You could write a thread-safe arena allocator that satisfies the
  * upb_alloc interface, but it would not be as efficient for the
  * single-threaded case. */
 
-typedef void upb_cleanup_func(void *ud);
+typedef void upb_CleanupFunc(void *ud);
 
-struct upb_arena;
-typedef struct upb_arena upb_arena;
+struct upb_Arena;
+typedef struct upb_Arena upb_Arena;
 
 typedef struct {
   /* We implement the allocator interface.
-   * This must be the first member of upb_arena!
+   * This must be the first member of upb_Arena!
    * TODO(haberman): remove once handlers are gone. */
   upb_alloc alloc;
 
   char *ptr, *end;
-} _upb_arena_head;
+} _upb_ArenaHead;
 
 /* Creates an arena from the given initial block (if any -- n may be 0).
  * Additional blocks will be allocated from |alloc|.  If |alloc| is NULL, this
  * is a fixed-size arena and cannot grow. */
-upb_arena *upb_arena_init(void *mem, size_t n, upb_alloc *alloc);
-void upb_arena_free(upb_arena *a);
-bool upb_arena_addcleanup(upb_arena *a, void *ud, upb_cleanup_func *func);
-bool upb_arena_fuse(upb_arena *a, upb_arena *b);
-void *_upb_arena_slowmalloc(upb_arena *a, size_t size);
+upb_Arena *upb_Arena_Init(void *mem, size_t n, upb_alloc *alloc);
+void upb_Arena_Free(upb_Arena *a);
+bool upb_Arena_AddCleanup(upb_Arena *a, void *ud, upb_CleanupFunc *func);
+bool upb_Arena_Fuse(upb_Arena *a, upb_Arena *b);
+void *_upb_Arena_SlowMalloc(upb_Arena *a, size_t size);
 
-UPB_INLINE upb_alloc *upb_arena_alloc(upb_arena *a) { return (upb_alloc*)a; }
+UPB_INLINE upb_alloc *upb_Arena_Alloc(upb_Arena *a) { return (upb_alloc*)a; }
 
-UPB_INLINE size_t _upb_arenahas(upb_arena *a) {
-  _upb_arena_head *h = (_upb_arena_head*)a;
+UPB_INLINE size_t _upb_ArenaHas(upb_Arena *a) {
+  _upb_ArenaHead *h = (_upb_ArenaHead*)a;
   return (size_t)(h->end - h->ptr);
 }
 
-UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
-  _upb_arena_head *h = (_upb_arena_head*)a;
+UPB_INLINE void *upb_Arena_Malloc(upb_Arena *a, size_t size) {
+  _upb_ArenaHead *h = (_upb_ArenaHead*)a;
   void* ret;
   size = UPB_ALIGN_MALLOC(size);
 
-  if (UPB_UNLIKELY(_upb_arenahas(a) < size)) {
-    return _upb_arena_slowmalloc(a, size);
+  if (UPB_UNLIKELY(_upb_ArenaHas(a) < size)) {
+    return _upb_Arena_SlowMalloc(a, size);
   }
 
   ret = h->ptr;
@@ -212,7 +212,7 @@ UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
 #if UPB_ASAN
   {
     size_t guard_size = 32;
-    if (_upb_arenahas(a) >= guard_size) {
+    if (_upb_ArenaHas(a) >= guard_size) {
       h->ptr += guard_size;
     } else {
       h->ptr = h->end;
@@ -223,9 +223,9 @@ UPB_INLINE void *upb_arena_malloc(upb_arena *a, size_t size) {
   return ret;
 }
 
-UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
+UPB_INLINE void *upb_Arena_Realloc(upb_Arena *a, void *ptr, size_t oldsize,
                                    size_t size) {
-  void *ret = upb_arena_malloc(a, size);
+  void *ret = upb_Arena_Malloc(a, size);
 
   if (ret && oldsize > 0) {
     memcpy(ret, ptr, oldsize);
@@ -234,8 +234,8 @@ UPB_INLINE void *upb_arena_realloc(upb_arena *a, void *ptr, size_t oldsize,
   return ret;
 }
 
-UPB_INLINE upb_arena *upb_arena_new(void) {
-  return upb_arena_init(NULL, 0, &upb_alloc_global);
+UPB_INLINE upb_Arena *upb_Arena_New(void) {
+  return upb_Arena_Init(NULL, 0, &upb_alloc_global);
 }
 
 /* Constants ******************************************************************/
