@@ -50,7 +50,7 @@ extern "C" {
 // A field path may be NULL-terminated, in which case a NULL field indicates
 // the end of the field path.
 typedef union {
-  const upb_fielddef* field;
+  const upb_FieldDef* field;
   size_t array_index;
   upb_msgval map_key;
 } upb_FieldPathEntry;

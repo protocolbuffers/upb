@@ -32,7 +32,7 @@
 #include "upb/reflection.h"
 #include "upb/util/compare.h"
 
-PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_fielddef *f, PyObject *arena) {
+PyObject* PyUpb_UpbToPy(upb_msgval val, const upb_FieldDef *f, PyObject *arena) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_ENUM:
     case UPB_TYPE_INT32:
@@ -182,7 +182,7 @@ static bool PyUpb_PyToUpbEnum(PyObject *obj, const upb_enumdef *e,
   }
 }
 
-bool PyUpb_PyToUpb(PyObject *obj, const upb_fielddef *f, upb_msgval *val,
+bool PyUpb_PyToUpb(PyObject *obj, const upb_FieldDef *f, upb_msgval *val,
                    upb_arena *arena) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_ENUM:
@@ -248,7 +248,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
 // Equal
 // -----------------------------------------------------------------------------
 
-bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_fielddef *f) {
+bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       return val1.bool_val == val2.bool_val;
@@ -276,7 +276,7 @@ bool PyUpb_ValueEq(upb_msgval val1, upb_msgval val2, const upb_fielddef *f) {
 }
 
 bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
-                       const upb_fielddef *f) {
+                       const upb_FieldDef *f) {
   assert(upb_FieldDef_IsMap(f));
   if (map1 == map2) return true;
 
@@ -286,7 +286,7 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
   if (size1 == 0) return true;
 
   const upb_msgdef *entry_m = upb_FieldDef_MessageSubDef(f);
-  const upb_fielddef *val_f = upb_msgdef_field(entry_m, 1);
+  const upb_FieldDef *val_f = upb_msgdef_field(entry_m, 1);
   size_t iter = UPB_MAP_BEGIN;
 
   while (upb_mapiter_next(map1, &iter)) {
@@ -302,7 +302,7 @@ bool PyUpb_Map_IsEqual(const upb_map *map1, const upb_map *map2,
 
 static bool PyUpb_ArrayElem_IsEqual(const upb_array *arr1,
                                     const upb_array *arr2, size_t i,
-                                    const upb_fielddef *f) {
+                                    const upb_FieldDef *f) {
   assert(i < upb_array_size(arr1));
   assert(i < upb_array_size(arr2));
   upb_msgval val1 = upb_array_get(arr1, i);
@@ -311,7 +311,7 @@ static bool PyUpb_ArrayElem_IsEqual(const upb_array *arr1,
 }
 
 bool PyUpb_Array_IsEqual(const upb_array *arr1, const upb_array *arr2,
-                         const upb_fielddef *f) {
+                         const upb_FieldDef *f) {
   assert(upb_FieldDef_IsRepeated(f) && !upb_FieldDef_IsMap(f));
   if (arr1 == arr2) return true;
 
@@ -361,7 +361,7 @@ bool PyUpb_Message_IsEqual(const upb_msg *msg1, const upb_msg *msg2,
   // We don't need to visit all of msg2's extensions, because we verified up
   // front that both messages have the same number of extensions.
   const upb_symtab* symtab = upb_filedef_symtab(upb_msgdef_file(m));
-  const upb_fielddef *f1, *f2;
+  const upb_FieldDef *f1, *f2;
   upb_msgval val1, val2;
   size_t iter1 = UPB_MSG_BEGIN;
   size_t iter2 = UPB_MSG_BEGIN;

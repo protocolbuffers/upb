@@ -232,7 +232,7 @@ static const void* PyUpb_Descriptor_LookupNestedExtension(const upb_msgdef* m,
   const upb_filedef* filedef = upb_msgdef_file(m);
   const upb_symtab* symtab = upb_filedef_symtab(filedef);
   PyObject* qname = PyUnicode_FromFormat("%s.%s", upb_msgdef_fullname(m), name);
-  const upb_fielddef* ret =
+  const upb_FieldDef* ret =
       upb_symtab_lookupext(symtab, PyUnicode_AsUTF8AndSize(qname, NULL));
   Py_DECREF(qname);
   return ret;
@@ -840,13 +840,13 @@ static PyType_Spec PyUpb_EnumValueDescriptor_Spec = {
 // FieldDescriptor
 // -----------------------------------------------------------------------------
 
-const upb_fielddef* PyUpb_FieldDescriptor_GetDef(PyObject* _self) {
+const upb_FieldDef* PyUpb_FieldDescriptor_GetDef(PyObject* _self) {
   PyUpb_DescriptorBase* self =
       PyUpb_DescriptorBase_Check(_self, kPyUpb_FieldDescriptor);
   return self ? self->def : NULL;
 }
 
-PyObject* PyUpb_FieldDescriptor_Get(const upb_fielddef* field) {
+PyObject* PyUpb_FieldDescriptor_Get(const upb_FieldDef* field) {
   const upb_filedef* file = upb_FieldDef_File(field);
   return PyUpb_DescriptorBase_Get(kPyUpb_FieldDescriptor, field, file);
 }
@@ -971,10 +971,10 @@ static PyObject* PyUpb_FieldDescriptor_HasDefaultValue(
 
 static PyObject* PyUpb_FieldDescriptor_GetDefaultValue(
     PyUpb_DescriptorBase* self, void* closure) {
-  const upb_fielddef* f = self->def;
+  const upb_FieldDef* f = self->def;
   if (upb_FieldDef_IsRepeated(f)) return PyList_New(0);
   if (upb_FieldDef_IsSubMessage(f)) Py_RETURN_NONE;
-  return PyUpb_UpbToPy(upb_fielddef_default(self->def), self->def, NULL);
+  return PyUpb_UpbToPy(upb_FieldDef_Default(self->def), self->def, NULL);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetContainingOneof(

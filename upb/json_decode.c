@@ -53,14 +53,14 @@ typedef struct {
   const char *line_begin;
   bool is_first;
   int options;
-  const upb_fielddef *debug_field;
+  const upb_FieldDef *debug_field;
 } jsondec;
 
 enum { JD_OBJECT, JD_ARRAY, JD_STRING, JD_NUMBER, JD_TRUE, JD_FALSE, JD_NULL };
 
 /* Forward declarations of mutually-recursive functions. */
 static void jsondec_wellknown(jsondec *d, upb_msg *msg, const upb_msgdef *m);
-static upb_msgval jsondec_value(jsondec *d, const upb_fielddef *f);
+static upb_msgval jsondec_value(jsondec *d, const upb_FieldDef *f);
 static void jsondec_wellknownvalue(jsondec *d, upb_msg *msg,
                                    const upb_msgdef *m);
 static void jsondec_object(jsondec *d, upb_msg *msg, const upb_msgdef *m);
@@ -69,13 +69,13 @@ static bool jsondec_streql(upb_strview str, const char *lit) {
   return str.size == strlen(lit) && memcmp(str.data, lit, str.size) == 0;
 }
 
-static bool jsondec_isnullvalue(const upb_fielddef *f) {
+static bool jsondec_isnullvalue(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_ENUM &&
          strcmp(upb_enumdef_fullname(upb_FieldDef_EnumSubDef(f)),
                 "google.protobuf.NullValue") == 0;
 }
 
-static bool jsondec_isvalue(const upb_fielddef *f) {
+static bool jsondec_isvalue(const upb_FieldDef *f) {
   return (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE &&
           upb_msgdef_wellknowntype(upb_FieldDef_MessageSubDef(f)) ==
               UPB_WELLKNOWN_VALUE) ||
@@ -694,7 +694,7 @@ static int64_t jsondec_strtoint64(jsondec *d, upb_strview str) {
 /* Primitive value types ******************************************************/
 
 /* Parse INT32 or INT64 value. */
-static upb_msgval jsondec_int(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_int(jsondec *d, const upb_FieldDef *f) {
   upb_msgval val;
 
   switch (jsondec_peek(d)) {
@@ -731,7 +731,7 @@ static upb_msgval jsondec_int(jsondec *d, const upb_fielddef *f) {
 }
 
 /* Parse UINT32 or UINT64 value. */
-static upb_msgval jsondec_uint(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_uint(jsondec *d, const upb_FieldDef *f) {
   upb_msgval val = {0};
 
   switch (jsondec_peek(d)) {
@@ -767,7 +767,7 @@ static upb_msgval jsondec_uint(jsondec *d, const upb_fielddef *f) {
 }
 
 /* Parse DOUBLE or FLOAT value. */
-static upb_msgval jsondec_double(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_double(jsondec *d, const upb_FieldDef *f) {
   upb_strview str;
   upb_msgval val = {0};
 
@@ -803,7 +803,7 @@ static upb_msgval jsondec_double(jsondec *d, const upb_fielddef *f) {
 }
 
 /* Parse STRING or BYTES value. */
-static upb_msgval jsondec_strfield(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_strfield(jsondec *d, const upb_FieldDef *f) {
   upb_msgval val;
   val.str_val = jsondec_string(d);
   if (upb_FieldDef_CType(f) == UPB_TYPE_BYTES) {
@@ -812,7 +812,7 @@ static upb_msgval jsondec_strfield(jsondec *d, const upb_fielddef *f) {
   return val;
 }
 
-static upb_msgval jsondec_enum(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_enum(jsondec *d, const upb_FieldDef *f) {
   switch (jsondec_peek(d)) {
     case JD_STRING: {
       upb_strview str = jsondec_string(d);
@@ -845,7 +845,7 @@ static upb_msgval jsondec_enum(jsondec *d, const upb_fielddef *f) {
   }
 }
 
-static upb_msgval jsondec_bool(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_bool(jsondec *d, const upb_FieldDef *f) {
   bool is_map_key = upb_FieldDef_Number(f) == 1 &&
                     upb_msgdef_mapentry(upb_FieldDef_ContainingType(f));
   upb_msgval val;
@@ -879,7 +879,7 @@ static upb_msgval jsondec_bool(jsondec *d, const upb_fielddef *f) {
 
 /* Composite types (array/message/map) ****************************************/
 
-static void jsondec_array(jsondec *d, upb_msg *msg, const upb_fielddef *f) {
+static void jsondec_array(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
   upb_array *arr = upb_msg_mutable(msg, f, d->arena).array;
 
   jsondec_arrstart(d);
@@ -890,11 +890,11 @@ static void jsondec_array(jsondec *d, upb_msg *msg, const upb_fielddef *f) {
   jsondec_arrend(d);
 }
 
-static void jsondec_map(jsondec *d, upb_msg *msg, const upb_fielddef *f) {
+static void jsondec_map(jsondec *d, upb_msg *msg, const upb_FieldDef *f) {
   upb_map *map = upb_msg_mutable(msg, f, d->arena).map;
   const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-  const upb_fielddef *key_f = upb_msgdef_itof(entry, 1);
-  const upb_fielddef *val_f = upb_msgdef_itof(entry, 2);
+  const upb_FieldDef *key_f = upb_msgdef_itof(entry, 1);
+  const upb_FieldDef *val_f = upb_msgdef_itof(entry, 2);
 
   jsondec_objstart(d);
   while (jsondec_objnext(d)) {
@@ -915,7 +915,7 @@ static void jsondec_tomsg(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   }
 }
 
-static upb_msgval jsondec_msg(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_msg(jsondec *d, const upb_FieldDef *f) {
   const upb_msgdef *m = upb_FieldDef_MessageSubDef(f);
   upb_msg *msg = upb_msg_new(m, d->arena);
   upb_msgval val;
@@ -927,8 +927,8 @@ static upb_msgval jsondec_msg(jsondec *d, const upb_fielddef *f) {
 
 static void jsondec_field(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   upb_strview name;
-  const upb_fielddef *f;
-  const upb_fielddef *preserved;
+  const upb_FieldDef *f;
+  const upb_FieldDef *preserved;
 
   name = jsondec_string(d);
   jsondec_entrysep(d);
@@ -994,7 +994,7 @@ static void jsondec_object(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   jsondec_objend(d);
 }
 
-static upb_msgval jsondec_value(jsondec *d, const upb_fielddef *f) {
+static upb_msgval jsondec_value(jsondec *d, const upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       return jsondec_bool(d, f);
@@ -1168,7 +1168,7 @@ static void jsondec_duration(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 }
 
 static void jsondec_listvalue(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
-  const upb_fielddef *values_f = upb_msgdef_itof(m, 1);
+  const upb_FieldDef *values_f = upb_msgdef_itof(m, 1);
   const upb_msgdef *value_m = upb_FieldDef_MessageSubDef(values_f);
   upb_array *values = upb_msg_mutable(msg, values_f, d->arena).array;
 
@@ -1184,9 +1184,9 @@ static void jsondec_listvalue(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 }
 
 static void jsondec_struct(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
-  const upb_fielddef *fields_f = upb_msgdef_itof(m, 1);
+  const upb_FieldDef *fields_f = upb_msgdef_itof(m, 1);
   const upb_msgdef *entry_m = upb_FieldDef_MessageSubDef(fields_f);
-  const upb_fielddef *value_f = upb_msgdef_itof(entry_m, 2);
+  const upb_FieldDef *value_f = upb_msgdef_itof(entry_m, 2);
   const upb_msgdef *value_m = upb_FieldDef_MessageSubDef(value_f);
   upb_map *fields = upb_msg_mutable(msg, fields_f, d->arena).map;
 
@@ -1206,7 +1206,7 @@ static void jsondec_struct(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 static void jsondec_wellknownvalue(jsondec *d, upb_msg *msg,
                                    const upb_msgdef *m) {
   upb_msgval val;
-  const upb_fielddef *f;
+  const upb_FieldDef *f;
   upb_msg *submsg;
 
   switch (jsondec_peek(d)) {
@@ -1292,7 +1292,7 @@ static upb_strview jsondec_mask(jsondec *d, const char *buf, const char *end) {
 
 static void jsondec_fieldmask(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   /* repeated string paths = 1; */
-  const upb_fielddef *paths_f = upb_msgdef_itof(m, 1);
+  const upb_FieldDef *paths_f = upb_msgdef_itof(m, 1);
   upb_array *arr = upb_msg_mutable(msg, paths_f, d->arena).array;
   upb_strview str = jsondec_string(d);
   const char *ptr = str.data;
@@ -1331,7 +1331,7 @@ static void jsondec_anyfield(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 
 static const upb_msgdef *jsondec_typeurl(jsondec *d, upb_msg *msg,
                                          const upb_msgdef *m) {
-  const upb_fielddef *type_url_f = upb_msgdef_itof(m, 1);
+  const upb_FieldDef *type_url_f = upb_msgdef_itof(m, 1);
   const upb_msgdef *type_m;
   upb_strview type_url = jsondec_string(d);
   const char *end = type_url.data + type_url.size;
@@ -1361,7 +1361,7 @@ static const upb_msgdef *jsondec_typeurl(jsondec *d, upb_msg *msg,
 static void jsondec_any(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
   /* string type_url = 1;
    * bytes value = 2; */
-  const upb_fielddef *value_f = upb_msgdef_itof(m, 2);
+  const upb_FieldDef *value_f = upb_msgdef_itof(m, 2);
   upb_msg *any_msg;
   const upb_msgdef *any_m = NULL;
   const char *pre_type_data = NULL;
@@ -1422,7 +1422,7 @@ static void jsondec_any(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
 }
 
 static void jsondec_wrapper(jsondec *d, upb_msg *msg, const upb_msgdef *m) {
-  const upb_fielddef *value_f = upb_msgdef_itof(m, 1);
+  const upb_FieldDef *value_f = upb_msgdef_itof(m, 1);
   upb_msgval val = jsondec_value(d, value_f);
   upb_msg_set(msg, value_f, val, d->arena);
 }

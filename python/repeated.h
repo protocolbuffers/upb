@@ -36,7 +36,7 @@
 // Creates a new repeated field stub for field `f` of message object `parent`.
 // Precondition: `parent` must be a stub.
 PyObject* PyUpb_RepeatedContainer_NewStub(PyObject* parent,
-                                          const upb_fielddef* f,
+                                          const upb_FieldDef* f,
                                           PyObject* arena);
 
 // Returns a repeated field object wrapping `arr`, of field type `f`, which
@@ -44,7 +44,7 @@ PyObject* PyUpb_RepeatedContainer_NewStub(PyObject* parent,
 // returned, otherwise a new object will be created.  The caller always owns a
 // ref on the returned value.
 PyObject* PyUpb_RepeatedContainer_GetOrCreateWrapper(upb_array* arr,
-                                                     const upb_fielddef* f,
+                                                     const upb_FieldDef* f,
                                                      PyObject* arena);
 
 // Reifies a repeated field stub to point to the concrete data in `arr`.

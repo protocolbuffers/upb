@@ -58,7 +58,7 @@ typedef union {
   upb_array* array;
 } upb_mutmsgval;
 
-upb_msgval upb_fielddef_default(const upb_fielddef *f);
+upb_msgval upb_FieldDef_Default(const upb_FieldDef *f);
 
 /** upb_msg *******************************************************************/
 
@@ -66,18 +66,18 @@ upb_msgval upb_fielddef_default(const upb_fielddef *f);
 upb_msg *upb_msg_new(const upb_msgdef *m, upb_arena *a);
 
 /* Returns the value associated with this field. */
-upb_msgval upb_msg_get(const upb_msg *msg, const upb_fielddef *f);
+upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f);
 
 /* Returns a mutable pointer to a map, array, or submessage value.  If the given
  * arena is non-NULL this will construct a new object if it was not previously
  * present.  May not be called for primitive fields. */
-upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_fielddef *f, upb_arena *a);
+upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_FieldDef *f, upb_arena *a);
 
 /* May only be called for fields where upb_FieldDef_HasPresence(f) == true. */
-bool upb_msg_has(const upb_msg *msg, const upb_fielddef *f);
+bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f);
 
 /* Returns the field that is set in the oneof, or NULL if none are set. */
-const upb_fielddef *upb_msg_whichoneof(const upb_msg *msg,
+const upb_FieldDef *upb_msg_whichoneof(const upb_msg *msg,
                                        const upb_oneofdef *o);
 
 /* Sets the given field to the given value.  For a msg/array/map/string, the
@@ -85,12 +85,12 @@ const upb_fielddef *upb_msg_whichoneof(const upb_msg *msg,
  * the same arena or a different arena that outlives it).
  *
  * Returns false if allocation fails. */
-bool upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
+bool upb_msg_set(upb_msg *msg, const upb_FieldDef *f, upb_msgval val,
                  upb_arena *a);
 
 
 /* Clears any field presence and sets the value back to its default. */
-void upb_msg_clearfield(upb_msg *msg, const upb_fielddef *f);
+void upb_msg_clearfield(upb_msg *msg, const upb_FieldDef *f);
 
 /* Clear all data and unknown fields. */
 void upb_msg_clear(upb_msg *msg, const upb_msgdef *m);
@@ -98,7 +98,7 @@ void upb_msg_clear(upb_msg *msg, const upb_msgdef *m);
 /* Iterate over present fields.
  *
  * size_t iter = UPB_MSG_BEGIN;
- * const upb_fielddef *f;
+ * const upb_FieldDef *f;
  * upb_msgval val;
  * while (upb_msg_next(msg, m, ext_pool, &f, &val, &iter)) {
  *   process_field(f, val);
@@ -111,7 +111,7 @@ void upb_msg_clear(upb_msg *msg, const upb_msgdef *m);
 
 #define UPB_MSG_BEGIN -1
 bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
-                  const upb_symtab *ext_pool, const upb_fielddef **f,
+                  const upb_symtab *ext_pool, const upb_FieldDef **f,
                   upb_msgval *val, size_t *iter);
 
 /* Clears all unknown field data from this message and all submessages. */

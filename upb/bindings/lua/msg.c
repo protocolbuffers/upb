@@ -660,16 +660,16 @@ static const upb_msgdef *lupb_msg_getmsgdef(lua_State *L, int msg) {
   return m;
 }
 
-static const upb_fielddef *lupb_msg_tofield(lua_State *L, int msg, int field) {
+static const upb_FieldDef *lupb_msg_tofield(lua_State *L, int msg, int field) {
   size_t len;
   const char *fieldname = luaL_checklstring(L, field, &len);
   const upb_msgdef *m = lupb_msg_getmsgdef(L, msg);
   return upb_msgdef_ntof(m, fieldname, len);
 }
 
-static const upb_fielddef *lupb_msg_checkfield(lua_State *L, int msg,
+static const upb_FieldDef *lupb_msg_checkfield(lua_State *L, int msg,
                                                int field) {
-  const upb_fielddef *f = lupb_msg_tofield(L, msg, field);
+  const upb_FieldDef *f = lupb_msg_tofield(L, msg, field);
   if (f == NULL) {
     luaL_error(L, "no such field '%s'", lua_tostring(L, field));
   }
@@ -715,7 +715,7 @@ static void lupb_msg_newmsgwrapper(lua_State *L, int narg, upb_msgval val) {
  * the msgdef if necessary.
  */
 static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
-                            const char *type, const upb_fielddef *f) {
+                            const char *type, const upb_FieldDef *f) {
   if (upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE) {
     /* Wrapper needs a reference to the msgdef. */
     void* ud = lupb_newuserdata(L, size, 2, type);
@@ -733,12 +733,12 @@ static void *lupb_msg_newud(lua_State *L, int narg, size_t size,
  *
  * Creates a new Lua wrapper object to wrap the given array, map, or message.
  */
-static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_fielddef *f,
+static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_FieldDef *f,
                                 upb_mutmsgval val) {
   if (upb_FieldDef_IsMap(f)) {
     const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_fielddef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
-    const upb_fielddef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
+    const upb_FieldDef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
+    const upb_FieldDef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
     lupb_map *lmap = lupb_msg_newud(L, narg, sizeof(*lmap), LUPB_MAP, val_f);
     lmap->key_type = upb_FieldDef_CType(key_f);
     lmap->value_type = upb_FieldDef_CType(val_f);
@@ -764,10 +764,10 @@ static void lupb_msg_newwrapper(lua_State *L, int narg, const upb_fielddef *f,
 /**
  * lupb_msg_typechecksubmsg()
  *
- * Typechecks the given array, map, or msg against this upb_fielddef.
+ * Typechecks the given array, map, or msg against this upb_FieldDef.
  */
 static void lupb_msg_typechecksubmsg(lua_State *L, int narg, int msgarg,
-                                     const upb_fielddef *f) {
+                                     const upb_FieldDef *f) {
   /* Typecheck this map's msgdef against this message field. */
   lua_getiuservalue(L, narg, LUPB_MSGDEF_INDEX);
   lua_getiuservalue(L, msgarg, LUPB_MSGDEF_INDEX);
@@ -813,7 +813,7 @@ int lupb_msgdef_call(lua_State *L) {
  */
 static int lupb_msg_index(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_fielddef *f = lupb_msg_checkfield(L, 1, 2);
+  const upb_FieldDef *f = lupb_msg_checkfield(L, 1, 2);
 
   if (upb_FieldDef_IsRepeated(f) || upb_FieldDef_IsSubMessage(f)) {
     /* Wrapped type; get or create wrapper. */
@@ -841,15 +841,15 @@ static int lupb_msg_index(lua_State *L) {
  */
 static int lupb_msg_newindex(lua_State *L) {
   upb_msg *msg = lupb_msg_check(L, 1);
-  const upb_fielddef *f = lupb_msg_checkfield(L, 1, 2);
+  const upb_FieldDef *f = lupb_msg_checkfield(L, 1, 2);
   upb_msgval msgval;
   bool merge_arenas = true;
 
   if (upb_FieldDef_IsMap(f)) {
     lupb_map *lmap = lupb_map_check(L, 3);
     const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_fielddef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
-    const upb_fielddef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
+    const upb_FieldDef *key_f = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
+    const upb_FieldDef *val_f = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
     upb_fieldtype_t key_type = upb_FieldDef_CType(key_f);
     upb_fieldtype_t value_type = upb_FieldDef_CType(val_f);
     luaL_argcheck(L, lmap->key_type == key_type, 3, "key type mismatch");

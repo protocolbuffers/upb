@@ -53,7 +53,7 @@ typedef struct {
 static const char opt_default_buf[_UPB_MAXOPT_SIZE + sizeof(void*)] = {0};
 static const char *opt_default = &opt_default_buf[sizeof(void*)];
 
-struct upb_fielddef {
+struct upb_FieldDef {
   const google_protobuf_FieldOptions *opts;
   const upb_filedef *file;
   const upb_msgdef *msgdef;
@@ -108,12 +108,12 @@ struct upb_msgdef {
   /* All nested defs.
    * MEM: We could save some space here by putting nested defs in a contigous
    * region and calculating counts from offets or vice-versa. */
-  const upb_fielddef *fields;
+  const upb_FieldDef *fields;
   const upb_oneofdef *oneofs;
   const upb_extrange *ext_ranges;
   const upb_msgdef *nested_msgs;
   const upb_enumdef *nested_enums;
-  const upb_fielddef *nested_exts;
+  const upb_FieldDef *nested_exts;
   int field_count;
   int real_oneof_count;
   int oneof_count;
@@ -151,7 +151,7 @@ struct upb_oneofdef {
   const char *full_name;
   int field_count;
   bool synthetic;
-  const upb_fielddef **fields;
+  const upb_FieldDef **fields;
   upb_strtable ntof;
   upb_inttable itof;
 };
@@ -166,7 +166,7 @@ struct upb_filedef {
   const int32_t* weak_deps;
   const upb_msgdef *top_lvl_msgs;
   const upb_enumdef *top_lvl_enums;
-  const upb_fielddef *top_lvl_exts;
+  const upb_FieldDef *top_lvl_exts;
   const upb_servicedef *services;
   const upb_msglayout_ext **ext_layouts;
   const upb_symtab *symtab;
@@ -205,7 +205,7 @@ struct upb_symtab {
   upb_arena *arena;
   upb_strtable syms;  /* full_name -> packed def ptr */
   upb_strtable files;  /* file_name -> upb_filedef* */
-  upb_inttable exts;   /* upb_msglayout_ext* -> upb_fielddef* */
+  upb_inttable exts;   /* upb_msglayout_ext* -> upb_FieldDef* */
   upb_extreg *extreg;
   size_t bytes_loaded;
 
@@ -295,7 +295,7 @@ static const char *shortdefname(const char *fullname) {
 
 /* All submessage fields are lower than all other fields.
  * Secondly, fields are increasing in order. */
-uint32_t field_rank(const upb_fielddef *f) {
+uint32_t field_rank(const upb_FieldDef *f) {
   uint32_t ret = upb_FieldDef_Number(f);
   const uint32_t high_bit = 1 << 30;
   UPB_ASSERT(ret < high_bit);
@@ -305,8 +305,8 @@ uint32_t field_rank(const upb_fielddef *f) {
 }
 
 int cmp_fields(const void *p1, const void *p2) {
-  const upb_fielddef *f1 = *(upb_fielddef*const*)p1;
-  const upb_fielddef *f2 = *(upb_fielddef*const*)p2;
+  const upb_FieldDef *f1 = *(upb_FieldDef*const*)p1;
+  const upb_FieldDef *f2 = *(upb_FieldDef*const*)p2;
   return field_rank(f1) - field_rank(f2);
 }
 
@@ -492,22 +492,22 @@ int32_t upb_extrange_end(const upb_extrange *e) {
   return e->end;
 }
 
-/* upb_fielddef ***************************************************************/
+/* upb_FieldDef ***************************************************************/
 
 const google_protobuf_FieldOptions *upb_FieldDef_Options(
-    const upb_fielddef *f) {
+    const upb_FieldDef *f) {
   return f->opts;
 }
 
-bool upb_FieldDef_HasOptions(const upb_fielddef *f) {
+bool upb_FieldDef_HasOptions(const upb_FieldDef *f) {
   return f->opts != (void*)opt_default;
 }
 
-const char *upb_FieldDef_FullName(const upb_fielddef *f) {
+const char *upb_FieldDef_FullName(const upb_FieldDef *f) {
   return f->full_name;
 }
 
-upb_fieldtype_t upb_FieldDef_CType(const upb_fielddef *f) {
+upb_fieldtype_t upb_FieldDef_CType(const upb_FieldDef *f) {
   switch (f->type_) {
     case UPB_DESCRIPTOR_TYPE_DOUBLE:
       return UPB_TYPE_DOUBLE;
@@ -542,65 +542,65 @@ upb_fieldtype_t upb_FieldDef_CType(const upb_fielddef *f) {
   UPB_UNREACHABLE();
 }
 
-upb_descriptortype_t upb_FieldDef_Type(const upb_fielddef *f) {
+upb_descriptortype_t upb_FieldDef_Type(const upb_FieldDef *f) {
   return f->type_;
 }
 
-uint32_t upb_FieldDef_Index(const upb_fielddef *f) {
+uint32_t upb_FieldDef_Index(const upb_FieldDef *f) {
   return f->index_;
 }
 
-upb_label_t upb_FieldDef_Label(const upb_fielddef *f) {
+upb_label_t upb_FieldDef_Label(const upb_FieldDef *f) {
   return f->label_;
 }
 
-uint32_t upb_FieldDef_Number(const upb_fielddef *f) {
+uint32_t upb_FieldDef_Number(const upb_FieldDef *f) {
   return f->number_;
 }
 
-bool upb_FieldDef_IsExtension(const upb_fielddef *f) {
+bool upb_FieldDef_IsExtension(const upb_FieldDef *f) {
   return f->is_extension_;
 }
 
-bool upb_FieldDef_IsPacked(const upb_fielddef *f) {
+bool upb_FieldDef_IsPacked(const upb_FieldDef *f) {
   return f->packed_;
 }
 
-const char *upb_FieldDef_Name(const upb_fielddef *f) {
+const char *upb_FieldDef_Name(const upb_FieldDef *f) {
   return shortdefname(f->full_name);
 }
 
-const char *upb_FieldDef_JsonName(const upb_fielddef *f) {
+const char *upb_FieldDef_JsonName(const upb_FieldDef *f) {
   return f->json_name;
 }
 
-bool upb_FieldDef_HasJsonName(const upb_fielddef *f) {
+bool upb_FieldDef_HasJsonName(const upb_FieldDef *f) {
   return f->has_json_name_;
 }
 
-const upb_filedef *upb_FieldDef_File(const upb_fielddef *f) {
+const upb_filedef *upb_FieldDef_File(const upb_FieldDef *f) {
   return f->file;
 }
 
-const upb_msgdef *upb_FieldDef_ContainingType(const upb_fielddef *f) {
+const upb_msgdef *upb_FieldDef_ContainingType(const upb_FieldDef *f) {
   return f->msgdef;
 }
 
-const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_fielddef *f) {
+const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_FieldDef *f) {
   return f->is_extension_ ? f->scope.extension_scope : NULL;
 }
 
-const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_fielddef *f) {
+const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_FieldDef *f) {
   return f->is_extension_ ? NULL : f->scope.oneof;
 }
 
-const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_fielddef *f) {
+const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_FieldDef *f) {
   const upb_oneofdef* oneof = upb_FieldDef_ContainingOneof(f);
   if (!oneof || upb_oneofdef_issynthetic(oneof)) return NULL;
   return oneof;
 }
 
-upb_msgval upb_fielddef_default(const upb_fielddef *f) {
+upb_msgval upb_FieldDef_Default(const upb_FieldDef *f) {
   UPB_ASSERT(!upb_FieldDef_IsSubMessage(f));
   upb_msgval ret;
 
@@ -637,59 +637,59 @@ upb_msgval upb_fielddef_default(const upb_fielddef *f) {
   return ret;
 }
 
-const upb_msgdef *upb_FieldDef_MessageSubDef(const upb_fielddef *f) {
+const upb_msgdef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE ? f->sub.msgdef : NULL;
 }
 
-const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_fielddef *f) {
+const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_ENUM ? f->sub.enumdef : NULL;
 }
 
-const upb_msglayout_field *upb_FieldDef_Layout(const upb_fielddef *f) {
+const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f) {
   UPB_ASSERT(!upb_FieldDef_IsExtension(f));
   return &f->msgdef->layout->fields[f->layout_index];
 }
 
-const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_fielddef *f) {
+const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f) {
   UPB_ASSERT(upb_FieldDef_IsExtension(f));
   return f->file->ext_layouts[f->layout_index];
 }
 
-bool _upb_FieldDef_IsProto3Optional(const upb_fielddef *f) {
+bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f) {
   return f->proto3_optional_;
 }
 
-bool upb_FieldDef_IsSubMessage(const upb_fielddef *f) {
+bool upb_FieldDef_IsSubMessage(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_MESSAGE;
 }
 
-bool upb_FieldDef_IsString(const upb_fielddef *f) {
+bool upb_FieldDef_IsString(const upb_FieldDef *f) {
   return upb_FieldDef_CType(f) == UPB_TYPE_STRING ||
          upb_FieldDef_CType(f) == UPB_TYPE_BYTES;
 }
 
-bool upb_FieldDef_IsRepeated(const upb_fielddef *f) {
+bool upb_FieldDef_IsRepeated(const upb_FieldDef *f) {
   return upb_FieldDef_Label(f) == UPB_LABEL_REPEATED;
 }
 
-bool upb_FieldDef_IsPrimitive(const upb_fielddef *f) {
+bool upb_FieldDef_IsPrimitive(const upb_FieldDef *f) {
   return !upb_FieldDef_IsString(f) && !upb_FieldDef_IsSubMessage(f);
 }
 
-bool upb_FieldDef_IsMap(const upb_fielddef *f) {
+bool upb_FieldDef_IsMap(const upb_FieldDef *f) {
   return upb_FieldDef_IsRepeated(f) && upb_FieldDef_IsSubMessage(f) &&
          upb_msgdef_mapentry(upb_FieldDef_MessageSubDef(f));
 }
 
-bool upb_FieldDef_HasDefault(const upb_fielddef *f) {
+bool upb_FieldDef_HasDefault(const upb_FieldDef *f) {
   return f->has_default;
 }
 
-bool upb_FieldDef_HasSubDef(const upb_fielddef *f) {
+bool upb_FieldDef_HasSubDef(const upb_FieldDef *f) {
   return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_CType(f) == UPB_TYPE_ENUM;
 }
 
-bool upb_FieldDef_HasPresence(const upb_fielddef *f) {
+bool upb_FieldDef_HasPresence(const upb_FieldDef *f) {
   if (upb_FieldDef_IsRepeated(f)) return false;
   return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_ContainingOneof(f) ||
          f->file->syntax == UPB_SYNTAX_PROTO2;
@@ -699,11 +699,11 @@ static bool between(int32_t x, int32_t low, int32_t high) {
   return x >= low && x <= high;
 }
 
-bool upb_fielddef_checklabel(int32_t label) { return between(label, 1, 3); }
-bool upb_fielddef_checktype(int32_t type) { return between(type, 1, 11); }
-bool upb_fielddef_checkintfmt(int32_t fmt) { return between(fmt, 1, 3); }
+bool upb_FieldDef_checklabel(int32_t label) { return between(label, 1, 3); }
+bool upb_FieldDef_checktype(int32_t type) { return between(type, 1, 11); }
+bool upb_FieldDef_checkintfmt(int32_t fmt) { return between(fmt, 1, 3); }
 
-bool upb_fielddef_checkdescriptortype(int32_t type) {
+bool upb_FieldDef_checkdescriptortype(int32_t type) {
   return between(type, 1, 18);
 }
 
@@ -737,13 +737,13 @@ upb_syntax_t upb_msgdef_syntax(const upb_msgdef *m) {
   return m->file->syntax;
 }
 
-const upb_fielddef *upb_msgdef_itof(const upb_msgdef *m, uint32_t i) {
+const upb_FieldDef *upb_msgdef_itof(const upb_msgdef *m, uint32_t i) {
   upb_value val;
   return upb_inttable_lookup(&m->itof, i, &val) ? upb_value_getconstptr(val)
                                                 : NULL;
 }
 
-const upb_fielddef *upb_msgdef_ntof(const upb_msgdef *m, const char *name,
+const upb_FieldDef *upb_msgdef_ntof(const upb_msgdef *m, const char *name,
                                     size_t len) {
   upb_value val;
 
@@ -766,7 +766,7 @@ const upb_oneofdef *upb_msgdef_ntoo(const upb_msgdef *m, const char *name,
 }
 
 bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
-                           const upb_fielddef **out_f,
+                           const upb_FieldDef **out_f,
                            const upb_oneofdef **out_o) {
   upb_value val;
 
@@ -774,17 +774,17 @@ bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
     return false;
   }
 
-  const upb_fielddef *f = unpack_def(val, UPB_DEFTYPE_FIELD);
+  const upb_FieldDef *f = unpack_def(val, UPB_DEFTYPE_FIELD);
   const upb_oneofdef *o = unpack_def(val, UPB_DEFTYPE_ONEOF);
   if (out_f) *out_f = f;
   if (out_o) *out_o = o;
   return f || o;  /* False if this was a JSON name. */
 }
 
-const upb_fielddef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
+const upb_FieldDef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
                                               const char *name, size_t len) {
   upb_value val;
-  const upb_fielddef* f;
+  const upb_FieldDef* f;
 
   if (!upb_strtable_lookup2(&m->ntof, name, len, &val)) {
     return NULL;
@@ -845,7 +845,7 @@ const upb_extrange *upb_msgdef_extrange(const upb_msgdef *m, int i) {
   return &m->ext_ranges[i];
 }
 
-const upb_fielddef *upb_msgdef_field(const upb_msgdef *m, int i) {
+const upb_FieldDef *upb_msgdef_field(const upb_msgdef *m, int i) {
   UPB_ASSERT(0 <= i && i < m->field_count);
   return &m->fields[i];
 }
@@ -865,7 +865,7 @@ const upb_enumdef *upb_msgdef_nestedenum(const upb_msgdef *m, int i) {
   return &m->nested_enums[i];
 }
 
-const upb_fielddef *upb_msgdef_nestedext(const upb_msgdef *m, int i) {
+const upb_FieldDef *upb_msgdef_nestedext(const upb_msgdef *m, int i) {
   UPB_ASSERT(0 <= i && i < m->nested_ext_count);
   return &m->nested_exts[i];
 }
@@ -896,8 +896,8 @@ bool upb_msg_field_done(const upb_msg_field_iter *iter) {
   return upb_inttable_done(iter);
 }
 
-upb_fielddef *upb_msg_iter_field(const upb_msg_field_iter *iter) {
-  return (upb_fielddef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
+upb_FieldDef *upb_msg_iter_field(const upb_msg_field_iter *iter) {
+  return (upb_FieldDef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
 }
 
 void upb_msg_field_iter_setdone(upb_msg_field_iter *iter) {
@@ -965,7 +965,7 @@ int upb_oneofdef_fieldcount(const upb_oneofdef *o) {
   return o->field_count;
 }
 
-const upb_fielddef *upb_oneofdef_field(const upb_oneofdef *o, int i) {
+const upb_FieldDef *upb_oneofdef_field(const upb_oneofdef *o, int i) {
   UPB_ASSERT(i < o->field_count);
   return o->fields[i];
 }
@@ -983,14 +983,14 @@ bool upb_oneofdef_issynthetic(const upb_oneofdef *o) {
   return o->synthetic;
 }
 
-const upb_fielddef *upb_oneofdef_ntof(const upb_oneofdef *o,
+const upb_FieldDef *upb_oneofdef_ntof(const upb_oneofdef *o,
                                       const char *name, size_t length) {
   upb_value val;
   return upb_strtable_lookup2(&o->ntof, name, length, &val) ?
       upb_value_getptr(val) : NULL;
 }
 
-const upb_fielddef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num) {
+const upb_FieldDef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num) {
   upb_value val;
   return upb_inttable_lookup(&o->itof, num, &val) ? upb_value_getptr(val)
                                                   : NULL;
@@ -1008,8 +1008,8 @@ bool upb_oneof_done(upb_oneof_iter *iter) {
   return upb_inttable_done(iter);
 }
 
-upb_fielddef *upb_oneof_iter_field(const upb_oneof_iter *iter) {
-  return (upb_fielddef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
+upb_FieldDef *upb_oneof_iter_field(const upb_oneof_iter *iter) {
+  return (upb_FieldDef *)upb_value_getconstptr(upb_inttable_iter_value(iter));
 }
 
 void upb_oneof_iter_setdone(upb_oneof_iter *iter) {
@@ -1099,7 +1099,7 @@ const upb_enumdef *upb_filedef_toplvlenum(const upb_filedef *f, int i) {
   return &f->top_lvl_enums[i];
 }
 
-const upb_fielddef *upb_filedef_toplvlext(const upb_filedef *f, int i) {
+const upb_FieldDef *upb_filedef_toplvlext(const upb_filedef *f, int i) {
   UPB_ASSERT(0 <= i && i < f->top_lvl_ext_count);
   return &f->top_lvl_exts[i];
 }
@@ -1282,7 +1282,7 @@ const upb_filedef *upb_symtab_lookupfile2(const upb_symtab *s, const char *name,
              : NULL;
 }
 
-const upb_fielddef *upb_symtab_lookupext2(const upb_symtab *s, const char *name,
+const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *name,
                                           size_t size) {
   upb_value v;
   if (!upb_strtable_lookup2(&s->syms, name, size, &v)) return NULL;
@@ -1301,7 +1301,7 @@ const upb_fielddef *upb_symtab_lookupext2(const upb_symtab *s, const char *name,
   return NULL;
 }
 
-const upb_fielddef *upb_symtab_lookupext(const upb_symtab *s, const char *sym) {
+const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym) {
   return upb_symtab_lookupext2(s, sym, strlen(sym));
 }
 
@@ -1317,7 +1317,7 @@ const upb_filedef *upb_symtab_lookupfileforsym(const upb_symtab *s,
   if (upb_strtable_lookup(&s->syms, name, &v)) {
     switch (deftype(v)) {
       case UPB_DEFTYPE_EXT: {
-        const upb_fielddef *f = unpack_def(v, UPB_DEFTYPE_EXT);
+        const upb_FieldDef *f = unpack_def(v, UPB_DEFTYPE_EXT);
         return upb_FieldDef_File(f);
       }
       case UPB_DEFTYPE_MSG: {
@@ -1472,7 +1472,7 @@ static size_t upb_msgval_sizeof(upb_fieldtype_t type) {
   UPB_UNREACHABLE();
 }
 
-static uint8_t upb_msg_fielddefsize(const upb_fielddef *f) {
+static uint8_t upb_msg_fielddefsize(const upb_FieldDef *f) {
   if (upb_msgdef_mapentry(upb_FieldDef_ContainingType(f))) {
     upb_map_entry ent;
     UPB_ASSERT(sizeof(ent.k) == sizeof(ent.v));
@@ -1510,7 +1510,7 @@ static void assign_layout_indices(const upb_msgdef *m, upb_msglayout *l,
   int n = upb_msgdef_numfields(m);
   int dense_below = 0;
   for (i = 0; i < n; i++) {
-    upb_fielddef *f = (upb_fielddef*)upb_msgdef_itof(m, fields[i].number);
+    upb_FieldDef *f = (upb_FieldDef*)upb_msgdef_itof(m, fields[i].number);
     UPB_ASSERT(f);
     f->layout_index = i;
     if (i < UINT8_MAX && fields[i].number == i + 1 &&
@@ -1521,7 +1521,7 @@ static void assign_layout_indices(const upb_msgdef *m, upb_msglayout *l,
   l->dense_below = dense_below;
 }
 
-static uint8_t map_descriptortype(const upb_fielddef *f) {
+static uint8_t map_descriptortype(const upb_FieldDef *f) {
   uint8_t type = upb_FieldDef_Type(f);
   /* See TableDescriptorType() in upbc/generator.cc for details and
    * rationale of these exceptions. */
@@ -1534,7 +1534,7 @@ static uint8_t map_descriptortype(const upb_fielddef *f) {
   return type;
 }
 
-static void fill_fieldlayout(upb_msglayout_field *field, const upb_fielddef *f) {
+static void fill_fieldlayout(upb_msglayout_field *field, const upb_FieldDef *f) {
   field->number = upb_FieldDef_Number(f);
   field->descriptortype = map_descriptortype(f);
 
@@ -1591,7 +1591,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
 
   /* Count sub-messages. */
   for (size_t i = 0; i < field_count; i++) {
-    const upb_fielddef *f = &m->fields[i];
+    const upb_FieldDef *f = &m->fields[i];
     if (upb_FieldDef_IsSubMessage(f)) {
       sublayout_count++;
     }
@@ -1628,8 +1628,8 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   if (upb_msgdef_mapentry(m)) {
     /* TODO(haberman): refactor this method so this special case is more
      * elegant. */
-    const upb_fielddef *key = upb_msgdef_itof(m, 1);
-    const upb_fielddef *val = upb_msgdef_itof(m, 2);
+    const upb_FieldDef *key = upb_msgdef_itof(m, 1);
+    const upb_FieldDef *val = upb_msgdef_itof(m, 2);
     fields[0].number = 1;
     fields[1].number = 2;
     fields[0].mode = _UPB_MODE_SCALAR;
@@ -1646,7 +1646,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
       subs[0].submsg = upb_FieldDef_MessageSubDef(val)->layout;
     }
 
-    upb_fielddef *fielddefs = (upb_fielddef*)&m->fields[0];
+    upb_FieldDef *fielddefs = (upb_FieldDef*)&m->fields[0];
     UPB_ASSERT(fielddefs[0].number_ == 1);
     UPB_ASSERT(fielddefs[1].number_ == 2);
     fielddefs[0].layout_index = 0;
@@ -1672,7 +1672,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   size_t hasbit = 0;
 
   for (int i = 0; i < m->field_count; i++) {
-    const upb_fielddef* f = &m->fields[i];
+    const upb_FieldDef* f = &m->fields[i];
     upb_msglayout_field *field = &fields[upb_FieldDef_Index(f)];
     if (upb_FieldDef_Label(f) == UPB_LABEL_REQUIRED) {
       field->presence = ++hasbit;
@@ -1687,7 +1687,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
   /* Allocate hasbits and set basic field attributes. */
   sublayout_count = 0;
   for (int i = 0; i < m->field_count; i++) {
-    const upb_fielddef* f = &m->fields[i];
+    const upb_FieldDef* f = &m->fields[i];
     upb_msglayout_field *field = &fields[upb_FieldDef_Index(f)];
 
     fill_fieldlayout(field, f);
@@ -1718,7 +1718,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
 
   /* Allocate non-oneof fields. */
   for (int i = 0; i < m->field_count; i++) {
-    const upb_fielddef* f = &m->fields[i];
+    const upb_FieldDef* f = &m->fields[i];
     size_t field_size = upb_msg_fielddefsize(f);
     size_t index = upb_FieldDef_Index(f);
 
@@ -1747,7 +1747,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
     for (upb_oneof_begin(&fit, o);
          !upb_oneof_done(&fit);
          upb_oneof_next(&fit)) {
-      const upb_fielddef* f = upb_oneof_iter_field(&fit);
+      const upb_FieldDef* f = upb_oneof_iter_field(&fit);
       field_size = UPB_MAX(field_size, upb_msg_fielddefsize(f));
     }
 
@@ -1756,7 +1756,7 @@ static void make_layout(symtab_addctx *ctx, const upb_msgdef *m) {
     data_offset = upb_msglayout_place(ctx, l, field_size, m);
 
     for (int i = 0; i < o->field_count; i++) {
-      const upb_fielddef* f = o->fields[i];
+      const upb_FieldDef* f = o->fields[i];
       fields[upb_FieldDef_Index(f)].offset = data_offset;
       fields[upb_FieldDef_Index(f)].presence = ~case_offset;
     }
@@ -1821,12 +1821,12 @@ static void finalize_oneofs(symtab_addctx *ctx, upb_msgdef *m) {
                   upb_oneofdef_name(o));
     }
 
-    o->fields = symtab_alloc(ctx, sizeof(upb_fielddef *) * o->field_count);
+    o->fields = symtab_alloc(ctx, sizeof(upb_FieldDef *) * o->field_count);
     o->field_count = 0;
   }
 
   for (i = 0; i < m->field_count; i++) {
-    const upb_fielddef *f = &m->fields[i];
+    const upb_FieldDef *f = &m->fields[i];
     upb_oneofdef *o = (upb_oneofdef*)upb_FieldDef_ContainingOneof(f);
     if (o) {
       o->fields[o->field_count++] = f;
@@ -2009,7 +2009,7 @@ static bool upb_symtab_TryGetChar(const char** src, const char* end, char* ch) {
   return true;
 }
 
-static char upb_symtab_TryGetHexDigit(symtab_addctx* ctx, const upb_fielddef* f,
+static char upb_symtab_TryGetHexDigit(symtab_addctx* ctx, const upb_FieldDef* f,
                                       const char** src, const char* end) {
   char ch;
   if (!upb_symtab_TryGetChar(src, end, &ch)) return -1;
@@ -2024,7 +2024,7 @@ static char upb_symtab_TryGetHexDigit(symtab_addctx* ctx, const upb_fielddef* f,
   return -1;
 }
 
-static char upb_symtab_ParseHexEscape(symtab_addctx* ctx, const upb_fielddef* f,
+static char upb_symtab_ParseHexEscape(symtab_addctx* ctx, const upb_FieldDef* f,
                                       const char** src, const char* end) {
   char hex_digit = upb_symtab_TryGetHexDigit(ctx, f, src, end);
   if (hex_digit < 0) {
@@ -2056,7 +2056,7 @@ char upb_symtab_TryGetOctalDigit(const char** src, const char* end) {
 }
 
 static char upb_symtab_ParseOctalEscape(symtab_addctx* ctx,
-                                        const upb_fielddef* f,
+                                        const upb_FieldDef* f,
                                         const char** src, const char* end) {
   char ch = 0;
   for (int i = 0; i < 3; i++) {
@@ -2068,7 +2068,7 @@ static char upb_symtab_ParseOctalEscape(symtab_addctx* ctx,
   return ch;
 }
 
-static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_fielddef* f,
+static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_FieldDef* f,
                                    const char** src, const char* end) {
   char ch;
   if (!upb_symtab_TryGetChar(src, end, &ch)) {
@@ -2116,7 +2116,7 @@ static char upb_symtab_ParseEscape(symtab_addctx* ctx, const upb_fielddef* f,
   symtab_errf(ctx, "Unknown escape sequence: \\%c", ch);
 }
 
-static str_t* unescape(symtab_addctx* ctx, const upb_fielddef* f,
+static str_t* unescape(symtab_addctx* ctx, const upb_FieldDef* f,
                       const char* data, size_t len) {
   // Size here is an upper bound; escape sequences could ultimately shrink it.
   str_t* ret = symtab_alloc(ctx, sizeof(*ret) + len);
@@ -2138,7 +2138,7 @@ static str_t* unescape(symtab_addctx* ctx, const upb_fielddef* f,
 }
 
 static void parse_default(symtab_addctx *ctx, const char *str, size_t len,
-                          upb_fielddef *f) {
+                          upb_FieldDef *f) {
   char *end;
   char nullz[64];
   errno = 0;
@@ -2249,7 +2249,7 @@ invalid:
               upb_FieldDef_FullName(f), (int)upb_FieldDef_Type(f));
 }
 
-static void set_default_default(symtab_addctx *ctx, upb_fielddef *f) {
+static void set_default_default(symtab_addctx *ctx, upb_FieldDef *f) {
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_INT32:
     case UPB_TYPE_INT64:
@@ -2280,8 +2280,8 @@ static void set_default_default(symtab_addctx *ctx, upb_fielddef *f) {
 static void create_fielddef(
     symtab_addctx *ctx, const char *prefix, upb_msgdef *m,
     const google_protobuf_FieldDescriptorProto *field_proto,
-    const upb_fielddef *_f, bool is_extension) {
-  upb_fielddef *f = (upb_fielddef*)_f;
+    const upb_FieldDef *_f, bool is_extension) {
+  upb_FieldDef *f = (upb_FieldDef*)_f;
   upb_strview name;
   const char *full_name;
   const char *json_name;
@@ -2770,7 +2770,7 @@ static void msgdef_create_nested(
   for (size_t i = 0; i < n; i++) {
     create_fielddef(ctx, m->full_name, m, exts[i], &m->nested_exts[i],
                     /* is_extension= */ true);
-    ((upb_fielddef*)&m->nested_exts[i])->index_ = i;
+    ((upb_FieldDef*)&m->nested_exts[i])->index_ = i;
   }
 
   const google_protobuf_DescriptorProto* const* msgs =
@@ -2783,7 +2783,7 @@ static void msgdef_create_nested(
 }
 
 static void resolve_subdef(symtab_addctx *ctx, const char *prefix,
-                           upb_fielddef *f) {
+                           upb_FieldDef *f) {
   const google_protobuf_FieldDescriptorProto *field_proto = f->sub.unresolved;
   upb_strview name =
       google_protobuf_FieldDescriptorProto_type_name(field_proto);
@@ -2829,7 +2829,7 @@ static void resolve_subdef(symtab_addctx *ctx, const char *prefix,
 }
 
 static void resolve_extension(
-    symtab_addctx *ctx, const char *prefix, upb_fielddef *f,
+    symtab_addctx *ctx, const char *prefix, upb_FieldDef *f,
     const google_protobuf_FieldDescriptorProto *field_proto) {
   if (!google_protobuf_FieldDescriptorProto_has_extendee(field_proto)) {
     symtab_errf(ctx, "extension for field '%s' had no extendee",
@@ -2876,7 +2876,7 @@ static void resolve_extension(
 }
 
 static void resolve_default(
-    symtab_addctx *ctx, upb_fielddef *f,
+    symtab_addctx *ctx, upb_FieldDef *f,
     const google_protobuf_FieldDescriptorProto *field_proto) {
   // Have to delay resolving of the default value until now because of the enum
   // case, since enum defaults are specified with a label.
@@ -2903,7 +2903,7 @@ static void resolve_default(
 }
 
 static void resolve_fielddef(symtab_addctx *ctx, const char *prefix,
-                             upb_fielddef *f) {
+                             upb_FieldDef *f) {
   // We have to stash this away since resolve_subdef() may overwrite it.
   const google_protobuf_FieldDescriptorProto *field_proto = f->sub.unresolved;
 
@@ -2917,18 +2917,18 @@ static void resolve_fielddef(symtab_addctx *ctx, const char *prefix,
 
 static void resolve_msgdef(symtab_addctx *ctx, upb_msgdef *m) {
   for (int i = 0; i < m->field_count; i++) {
-    resolve_fielddef(ctx, m->full_name, (upb_fielddef *)&m->fields[i]);
+    resolve_fielddef(ctx, m->full_name, (upb_FieldDef *)&m->fields[i]);
   }
 
   for (int i = 0; i < m->nested_ext_count; i++) {
-    resolve_fielddef(ctx, m->full_name, (upb_fielddef *)&m->nested_exts[i]);
+    resolve_fielddef(ctx, m->full_name, (upb_FieldDef *)&m->nested_exts[i]);
   }
 
   if (!ctx->layout) make_layout(ctx, m);
 
   m->in_message_set = false;
   if (m->nested_ext_count == 1) {
-    const upb_fielddef *ext = &m->nested_exts[0];
+    const upb_FieldDef *ext = &m->nested_exts[0];
     if (ext->type_ == UPB_DTYPE_MESSAGE && ext->label_ == UPB_LABEL_OPTIONAL &&
         ext->sub.msgdef == m &&
         google_protobuf_MessageOptions_message_set_wire_format(
@@ -3085,7 +3085,7 @@ static void build_filedef(
   for (i = 0; i < n; i++) {
     create_fielddef(ctx, file->package, NULL, exts[i], &file->top_lvl_exts[i],
                     /* is_extension= */ true);
-    ((upb_fielddef*)&file->top_lvl_exts[i])->index_ = i;
+    ((upb_FieldDef*)&file->top_lvl_exts[i])->index_ = i;
   }
 
   /* Create messages. */
@@ -3107,7 +3107,7 @@ static void build_filedef(
 
   /* Now that all names are in the table, build layouts and resolve refs. */
   for (i = 0; i < (size_t)file->top_lvl_ext_count; i++) {
-    resolve_fielddef(ctx, file->package, (upb_fielddef*)&file->top_lvl_exts[i]);
+    resolve_fielddef(ctx, file->package, (upb_FieldDef*)&file->top_lvl_exts[i]);
   }
 
   for (i = 0; i < (size_t)file->top_lvl_msg_count; i++) {
@@ -3279,7 +3279,7 @@ upb_arena *_upb_symtab_arena(const upb_symtab *s) {
   return s->arena;
 }
 
-const upb_fielddef *_upb_symtab_lookupextfield(const upb_symtab *s,
+const upb_FieldDef *_upb_symtab_lookupextfield(const upb_symtab *s,
                                                const upb_msglayout_ext *ext) {
   upb_value v;
   bool ok = upb_inttable_lookup(&s->exts, (uintptr_t)ext, &v);
@@ -3287,7 +3287,7 @@ const upb_fielddef *_upb_symtab_lookupextfield(const upb_symtab *s,
   return upb_value_getconstptr(v);
 }
 
-const upb_fielddef *upb_symtab_lookupextbynum(const upb_symtab *s,
+const upb_FieldDef *upb_symtab_lookupextbynum(const upb_symtab *s,
                                               const upb_msgdef *m,
                                               int32_t fieldnum) {
   const upb_msglayout *l = upb_msgdef_layout(m);
@@ -3307,7 +3307,7 @@ const upb_extreg *upb_symtab_extreg(const upb_symtab *s) {
   return s->extreg;
 }
 
-const upb_fielddef **upb_symtab_getallexts(const upb_symtab *s,
+const upb_FieldDef **upb_symtab_getallexts(const upb_symtab *s,
                                            const upb_msgdef *m, size_t *count) {
   size_t n = 0;
   intptr_t iter = UPB_INTTABLE_BEGIN;
@@ -3317,14 +3317,14 @@ const upb_fielddef **upb_symtab_getallexts(const upb_symtab *s,
   // efficient we may need to make extreg into a two-level table, or have a
   // second per-message index.
   while (upb_inttable_next2(&s->exts, &key, &val, &iter)) {
-    const upb_fielddef *f = upb_value_getconstptr(val);
+    const upb_FieldDef *f = upb_value_getconstptr(val);
     if (upb_FieldDef_ContainingType(f) == m) n++;
   }
-  const upb_fielddef **exts = malloc(n * sizeof(*exts));
+  const upb_FieldDef **exts = malloc(n * sizeof(*exts));
   iter = UPB_INTTABLE_BEGIN;
   size_t i = 0;
   while (upb_inttable_next2(&s->exts, &key, &val, &iter)) {
-    const upb_fielddef *f = upb_value_getconstptr(val);
+    const upb_FieldDef *f = upb_value_getconstptr(val);
     if (upb_FieldDef_ContainingType(f) == m) exts[i++] = f;
   }
   *count = n;

@@ -99,7 +99,7 @@ static bool in_oneof(const upb_msglayout_field *field) {
   return field->presence < 0;
 }
 
-static upb_msgval _upb_msg_getraw(const upb_msg *msg, const upb_fielddef *f) {
+static upb_msgval _upb_msg_getraw(const upb_msg *msg, const upb_FieldDef *f) {
   const upb_msglayout_field *field = upb_FieldDef_Layout(f);
   const char *mem = UPB_PTR_AT(msg, field->offset, char);
   upb_msgval val = {0};
@@ -107,7 +107,7 @@ static upb_msgval _upb_msg_getraw(const upb_msg *msg, const upb_fielddef *f) {
   return val;
 }
 
-bool upb_msg_has(const upb_msg *msg, const upb_fielddef *f) {
+bool upb_msg_has(const upb_msg *msg, const upb_FieldDef *f) {
   assert(upb_FieldDef_HasPresence(f));
   if (upb_FieldDef_IsExtension(f)) {
     const upb_msglayout_ext *ext = _upb_FieldDef_ExtensionLayout(f);
@@ -126,9 +126,9 @@ bool upb_msg_has(const upb_msg *msg, const upb_fielddef *f) {
   }
 }
 
-const upb_fielddef *upb_msg_whichoneof(const upb_msg *msg,
+const upb_FieldDef *upb_msg_whichoneof(const upb_msg *msg,
                                        const upb_oneofdef *o) {
-  const upb_fielddef *f = upb_oneofdef_field(o, 0);
+  const upb_FieldDef *f = upb_oneofdef_field(o, 0);
   if (upb_oneofdef_issynthetic(o)) {
     UPB_ASSERT(upb_oneofdef_fieldcount(o) == 1);
     return upb_msg_has(msg, f) ? f : NULL;
@@ -141,7 +141,7 @@ const upb_fielddef *upb_msg_whichoneof(const upb_msg *msg,
   }
 }
 
-upb_msgval upb_msg_get(const upb_msg *msg, const upb_fielddef *f) {
+upb_msgval upb_msg_get(const upb_msg *msg, const upb_FieldDef *f) {
   if (upb_FieldDef_IsExtension(f)) {
     const upb_msg_ext *ext = _upb_msg_getext(msg, _upb_FieldDef_ExtensionLayout(f));
     if (ext) {
@@ -154,10 +154,10 @@ upb_msgval upb_msg_get(const upb_msg *msg, const upb_fielddef *f) {
   } else if (!upb_FieldDef_HasPresence(f) || upb_msg_has(msg, f)) {
     return _upb_msg_getraw(msg, f);
   }
-  return upb_fielddef_default(f);
+  return upb_FieldDef_Default(f);
 }
 
-upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_fielddef *f,
+upb_mutmsgval upb_msg_mutable(upb_msg *msg, const upb_FieldDef *f,
                               upb_arena *a) {
   UPB_ASSERT(upb_FieldDef_IsSubMessage(f) || upb_FieldDef_IsRepeated(f));
   if (upb_FieldDef_HasPresence(f) && !upb_msg_has(msg, f)) {
@@ -175,8 +175,8 @@ make:
   if (!a) return (upb_mutmsgval){.array = NULL};
   if (upb_FieldDef_IsMap(f)) {
     const upb_msgdef *entry = upb_FieldDef_MessageSubDef(f);
-    const upb_fielddef *key = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
-    const upb_fielddef *value = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
+    const upb_FieldDef *key = upb_msgdef_itof(entry, UPB_MAPENTRY_KEY);
+    const upb_FieldDef *value = upb_msgdef_itof(entry, UPB_MAPENTRY_VALUE);
     ret.map = upb_map_new(a, upb_FieldDef_CType(key), upb_FieldDef_CType(value));
   } else if (upb_FieldDef_IsRepeated(f)) {
     ret.array = upb_array_new(a, upb_FieldDef_CType(f));
@@ -191,7 +191,7 @@ make:
   return ret;
 }
 
-bool upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
+bool upb_msg_set(upb_msg *msg, const upb_FieldDef *f, upb_msgval val,
                  upb_arena *a) {
   if (upb_FieldDef_IsExtension(f)) {
     upb_msg_ext *ext =
@@ -211,7 +211,7 @@ bool upb_msg_set(upb_msg *msg, const upb_fielddef *f, upb_msgval val,
   return true;
 }
 
-void upb_msg_clearfield(upb_msg *msg, const upb_fielddef *f) {
+void upb_msg_clearfield(upb_msg *msg, const upb_FieldDef *f) {
   if (upb_FieldDef_IsExtension(f)) {
     _upb_msg_clearext(msg, _upb_FieldDef_ExtensionLayout(f));
   } else {
@@ -235,7 +235,7 @@ void upb_msg_clear(upb_msg *msg, const upb_msgdef *m) {
 }
 
 bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
-                  const upb_symtab *ext_pool, const upb_fielddef **out_f,
+                  const upb_symtab *ext_pool, const upb_FieldDef **out_f,
                   upb_msgval *out_val, size_t *iter) {
   size_t i = *iter;
   size_t n = upb_msgdef_fieldcount(m);
@@ -244,7 +244,7 @@ bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
 
   /* Iterate over normal fields, returning the first one that is set. */
   while (++i < n) {
-    const upb_fielddef *f = upb_msgdef_field(m, i);
+    const upb_FieldDef *f = upb_msgdef_field(m, i);
     upb_msgval val = _upb_msg_getraw(msg, f);
 
     /* Skip field if unset or empty. */
@@ -292,7 +292,7 @@ bool upb_msg_next(const upb_msg *msg, const upb_msgdef *m,
 
 bool _upb_msg_discardunknown(upb_msg *msg, const upb_msgdef *m, int depth) {
   size_t iter = UPB_MSG_BEGIN;
-  const upb_fielddef *f;
+  const upb_FieldDef *f;
   upb_msgval val;
   bool ret = true;
 
@@ -304,7 +304,7 @@ bool _upb_msg_discardunknown(upb_msg *msg, const upb_msgdef *m, int depth) {
     const upb_msgdef *subm = upb_FieldDef_MessageSubDef(f);
     if (!subm) continue;
     if (upb_FieldDef_IsMap(f)) {
-      const upb_fielddef *val_f = upb_msgdef_itof(subm, 2);
+      const upb_FieldDef *val_f = upb_msgdef_itof(subm, 2);
       const upb_msgdef *val_m = upb_FieldDef_MessageSubDef(val_f);
       upb_map *map = (upb_map*)val.map_val;
       size_t iter = UPB_MAP_BEGIN;

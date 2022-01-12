@@ -335,7 +335,7 @@ static PyObject* PyUpb_DescriptorPool_FindExtensionByName(PyObject* _self,
   const char* name = PyUpb_GetStrData(arg);
   if (!name) return NULL;
 
-  const upb_fielddef* field = upb_symtab_lookupext(self->symtab, name);
+  const upb_FieldDef* field = upb_symtab_lookupext(self->symtab, name);
   if (field == NULL && self->db) {
     if (!PyUpb_DescriptorPool_TryLoadSymbol(self, arg)) return NULL;
     field = upb_symtab_lookupext(self->symtab, name);
@@ -399,7 +399,7 @@ static PyObject* PyUpb_DescriptorPool_FindFieldByName(PyObject* _self,
   size_t parent_size;
   const char* child =
       PyUpb_DescriptorPool_SplitSymbolName(name, &parent_size);
-  const upb_fielddef* f = NULL;
+  const upb_FieldDef* f = NULL;
   if (child) {
     const upb_msgdef* parent =
         upb_symtab_lookupmsg2(self->symtab, name, parent_size);
@@ -515,7 +515,7 @@ static PyObject* PyUpb_DescriptorPool_FindExtensionByNumber(PyObject* _self,
     return NULL;
   }
 
-  const upb_fielddef* f = upb_symtab_lookupextbynum(
+  const upb_FieldDef* f = upb_symtab_lookupextbynum(
       self->symtab, PyUpb_Descriptor_GetDef(message_descriptor), number);
   if (f == NULL) {
     return PyErr_Format(PyExc_KeyError, "Couldn't find Extension %d", number);
@@ -529,7 +529,7 @@ static PyObject* PyUpb_DescriptorPool_FindAllExtensions(PyObject* _self,
   PyUpb_DescriptorPool* self = (PyUpb_DescriptorPool*)_self;
   const upb_msgdef* m = PyUpb_Descriptor_GetDef(msg_desc);
   size_t n;
-  const upb_fielddef** ext = upb_symtab_getallexts(self->symtab, m, &n);
+  const upb_FieldDef** ext = upb_symtab_getallexts(self->symtab, m, &n);
   PyObject* ret = PyList_New(n);
   for (size_t i = 0; i < n; i++) {
     PyObject* field = PyUpb_FieldDescriptor_Get(ext[i]);

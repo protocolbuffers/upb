@@ -34,12 +34,12 @@
 #include "upb/reflection.h"
 
 // Removes the wrapper object for this field from the unset subobject cache.
-void PyUpb_CMessage_CacheDelete(PyObject* _self, const upb_fielddef* f);
+void PyUpb_CMessage_CacheDelete(PyObject* _self, const upb_FieldDef* f);
 
 // Sets the field value for `f` to `subobj`, evicting the wrapper object from
 // the "unset subobject" cache now that real data exists for it.  The caller
 // must also update the wrapper associated with `f` to point to `subobj` also.
-void PyUpb_CMessage_SetConcreteSubobj(PyObject* _self, const upb_fielddef* f,
+void PyUpb_CMessage_SetConcreteSubobj(PyObject* _self, const upb_FieldDef* f,
                                       upb_msgval subobj);
 
 // Gets a Python wrapper object for message `u_msg` of type `m`, returning a
@@ -71,24 +71,24 @@ int PyUpb_CMessage_InitAttributes(PyObject* _self, PyObject* args,
 
 // Checks that `key` is a field descriptor for an extension type, and that the
 // extendee is this message.  Otherwise returns NULL and sets a KeyError.
-const upb_fielddef* PyUpb_CMessage_GetExtensionDef(PyObject* _self,
+const upb_FieldDef* PyUpb_CMessage_GetExtensionDef(PyObject* _self,
                                                    PyObject* key);
 
 // Clears the given field in this message.
-void PyUpb_CMessage_DoClearField(PyObject* _self, const upb_fielddef* f);
+void PyUpb_CMessage_DoClearField(PyObject* _self, const upb_FieldDef* f);
 
 // Clears the ExtensionDict from the message.  The message must have an
 // ExtensionDict set.
 void PyUpb_CMessage_ClearExtensionDict(PyObject* _self);
 
 // Implements the equivalent of getattr(msg, field), once `field` has
-// already been resolved to a `upb_fielddef*`.
+// already been resolved to a `upb_FieldDef*`.
 PyObject* PyUpb_CMessage_GetFieldValue(PyObject* _self,
-                                       const upb_fielddef* field);
+                                       const upb_FieldDef* field);
 
 // Implements the equivalent of setattr(msg, field, value), once `field` has
-// already been resolved to a `upb_fielddef*`.
-int PyUpb_CMessage_SetFieldValue(PyObject* _self, const upb_fielddef* field,
+// already been resolved to a `upb_FieldDef*`.
+int PyUpb_CMessage_SetFieldValue(PyObject* _self, const upb_FieldDef* field,
                                  PyObject* value, PyObject* exc);
 
 // Returns the version associated with this message.  The version will be

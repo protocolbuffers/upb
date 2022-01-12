@@ -121,8 +121,8 @@ static upb_strview default_bytes(upb_ToProto_Context* ctx, upb_strview val) {
 }
 
 static upb_strview default_string(upb_ToProto_Context *ctx,
-                                  const upb_fielddef *f) {
-  upb_msgval d = upb_fielddef_default(f);
+                                  const upb_FieldDef *f) {
+  upb_msgval d = upb_FieldDef_Default(f);
   switch (upb_FieldDef_CType(f)) {
     case UPB_TYPE_BOOL:
       return strviewdup(ctx, d.bool_val ? "true" : "false");
@@ -153,7 +153,7 @@ static upb_strview default_string(upb_ToProto_Context *ctx,
 }
 
 static google_protobuf_FieldDescriptorProto *fielddef_toproto(
-    upb_ToProto_Context *ctx, const upb_fielddef *f) {
+    upb_ToProto_Context *ctx, const upb_FieldDef *f) {
   google_protobuf_FieldDescriptorProto *proto =
       google_protobuf_FieldDescriptorProto_new(ctx->arena);
   CHK_OOM(proto);
@@ -517,7 +517,7 @@ google_protobuf_EnumValueDescriptorProto *upb_EnumValueDef_ToProto(
 }
 
 google_protobuf_FieldDescriptorProto *upb_FieldDef_ToProto(
-    const upb_fielddef *f, upb_arena *a) {
+    const upb_FieldDef *f, upb_arena *a) {
   upb_ToProto_Context ctx = {a};
   if (UPB_SETJMP(ctx.err)) return NULL;
   return fielddef_toproto(&ctx, f);

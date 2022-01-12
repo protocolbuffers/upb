@@ -35,7 +35,7 @@
 
 // Creates a new repeated field stub for field `f` of message object `parent`.
 // Precondition: `parent` must be a stub.
-PyObject* PyUpb_MapContainer_NewStub(PyObject* parent, const upb_fielddef* f,
+PyObject* PyUpb_MapContainer_NewStub(PyObject* parent, const upb_FieldDef* f,
                                      PyObject* arena);
 
 // Returns a map object wrapping `map`, of field type `f`, which must be on
@@ -43,7 +43,7 @@ PyObject* PyUpb_MapContainer_NewStub(PyObject* parent, const upb_fielddef* f,
 // otherwise a new object will be created.  The caller always owns a ref on the
 // returned value.
 PyObject* PyUpb_MapContainer_GetOrCreateWrapper(upb_map* map,
-                                                const upb_fielddef* f,
+                                                const upb_FieldDef* f,
                                                 PyObject* arena);
 
 // Reifies a map stub to point to the concrete data in `map`.

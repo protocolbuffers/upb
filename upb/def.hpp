@@ -50,9 +50,9 @@ class OneofDefPtr;
 class FieldDefPtr {
  public:
   FieldDefPtr() : ptr_(nullptr) {}
-  explicit FieldDefPtr(const upb_fielddef* ptr) : ptr_(ptr) {}
+  explicit FieldDefPtr(const upb_FieldDef* ptr) : ptr_(ptr) {}
 
-  const upb_fielddef* ptr() const { return ptr_; }
+  const upb_FieldDef* ptr() const { return ptr_; }
   explicit operator bool() const { return ptr_ != nullptr; }
 
   typedef upb_fieldtype_t Type;
@@ -111,7 +111,7 @@ class FieldDefPtr {
   bool IsPrimitive() const { return upb_FieldDef_IsPrimitive(ptr_); }
   bool IsMap() const { return upb_FieldDef_IsMap(ptr_); }
 
-  MessageValue default_value() const { return upb_fielddef_default(ptr_); }
+  MessageValue default_value() const { return upb_FieldDef_Default(ptr_); }
 
   // Returns the enum or submessage def for this field, if any.  The field's
   // type must match (ie. you may only call enum_subdef() for fields where
@@ -120,7 +120,7 @@ class FieldDefPtr {
   MessageDefPtr message_subdef() const;
 
  private:
-  const upb_fielddef* ptr_;
+  const upb_FieldDef* ptr_;
 };
 
 // Class that represents a oneof.

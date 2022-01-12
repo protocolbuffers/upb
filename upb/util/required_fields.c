@@ -81,7 +81,7 @@ static size_t upb_FieldPath_NullTerminate(upb_PrintfAppender *d, size_t size) {
 }
 
 static void upb_FieldPath_PutMapKey(upb_PrintfAppender *a, upb_msgval map_key,
-                                    const upb_fielddef *key_f) {
+                                    const upb_FieldDef *key_f) {
   switch (upb_FieldDef_CType(key_f)) {
     case UPB_TYPE_INT32:
       upb_FieldPath_Printf(a, "[%" PRId32 "]", map_key.int32_val);
@@ -125,14 +125,14 @@ size_t upb_FieldPath_ToText(upb_FieldPathEntry** path, char* buf, size_t size) {
   bool first = true;
 
   while (ptr->field) {
-    const upb_fielddef *f = ptr->field;
+    const upb_FieldDef *f = ptr->field;
 
     upb_FieldPath_Printf(&appender, first ? "%s" : ".%s", upb_FieldDef_Name(f));
     first = false;
     ptr++;
 
     if (upb_FieldDef_IsMap(f)) {
-      const upb_fielddef *key_f = upb_msgdef_field(upb_FieldDef_MessageSubDef(f), 0);
+      const upb_FieldDef *key_f = upb_msgdef_field(upb_FieldDef_MessageSubDef(f), 0);
       upb_FieldPath_PutMapKey(&appender, ptr->map_key, key_f);
       ptr++;
     } else if (upb_FieldDef_IsRepeated(f)) {
@@ -201,7 +201,7 @@ static void upb_util_FindUnsetInMessage(upb_FindContext* ctx,
                                         const upb_msgdef* m) {
   // Iterate over all fields to see if any required fields are missing.
   for (int i = 0, n = upb_msgdef_fieldcount(m); i < n; i++) {
-    const upb_fielddef* f = upb_msgdef_field(m, i);
+    const upb_FieldDef* f = upb_msgdef_field(m, i);
     if (upb_FieldDef_Label(f) != UPB_LABEL_REQUIRED) continue;
 
     if (!msg || !upb_msg_has(msg, f)) {
@@ -242,7 +242,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
   // TODO(haberman): consider changing upb_msg_next() to be capable of visiting
   // extensions only, for example with a UPB_MSG_BEGINEXT constant.
   size_t iter = UPB_MSG_BEGIN;
-  const upb_fielddef* f;
+  const upb_FieldDef* f;
   upb_msgval val;
   while (upb_msg_next(msg, m, ctx->ext_pool, &f, &val, &iter)) {
     // Skip non-submessage fields.
@@ -253,7 +253,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
 
     if (upb_FieldDef_IsMap(f)) {
       // Map field.
-      const upb_fielddef* val_f = upb_msgdef_field(sub_m, 1);
+      const upb_FieldDef* val_f = upb_msgdef_field(sub_m, 1);
       const upb_msgdef* val_m = upb_FieldDef_MessageSubDef(val_f);
       if (!val_m) continue;
       const upb_map* map = val.map_val;

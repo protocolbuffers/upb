@@ -30,7 +30,7 @@
  * in a .proto file:
  *
  * - upb_msgdef: describes a "message" construct.
- * - upb_fielddef: describes a message field.
+ * - upb_FieldDef: describes a message field.
  * - upb_filedef: describes a .proto file and its defs.
  * - upb_enumdef: describes an enum.
  * - upb_oneofdef: describes a oneof.
@@ -58,8 +58,8 @@ struct upb_enumvaldef;
 typedef struct upb_enumvaldef upb_enumvaldef;
 struct upb_extrange;
 typedef struct upb_extrange upb_extrange;
-struct upb_fielddef;
-typedef struct upb_fielddef upb_fielddef;
+struct upb_FieldDef;
+typedef struct upb_FieldDef upb_FieldDef;
 struct upb_filedef;
 typedef struct upb_filedef upb_filedef;
 struct upb_methoddef;
@@ -106,43 +106,43 @@ typedef enum {
   UPB_WELLKNOWN_STRUCT
 } upb_wellknowntype_t;
 
-/* upb_fielddef ***************************************************************/
+/* upb_FieldDef ***************************************************************/
 
 /* Maximum field number allowed for FieldDefs.  This is an inherent limit of the
  * protobuf wire format. */
 #define UPB_MAX_FIELDNUMBER ((1 << 29) - 1)
 
-const google_protobuf_FieldOptions *upb_FieldDef_Options(const upb_fielddef *f);
-bool upb_FieldDef_HasOptions(const upb_fielddef *f);
-const char *upb_FieldDef_FullName(const upb_fielddef *f);
-upb_fieldtype_t upb_FieldDef_CType(const upb_fielddef *f);
-upb_descriptortype_t upb_FieldDef_Type(const upb_fielddef *f);
-upb_label_t upb_FieldDef_Label(const upb_fielddef *f);
-uint32_t upb_FieldDef_Number(const upb_fielddef *f);
-const char *upb_FieldDef_Name(const upb_fielddef *f);
-const char *upb_FieldDef_JsonName(const upb_fielddef *f);
-bool upb_FieldDef_HasJsonName(const upb_fielddef *f);
-bool upb_FieldDef_IsExtension(const upb_fielddef *f);
-bool upb_FieldDef_IsPacked(const upb_fielddef *f);
-const upb_filedef *upb_FieldDef_File(const upb_fielddef *f);
-const upb_msgdef *upb_FieldDef_ContainingType(const upb_fielddef *f);
-const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_fielddef *f);
-const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_fielddef *f);
-const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_fielddef *f);
-uint32_t upb_FieldDef_Index(const upb_fielddef *f);
-bool upb_FieldDef_IsSubMessage(const upb_fielddef *f);
-bool upb_FieldDef_IsString(const upb_fielddef *f);
-bool upb_FieldDef_IsRepeated(const upb_fielddef *f);
-bool upb_FieldDef_IsPrimitive(const upb_fielddef *f);
-bool upb_FieldDef_IsMap(const upb_fielddef *f);
-bool upb_FieldDef_HasDefault(const upb_fielddef *f);
-bool upb_FieldDef_HasSubDef(const upb_fielddef *f);
-bool upb_FieldDef_HasPresence(const upb_fielddef *f);
-const upb_msgdef *upb_FieldDef_MessageSubDef(const upb_fielddef *f);
-const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_fielddef *f);
-const upb_msglayout_field *upb_FieldDef_Layout(const upb_fielddef *f);
-const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_fielddef *f);
-bool _upb_FieldDef_IsProto3Optional(const upb_fielddef *f);
+const google_protobuf_FieldOptions *upb_FieldDef_Options(const upb_FieldDef *f);
+bool upb_FieldDef_HasOptions(const upb_FieldDef *f);
+const char *upb_FieldDef_FullName(const upb_FieldDef *f);
+upb_fieldtype_t upb_FieldDef_CType(const upb_FieldDef *f);
+upb_descriptortype_t upb_FieldDef_Type(const upb_FieldDef *f);
+upb_label_t upb_FieldDef_Label(const upb_FieldDef *f);
+uint32_t upb_FieldDef_Number(const upb_FieldDef *f);
+const char *upb_FieldDef_Name(const upb_FieldDef *f);
+const char *upb_FieldDef_JsonName(const upb_FieldDef *f);
+bool upb_FieldDef_HasJsonName(const upb_FieldDef *f);
+bool upb_FieldDef_IsExtension(const upb_FieldDef *f);
+bool upb_FieldDef_IsPacked(const upb_FieldDef *f);
+const upb_filedef *upb_FieldDef_File(const upb_FieldDef *f);
+const upb_msgdef *upb_FieldDef_ContainingType(const upb_FieldDef *f);
+const upb_msgdef *upb_FieldDef_ExtensionScope(const upb_FieldDef *f);
+const upb_oneofdef *upb_FieldDef_ContainingOneof(const upb_FieldDef *f);
+const upb_oneofdef *upb_FieldDef_RealContainingOneof(const upb_FieldDef *f);
+uint32_t upb_FieldDef_Index(const upb_FieldDef *f);
+bool upb_FieldDef_IsSubMessage(const upb_FieldDef *f);
+bool upb_FieldDef_IsString(const upb_FieldDef *f);
+bool upb_FieldDef_IsRepeated(const upb_FieldDef *f);
+bool upb_FieldDef_IsPrimitive(const upb_FieldDef *f);
+bool upb_FieldDef_IsMap(const upb_FieldDef *f);
+bool upb_FieldDef_HasDefault(const upb_FieldDef *f);
+bool upb_FieldDef_HasSubDef(const upb_FieldDef *f);
+bool upb_FieldDef_HasPresence(const upb_FieldDef *f);
+const upb_msgdef *upb_FieldDef_MessageSubDef(const upb_FieldDef *f);
+const upb_enumdef *upb_FieldDef_EnumSubDef(const upb_FieldDef *f);
+const upb_msglayout_field *upb_FieldDef_Layout(const upb_FieldDef *f);
+const upb_msglayout_ext *_upb_FieldDef_ExtensionLayout(const upb_FieldDef *f);
+bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef *f);
 
 /* upb_oneofdef ***************************************************************/
 
@@ -155,26 +155,26 @@ const upb_msgdef *upb_oneofdef_containingtype(const upb_oneofdef *o);
 uint32_t upb_oneofdef_index(const upb_oneofdef *o);
 bool upb_oneofdef_issynthetic(const upb_oneofdef *o);
 int upb_oneofdef_fieldcount(const upb_oneofdef *o);
-const upb_fielddef *upb_oneofdef_field(const upb_oneofdef *o, int i);
+const upb_FieldDef *upb_oneofdef_field(const upb_oneofdef *o, int i);
 
 /* Oneof lookups:
  * - ntof:  look up a field by name.
  * - ntofz: look up a field by name (as a null-terminated string).
  * - itof:  look up a field by number. */
-const upb_fielddef *upb_oneofdef_ntof(const upb_oneofdef *o,
+const upb_FieldDef *upb_oneofdef_ntof(const upb_oneofdef *o,
                                       const char *name, size_t length);
-UPB_INLINE const upb_fielddef *upb_oneofdef_ntofz(const upb_oneofdef *o,
+UPB_INLINE const upb_FieldDef *upb_oneofdef_ntofz(const upb_oneofdef *o,
                                                   const char *name) {
   return upb_oneofdef_ntof(o, name, strlen(name));
 }
-const upb_fielddef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num);
+const upb_FieldDef *upb_oneofdef_itof(const upb_oneofdef *o, uint32_t num);
 
 /* DEPRECATED, slated for removal. */
 int upb_oneofdef_numfields(const upb_oneofdef *o);
 void upb_oneof_begin(upb_oneof_iter *iter, const upb_oneofdef *o);
 void upb_oneof_next(upb_oneof_iter *iter);
 bool upb_oneof_done(upb_oneof_iter *iter);
-upb_fielddef *upb_oneof_iter_field(const upb_oneof_iter *iter);
+upb_FieldDef *upb_oneof_iter_field(const upb_oneof_iter *iter);
 void upb_oneof_iter_setdone(upb_oneof_iter *iter);
 bool upb_oneof_iter_isequal(const upb_oneof_iter *iter1,
                             const upb_oneof_iter *iter2);
@@ -215,10 +215,10 @@ int upb_msgdef_extrangecount(const upb_msgdef *m);
 int upb_msgdef_fieldcount(const upb_msgdef *m);
 int upb_msgdef_oneofcount(const upb_msgdef *m);
 const upb_extrange *upb_msgdef_extrange(const upb_msgdef *m, int i);
-const upb_fielddef *upb_msgdef_field(const upb_msgdef *m, int i);
+const upb_FieldDef *upb_msgdef_field(const upb_msgdef *m, int i);
 const upb_oneofdef *upb_msgdef_oneof(const upb_msgdef *m, int i);
-const upb_fielddef *upb_msgdef_itof(const upb_msgdef *m, uint32_t i);
-const upb_fielddef *upb_msgdef_ntof(const upb_msgdef *m, const char *name,
+const upb_FieldDef *upb_msgdef_itof(const upb_msgdef *m, uint32_t i);
+const upb_FieldDef *upb_msgdef_ntof(const upb_msgdef *m, const char *name,
                                     size_t len);
 const upb_oneofdef *upb_msgdef_ntoo(const upb_msgdef *m, const char *name,
                                     size_t len);
@@ -229,7 +229,7 @@ UPB_INLINE const upb_oneofdef *upb_msgdef_ntooz(const upb_msgdef *m,
   return upb_msgdef_ntoo(m, name, strlen(name));
 }
 
-UPB_INLINE const upb_fielddef *upb_msgdef_ntofz(const upb_msgdef *m,
+UPB_INLINE const upb_FieldDef *upb_msgdef_ntofz(const upb_msgdef *m,
                                                 const char *name) {
   return upb_msgdef_ntof(m, name, strlen(name));
 }
@@ -244,24 +244,24 @@ int upb_msgdef_nestedenumcount(const upb_msgdef *m);
 int upb_msgdef_nestedextcount(const upb_msgdef *m);
 const upb_msgdef *upb_msgdef_nestedmsg(const upb_msgdef *m, int i);
 const upb_enumdef *upb_msgdef_nestedenum(const upb_msgdef *m, int i);
-const upb_fielddef *upb_msgdef_nestedext(const upb_msgdef *m, int i);
+const upb_FieldDef *upb_msgdef_nestedext(const upb_msgdef *m, int i);
 
 /* Lookup of either field or oneof by name.  Returns whether either was found.
  * If the return is true, then the found def will be set, and the non-found
  * one set to NULL. */
 bool upb_msgdef_lookupname(const upb_msgdef *m, const char *name, size_t len,
-                           const upb_fielddef **f, const upb_oneofdef **o);
+                           const upb_FieldDef **f, const upb_oneofdef **o);
 
 UPB_INLINE bool upb_msgdef_lookupnamez(const upb_msgdef *m, const char *name,
-                                       const upb_fielddef **f,
+                                       const upb_FieldDef **f,
                                        const upb_oneofdef **o) {
   return upb_msgdef_lookupname(m, name, strlen(name), f, o);
 }
 
 /* Returns a field by either JSON name or regular proto name. */
-const upb_fielddef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
+const upb_FieldDef *upb_msgdef_lookupjsonname(const upb_msgdef *m,
                                               const char *name, size_t len);
-UPB_INLINE const upb_fielddef *upb_msgdef_lookupjsonnamez(const upb_msgdef *m,
+UPB_INLINE const upb_FieldDef *upb_msgdef_lookupjsonnamez(const upb_msgdef *m,
                                                           const char *name) {
   return upb_msgdef_lookupjsonname(m, name, strlen(name));
 }
@@ -273,7 +273,7 @@ int upb_msgdef_numrealoneofs(const upb_msgdef *m);
 void upb_msg_field_begin(upb_msg_field_iter *iter, const upb_msgdef *m);
 void upb_msg_field_next(upb_msg_field_iter *iter);
 bool upb_msg_field_done(const upb_msg_field_iter *iter);
-upb_fielddef *upb_msg_iter_field(const upb_msg_field_iter *iter);
+upb_FieldDef *upb_msg_iter_field(const upb_msg_field_iter *iter);
 void upb_msg_field_iter_setdone(upb_msg_field_iter *iter);
 bool upb_msg_field_iter_isequal(const upb_msg_field_iter * iter1,
                                 const upb_msg_field_iter * iter2);
@@ -360,7 +360,7 @@ const upb_filedef *upb_filedef_publicdep(const upb_filedef *f, int i);
 const upb_filedef *upb_filedef_weakdep(const upb_filedef *f, int i);
 const upb_msgdef *upb_filedef_toplvlmsg(const upb_filedef *f, int i);
 const upb_enumdef *upb_filedef_toplvlenum(const upb_filedef *f, int i);
-const upb_fielddef *upb_filedef_toplvlext(const upb_filedef *f, int i);
+const upb_FieldDef *upb_filedef_toplvlext(const upb_filedef *f, int i);
 const upb_servicedef *upb_filedef_service(const upb_filedef *f, int i);
 const upb_symtab *upb_filedef_symtab(const upb_filedef *f);
 const int32_t *_upb_filedef_publicdepnums(const upb_filedef *f);
@@ -403,8 +403,8 @@ const upb_msgdef *upb_symtab_lookupmsg2(
 const upb_enumdef *upb_symtab_lookupenum(const upb_symtab *s, const char *sym);
 const upb_enumvaldef *upb_symtab_lookupenumval(const upb_symtab *s,
                                                const char *sym);
-const upb_fielddef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
-const upb_fielddef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,
+const upb_FieldDef *upb_symtab_lookupext(const upb_symtab *s, const char *sym);
+const upb_FieldDef *upb_symtab_lookupext2(const upb_symtab *s, const char *sym,
                                          size_t len);
 const upb_filedef *upb_symtab_lookupfile(const upb_symtab *s, const char *name);
 const upb_servicedef *upb_symtab_lookupservice(const upb_symtab *s,
@@ -418,13 +418,13 @@ const upb_filedef *upb_symtab_addfile(
     upb_status *status);
 size_t _upb_symtab_bytesloaded(const upb_symtab *s);
 upb_arena *_upb_symtab_arena(const upb_symtab *s);
-const upb_fielddef *_upb_symtab_lookupextfield(const upb_symtab *s,
+const upb_FieldDef *_upb_symtab_lookupextfield(const upb_symtab *s,
                                                const upb_msglayout_ext *ext);
-const upb_fielddef *upb_symtab_lookupextbynum(const upb_symtab *s,
+const upb_FieldDef *upb_symtab_lookupextbynum(const upb_symtab *s,
                                               const upb_msgdef *m,
                                               int32_t fieldnum);
 const upb_extreg *upb_symtab_extreg(const upb_symtab *s);
-const upb_fielddef **upb_symtab_getallexts(const upb_symtab *s,
+const upb_FieldDef **upb_symtab_getallexts(const upb_symtab *s,
                                            const upb_msgdef *m, size_t *count);
 
 /* For generated code only: loads a generated descriptor. */

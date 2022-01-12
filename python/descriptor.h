@@ -54,7 +54,7 @@ PyObject* PyUpb_Descriptor_GetClass(const upb_msgdef* m);
 // created.  The caller always owns a ref on the returned object.
 PyObject* PyUpb_Descriptor_Get(const upb_msgdef* msgdef);
 PyObject* PyUpb_EnumDescriptor_Get(const upb_enumdef* enumdef);
-PyObject* PyUpb_FieldDescriptor_Get(const upb_fielddef* field);
+PyObject* PyUpb_FieldDescriptor_Get(const upb_FieldDef* field);
 PyObject* PyUpb_FileDescriptor_Get(const upb_filedef* file);
 PyObject* PyUpb_OneofDescriptor_Get(const upb_oneofdef* oneof);
 PyObject* PyUpb_EnumValueDescriptor_Get(const upb_enumvaldef* enumval);
@@ -64,7 +64,7 @@ PyObject* PyUpb_ServiceDescriptor_Get(const upb_servicedef* s);
 // Returns the underlying |def| for a given wrapper object. The caller must
 // have already verified that the given Python object is of the expected type.
 const upb_filedef* PyUpb_FileDescriptor_GetDef(PyObject* file);
-const upb_fielddef* PyUpb_FieldDescriptor_GetDef(PyObject* file);
+const upb_FieldDef* PyUpb_FieldDescriptor_GetDef(PyObject* file);
 const upb_msgdef* PyUpb_Descriptor_GetDef(PyObject* _self);
 const void* PyUpb_AnyDescriptor_GetDef(PyObject* _self);
 
