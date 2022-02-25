@@ -1493,11 +1493,14 @@ bool Generator::Generate(const protobuf::FileDescriptor* file,
     }
   }
 
-  Output h_output(context->Open(HeaderFilename(file)));
+  std::unique_ptr<proto2::io::ZeroCopyOutputStream> h_output_stream(
+      context->Open(HeaderFilename(file)));
+  Output h_output(h_output_stream.get());
   WriteHeader(file, h_output);
 
-  Output c_output(context->Open(SourceFilename(file)));
-  WriteSource(file, c_output, fasttable_enabled);
+  std::unique_ptr<proto2::io::ZeroCopyOutputStream> c_output_stream(
+      context->Open(SourceFilename(file)));
+  Output c_output(c_output_stream.get());
 
   return true;
 }
