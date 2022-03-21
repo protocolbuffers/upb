@@ -88,7 +88,9 @@ typedef struct {
 bool parse_proto(upb_Message* msg, const upb_MessageDef* m, const ctx* c) {
   upb_StringView proto =
       conformance_ConformanceRequest_protobuf_payload(c->request);
-  if (upb_Decode(proto.data, proto.size, msg, upb_MessageDef_MiniTable(m), NULL,
+  if (upb_Decode(proto.data, proto.size, msg, upb_MessageDef_MiniTable(m),
+                 upb_DefPool_ExtensionRegistry(
+                     upb_FileDef_Pool(upb_MessageDef_File(m))),
                  0, c->arena) == kUpb_DecodeStatus_Ok) {
     return true;
   } else {
