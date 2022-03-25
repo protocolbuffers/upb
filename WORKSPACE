@@ -55,6 +55,24 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_fuzzing/archive/v0.3.1.zip"],
 )
 
+http_archive(
+    name = "nuget_python_x86-64_3.7.0",
+    urls = ["https://www.nuget.org/api/v2/package/python/3.7.0"],
+    strip_prefix = "tools",
+    build_file = "//bazel:nuget_python.BUILD",
+    type = "zip",
+    patch_cmds = ["cp -r include/* ."],
+)
+
+http_archive(
+    name = "nuget_python_i686_3.7.0",
+    urls = ["https://www.nuget.org/api/v2/package/pythonx86/3.7.0"],
+    strip_prefix = "tools",
+    build_file = "//bazel:nuget_python.BUILD",
+    type = "zip",
+    patch_cmds = ["cp -r include/* ."],
+)
+
 load("@rules_fuzzing//fuzzing:repositories.bzl", "rules_fuzzing_dependencies")
 
 rules_fuzzing_dependencies()
