@@ -1,0 +1,136 @@
+# Copyright (c) 2009-2022, Google LLC
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Google LLC nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# begin:github_only
+#load("//bazel:py_proto_library.bzl", "py_proto_library")
+load(":dist.bzl", "py_dist_module", "py_dist")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+
+licenses(["notice"])
+
+string_flag(
+    name = "python_version",
+    values = ["37", "38", "39", "310"],
+    build_setting_default = "37"
+)
+
+py_dist_module(
+    name = "message_mod",
+    module_name = "google.protobuf.pyext._message",
+    extension = "//python:_message",
+)
+
+py_dist_module(
+    name = "api_implementation_mod",
+    module_name = "google.protobuf.internal.api_implementation",
+    extension = "//python:_api_implementation",
+)
+
+# py_proto_library(
+#     name = "well_known_proto_py_pb2",
+#     deps = [
+#         "@com_google_protobuf//:any_proto",
+#         "@com_google_protobuf//:api_proto",
+#         "@com_google_protobuf//:compiler_plugin_proto",
+#         "@com_google_protobuf//:descriptor_proto",
+#         "@com_google_protobuf//:duration_proto",
+#         "@com_google_protobuf//:empty_proto",
+#         "@com_google_protobuf//:field_mask_proto",
+#         "@com_google_protobuf//:source_context_proto",
+#         "@com_google_protobuf//:struct_proto",
+#         "@com_google_protobuf//:timestamp_proto",
+#         "@com_google_protobuf//:type_proto",
+#         "@com_google_protobuf//:wrappers_proto",
+#     ],
+# )
+
+config_setting(
+    name = "aarch64_cpu",
+    values = {"cpu": "linux-aarch_64"},
+)
+
+config_setting(
+    name = "x86_64_cpu",
+    values = {"cpu": "linux-x86_64"},
+)
+
+config_setting(
+    name = "win32_cpu",
+    values = {"cpu": "win32"},
+)
+
+config_setting(
+    name = "win64_cpu",
+    values = {"cpu": "win64"},
+)
+
+# py_wheel(
+#     name = "binary_wheel",
+#     abi = "abi3",
+#     distribution = "protobuf",
+#     # TODO(https://github.com/protocolbuffers/upb/issues/502): we need to make
+#     # this a select() that is calculated from the platform we are actually
+#     # building on.
+#     platform = select({
+#         ":x86_64_cpu": "manylinux2014_x86_64",
+#         ":aarch64_cpu": "manylinux2014_aarch64",
+#         ":win32_cpu": "win32",
+#         ":win64_cpu": "win_amd64",
+#     }),
+#     python_tag = "cp37",
+#     strip_path_prefixes = ["python/"],
+#     version = "4.20.0",
+# )
+
+# py_dist(
+#     name = "dist",
+#     distribution = "protobuf",
+#     extension_modules = [
+#         ":api_implementation_mod",
+#         ":message_mod",
+#     ],
+#     pure_python_modules = [
+#         ":well_known_proto_py_pb2",
+#         # TODO(https://github.com/protocolbuffers/upb/issues/503): currently
+#         # this includes the unit tests.  We should filter these out so we are
+#         # only distributing true source files.
+#         "@com_google_protobuf//:python_srcs",
+#     ],
+#     binary_wheels = [
+#         # Limited API: these wheels will satisfy any Python version >= the
+#         # given version.
+#         #
+#         # Technically the limited API doesn't have the functions we need until
+#         # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
+#         # details).
+#         ("3.10", "3.10", "win32"),
+#         ("3.10", "3.10", "win64"),
+#         ("3.7", "3.7", "linux-x86_64"),
+#         ("3.7", "3.7", "linux-aarch_64"),
+#         # Windows needs version-specific wheels until 3.10.
+#     ] + cross_product(["3.7", "3.8", "3.9"], ["win32", "win64"]),
+# )
+
+# end:github_only
