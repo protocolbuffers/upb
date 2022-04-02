@@ -27,7 +27,7 @@
 load("//bazel:py_extension.bzl", "py_extension")
 # end:github_only
 
-load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 
 licenses(["notice"])
 
@@ -35,31 +35,86 @@ package(
     default_visibility = ["//python/dist:__pkg__"],
 )
 
-string_flag(
+bool_flag(
     name = "limited_api",
-    values = ["none", "3.7", "3.10"],
+    build_setting_default = False,
+)
+
+string_flag(
+    name = "python_version",
+    values = ["system", "37", "38", "39", "310"],
     build_setting_default = "none",
 )
 
 config_setting(
     name = "limited_api_3.7",
     flag_values = {
-        ":limited_api": "3.7",
+        ":limited_api": "True",
+        ":python_version": "37",
     },
 )
 
 config_setting(
     name = "limited_api_3.10",
     flag_values = {
-        ":limited_api": "3.10",
+        ":limited_api": "True",
+        ":python_version": "310",
     },
 )
 
-LIMITED_API_FLAG_SELECT = {
-    ":limited_api_3.7": ["Py_LIMITED_API=0x03070000"],
-    ":limited_api_3.10": ["Py_LIMITED_API=0x03100000"],
-    "//conditions:default": [],
-}
+config_setting(
+    name = "full_api_3.7_win32",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "37",
+    },
+    values = {"cpu": "win32"},
+)
+
+config_setting(
+    name = "full_api_3.7_win64",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "37",
+    },
+    values = {"cpu": "win64"},
+)
+
+config_setting(
+    name = "full_api_3.8_win32",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "38",
+    },
+    values = {"cpu": "win32"},
+)
+
+config_setting(
+    name = "full_api_3.8_win64",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "38",
+    },
+    values = {"cpu": "win64"},
+)
+
+config_setting(
+    name = "full_api_3.9_win32",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "39",
+    },
+    values = {"cpu": "win32"},
+)
+
+config_setting(
+    name = "full_api_3.9_win64",
+    flag_values = {
+        ":limited_api": "False",
+        ":python_version": "39",
+    },
+    values = {"cpu": "win64"},
+)
 
 py_extension(
     name = "_message",
@@ -94,7 +149,6 @@ py_extension(
         "//upb/util:def_to_proto",
         "//upb/util:required_fields",
     ],
-    defines = select(LIMITED_API_FLAG_SELECT),
 )
 
 py_extension(
@@ -103,7 +157,6 @@ py_extension(
         "api_implementation.c",
         "python.h",
     ],
-    defines = select(LIMITED_API_FLAG_SELECT),
 )
 
 # begin:github_only

@@ -5,7 +5,7 @@ load("@rules_python//python:packaging.bzl", "py_wheel")
 def _get_suffix(limited_api, python_version, cpu):
     suffix = "pyd" if ("win" in cpu) else "so"
 
-    if limited_api == "none":
+    if limited_api == False:
         return "." + suffix
 
     if "win" in cpu:
@@ -57,7 +57,7 @@ _py_dist_module_rule = rule(
             providers = [CcInfo],
         ),
         "_limited_api": attr.label(default = "//python:limited_api"),
-        "_python_version": attr.label(default = ":python_version"),
+        "_python_version": attr.label(default = "//python:python_version"),
         "_cc_toolchain": attr.label(
             default = "@bazel_tools//tools/cpp:current_cc_toolchain",
         ),

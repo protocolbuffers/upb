@@ -27,14 +27,10 @@
 #load("//bazel:py_proto_library.bzl", "py_proto_library")
 load(":dist.bzl", "py_dist_module", "py_dist")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@com_google_protobuf//:protobuf_version.bzl", "PROTOBUF_VERSION")
+load("@rules_python//python:packaging.bzl", "py_wheel")
 
 licenses(["notice"])
-
-string_flag(
-    name = "python_version",
-    values = ["37", "38", "39", "310"],
-    build_setting_default = "37"
-)
 
 py_dist_module(
     name = "message_mod",
@@ -77,6 +73,11 @@ config_setting(
 )
 
 config_setting(
+    name = "osx-x86_64_cpu",
+    values = {"cpu": "osx-x86_64"},
+)
+
+config_setting(
     name = "win32_cpu",
     values = {"cpu": "win32"},
 )
@@ -86,23 +87,41 @@ config_setting(
     values = {"cpu": "win64"},
 )
 
-# py_wheel(
-#     name = "binary_wheel",
-#     abi = "abi3",
-#     distribution = "protobuf",
-#     # TODO(https://github.com/protocolbuffers/upb/issues/502): we need to make
-#     # this a select() that is calculated from the platform we are actually
-#     # building on.
-#     platform = select({
-#         ":x86_64_cpu": "manylinux2014_x86_64",
-#         ":aarch64_cpu": "manylinux2014_aarch64",
-#         ":win32_cpu": "win32",
-#         ":win64_cpu": "win_amd64",
-#     }),
-#     python_tag = "cp37",
-#     strip_path_prefixes = ["python/"],
-#     version = "4.20.0",
-# )
+py_wheel(
+    name = "binary_wheel",
+    abi = "abi3",
+    distribution = "protobuf",
+    # TODO(https://github.com/protocolbuffers/upb/issues/502): we need to make
+    # this a select() that is calculated from the platform we are actually
+    # building on.
+    platform = select({
+        ":x86_64_cpu": "manylinux2014_x86_64",
+        ":aarch64_cpu": "manylinux2014_aarch64",
+        ":osx-x86_64_cpu": "macosx_12_1_universal",
+        ":win32_cpu": "win32",
+        ":win64_cpu": "win_amd64",
+    }),
+    python_tag = select({
+      "//python:limited_api_3.7": "cp37",
+      "//python:limited_api_3.10": "cp310",
+      "//python:full_api_3.7_win32": "cp37",
+      "//python:full_api_3.7_win64": "cp37",
+      "//python:full_api_3.8_win32": "cp38",
+      "//python:full_api_3.8_win64": "cp38",
+      "//python:full_api_3.9_win32": "cp39",
+      "//python:full_api_3.9_win64": "cp39",
+    }),
+    strip_path_prefixes = ["python/"],
+    version = PROTOBUF_VERSION,
+    deps = [
+        ":message_mod",
+        ":api_implementation_mod",
+        #TODO(https://github.com/protocolbuffers/upb/issues/503): currently
+        # this includes the unit tests.  We should filter these out so we are
+        # only distributing true source files.
+        "@com_google_protobuf//:python_srcs",
+    ],
+)
 
 # py_dist(
 #     name = "dist",
