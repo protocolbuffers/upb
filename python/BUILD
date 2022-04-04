@@ -56,14 +56,6 @@ config_setting(
 )
 
 config_setting(
-    name = "limited_api_3.10",
-    flag_values = {
-        ":limited_api": "True",
-        ":python_version": "310",
-    },
-)
-
-config_setting(
     name = "full_api_3.7_win32",
     flag_values = {
         ":limited_api": "False",
@@ -130,6 +122,29 @@ config_setting(
 selects.config_setting_group(
     name = "full_api_3.9",
     match_any = ["full_api_3.9_win32", ":full_api_3.9_win64"],
+)
+
+config_setting(
+    name = "limited_api_3.10_win32",
+    flag_values = {
+        ":limited_api": "True",
+        ":python_version": "310",
+    },
+    values = {"cpu": "win32"},
+)
+
+config_setting(
+    name = "limited_api_3.10_win64",
+    flag_values = {
+        ":limited_api": "True",
+        ":python_version": "310",
+    },
+    values = {"cpu": "win64"},
+)
+
+selects.config_setting_group(
+    name = "limited_api_3.10",
+    match_any = [":limited_api_3.10_win32", ":limited_api_3.10_win64"],
 )
 
 py_extension(

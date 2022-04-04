@@ -33,13 +33,14 @@ def py_extension(name, srcs, deps = []):
             ":" + version_script
         ] + select({
             "//python:limited_api_3.7": ["@python-3.7.0//:python_headers"],
-            "//python:limited_api_3.10": ["@python-3.10.0//:python_headers"],
             "//python:full_api_3.7_win32": ["@nuget_python_i686_3.7.0//:python"],
             "//python:full_api_3.7_win64": ["@nuget_python_x86-64_3.7.0//:python"],
             "//python:full_api_3.8_win32": ["@nuget_python_i686_3.8.0//:python"],
             "//python:full_api_3.8_win64": ["@nuget_python_x86-64_3.8.0//:python"],
             "//python:full_api_3.9_win32": ["@nuget_python_i686_3.9.0//:python"],
             "//python:full_api_3.9_win64": ["@nuget_python_x86-64_3.9.0//:python"],
+            "//python:limited_api_3.10_win32": ["@nuget_python_i686_3.10.0//:python"],
+            "//python:limited_api_3.10_win64": ["@nuget_python_x86-64_3.10.0//:python"],
             "//conditions:default": ["@system_python//:python_headers"],
         }),
     )

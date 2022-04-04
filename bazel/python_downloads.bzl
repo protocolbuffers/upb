@@ -32,13 +32,11 @@ cc_import(
 )
 """
 
-def full_api_download(version, cpu, sha256):
+def nuget_download(version, cpu, sha256, lib_number):
     folder_name_dict = {
         "i686": "pythonx86",
         "x86-64": "python"
     }
-
-    major_version, minor_version, micro_version = version.partition('.')
 
     http_archive(
         name = "nuget_python_{}_{}".format(cpu, version),
@@ -48,7 +46,18 @@ def full_api_download(version, cpu, sha256):
         sha256 = sha256,
         strip_prefix = "tools",
         build_file_content =
-            full_api_build_file.format(major_version + minor_version),
+            full_api_build_file.format(lib_number),
         type = "zip",
         patch_cmds = ["cp -r include/* ."],
+    )
+
+
+def full_api_download(version, cpu, sha256):
+    major_version, minor_version, micro_version = version.split('.')
+
+    nuget_download(
+        version = version,
+        cpu = cpu,
+        sha256 = sha256,
+        lib_number = major_version + minor_version,
     )
