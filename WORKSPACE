@@ -1,6 +1,7 @@
 workspace(name = "upb")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("//bazel:python_downloads.bzl", "limited_api_download", "full_api_download")
 load("//bazel:workspace_deps.bzl", "upb_deps")
 load("//bazel:workspace_defs.bzl", "system_python")
 
@@ -55,105 +56,6 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_fuzzing/archive/v0.3.1.zip"],
 )
 
-limited_api_build_file = """
-cc_library(
-    name = "python_headers",
-    hdrs = glob(["**/Include/**/*.h"]),
-    strip_include_prefix = "Python-%s/Include",
-    visibility = ["//visibility:public"],
-)
-"""
-
-http_archive(
-    name = "python-3.7.0",
-    sha256 ="85bb9feb6863e04fb1700b018d9d42d1caac178559ffa453d7e6a436e259fd0d",
-    urls = ["https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz"],
-    build_file_content = limited_api_build_file % "3.7.0",
-    patch_cmds = [
-      "echo \#define SIZEOF_WCHAR_T 4 > Python-3.7.0/Include/pyconfig.h",
-    ],
-)
-
-http_archive(
-    name = "python-3.10.0",
-    sha256 = "c4e0cbad57c90690cb813fb4663ef670b4d0f587d8171e2c42bd4c9245bd2758",
-    urls = ["https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tgz"],
-    build_file_content = limited_api_build_file % "3.10.0",
-    patch_cmds = [
-      "echo \#define SIZEOF_WCHAR_T 4 > Python-3.10.0/Include/pyconfig.h",
-    ],
-)
-
-full_api_build_file = """
-cc_import(
-    name = "python",
-    hdrs = glob(["**/*.h"]),
-    shared_library = "python{0}.dll",
-    interface_library = "libs/python{0}.lib",
-    visibility = ["@upb//python:__pkg__"],
-)
-"""
-
-http_archive(
-    name = "nuget_python_x86-64_3.7.0",
-    urls = ["https://www.nuget.org/api/v2/package/python/3.7.0"],
-    sha256 = "66eb796a5bdb1e6787b8f655a1237a6b6964af2115b7627cf4f0032cf068b4b2",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(37),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
-http_archive(
-    name = "nuget_python_i686_3.7.0",
-    urls = ["https://www.nuget.org/api/v2/package/pythonx86/3.7.0"],
-    sha256 = "a8bb49fa1ca62ad55430fcafaca1b58015e22943e66b1a87d5e7cef2556c6a54",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(37),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
-http_archive(
-    name = "nuget_python_x86-64_3.8.0",
-    urls = ["https://www.nuget.org/api/v2/package/python/3.8.0"],
-    sha256 = "96c61321ce90dd053c8a04f305a5f6cc6d91350b862db34440e4a4f069b708a0",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(38),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
-http_archive(
-    name = "nuget_python_i686_3.8.0",
-    urls = ["https://www.nuget.org/api/v2/package/pythonx86/3.8.0"],
-    sha256 = "87a6481f5eef30b42ac12c93f06f73bd0b8692f26313b76a6615d1641c4e7bca",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(38),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
-http_archive(
-    name = "nuget_python_x86-64_3.9.0",
-    urls = ["https://www.nuget.org/api/v2/package/python/3.9.0"],
-    sha256 = "6af58a733e7dfbfcdd50d55788134393d6ffe7ab8270effbf724bdb786558832",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(39),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
-http_archive(
-    name = "nuget_python_i686_3.9.0",
-    urls = ["https://www.nuget.org/api/v2/package/pythonx86/3.9.0"],
-    sha256 = "229abecbe49dc08fe5709e0b31e70edfb3b88f23335ebfc2904c44f940fd59b6",
-    strip_prefix = "tools",
-    build_file_content = full_api_build_file.format(39),
-    type = "zip",
-    patch_cmds = ["cp -r include/* ."],
-)
-
 load("@rules_fuzzing//fuzzing:repositories.bzl", "rules_fuzzing_dependencies")
 
 rules_fuzzing_dependencies()
@@ -161,3 +63,46 @@ rules_fuzzing_dependencies()
 load("@rules_fuzzing//fuzzing:init.bzl", "rules_fuzzing_init")
 
 rules_fuzzing_init()
+
+#Python Downloads
+
+limited_api_download(
+    version = "3.7.0",
+    sha256 = "85bb9feb6863e04fb1700b018d9d42d1caac178559ffa453d7e6a436e259fd0d"
+)
+limited_api_download(
+    version = "3.10.0",
+    sha256 = "c4e0cbad57c90690cb813fb4663ef670b4d0f587d8171e2c42bd4c9245bd2758"
+)
+full_api_download(
+    version = "3.7.0",
+    cpu = "i686",
+    sha256 = "a8bb49fa1ca62ad55430fcafaca1b58015e22943e66b1a87d5e7cef2556c6a54"
+)
+full_api_download(
+    version = "3.7.0",
+    cpu = "x86-64",
+    sha256 = "66eb796a5bdb1e6787b8f655a1237a6b6964af2115b7627cf4f0032cf068b4b2"
+)
+full_api_download(
+    version = "3.8.0",
+    cpu = "i686",
+    sha256 = "87a6481f5eef30b42ac12c93f06f73bd0b8692f26313b76a6615d1641c4e7bca"
+)
+full_api_download(
+    version = "3.8.0",
+    cpu = "x86-64",
+    sha256 = "96c61321ce90dd053c8a04f305a5f6cc6d91350b862db34440e4a4f069b708a0"
+)
+full_api_download(
+    version = "3.9.0",
+    cpu = "i686",
+    sha256 = "229abecbe49dc08fe5709e0b31e70edfb3b88f23335ebfc2904c44f940fd59b6"
+)
+full_api_download(
+    version = "3.9.0",
+    cpu = "x86-64",
+    sha256 = "6af58a733e7dfbfcdd50d55788134393d6ffe7ab8270effbf724bdb786558832"
+)
+
+

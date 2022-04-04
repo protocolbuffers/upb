@@ -27,6 +27,7 @@
 load("//bazel:py_extension.bzl", "py_extension")
 # end:github_only
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 
 licenses(["notice"])
@@ -80,6 +81,11 @@ config_setting(
     values = {"cpu": "win64"},
 )
 
+selects.config_setting_group(
+    name = "full_api_3.7",
+    match_any = [":full_api_3.7_win32", ":full_api_3.7_win64"]
+)
+
 config_setting(
     name = "full_api_3.8_win32",
     flag_values = {
@@ -98,6 +104,11 @@ config_setting(
     values = {"cpu": "win64"},
 )
 
+selects.config_setting_group(
+    name = "full_api_3.8",
+    match_any = [":full_api_3.8_win32", ":full_api_3.8_win64"],
+)
+
 config_setting(
     name = "full_api_3.9_win32",
     flag_values = {
@@ -114,6 +125,11 @@ config_setting(
         ":python_version": "39",
     },
     values = {"cpu": "win64"},
+)
+
+selects.config_setting_group(
+    name = "full_api_3.9",
+    match_any = ["full_api_3.9_win32", ":full_api_3.9_win64"],
 )
 
 py_extension(
