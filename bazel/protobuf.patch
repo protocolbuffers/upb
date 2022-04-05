@@ -113,22 +113,6 @@
  cc_toolchain_config(
      name = "linux-aarch_64-config",
      sysroot = "/opt/manylinux/2014/aarch64",
-@@ -85,6 +85,7 @@ cc_toolchain_config(
-         "-I/usr/tools/apple_sdks/xcode_13_0/macosx/usr/include/c++/v1",
-         "-I/usr/tools/apple_sdks/xcode_13_0/macosx/usr/include"
-     ],
-+    extra_linker_flags = ["-undefined", "dynamic_lookup"],
-     linker_path = "/usr/tools",
-     sysroot = "/usr/tools/apple_sdks/xcode_13_0/macosx",
-     target_cpu = "aarch64",
-@@ -97,6 +98,7 @@ cc_toolchain_config(
-         "-I/usr/tools/apple_sdks/xcode_13_0/macosx/usr/include/c++/v1",
-         "-I/usr/tools/apple_sdks/xcode_13_0/macosx/usr/include"
-     ],
-+    extra_linker_flags = ["-undefined", "dynamic_lookup"],
-     linker_path = "/usr/tools",
-     sysroot = "/usr/tools/apple_sdks/xcode_13_0/macosx",
-     target_cpu = "x86_64",
 
 --- toolchain/cc_toolchain_config.bzl
 +++ toolchain/cc_toolchain_config.bzl

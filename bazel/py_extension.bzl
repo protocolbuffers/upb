@@ -25,8 +25,11 @@ def py_extension(name, srcs, deps = []):
             # The Python API requires patterns that are ISO C incompatible, like
             # casts between function pointers and object pointers.
             "-Wno-pedantic",
-            # "--compat-implib",
         ],
+        linkopts = select({
+            "//python/dist:osx-x86_64_cpu": ["-undefined", "dynamic_lookup"],
+            "//conditions:default": [],
+        }),
         linkshared = True,
         linkstatic = True,
         deps = deps + [

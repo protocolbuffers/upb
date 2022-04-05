@@ -91,7 +91,7 @@ config_setting(
 py_wheel(
     name = "binary_wheel",
     abi = select({
-        "//python_full_api_3.7": "cp37",
+        "//python:full_api_3.7": "cp37",
         "//python:full_api_3.8": "cp38",
         "//python:full_api_3.9": "cp39",
         "//conditions:default": "abi3",
