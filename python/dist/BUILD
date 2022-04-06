@@ -45,23 +45,23 @@ py_dist_module(
     extension = "//python:_api_implementation",
 )
 
-# py_proto_library(
-#     name = "well_known_proto_py_pb2",
-#     deps = [
-#         "@com_google_protobuf//:any_proto",
-#         "@com_google_protobuf//:api_proto",
-#         "@com_google_protobuf//:compiler_plugin_proto",
-#         "@com_google_protobuf//:descriptor_proto",
-#         "@com_google_protobuf//:duration_proto",
-#         "@com_google_protobuf//:empty_proto",
-#         "@com_google_protobuf//:field_mask_proto",
-#         "@com_google_protobuf//:source_context_proto",
-#         "@com_google_protobuf//:struct_proto",
-#         "@com_google_protobuf//:timestamp_proto",
-#         "@com_google_protobuf//:type_proto",
-#         "@com_google_protobuf//:wrappers_proto",
-#     ],
-# )
+py_proto_library(
+    name = "well_known_proto_py_pb2",
+    deps = [
+        "@com_google_protobuf//:any_proto",
+        "@com_google_protobuf//:api_proto",
+        "@com_google_protobuf//:compiler_plugin_proto",
+        "@com_google_protobuf//:descriptor_proto",
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:empty_proto",
+        "@com_google_protobuf//:field_mask_proto",
+        "@com_google_protobuf//:source_context_proto",
+        "@com_google_protobuf//:struct_proto",
+        "@com_google_protobuf//:timestamp_proto",
+        "@com_google_protobuf//:type_proto",
+        "@com_google_protobuf//:wrappers_proto",
+    ],
+)
 
 config_setting(
     name = "aarch64_cpu",
@@ -115,6 +115,7 @@ py_wheel(
     deps = [
         ":message_mod",
         ":api_implementation_mod",
+        ":well_known_proto_py_pb2",
         #TODO(https://github.com/protocolbuffers/upb/issues/503): currently
         # this includes the unit tests.  We should filter these out so we are
         # only distributing true source files.
