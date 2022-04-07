@@ -18,7 +18,7 @@ def limited_api_download(version, sha256):
         sha256 = sha256,
         build_file_content = limited_api_build_file.format(version),
         patch_cmds = [
-            "echo \#define SIZEOF_WCHAR_T 4 > Python-{}/Include/pyconfig.h"
+            "echo '#define SIZEOF_WCHAR_T 4' > Python-{}/Include/pyconfig.h"
             .format(version)]
     )
 

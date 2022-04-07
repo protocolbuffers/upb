@@ -5,7 +5,9 @@ load("@rules_python//python:packaging.bzl", "py_wheel")
 def _get_suffix(limited_api, python_version, cpu):
     suffix = "pyd" if ("win" in cpu) else "so"
 
-    if limited_api == False:
+    if limited_api == True:
+        if "win" not in cpu:
+            suffix = "abi3." + suffix 
         return "." + suffix
 
     if "win" in cpu:
@@ -14,16 +16,8 @@ def _get_suffix(limited_api, python_version, cpu):
         elif "win64" in cpu:
             abi = "win_amd64"
         return ".cp{}-{}.{}".format(python_version, abi, suffix)
-
-    abis = {
-        "osx-x86_64": "darwin",
-        "osx-aarch_64": "darwin",
-        "linux-aarch_64": "aarch64-linux-gnu",
-        "linux-x86_64": "x86_64-linux-gnu",
-        "k8": "x86_64-linux-gnu",
-    }
-
-    return ".cpython-{}-{}.{}".format(python_version, abis[cpu], suffix)
+    
+    fail("Unsupported combination of flags")
 
 def _py_dist_module_impl(ctx):
     base_filename = ctx.attr.module_name.replace(".", "/")

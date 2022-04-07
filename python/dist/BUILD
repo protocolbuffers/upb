@@ -24,7 +24,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # begin:github_only
-#load("//bazel:py_proto_library.bzl", "py_proto_library")
+load("//bazel:py_proto_library.bzl", "py_proto_library")
 load(":dist.bzl", "py_dist_module", "py_dist")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
