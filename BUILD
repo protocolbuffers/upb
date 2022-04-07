@@ -46,10 +46,15 @@ load(
 
 licenses(["notice"])
 
-exports_files([
-    "LICENSE",
-    "build_defs",
-])
+exports_files(["LICENSE"])
+
+exports_files(
+    [
+        "BUILD",
+        "WORKSPACE",
+    ],
+    visibility = ["//cmake:__pkg__"],
+)
 
 config_setting(
     name = "windows",
@@ -294,6 +299,7 @@ cc_test(
     srcs = ["upb/test_generated_code.cc"],
     deps = [
         ":empty_upbdefs_proto",
+        ":test_messages_proto2_proto_upb",
         ":test_messages_proto3_proto_upb",
         ":test_upb_proto",
         ":upb",
@@ -322,6 +328,12 @@ upb_proto_reflection_library(
     name = "empty_upbdefs_proto",
     testonly = 1,
     deps = [":empty_proto"],
+)
+
+upb_proto_library(
+    name = "test_messages_proto2_proto_upb",
+    testonly = 1,
+    deps = ["@com_google_protobuf//:test_messages_proto2_proto"],
 )
 
 upb_proto_library(
@@ -615,15 +627,6 @@ cc_library(
     hdrs = ["ruby-upb.h"],
     copts = UPB_DEFAULT_COPTS,
     deps = ["//third_party/utf8_range"],
-)
-
-exports_files(
-    [
-        "upb/json/parser.rl",
-        "BUILD",
-        "WORKSPACE",
-    ],
-    visibility = ["//cmake:__pkg__"],
 )
 
 exports_files(
