@@ -103,6 +103,7 @@ py_wheel(
         ":osx-x86_64_cpu": "macosx_10_9_universal",
         ":win32_cpu": "win32",
         ":win64_cpu": "win_amd64",
+        "//conditions:default": "any",
     }),
     python_tag = selects.with_or({
         ("//python:limited_api_3.7", "//python:full_api_3.7"): "cp37",
