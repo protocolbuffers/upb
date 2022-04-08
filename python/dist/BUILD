@@ -110,6 +110,7 @@ py_wheel(
         "//python:full_api_3.8": "cp38",
         "//python:full_api_3.9": "cp39",
         "//python:limited_api_3.10": "cp310",
+        "//conditions:default": "system",
     }),
     strip_path_prefixes = ["python/"],
     version = PROTOBUF_VERSION,
