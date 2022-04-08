@@ -44,7 +44,7 @@ bool_flag(
 string_flag(
     name = "python_version",
     values = ["system", "37", "38", "39", "310"],
-    build_setting_default = "none",
+    build_setting_default = "system",
 )
 
 config_setting(
