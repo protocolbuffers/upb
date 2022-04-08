@@ -126,13 +126,13 @@ py_wheel(
 py_dist(
     name = "dist",
     binary_wheel = ":binary_wheel",
+    # Limited API: these wheels will satisfy any Python version >= the
+    # given version.
+    #
+    # Technically the limited API doesn't have the functions we need until
+    # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
+    # details).
     limited_api_wheels = {
-        # Limited API: these wheels will satisfy any Python version >= the
-        # given version.
-        #
-        # Technically the limited API doesn't have the functions we need until
-        # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
-        # details).
         "win32": "310",
         "win64": "310",
         "linux-x86_64": "37",
