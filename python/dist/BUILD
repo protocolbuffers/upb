@@ -24,7 +24,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # begin:github_only
-#load("//bazel:py_proto_library.bzl", "py_proto_library")
+load("//bazel:py_proto_library.bzl", "py_proto_library")
 load(":dist.bzl", "py_dist_module", "py_dist")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
@@ -123,33 +123,24 @@ py_wheel(
     ],
 )
 
-# py_dist(
-#     name = "dist",
-#     distribution = "protobuf",
-#     extension_modules = [
-#         ":api_implementation_mod",
-#         ":message_mod",
-#     ],
-#     pure_python_modules = [
-#         ":well_known_proto_py_pb2",
-#         # TODO(https://github.com/protocolbuffers/upb/issues/503): currently
-#         # this includes the unit tests.  We should filter these out so we are
-#         # only distributing true source files.
-#         "@com_google_protobuf//:python_srcs",
-#     ],
-#     binary_wheels = [
-#         # Limited API: these wheels will satisfy any Python version >= the
-#         # given version.
-#         #
-#         # Technically the limited API doesn't have the functions we need until
-#         # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
-#         # details).
-#         ("3.10", "3.10", "win32"),
-#         ("3.10", "3.10", "win64"),
-#         ("3.7", "3.7", "linux-x86_64"),
-#         ("3.7", "3.7", "linux-aarch_64"),
-#         # Windows needs version-specific wheels until 3.10.
-#     ] + cross_product(["3.7", "3.8", "3.9"], ["win32", "win64"]),
-# )
+py_dist(
+    name = "dist",
+    binary_wheel = ":binary_wheel",
+    limited_api_wheels = {
+        # Limited API: these wheels will satisfy any Python version >= the
+        # given version.
+        #
+        # Technically the limited API doesn't have the functions we need until
+        # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
+        # details).
+        "win32": "310",
+        "win64": "310",
+        "linux-x86_64": "37",
+        "linux-aarch_64": "37",
+    },
+    # Windows needs version-specific wheels until 3.10.
+    full_api_versions = ["37", "38", "39"],
+    full_api_cpus = ["win32", "win64"],
+)
 
 # end:github_only

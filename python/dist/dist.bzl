@@ -79,51 +79,57 @@ def py_dist_module(name, module_name, extension):
         imports = ["."],
     )
 
-def py_dist(name, distribution, extension_modules, pure_python_modules, binary_wheels):
-    pass
-    py_wheel(
-        name = "binary_wheel",
-        abi = "abi3",
-        distribution = distribution,
-        # TODO(https://github.com/protocolbuffers/upb/issues/502): we need to make
-        # this a select() that is calculated from the platform we are actually
-        # building on.
-        platform = select({
-            ":x86_64_cpu": "manylinux2014_x86_64",
-            ":aarch64_cpu": "manylinux2014_aarch64",
-            ":win32_cpu": "win32",
-            ":win64_cpu": "win_amd64",
-        }),
-        python_tag = "cp37",
-        strip_path_prefixes = ["python/"],
-        version = "4.20.0",
-    )
 
-# py_dist(
-#     name = "dist",
-#     distribution = "protobuf",
-#     extension_modules = [
-#         ":api_implementation_mod",
-#         ":message_mod",
-#     ],
-#     pure_python_modules = [
-#         ":well_known_proto_py_pb2",
-#         # TODO(https://github.com/protocolbuffers/upb/issues/503): currently
-#         # this includes the unit tests.  We should filter these out so we are
-#         # only distributing true source files.
-#         "@com_google_protobuf//:python_srcs",
-#     ],
-#     binary_wheels = [
-#         # Limited API: these wheels will satisfy any Python version >= the
-#         # given version.
-#         #
-#         # Technically the limited API doesn't have the functions we need until
-#         # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
-#         # details).
-#         ("3.10", "3.10", "win32"),
-#         ("3.10", "3.10", "win64"),
-#         ("3.7", "3.7", "linux-x86_64"),
-#         ("3.7", "3.7", "linux-aarch_64"),
-#         # Windows needs version-specific wheels until 3.10.
-#     ] + cross_product(["3.7", "3.8", "3.9"], ["win32", "win64"]),
-# )
+def _py_dist_transition_impl(settings, attr):
+    _ignore = (settings)
+    transitions = []
+
+    for cpu, version in attr.limited_api_wheels.items():
+        transitions.append({
+            "//command_line_option:cpu": cpu,
+            "//python:python_version": version,
+            "//python:limited_api": True,
+        })
+
+    for version in attr.full_api_versions:
+        for cpu in attr.full_api_cpus:
+            transitions.append({
+                "//command_line_option:cpu": cpu,
+                "//python:python_version": version,
+                "//python:limited_api": False,
+            })
+
+    return transitions
+
+_py_dist_transition = transition(
+    implementation = _py_dist_transition_impl,
+    inputs = [],
+    outputs = [
+        "//command_line_option:cpu",
+        "//python:python_version",
+        "//python:limited_api",
+    ]
+)
+
+def _py_dist_impl(ctx):
+    return [
+        DefaultInfo(files = depset(
+            transitive = [dep[DefaultInfo].files for dep in ctx.attr.binary_wheel],
+        )),
+    ]
+
+py_dist = rule(
+    implementation = _py_dist_impl,
+    attrs = {
+        "binary_wheel": attr.label(
+            mandatory = True,
+            cfg = _py_dist_transition,
+        ),
+        "limited_api_wheels": attr.string_dict(),
+        "full_api_versions": attr.string_list(),
+        "full_api_cpus": attr.string_list(),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
+        ),
+    }
+)
