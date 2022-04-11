@@ -190,6 +190,22 @@ py_extension(
     ],
 )
 
+EXT_SUFFIX = ".abi3.so"
+
+filegroup(
+    name = "extension_files",
+    srcs = [
+        "google/protobuf/pyext/_message" + EXT_SUFFIX,
+        "google/protobuf/internal/_api_implementation" + EXT_SUFFIX,
+    ],
+)
+
+py_library(
+    name = "message_ext",
+    data = [":extension_files"],
+    imports = ["."],
+    visibility = ["//python:__subpackages__"],
+)
 # begin:github_only
 
 py_test(
