@@ -10,7 +10,7 @@ def _get_suffix(limited_api, python_version, cpu):
             suffix = "abi3." + suffix 
         return "." + suffix
 
-    if "win" in cpu:
+    if "win32" in cpu or "win64" in cpu:
         if "win32" in cpu:
             abi = "win32"
         elif "win64" in cpu:
@@ -22,6 +22,7 @@ def _get_suffix(limited_api, python_version, cpu):
     if python_version == "system":
         python_version = "@system_python//:PYTHON_VERSION"
         abis = {
+            "darwin": "darwin",
             "osx-x86_64": "darwin",
             "osx-aarch_64": "darwin",
             "linux-aarch_64": "aarch64-linux-gnu",
