@@ -11,9 +11,9 @@ def _get_suffix(limited_api, python_version, cpu):
         return "." + suffix
 
     if "win" in cpu:
-        if "win32" in cpu:
+        if "32" in cpu:
             abi = "win32"
-        elif "win64" in cpu:
+        elif "64" in cpu:
             abi = "win_amd64"
         else:
             fail("Unsupported CPU")
