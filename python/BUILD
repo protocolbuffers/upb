@@ -166,7 +166,7 @@ py_extension(
         "message.h",
         "protobuf.c",
         "protobuf.h",
-        "python.h",
+        "python_api.h",
         "repeated.c",
         "repeated.h",
     ],
@@ -186,7 +186,7 @@ py_extension(
     name = "_api_implementation",
     srcs = [
         "api_implementation.c",
-        "python.h",
+        "python_api.h",
     ],
 )
 

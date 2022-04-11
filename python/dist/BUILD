@@ -132,7 +132,7 @@ py_dist(
     # given version.
     #
     # Technically the limited API doesn't have the functions we need until
-    # 3.10, but on Linux we can get away with using 3.7 (see ../python.h for
+    # 3.10, but on Linux we can get away with using 3.7 (see ../python_api.h for
     # details).
     limited_api_wheels = {
         "win32": "310",
