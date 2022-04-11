@@ -192,6 +192,21 @@ py_extension(
 
 EXT_SUFFIX = ".abi3.so"
 
+genrule(
+    name = "copy_message",
+    srcs = [":_message"],
+    outs = ["google/protobuf/pyext/_message" + EXT_SUFFIX],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "copy_api_implementation",
+    srcs = [":_api_implementation"],
+    outs = ["google/protobuf/internal/_api_implementation" + EXT_SUFFIX],
+    cmd = "cp $< $@",
+    visibility = ["//python:__subpackages__"],
+)
+
 filegroup(
     name = "extension_files",
     srcs = [
