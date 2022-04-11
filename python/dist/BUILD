@@ -143,6 +143,7 @@ py_dist(
     # Windows needs version-specific wheels until 3.10.
     full_api_versions = ["37", "38", "39"],
     full_api_cpus = ["win32", "win64"],
+    tags = ["manual"],
 )
 
 # end:github_only

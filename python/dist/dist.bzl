@@ -16,6 +16,18 @@ def _get_suffix(limited_api, python_version, cpu):
         elif "win64" in cpu:
             abi = "win_amd64"
         return ".cp{}-{}.{}".format(python_version, abi, suffix)
+
+    if python_version == "system":
+        python_version = "@system_python//:PYTHON_VERSION"
+        abis = {
+            "osx-x86_64": "darwin",
+            "osx-aarch_64": "darwin",
+            "linux-aarch_64": "aarch64-linux-gnu",
+            "linux-x86_64": "x86_64-linux-gnu",
+            "k8": "x86_64-linux-gnu",
+        }
+
+        return ".cpython-{}-{}.{}".format(python_version, abis[cpu], suffix)
     
     fail("Unsupported combination of flags")
 
@@ -125,5 +137,5 @@ py_dist = rule(
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist"
         ),
-    }
+    },
 )

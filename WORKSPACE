@@ -3,7 +3,7 @@ workspace(name = "upb")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("//bazel:python_downloads.bzl", "full_api_download", "limited_api_download", "nuget_download")
 load("//bazel:workspace_deps.bzl", "upb_deps")
-load("//bazel:workspace_defs.bzl", "system_python")
+load("//bazel:system_python.bzl", "system_python")
 
 upb_deps()
 
