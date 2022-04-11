@@ -234,6 +234,15 @@ class WorkspaceFileFunctions(object):
   def register_toolchains(self, toolchain):
     pass
 
+  def limited_api_download(self, **kwargs):
+    pass
+
+  def full_api_download(self, **kwargs):
+    pass
+
+  def nuget_download(self, **kwargs):
+    pass
+
 
 class Converter(object):
   def __init__(self):
