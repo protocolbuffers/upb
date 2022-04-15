@@ -42,14 +42,26 @@ namespace {
 
 // Proto Field numbers used for reflective access.
 const uint32_t kFieldOptionalInt32 = 1;
+const uint32_t kFieldOptionalInt64 = 2;
+const uint32_t kFieldOptionalUInt32 = 3;
+const uint32_t kFieldOptionalUInt64 = 4;
 const uint32_t kFieldOptionalBool = 13;
 const uint32_t kFieldOptionalString = 14;
 const uint32_t kFieldOptionalNestedMessage = 18;
+const uint32_t kFieldOptionalRepeatedInt32 = 31;
+const uint32_t kFieldOptionalNestedMessageA = 1;
 const uint32_t kFieldOptionalOneOfUInt32 = 111;
 const uint32_t kFieldOptionalOneOfString = 113;
 
-const char kTestStr1[] = "Hello";
+const char kTestStr1[] = "Hello1";
+const char kTestStr2[] = "Hello2";
 const int32_t kTestInt32 = 567;
+const int32_t kTestUInt32 = 0xF1234567;
+
+const upb_MiniTable_Field* find_proto3_field(int field_number) {
+  return upb_MiniTable_FindFieldByNumber(
+      &protobuf_test_messages_proto3_TestAllTypesProto3_msginit, field_number);
+}
 
 const upb_MiniTable_Field* find_proto2_field(int field_number) {
   return upb_MiniTable_FindFieldByNumber(
@@ -148,7 +160,163 @@ TEST(GeneratedCode, ScalarsProto2) {
       kTestInt32,
       protobuf_test_messages_proto2_TestAllTypesProto2_optional_int32(msg));
 
+  const upb_MiniTable_Field* optional_uint32_field =
+      find_proto2_field(kFieldOptionalUInt32);
+
+  EXPECT_EQ(
+      0, protobuf_test_messages_proto2_TestAllTypesProto2_optional_uint32(msg));
+  EXPECT_EQ(0, upb_MiniTable_GetUInt32(msg, optional_uint32_field));
+  upb_MiniTable_SetUInt32(msg, optional_uint32_field, kTestUInt32);
+  EXPECT_EQ(kTestUInt32, upb_MiniTable_GetUInt32(msg, optional_uint32_field));
+  EXPECT_EQ(
+      kTestUInt32,
+      protobuf_test_messages_proto2_TestAllTypesProto2_optional_uint32(msg));
+
   upb_Arena_Free(arena);
+}
+
+TEST(GeneratedCode, Strings) {
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto2_TestAllTypesProto2* msg =
+      protobuf_test_messages_proto2_TestAllTypesProto2_new(arena);
+
+  const upb_MiniTable_Field* optional_string_field =
+      find_proto2_field(kFieldOptionalString);
+
+  // Test default.
+  EXPECT_EQ(false, upb_MiniTable_HasField(msg, optional_string_field));
+  // Test read after write using C.
+  protobuf_test_messages_proto2_TestAllTypesProto2_set_optional_string(
+      msg, upb_StringView_FromString(kTestStr1));
+  EXPECT_EQ(true, upb_MiniTable_HasField(msg, optional_string_field));
+  upb_StringView value = upb_MiniTable_GetString(msg, optional_string_field);
+  std::string read_value = std::string(value.data, value.size);
+  EXPECT_EQ(kTestStr1, read_value);
+  // Clear.
+  upb_MiniTable_ClearField(msg, optional_string_field);
+  EXPECT_EQ(false, upb_MiniTable_HasField(msg, optional_string_field));
+  EXPECT_EQ(
+      false,
+      protobuf_test_messages_proto2_TestAllTypesProto2_has_optional_string(
+          msg));
+  upb_MiniTable_SetString(msg, optional_string_field,
+                          upb_StringView_FromString(kTestStr2));
+  EXPECT_EQ(true, upb_MiniTable_HasField(msg, optional_string_field));
+  EXPECT_EQ(
+      true,
+      protobuf_test_messages_proto2_TestAllTypesProto2_has_optional_string(
+          msg));
+  value = protobuf_test_messages_proto2_TestAllTypesProto2_optional_string(msg);
+  read_value = std::string(value.data, value.size);
+  EXPECT_EQ(kTestStr2, read_value);
+
+  upb_Arena_Free(arena);
+}
+
+TEST(GeneratedCode, SubMessage) {
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto2_TestAllTypesProto2* msg =
+      protobuf_test_messages_proto2_TestAllTypesProto2_new(arena);
+
+  const upb_MiniTable_Field* optional_message_field =
+      find_proto2_field(kFieldOptionalNestedMessage);
+
+  const upb_Message* test_message =
+      upb_MiniTable_GetMessage(msg, optional_message_field);
+  EXPECT_EQ(NULL, test_message);
+
+  EXPECT_EQ(false, upb_MiniTable_HasField(msg, optional_message_field));
+
+  // Get mutable using C API.
+  protobuf_test_messages_proto2_TestAllTypesProto2_NestedMessage* nested_message =
+      protobuf_test_messages_proto2_TestAllTypesProto2_mutable_optional_nested_message(
+          msg, arena);
+  EXPECT_EQ(true, nested_message != nullptr);
+  EXPECT_EQ(true, upb_MiniTable_HasField(msg, optional_message_field));
+  protobuf_test_messages_proto2_TestAllTypesProto2_NestedMessage_set_a(
+      nested_message, 5);
+
+  // Read back using mini table API.
+  const upb_Message* sub_message =
+      upb_MiniTable_GetMessage(msg, optional_message_field);
+  EXPECT_EQ(true, sub_message != NULL);
+
+  const upb_MiniTable_Field* nested_message_a_field =
+      upb_MiniTable_FindFieldByNumber(
+          &protobuf_test_messages_proto2_TestAllTypesProto2_NestedMessage_msginit,
+          kFieldOptionalNestedMessageA);
+  EXPECT_EQ(5, upb_MiniTable_GetInt32(sub_message, nested_message_a_field));
+
+  upb_MiniTable_ClearField(msg, optional_message_field);
+  EXPECT_EQ(
+      NULL,
+      protobuf_test_messages_proto2_TestAllTypesProto2_optional_nested_message(
+          msg));
+  EXPECT_EQ(false, upb_MiniTable_HasField(msg, optional_message_field));
+
+  upb_Message* new_nested_message =
+      protobuf_test_messages_proto2_TestAllTypesProto2_NestedMessage_new(arena);
+  upb_MiniTable_SetInt32(new_nested_message, nested_message_a_field, 123);
+  upb_MiniTable_SetMessage(msg, optional_message_field, new_nested_message);
+
+  upb_Message* mutable_message = upb_MiniTable_GetMutableMessage(
+      msg, &protobuf_test_messages_proto2_TestAllTypesProto2_msginit,
+      optional_message_field, arena);
+  EXPECT_EQ(
+      true,
+      protobuf_test_messages_proto2_TestAllTypesProto2_optional_nested_message(
+          msg) != NULL);
+  EXPECT_EQ(true, upb_MiniTable_HasField(msg, optional_message_field));
+  EXPECT_EQ(123,
+            upb_MiniTable_GetInt32(mutable_message, nested_message_a_field));
+}
+
+TEST(GeneratedCode, RepeatedScalar) {
+  upb_Arena* arena = upb_Arena_New();
+  protobuf_test_messages_proto2_TestAllTypesProto2* msg =
+      protobuf_test_messages_proto2_TestAllTypesProto2_new(arena);
+
+  const upb_MiniTable_Field* repeated_int32_field =
+      find_proto2_field(kFieldOptionalRepeatedInt32);
+
+  size_t len;
+  const int32_t* arr =
+      protobuf_test_messages_proto2_TestAllTypesProto2_repeated_int32(msg,
+                                                                      &len);
+  // Test Get/Set Array values, validate with C API.
+  EXPECT_EQ(0, len);
+  EXPECT_EQ(NULL, arr);
+  EXPECT_EQ(NULL, upb_MiniTable_GetArray(msg, repeated_int32_field));
+  protobuf_test_messages_proto2_TestAllTypesProto2_resize_repeated_int32(
+      msg, 10, arena);
+  int32_t* mutable_values =
+      protobuf_test_messages_proto2_TestAllTypesProto2_mutable_repeated_int32(
+          msg, &len);
+  mutable_values[5] = 123;
+  EXPECT_EQ(123, upb_MiniTable_GetArrayValue(
+                     upb_MiniTable_GetArray(msg, repeated_int32_field), 5)
+                     .int32_val);
+  upb_FieldValue new_value;
+  new_value.int32_val = 567;
+  upb_MiniTable_SetArrayValue(upb_MiniTable_GetArray(msg, repeated_int32_field),
+                              5, &new_value);
+  EXPECT_EQ(new_value.int32_val,
+            protobuf_test_messages_proto2_TestAllTypesProto2_repeated_int32(
+                msg, &len)[5]);
+
+  // Test resize.
+  upb_MiniTable_ResizeArray(msg, repeated_int32_field, 20, arena);
+  upb_MiniTable_SetArrayValue(upb_MiniTable_GetArray(msg, repeated_int32_field),
+                              19, &new_value);
+  EXPECT_EQ(new_value.int32_val,
+            protobuf_test_messages_proto2_TestAllTypesProto2_repeated_int32(
+                msg, &len)[19]);
+  upb_MiniTable_ResizeArray(msg, repeated_int32_field, 0, arena);
+  const int32_t* zero_length_array =
+      protobuf_test_messages_proto2_TestAllTypesProto2_repeated_int32(msg,
+                                                                      &len);
+  EXPECT_EQ(0, len);
+  EXPECT_EQ(true, zero_length_array != NULL);
 }
 
 }  // namespace
