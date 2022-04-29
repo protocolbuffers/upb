@@ -74,7 +74,7 @@ jobs:
         run: python -c 'from google._upb import _message; assert "google._upb._message.MessageMeta" in str(_message.MessageMeta)'
       - name: Run the unit tests
         run: |
-          TESTS=$(pip show -f protobuftests | grep pb_unit_tests.*py$ | sed 's,/,.,g' | sed -E 's,.py$,,g')
+          TESTS=$(pip show -f protobuftests | grep pb_unit_tests.*py$ | sed 's,/,.,g' | sed 's,\\,.,g' | sed -E 's,.py$,,g')
           for test in $TESTS; do
             python -m unittest -v $test
           done
