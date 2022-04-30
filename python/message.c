@@ -686,8 +686,12 @@ static PyObject* PyUpb_CMessage_ToString(PyUpb_CMessage* self) {
   } else {
     char* buf2 = malloc(size + 1);
     size_t size2 = upb_TextEncode(msg, msgdef, symtab, options, buf2, size + 1);
-    assert(size == size2);
-    PyObject* ret = PyUnicode_FromStringAndSize(buf2, size2);
+    //assert(size == size2);
+    if (size != size2) {
+      fprintf(stderr, "Size mismatch: %zu vs %zu\n", size, size2);
+      fprintf(stderr, "Contents: %.*s\n", (int)Py_MIN(size, size2), buf2);
+    }
+    PyObject* ret = PyUnicode_FromStringAndSize(buf2, Py_MIN(size, size2));
     free(buf2);
     return ret;
   }
