@@ -9,13 +9,12 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  DOCKER_IMAGE: gcr.io/protobuf-build/bazel/linux@sha256:05a41edee21f620445ca01c46b9d33be2e4d06c3d8adced4341ac5abea754baa
-
 jobs:
   build_wheels:
     name: Build Wheels
     runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: gcr.io/protobuf-build/bazel/linux@sha256:05a41edee21f620445ca01c46b9d33be2e4d06c3d8adced4341ac5abea754baa
 
     steps:
       - name: Set up Cloud SDK
@@ -32,7 +31,7 @@ jobs:
         run: docker pull $DOCKER_IMAGE
       - uses: actions/checkout@v2
       - name: Build Wheels
-        run: cd ${{ github.workspace }} && docker run -v$PWD:/workspace $DOCKER_IMAGE build --crosstool_top=@com_google_protobuf//toolchain:clang_suite --symlink_prefix=/ -c opt python/dist python/dist:test_wheel
+        run: cd ${{ github.workspace }} && docker run -v$PWD:/workspace $DOCKER_IMAGE build --crosstool_top=@com_google_protobuf//toolchain:clang_suite --symlink_prefix=/ -c dbg python/dist python/dist:test_wheel
       - name: Move Wheels
         run: mkdir wheels && find _build/out -name 'protobuf*.whl' -exec mv '{}' wheels ';'
       - uses: actions/upload-artifact@v3

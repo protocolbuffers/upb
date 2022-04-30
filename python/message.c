@@ -684,14 +684,18 @@ static PyObject* PyUpb_CMessage_ToString(PyUpb_CMessage* self) {
   if (size < sizeof(buf)) {
     return PyUnicode_FromStringAndSize(buf, size);
   } else {
-    char* buf2 = malloc(size + 1);
-    size_t size2 = upb_TextEncode(msg, msgdef, symtab, options, buf2, size + 1);
-    //assert(size == size2);
-    if (size != size2) {
-      fprintf(stderr, "Size mismatch: %zu vs %zu\n", size, size2);
-      fprintf(stderr, "Contents: %.*s\n", (int)Py_MIN(size, size2), buf2);
+    size_t buf2_size = 0;
+    char* buf2 = NULL;
+    // This shouldn't need to be a loop -- the first call should be enough to
+    // tell us the ultimate size of the buffer -- but snprintf() on Windows
+    // appears to have a bug that underreports the true size when the buffer
+    // is too small.
+    while (buf2_size <= size) {
+      buf2_size = size + 1;
+      buf2 = realloc(buf2, buf2_size);
+      size = upb_TextEncode(msg, msgdef, symtab, options, buf2, buf2_size);
     }
-    PyObject* ret = PyUnicode_FromStringAndSize(buf2, Py_MIN(size, size2));
+    PyObject* ret = PyUnicode_FromStringAndSize(buf2, size);
     free(buf2);
     return ret;
   }
