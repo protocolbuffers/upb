@@ -22,7 +22,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
           export_environment_variables: true
-          create_credentials_file: false
 
       - name: Use gcloud CLI
         run: gcloud info
