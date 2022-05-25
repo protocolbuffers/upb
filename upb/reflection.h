@@ -44,7 +44,7 @@ upb_MessageValue upb_FieldDef_Default(const upb_FieldDef* f);
  * *******************************************************************/
 
 /* Creates a new message of the given type in the given arena. */
-upb_Message* upb_Message_New(const upb_MessageDef* m, upb_Arena* a);
+UPB_API upb_Message* upb_Message_New(const upb_MessageDef* m, upb_Arena* a);
 
 /* Returns the value associated with this field. */
 upb_MessageValue upb_Message_Get(const upb_Message* msg, const upb_FieldDef* f);

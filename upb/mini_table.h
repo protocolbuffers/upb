@@ -138,18 +138,21 @@ typedef enum {
 // errors occur, returns NULL and sets a status message. In the success case,
 // the caller must call upb_MiniTable_SetSub*() for all message or proto2 enum
 // fields to link the table to the appropriate sub-tables.
-upb_MiniTable* upb_MiniTable_Build(const char* data, size_t len,
-                                   upb_MiniTablePlatform platform,
-                                   upb_Arena* arena, upb_Status* status);
-void upb_MiniTable_SetSubMessage(upb_MiniTable* table,
-                                 upb_MiniTable_Field* field,
-                                 const upb_MiniTable* sub);
-void upb_MiniTable_SetSubEnum(upb_MiniTable* table, upb_MiniTable_Field* field,
-                              const upb_MiniTable_Enum* sub);
+UPB_API upb_MiniTable* upb_MiniTable_Build(const char* data, size_t len,
+                                           upb_MiniTablePlatform platform,
+                                           upb_Arena* arena,
+                                           upb_Status* status);
+UPB_API void upb_MiniTable_SetSubMessage(upb_MiniTable* table,
+                                         upb_MiniTable_Field* field,
+                                         const upb_MiniTable* sub);
+UPB_API void upb_MiniTable_SetSubEnum(upb_MiniTable* table,
+                                      upb_MiniTable_Field* field,
+                                      const upb_MiniTable_Enum* sub);
 
-bool upb_MiniTable_BuildExtension(const char* data, size_t len,
-                                  upb_MiniTable_Extension* ext,
-                                  upb_MiniTable_Sub sub, upb_Status* status);
+UPB_API bool upb_MiniTable_BuildExtension(const char* data, size_t len,
+                                          upb_MiniTable_Extension* ext,
+                                          upb_MiniTable_Sub sub,
+                                          upb_Status* status);
 
 // Special-case functions for MessageSet layout and map entries.
 upb_MiniTable* upb_MiniTable_BuildMessageSet(upb_MiniTablePlatform platform,

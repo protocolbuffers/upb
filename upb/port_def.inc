@@ -80,12 +80,14 @@
 #define UPB_MAPTYPE_STRING 0
 
 /* UPB_INLINE: inline if possible, emit standalone code if required. */
+#ifndef UPB_INLINE
 #ifdef __cplusplus
 #define UPB_INLINE inline
 #elif defined (__GNUC__) || defined(__clang__)
 #define UPB_INLINE static __inline__
 #else
 #define UPB_INLINE static
+#endif
 #endif
 
 #define UPB_MALLOC_ALIGN 8
@@ -228,6 +230,12 @@
 #endif
 
 #undef UPB_FASTTABLE_SUPPORTED
+
+#ifdef UPB_BUILD_FFI_SO
+#define UPB_API __attribute__((visibility("default"))) __attribute__((used))
+#else
+#define UPB_API
+#endif
 
 /* ASAN poisoning (for arena) *************************************************/
 

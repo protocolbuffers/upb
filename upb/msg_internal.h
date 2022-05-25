@@ -284,7 +284,7 @@ UPB_INLINE upb_Message* _upb_Message_New_inl(const upb_MiniTable* l,
 }
 
 /* Creates a new messages with the given layout on the given arena. */
-upb_Message* _upb_Message_New(const upb_MiniTable* l, upb_Arena* a);
+UPB_API upb_Message* _upb_Message_New(const upb_MiniTable* l, upb_Arena* a);
 
 UPB_INLINE upb_Message_Internal* upb_Message_Getinternal(upb_Message* msg) {
   ptrdiff_t size = sizeof(upb_Message_Internal);

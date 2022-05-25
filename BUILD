@@ -84,6 +84,36 @@ package_group(
     packages = [],
 )
 
+cc_binary(
+    name = "upb_ffi",
+    # TODO: generate source list with an aspect
+    srcs = [
+        "upb/decode.c",
+        "upb/decode.h",
+        "upb/decode_internal.h",
+        "upb/encode.c",
+        "upb/encode.h",
+        "upb/export_inline.c",
+        "upb/mini_table.c",
+        "upb/mini_table.h",
+        "upb/msg.c",
+        "upb/msg.h",
+        "upb/msg_internal.h",
+        "upb/port_def.inc",
+        "upb/port_undef.inc",
+        "upb/table.c",
+        "upb/table_internal.h",
+        "upb/upb.c",
+        "upb/upb.h",
+        "upb/upb.hpp",
+        "upb/upb_internal.h",
+    ],
+    defines = ["UPB_BUILD_FFI_SO"],
+    linkshared = 1,
+    linkstatic = 1,
+    deps = ["//third_party/utf8_range"],
+)
+
 # Public C/C++ libraries #######################################################
 
 cc_library(
