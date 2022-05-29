@@ -275,6 +275,7 @@ char* upb_MtDataEncoder_StartOneof(upb_MtDataEncoder* e, char* ptr) {
     ptr = upb_MtDataEncoder_Put(
         e, ptr, upb_FromBase92(kUpb_EncodedValue_OneofSeparator));
   }
+  if (!ptr) return NULL;
   in->state.msg_state.oneof_state = kUpb_OneofState_StartedOneof;
   return ptr;
 }
@@ -289,6 +290,7 @@ char* upb_MtDataEncoder_PutOneofField(upb_MtDataEncoder* e, char* ptr,
   }
   ptr = upb_MtDataEncoder_PutBase92Varint(e, ptr, field_num, upb_ToBase92(0),
                                           upb_ToBase92(63));
+  if (!ptr) return NULL;
   in->state.msg_state.oneof_state = kUpb_OneofState_EmittedOneofField;
   return ptr;
 }
@@ -303,6 +305,7 @@ static char* upb_MtDataEncoder_FlushDenseEnumMask(upb_MtDataEncoder* e,
                                                   char* ptr) {
   upb_MtDataEncoderInternal* in = (upb_MtDataEncoderInternal*)e->internal;
   ptr = upb_MtDataEncoder_Put(e, ptr, in->state.enum_state.present_values_mask);
+  if (!ptr) return NULL;
   in->state.enum_state.present_values_mask = 0;
   in->state.enum_state.last_written_value += 5;
   return ptr;
@@ -322,6 +325,7 @@ char* upb_MtDataEncoder_PutEnumValue(upb_MtDataEncoder* e, char* ptr,
   if (delta >= 5) {
     ptr = upb_MtDataEncoder_PutBase92Varint(
         e, ptr, delta, kUpb_EncodedValue_MinSkip, kUpb_EncodedValue_MaxSkip);
+    if (!ptr) return NULL;
     in->state.enum_state.last_written_value += delta;
     delta = 0;
   }
