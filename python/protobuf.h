@@ -102,6 +102,7 @@ typedef struct {
   bool allow_oversize_protos;
   PyObject* wkt_bases;
   PyTypeObject* arena_type;
+  upb_Arena* obj_cache_arena;
   PyUpb_WeakMap* obj_cache;
 
   // From repeated.c
@@ -141,8 +142,7 @@ PyObject* PyUpb_GetWktBases(PyUpb_ModuleState* state);
 // remove itself from the map when it is destroyed. The map is weak so it does
 // not take references to the cached objects.
 
-PyUpb_WeakMap* PyUpb_WeakMap_New(void);
-void PyUpb_WeakMap_Free(PyUpb_WeakMap* map);
+PyUpb_WeakMap* PyUpb_WeakMap_New(upb_Arena* arena);
 
 // Adds the given object to the map, indexed by the given key.
 void PyUpb_WeakMap_Add(PyUpb_WeakMap* map, const void* key, PyObject* py_obj);
@@ -185,6 +185,10 @@ PyUpb_WeakMap* PyUpb_ObjCache_Instance(void);
 
 PyObject* PyUpb_Arena_New(void);
 upb_Arena* PyUpb_Arena_Get(PyObject* arena);
+void PyUpb_Arena_ObjCacheAdd(PyObject* arena, const void* key,
+                             PyObject* py_obj);
+void PyUpb_Arena_ObjCacheDelete(PyObject* arena, const void* key);
+PyObject* PyUpb_Arena_ObjCacheGet(PyObject* arena, const void* key);
 
 // -----------------------------------------------------------------------------
 // Utilities

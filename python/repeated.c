@@ -114,7 +114,7 @@ void PyUpb_RepeatedContainer_Reify(PyObject* _self, upb_Array* arr) {
     upb_Arena* arena = PyUpb_Arena_Get(self->arena);
     arr = upb_Array_New(arena, upb_FieldDef_CType(f));
   }
-  PyUpb_ObjCache_Add(arr, &self->ob_base);
+  PyUpb_Arena_ObjCacheAdd(self->arena, arr, &self->ob_base);
   Py_DECREF(self->ptr.parent);
   self->ptr.arr = arr;  // Overwrites self->ptr.parent.
   self->field &= ~(uintptr_t)1;
@@ -137,14 +137,14 @@ upb_Array* PyUpb_RepeatedContainer_EnsureReified(PyObject* _self) {
 
 static void PyUpb_RepeatedContainer_Dealloc(PyObject* _self) {
   PyUpb_RepeatedContainer* self = (PyUpb_RepeatedContainer*)_self;
-  Py_DECREF(self->arena);
   if (PyUpb_RepeatedContainer_IsStub(self)) {
     PyUpb_Message_CacheDelete(self->ptr.parent,
                               PyUpb_RepeatedContainer_GetField(self));
     Py_DECREF(self->ptr.parent);
   } else {
-    PyUpb_ObjCache_Delete(self->ptr.arr);
+    PyUpb_Arena_ObjCacheDelete(self->arena, self->ptr.arr);
   }
+  Py_DECREF(self->arena);
   Py_DECREF(PyUpb_RepeatedContainer_GetFieldDescriptor(self));
   PyUpb_Dealloc(self);
 }
@@ -181,7 +181,7 @@ PyObject* PyUpb_RepeatedContainer_NewStub(PyObject* parent,
 PyObject* PyUpb_RepeatedContainer_GetOrCreateWrapper(upb_Array* arr,
                                                      const upb_FieldDef* f,
                                                      PyObject* arena) {
-  PyObject* ret = PyUpb_ObjCache_Get(arr);
+  PyObject* ret = PyUpb_Arena_ObjCacheGet(arena, arr);
   if (ret) return ret;
 
   PyTypeObject* cls = PyUpb_RepeatedContainer_GetClass(f);
@@ -191,7 +191,7 @@ PyObject* PyUpb_RepeatedContainer_GetOrCreateWrapper(upb_Array* arr,
   repeated->ptr.arr = arr;
   ret = &repeated->ob_base;
   Py_INCREF(arena);
-  PyUpb_ObjCache_Add(arr, ret);
+  PyUpb_Arena_ObjCacheAdd(arena, arr, ret);
   return ret;
 }
 
@@ -208,7 +208,7 @@ PyObject* PyUpb_RepeatedContainer_DeepCopy(PyObject* _self, PyObject* value) {
   clone->field = (uintptr_t)PyUpb_FieldDescriptor_Get(f);
   clone->ptr.arr =
       upb_Array_New(PyUpb_Arena_Get(clone->arena), upb_FieldDef_CType(f));
-  PyUpb_ObjCache_Add(clone->ptr.arr, (PyObject*)clone);
+  PyUpb_Arena_ObjCacheAdd(clone->arena, clone->ptr.arr, (PyObject*)clone);
   PyObject* result = PyUpb_RepeatedContainer_MergeFrom((PyObject*)clone, _self);
   if (!result) {
     Py_DECREF(clone);

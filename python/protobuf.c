@@ -38,7 +38,7 @@
 
 static void PyUpb_ModuleDealloc(void* module) {
   PyUpb_ModuleState* s = PyModule_GetState(module);
-  PyUpb_WeakMap_Free(s->obj_cache);
+  upb_Arena_Free(s->obj_cache_arena);
   if (s->c_descriptor_symtab) {
     upb_DefPool_Free(s->c_descriptor_symtab);
   }
@@ -121,8 +121,7 @@ struct PyUpb_WeakMap {
   upb_Arena* arena;
 };
 
-PyUpb_WeakMap* PyUpb_WeakMap_New(void) {
-  upb_Arena* arena = upb_Arena_New();
+PyUpb_WeakMap* PyUpb_WeakMap_New(upb_Arena* arena) {
   PyUpb_WeakMap* map = upb_Arena_Malloc(arena, sizeof(*map));
   map->arena = arena;
   upb_inttable_init(&map->table, map->arena);
@@ -219,12 +218,14 @@ PyObject* PyUpb_ObjCache_Get(const void* key) {
 typedef struct {
   PyObject_HEAD;
   upb_Arena* arena;
+  PyUpb_WeakMap* obj_cache;
 } PyUpb_Arena;
 
 PyObject* PyUpb_Arena_New(void) {
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
   PyUpb_Arena* arena = (void*)PyType_GenericAlloc(state->arena_type, 0);
   arena->arena = upb_Arena_New();
+  arena->obj_cache = PyUpb_WeakMap_New(arena->arena);
   return &arena->ob_base;
 }
 
@@ -235,6 +236,22 @@ static void PyUpb_Arena_Dealloc(PyObject* self) {
 
 upb_Arena* PyUpb_Arena_Get(PyObject* arena) {
   return ((PyUpb_Arena*)arena)->arena;
+}
+
+void PyUpb_Arena_ObjCacheAdd(PyObject* arena, const void* key,
+                             PyObject* py_obj) {
+  PyUpb_Arena* self = (PyUpb_Arena*)arena;
+  PyUpb_WeakMap_Add(self->obj_cache, key, py_obj);
+}
+
+void PyUpb_Arena_ObjCacheDelete(PyObject* arena, const void* key) {
+  PyUpb_Arena* self = (PyUpb_Arena*)arena;
+  PyUpb_WeakMap_Delete(self->obj_cache, key);
+}
+
+PyObject* PyUpb_Arena_ObjCacheGet(PyObject* arena, const void* key) {
+  PyUpb_Arena* self = (PyUpb_Arena*)arena;
+  return PyUpb_WeakMap_Get(self->obj_cache, key);
 }
 
 static PyType_Slot PyUpb_Arena_Slots[] = {
@@ -334,7 +351,8 @@ __attribute__((visibility("default"))) PyMODINIT_FUNC PyInit__message(void) {
 
   state->allow_oversize_protos = false;
   state->wkt_bases = NULL;
-  state->obj_cache = PyUpb_WeakMap_New();
+  state->obj_cache_arena = upb_Arena_New();
+  state->obj_cache = PyUpb_WeakMap_New(state->obj_cache_arena);
   state->c_descriptor_symtab = NULL;
 
   if (!PyUpb_InitDescriptorContainers(m) || !PyUpb_InitDescriptorPool(m) ||
