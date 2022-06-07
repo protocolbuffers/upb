@@ -1,54 +1,29 @@
---- BUILD.bazel
-+++ BUILD.bazel
-@@ -896,6 +896,10 @@ py_library(
-         [
-             "python/google/protobuf/**/*.py",
-         ],
-+        exclude = [
-+            "python/google/protobuf/internal/*_test.py",
-+            "python/google/protobuf/internal/test_util.py",
-+        ]
-     ),
-     imports = ["python"],
-     srcs_version = "PY2AND3",
-
---- python/google/protobuf/internal/test_util.py
-+++ python/google/protobuf/internal/test_util.py
-@@ -39,6 +39,7 @@ __author__ = 'robinson@google.com (Will Robinson)'
- import numbers
- import operator
- import os.path
-+import pathlib
+--- python/internal.bzl
++++ python/internal.bzl
+@@ -1,5 +1,11 @@
+ # Internal helpers for building the Python protobuf runtime.
  
- from google.protobuf import unittest_import_pb2
- from google.protobuf import unittest_pb2
-@@ -617,17 +618,22 @@ def ExpectAllFieldsSet(test_case, message):
-                           message.default_import_enum)
- 
- 
-+def _SearchUp(path, filename):
-+  path = pathlib.Path(path).resolve()
-+  for parent in [path] + list(path.parents):
-+    file_path = parent / ('src/google/protobuf/testdata/' + filename)
-+    if file_path.exists():
-+      # Found it.  Load the golden file from the testdata directory.
-+      return file_path.open('rb')
-+  return None
++def _remove_cross_repo_path(path):
++    components = path.split("/")
++    if components[0] == "..":
++        return "/".join(components[2:])
++    return path
 +
- def GoldenFile(filename):
-   """Finds the given golden file and returns a file object representing it."""
+ def _internal_copy_files_impl(ctx):
+     strip_prefix = ctx.attr.strip_prefix
+     if strip_prefix[-1] != "/":
+@@ -7,10 +13,11 @@ def _internal_copy_files_impl(ctx):
  
-   # Search up the directory tree looking for the C++ protobuf source code.
--  path = '.'
--  while os.path.exists(path):
--    if os.path.exists(os.path.join(path, 'src/google/protobuf')):
--      # Found it.  Load the golden file from the testdata directory.
--      full_path = os.path.join(path, 'src/google/protobuf/testdata', filename)
--      return open(full_path, 'rb')
--    path = os.path.join(path, '..')
-+  f = _SearchUp('.', filename) or _SearchUp(__file__, filename)
-+  if f:
-+      return f
+     src_dests = []
+     for src in ctx.files.srcs:
+-        if src.short_path[:len(strip_prefix)] != strip_prefix:
++        short_path = _remove_cross_repo_path(src.short_path)
++        if short_path[:len(strip_prefix)] != strip_prefix:
+             fail("Source does not start with %s: %s" %
+-                 (strip_prefix, src.short_path))
+-        dest = ctx.actions.declare_file(src.short_path[len(strip_prefix):])
++                 (strip_prefix, short_path))
++        dest = ctx.actions.declare_file(short_path[len(strip_prefix):])
+         src_dests.append([src, dest])
  
-   # Search internally.
-   path = '.'
+     if ctx.attr.is_windows:
