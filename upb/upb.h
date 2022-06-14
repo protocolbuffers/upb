@@ -51,6 +51,7 @@ extern "C" {
 
 typedef struct {
   bool ok;
+  bool _unused;
   char msg[_kUpb_Status_MaxMessage]; /* Error message; NULL-terminated. */
 } upb_Status;
 
