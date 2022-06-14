@@ -29,19 +29,7 @@
 
 #include "python/message.h"
 #include "python/protobuf.h"
-
-static const char* PyUpb_DecodeVarint(const char* ptr, const char* end,
-                                      uint64_t* val) {
-  *val = 0;
-  for (int i = 0; ptr < end && i < 10; i++, ptr++) {
-    uint64_t byte = (uint8_t)*ptr;
-    *val |= (byte & 0x7f) << (i * 7);
-    if ((byte & 0x80) == 0) {
-      return ptr + 1;
-    }
-  }
-  return NULL;
-}
+#include "upb/wire_decode.h"
 
 // -----------------------------------------------------------------------------
 // UnknownFieldSet
@@ -74,24 +62,20 @@ static const char* PyUpb_UnknownFieldSet_SkipGroup(const char* ptr,
 static const char* PyUpb_UnknownFieldSet_SkipField(const char* ptr,
                                                    const char* end,
                                                    uint32_t tag) {
-  int field_number = tag >> 3;
-  int wire_type = tag & 7;
+  int field_number = upb_TagField(tag);
+  upb_WireType wire_type = upb_TagType(tag);
   switch (wire_type) {
-    case kUpb_WireType_Varint: {
-      uint64_t val;
-      return PyUpb_DecodeVarint(ptr, end, &val);
-    }
+    case kUpb_WireType_Varint:
+      return upb_WireDecode_Varint(ptr, end, NULL);
     case kUpb_WireType_64Bit:
-      if (end - ptr < 8) return NULL;
-      return ptr + 8;
+      return upb_WireDecode_64Bit(ptr, end, NULL);
     case kUpb_WireType_32Bit:
-      if (end - ptr < 4) return NULL;
-      return ptr + 4;
+      return upb_WireDecode_32Bit(ptr, end, NULL);
     case kUpb_WireType_Delimited: {
       uint64_t size;
-      ptr = PyUpb_DecodeVarint(ptr, end, &size);
-      if (!ptr || end - ptr < size) return NULL;
-      return ptr + size;
+      ptr = upb_WireDecode_Varint(ptr, end, &size);
+      if (!ptr) return NULL;
+      return upb_WireDecode_Skip(ptr, end, size);
     }
     case kUpb_WireType_StartGroup:
       return PyUpb_UnknownFieldSet_SkipGroup(ptr, end, field_number);
@@ -110,7 +94,7 @@ static const char* PyUpb_UnknownFieldSet_SkipGroup(const char* ptr,
   while (true) {
     if (ptr == end) return NULL;
     uint64_t tag;
-    ptr = PyUpb_DecodeVarint(ptr, end, &tag);
+    ptr = upb_WireDecode_Varint(ptr, end, &tag);
     if (!ptr) return NULL;
     if (tag == end_tag) return ptr;
     ptr = PyUpb_UnknownFieldSet_SkipField(ptr, end, tag);
@@ -149,22 +133,23 @@ static const char* PyUpb_UnknownFieldSet_BuildMessageSetItem(
   while (true) {
     if (ptr == end) goto err;
     uint64_t tag;
-    ptr = PyUpb_DecodeVarint(ptr, end, &tag);
+    ptr = upb_WireDecode_Varint(ptr, end, &tag);
     if (!ptr) goto err;
     switch (tag) {
       case kUpb_MessageSet_EndItemTag:
         goto done;
       case kUpb_MessageSet_TypeIdTag: {
         uint64_t tmp;
-        ptr = PyUpb_DecodeVarint(ptr, end, &tmp);
+        ptr = upb_WireDecode_Varint(ptr, end, &tmp);
         if (!ptr) goto err;
         if (!type_id) type_id = tmp;
         break;
       }
       case kUpb_MessageSet_MessageTag: {
         uint64_t size;
-        ptr = PyUpb_DecodeVarint(ptr, end, &size);
+        ptr = upb_WireDecode_Varint(ptr, end, &size);
         if (!ptr || end - ptr < size) goto err;
+
         if (!msg) {
           msg = PyBytes_FromStringAndSize(ptr, size);
           if (!msg) goto err;
@@ -201,7 +186,7 @@ static const char* PyUpb_UnknownFieldSet_BuildMessageSet(
   self->fields = PyList_New(0);
   while (ptr < end) {
     uint64_t tag;
-    ptr = PyUpb_DecodeVarint(ptr, end, &tag);
+    ptr = upb_WireDecode_Varint(ptr, end, &tag);
     if (!ptr) goto err;
     if (tag == kUpb_MessageSet_StartItemTag) {
       ptr = PyUpb_UnknownFieldSet_BuildMessageSetItem(self, ptr, end);
@@ -228,28 +213,27 @@ static const char* PyUpb_UnknownFieldSet_BuildValue(
   switch (wire_type) {
     case kUpb_WireType_Varint: {
       uint64_t val;
-      ptr = PyUpb_DecodeVarint(ptr, end, &val);
+      ptr = upb_WireDecode_Varint(ptr, end, &val);
       if (!ptr) return NULL;
       *data = PyLong_FromUnsignedLongLong(val);
       return ptr;
     }
     case kUpb_WireType_64Bit: {
-      if (end - ptr < 8) return NULL;
       uint64_t val;
-      memcpy(&val, ptr, 8);
+      ptr = upb_WireDecode_64Bit(ptr, end, &val);
+      if (!ptr) return NULL;
       *data = PyLong_FromUnsignedLongLong(val);
-      return ptr + 8;
+      return ptr;
     }
     case kUpb_WireType_32Bit: {
-      if (end - ptr < 4) return NULL;
       uint32_t val;
-      memcpy(&val, ptr, 4);
+      ptr = upb_WireDecode_32Bit(ptr, end, &val);
       *data = PyLong_FromUnsignedLongLong(val);
-      return ptr + 4;
+      return ptr;
     }
     case kUpb_WireType_Delimited: {
       uint64_t size;
-      ptr = PyUpb_DecodeVarint(ptr, end, &size);
+      ptr = upb_WireDecode_Varint(ptr, end, &size);
       if (!ptr || end - ptr < size) return NULL;
       *data = PyBytes_FromStringAndSize(ptr, size);
       return ptr + size;
@@ -276,11 +260,11 @@ static const char* PyUpb_UnknownFieldSet_Build(PyUpb_UnknownFieldSet* self,
   self->fields = PyList_New(0);
   while (ptr < end) {
     uint64_t tag;
-    ptr = PyUpb_DecodeVarint(ptr, end, &tag);
+    ptr = upb_WireDecode_Varint(ptr, end, &tag);
     if (!ptr) goto err;
     PyObject* data = NULL;
-    int field_number = tag >> 3;
-    int wire_type = tag & 7;
+    int field_number = upb_TagField(tag);
+    upb_WireType wire_type = upb_TagType(tag);
     if (wire_type == kUpb_WireType_EndGroup) {
       if (field_number != group_number) return NULL;
       return ptr;

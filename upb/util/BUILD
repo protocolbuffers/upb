@@ -107,6 +107,7 @@ cc_library(
     deps = [
         "//:port",
         "//:reflection",
+        "//:upb",
     ],
 )
 

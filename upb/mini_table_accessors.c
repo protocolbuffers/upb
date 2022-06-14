@@ -29,6 +29,7 @@
 
 #include "upb/mini_table.h"
 #include "upb/msg_internal.h"
+#include "upb/wire_decode.h"
 
 // Must be last.
 #include "upb/port_def.inc"
@@ -122,54 +123,6 @@ typedef struct {
   uint64_t val;
 } decode_vret;
 
-UPB_NOINLINE
-static decode_vret decode_longvarint64(const char* ptr, uint64_t val) {
-  decode_vret ret = {NULL, 0};
-  uint64_t byte;
-  int i;
-  for (i = 1; i < 10; i++) {
-    byte = (uint8_t)ptr[i];
-    val += (byte - 1) << (i * 7);
-    if (!(byte & 0x80)) {
-      ret.ptr = ptr + i + 1;
-      ret.val = val;
-      return ret;
-    }
-  }
-  return ret;
-}
-
-UPB_FORCEINLINE
-static const char* decode_varint64(const char* ptr, uint64_t* val) {
-  uint64_t byte = (uint8_t)*ptr;
-  if (UPB_LIKELY((byte & 0x80) == 0)) {
-    *val = byte;
-    return ptr + 1;
-  } else {
-    decode_vret res = decode_longvarint64(ptr, byte);
-    if (!res.ptr) return NULL;
-    *val = res.val;
-    return res.ptr;
-  }
-}
-
-UPB_FORCEINLINE
-static const char* decode_tag(const char* ptr, uint32_t* val) {
-  uint64_t byte = (uint8_t)*ptr;
-  if (UPB_LIKELY((byte & 0x80) == 0)) {
-    *val = (uint32_t)byte;
-    return ptr + 1;
-  } else {
-    const char* start = ptr;
-    decode_vret res = decode_longvarint64(ptr, byte);
-    if (!res.ptr || res.ptr - start > 5 || res.val > UINT32_MAX) {
-      return NULL;  // Malformed.
-    }
-    *val = (uint32_t)res.val;
-    return res.ptr;
-  }
-}
-
 typedef enum {
   kUpb_FindUnknown_Ok,
   kUpb_FindUnknown_NotPresent,
@@ -209,10 +162,11 @@ upb_GetExtension_Status upb_MiniTable_GetOrPromoteExtension(
     return kUpb_GetExtension_OutOfMemory;
   }
   const char* data = result.ptr;
+  const char* end = data + result.len;
   uint32_t tag;
   uint64_t message_len;
-  data = decode_tag(data, &tag);
-  data = decode_varint64(data, &message_len);
+  data = upb_WireDecode_Tag(data, end, &tag);
+  data = upb_WireDecode_Varint(data, end, &message_len);
   upb_DecodeStatus status =
       upb_Decode(data, message_len, extension_msg, extension_table, NULL,
                  decode_options, arena);
@@ -262,10 +216,11 @@ upb_GetExtensionAsBytes_Status upb_MiniTable_GetExtensionAsBytes(
     return kUpb_GetExtensionAsBytes_NotPresent;
   }
   const char* data = result.ptr;
+  const char* end = data + result.len;
   uint32_t tag;
   uint64_t message_len;
-  data = decode_tag(data, &tag);
-  data = decode_varint64(data, &message_len);
+  data = upb_WireDecode_Tag(data, end, &tag);
+  data = upb_WireDecode_Varint(data, end, &message_len);
   *extension_data = data;
   *len = message_len;
   return kUpb_GetExtensionAsBytes_Ok;
@@ -276,24 +231,20 @@ static const char* UnknownFieldSet_SkipGroup(const char* ptr, const char* end,
 
 static const char* UnknownFieldSet_SkipField(const char* ptr, const char* end,
                                              uint32_t tag) {
-  int field_number = tag >> 3;
-  int wire_type = tag & 7;
+  int field_number = upb_TagField(tag);
+  upb_WireType wire_type = upb_TagType(tag);
   switch (wire_type) {
-    case kUpb_WireType_Varint: {
-      uint64_t val;
-      return decode_varint64(ptr, &val);
-    }
+    case kUpb_WireType_Varint:
+      return upb_WireDecode_Varint(ptr, end, NULL);
     case kUpb_WireType_64Bit:
-      if (end - ptr < 8) return NULL;
-      return ptr + 8;
+      return upb_WireDecode_64Bit(ptr, end, NULL);
     case kUpb_WireType_32Bit:
-      if (end - ptr < 4) return NULL;
-      return ptr + 4;
+      return upb_WireDecode_32Bit(ptr, end, NULL);
     case kUpb_WireType_Delimited: {
       uint64_t size;
-      ptr = decode_varint64(ptr, &size);
-      if (!ptr || end - ptr < size) return NULL;
-      return ptr + size;
+      ptr = upb_WireDecode_Varint(ptr, end, &size);
+      if (!ptr) return NULL;
+      return upb_WireDecode_Skip(ptr, end, size);
     }
     case kUpb_WireType_StartGroup:
       return UnknownFieldSet_SkipGroup(ptr, end, field_number);
@@ -311,7 +262,7 @@ static const char* UnknownFieldSet_SkipGroup(const char* ptr, const char* end,
   while (true) {
     if (ptr == end) return NULL;
     uint64_t tag;
-    ptr = decode_varint64(ptr, &tag);
+    ptr = upb_WireDecode_Varint(ptr, end, &tag);
     if (!ptr) return NULL;
     if (tag == end_tag) return ptr;
     ptr = UnknownFieldSet_SkipField(ptr, end, (uint32_t)tag);
@@ -340,34 +291,32 @@ static find_unknown_ret UnknownFieldSet_FindField(const upb_Message* msg,
   const char* end = ptr + size;
   uint64_t uint64_val;
 
-  while (ptr < end) {
+  while (ptr && (ptr < end)) {
     uint32_t tag;
-    int field;
-    int wire_type;
     const char* unknown_begin = ptr;
-    ptr = decode_tag(ptr, &tag);
-    field = tag >> 3;
-    wire_type = tag & 7;
+    ptr = upb_WireDecode_Tag(ptr, end, &tag);
+    int field = upb_TagField(tag);
+    upb_WireType wire_type = upb_TagType(tag);
     switch (wire_type) {
       case kUpb_WireType_EndGroup:
         ret.status = kUpb_FindUnknown_ParseError;
         return ret;
       case kUpb_WireType_Varint:
-        ptr = decode_varint64(ptr, &uint64_val);
+        ptr = upb_WireDecode_Varint(ptr, end, &uint64_val);
         if (!ptr) {
           ret.status = kUpb_FindUnknown_ParseError;
           return ret;
         }
         break;
       case kUpb_WireType_32Bit:
-        ptr += 4;
+        ptr = upb_WireDecode_32Bit(ptr, end, NULL);
         break;
       case kUpb_WireType_64Bit:
-        ptr += 8;
+        ptr = upb_WireDecode_64Bit(ptr, end, NULL);
         break;
       case kUpb_WireType_Delimited:
         // Read size.
-        ptr = decode_varint64(ptr, &uint64_val);
+        ptr = upb_WireDecode_Varint(ptr, end, &uint64_val);
         if (uint64_val >= INT32_MAX || !ptr) {
           ret.status = kUpb_FindUnknown_ParseError;
           return ret;
@@ -375,7 +324,7 @@ static find_unknown_ret UnknownFieldSet_FindField(const upb_Message* msg,
         ptr += uint64_val;
         break;
       case kUpb_WireType_StartGroup:
-        // tag >> 3 specifies the group number, recurse and skip
+        // The field specifies the group number, recurse and skip
         // until we see group end tag.
         ptr = UnknownFieldSet_SkipGroup(ptr, end, field_number);
         break;

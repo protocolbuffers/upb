@@ -30,6 +30,9 @@
 #include <setjmp.h>
 #include <stdbool.h>
 
+#include "upb/wire_decode.h"
+
+// Must be last.
 #include "upb/port_def.inc"
 
 struct upb_UnknownFields;
@@ -74,25 +77,6 @@ static void upb_UnknownFields_Grow(upb_UnknownField_Context* ctx,
 
   *ptr = *base + old;
   *end = *base + new;
-}
-
-static const char* upb_UnknownFields_ParseVarint(const char* ptr,
-                                                 const char* limit,
-                                                 uint64_t* val) {
-  uint8_t byte;
-  int bitpos = 0;
-  *val = 0;
-
-  do {
-    // Unknown field data must be valid.
-    UPB_ASSERT(bitpos < 70 && ptr < limit);
-    byte = *ptr;
-    *val |= (uint64_t)(byte & 0x7F) << bitpos;
-    ptr++;
-    bitpos += 7;
-  } while (byte & 0x80);
-
-  return ptr;
 }
 
 // We have to implement our own sort here, since qsort() is not an in-order
@@ -152,10 +136,9 @@ static upb_UnknownFields* upb_UnknownFields_DoBuild(
   uint32_t last_tag = 0;
   bool sorted = true;
   while (ptr < ctx->end) {
-    uint64_t tag;
-    ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &tag);
-    UPB_ASSERT(tag <= UINT32_MAX);
-    int wire_type = tag & 7;
+    uint32_t tag;
+    ptr = upb_WireDecode_Tag(ptr, ctx->end, &tag);
+    upb_WireType wire_type = upb_TagType(tag);
     if (wire_type == kUpb_WireType_EndGroup) break;
     if (tag < last_tag) sorted = false;
     last_tag = tag;
@@ -169,25 +152,23 @@ static upb_UnknownFields* upb_UnknownFields_DoBuild(
 
     switch (wire_type) {
       case kUpb_WireType_Varint:
-        ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &field->data.varint);
+        ptr = upb_WireDecode_Varint(ptr, ctx->end, &field->data.varint);
         break;
       case kUpb_WireType_64Bit:
-        UPB_ASSERT(ctx->end - ptr >= 8);
-        memcpy(&field->data.uint64, ptr, 8);
-        ptr += 8;
+        ptr = upb_WireDecode_64Bit(ptr, ctx->end, &field->data.uint64);
+        UPB_ASSERT(ptr);
         break;
       case kUpb_WireType_32Bit:
-        UPB_ASSERT(ctx->end - ptr >= 4);
-        memcpy(&field->data.uint32, ptr, 4);
-        ptr += 4;
+        ptr = upb_WireDecode_32Bit(ptr, ctx->end, &field->data.uint32);
+        UPB_ASSERT(ptr);
         break;
       case kUpb_WireType_Delimited: {
         uint64_t size;
-        ptr = upb_UnknownFields_ParseVarint(ptr, ctx->end, &size);
+        ptr = upb_WireDecode_Varint(ptr, ctx->end, &size);
         UPB_ASSERT(ctx->end - ptr >= size);
         field->data.delimited.data = ptr;
         field->data.delimited.size = size;
-        ptr += size;
+        ptr = upb_WireDecode_Skip(ptr, ctx->end, size);
         break;
       }
       case kUpb_WireType_StartGroup:
@@ -232,7 +213,7 @@ static bool upb_UnknownFields_IsEqual(const upb_UnknownFields* uf1,
     upb_UnknownField* f1 = &uf1->fields[i];
     upb_UnknownField* f2 = &uf2->fields[i];
     if (f1->tag != f2->tag) return false;
-    int wire_type = f1->tag & 7;
+    upb_WireType wire_type = upb_TagType(f1->tag);
     switch (wire_type) {
       case kUpb_WireType_Varint:
         if (f1->data.varint != f2->data.varint) return false;

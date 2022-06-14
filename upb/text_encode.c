@@ -37,6 +37,7 @@
 #include "upb/internal/vsnprintf_compat.h"
 #include "upb/reflection.h"
 #include "upb/upb_internal.h"
+#include "upb/wire_decode.h"
 
 // Must be last.
 #include "upb/port_def.inc"
@@ -299,23 +300,6 @@ static void txtenc_map(txtenc* e, const upb_Map* map, const upb_FieldDef* f) {
     }               \
   } while (0)
 
-static const char* txtenc_parsevarint(const char* ptr, const char* limit,
-                                      uint64_t* val) {
-  uint8_t byte;
-  int bitpos = 0;
-  *val = 0;
-
-  do {
-    CHK(bitpos < 70 && ptr < limit);
-    byte = *ptr;
-    *val |= (uint64_t)(byte & 0x7F) << bitpos;
-    ptr++;
-    bitpos += 7;
-  } while (byte & 0x80);
-
-  return ptr;
-}
-
 /*
  * Unknown fields are printed by number.
  *
@@ -329,40 +313,35 @@ static const char* txtenc_parsevarint(const char* ptr, const char* limit,
 static const char* txtenc_unknown(txtenc* e, const char* ptr, const char* end,
                                   int groupnum) {
   while (ptr < end) {
-    uint64_t tag_64;
     uint32_t tag;
-    CHK(ptr = txtenc_parsevarint(ptr, end, &tag_64));
-    CHK(tag_64 < UINT32_MAX);
-    tag = (uint32_t)tag_64;
+    CHK(ptr = upb_WireDecode_Tag(ptr, end, &tag));
+    upb_WireType type = upb_TagType(tag);
+    uint32_t field = upb_TagField(tag);
 
-    if ((tag & 7) == kUpb_WireType_EndGroup) {
-      CHK((tag >> 3) == (uint32_t)groupnum);
+    if (type == kUpb_WireType_EndGroup) {
+      CHK(field == (uint32_t)groupnum);
       return ptr;
     }
 
     txtenc_indent(e);
-    txtenc_printf(e, "%d: ", (int)(tag >> 3));
+    txtenc_printf(e, "%d: ", (int)field);
 
-    switch (tag & 7) {
+    switch (type) {
       case kUpb_WireType_Varint: {
         uint64_t val;
-        CHK(ptr = txtenc_parsevarint(ptr, end, &val));
+        CHK(ptr = upb_WireDecode_Varint(ptr, end, &val));
         txtenc_printf(e, "%" PRIu64, val);
         break;
       }
       case kUpb_WireType_32Bit: {
         uint32_t val;
-        CHK(end - ptr >= 4);
-        memcpy(&val, ptr, 4);
-        ptr += 4;
+        CHK(ptr = upb_WireDecode_32Bit(ptr, end, &val));
         txtenc_printf(e, "0x%08" PRIu32, val);
         break;
       }
       case kUpb_WireType_64Bit: {
         uint64_t val;
-        CHK(end - ptr >= 8);
-        memcpy(&val, ptr, 8);
-        ptr += 8;
+        CHK(ptr = upb_WireDecode_64Bit(ptr, end, &val));
         txtenc_printf(e, "0x%016" PRIu64, val);
         break;
       }
@@ -371,7 +350,7 @@ static const char* txtenc_unknown(txtenc* e, const char* ptr, const char* end,
         size_t avail = end - ptr;
         char* start = e->ptr;
         size_t start_overflow = e->overflow;
-        CHK(ptr = txtenc_parsevarint(ptr, end, &len));
+        CHK(ptr = upb_WireDecode_Varint(ptr, end, &len));
         CHK(avail >= len);
 
         /* Speculatively try to parse as message. */
@@ -399,10 +378,13 @@ static const char* txtenc_unknown(txtenc* e, const char* ptr, const char* end,
         txtenc_putstr(e, "{");
         txtenc_endfield(e);
         e->indent_depth++;
-        CHK(ptr = txtenc_unknown(e, ptr, end, tag >> 3));
+        CHK(ptr = txtenc_unknown(e, ptr, end, field));
         e->indent_depth--;
         txtenc_indent(e);
         txtenc_putstr(e, "}");
+        break;
+
+      default:
         break;
     }
     txtenc_endfield(e);

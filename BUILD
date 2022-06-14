@@ -118,6 +118,7 @@ cc_library(
         "upb/msg.h",
         "upb/upb.h",
         "upb/upb.hpp",
+        "upb/wire_decode.h",
     ],
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
@@ -358,6 +359,7 @@ cc_library(
         ":port",
         ":reflection",
         ":table",
+        ":upb",
     ],
 )
 
