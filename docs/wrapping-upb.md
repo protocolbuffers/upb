@@ -178,7 +178,7 @@ To use reflection-based access:
 
 ### MiniTables
 
-MiniTables are a "lite" schema representation that are much smaller that
+MiniTables are a "lite" schema representation that are much smaller than
 reflection. MiniTables omit names, options, and almost everything else from the
 `.proto` file, retaining only enough information to parse and serialize binary
 format.
@@ -227,7 +227,7 @@ class FooMessage {
 ```
 
 One downside of MiniTables is that they cannot support parsing or serializing
-to JSON or TextFormat, because they do now know the field names.  It should be
+to JSON or TextFormat, because they do not know the field names.  It should be
 possible to generate reflection data "on the side", into separate generated
 code files, so that reflection is only pulled in if it is being used.  However
 APIs to do this do not exist yet.
