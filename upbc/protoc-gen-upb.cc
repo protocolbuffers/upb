@@ -25,15 +25,16 @@
 
 #include <memory>
 
+#include "google/protobuf/compiler/code_generator.h"
+#include "google/protobuf/compiler/plugin.h"
+#include "google/protobuf/descriptor.pb.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/wire_format.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/ascii.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
-#include "google/protobuf/compiler/code_generator.h"
-#include "google/protobuf/compiler/plugin.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/wire_format.h"
 #include "upb/mini_table.hpp"
 #include "upb/upb.hpp"
 #include "upbc/common.h"
@@ -215,8 +216,9 @@ std::string CTypeInternal(const protobuf::FieldDescriptor* field,
     case protobuf::FieldDescriptor::CPPTYPE_FLOAT:
       return "float";
     case protobuf::FieldDescriptor::CPPTYPE_INT32:
-    case protobuf::FieldDescriptor::CPPTYPE_ENUM:
       return "int32_t";
+    case protobuf::FieldDescriptor::CPPTYPE_ENUM:
+      return ToCIdent(field->enum_type()->full_name());
     case protobuf::FieldDescriptor::CPPTYPE_UINT32:
       return "uint32_t";
     case protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
@@ -908,10 +910,22 @@ void GenerateClear(const protobuf::FieldDescriptor* field,
   if (field->real_containing_oneof()) {
     const protobuf::OneofDescriptor* oneof = field->real_containing_oneof();
     std::string oneof_fullname = ToCIdent(oneof->full_name());
-    std::string default_value =
-        field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_STRING
-            ? "upb_StringView_FromDataAndSize(NULL, 0)"
-            : "0";
+    std::string default_value;
+    switch (field->cpp_type()) {
+      case protobuf::FieldDescriptor::CPPTYPE_STRING:
+        default_value = "upb_StringView_FromDataAndSize(NULL, 0)";
+        break;
+
+      case protobuf::FieldDescriptor::CPPTYPE_ENUM:
+        default_value =
+            absl::StrCat("(", ToCIdent(field->enum_type()->full_name()), ")0");
+        break;
+
+      default:
+        default_value = "0";
+        break;
+    }
+
     output(
         R"cc(
           UPB_INLINE void $0_clear_$1(const $0* msg) {
@@ -931,46 +945,77 @@ void GenerateClear(const protobuf::FieldDescriptor* field,
           )cc",
           msg_name, field->name(), layout.GetFieldOffset(field));
     } else if (layout.HasHasbit(field)) {
-      if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_STRING) {
-        output(
-            R"cc(
-              UPB_INLINE void $0_clear_$1(const $0* msg) {
-                *UPB_PTR_AT(msg, $3, $2) = upb_StringView_FromDataAndSize(NULL, 0);
-                _upb_clearhas(msg, $4);
-              }
-            )cc",
-            msg_name, field->name(), CType(field), layout.GetFieldOffset(field),
-            layout.GetHasbitIndex(field));
-      } else {
-        output(
-            R"cc(
-              UPB_INLINE void $0_clear_$1(const $0* msg) {
-                *UPB_PTR_AT(msg, $3, $2) = 0;
-                _upb_clearhas(msg, $4);
-              }
-            )cc",
-            msg_name, field->name(), CType(field), layout.GetFieldOffset(field),
-            layout.GetHasbitIndex(field));
+      switch (field->cpp_type()) {
+        case protobuf::FieldDescriptor::CPPTYPE_STRING:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = upb_StringView_FromDataAndSize(NULL, 0);
+                  _upb_clearhas(msg, $4);
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field), layout.GetHasbitIndex(field));
+          break;
+
+        case protobuf::FieldDescriptor::CPPTYPE_ENUM:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = ($2)0;
+                  _upb_clearhas(msg, $4);
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field), layout.GetHasbitIndex(field));
+          break;
+
+        default:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = 0;
+                  _upb_clearhas(msg, $4);
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field), layout.GetHasbitIndex(field));
+          break;
       }
     } else {
-      if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_STRING) {
-        output(
-            R"cc(
-              UPB_INLINE void $0_clear_$1(const $0* msg) {
-                *UPB_PTR_AT(msg, $3, $2) = upb_StringView_FromDataAndSize(NULL, 0);
-              }
-            )cc",
-            msg_name, field->name(), CType(field),
-            layout.GetFieldOffset(field));
-      } else {
-        output(
-            R"cc(
-              UPB_INLINE void $0_clear_$1(const $0* msg) {
-                *UPB_PTR_AT(msg, $3, $2) = 0;
-              }
-            )cc",
-            msg_name, field->name(), CType(field), layout.GetFieldOffset(field),
-            layout.GetHasbitIndex(field));
+      switch (field->cpp_type()) {
+        case protobuf::FieldDescriptor::CPPTYPE_STRING:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = upb_StringView_FromDataAndSize(NULL, 0);
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field));
+          break;
+
+        case protobuf::FieldDescriptor::CPPTYPE_ENUM:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = ($2)0;
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field));
+          break;
+
+        default:
+          output(
+              R"cc(
+                UPB_INLINE void $0_clear_$1(const $0* msg) {
+                  *UPB_PTR_AT(msg, $3, $2) = 0;
+                }
+              )cc",
+              msg_name, field->name(), CType(field),
+              layout.GetFieldOffset(field));
+          break;
       }
     }
   }
@@ -1055,29 +1100,54 @@ void GenerateRepeatedGetters(const protobuf::FieldDescriptor* field,
 void GenerateOneofGetters(const protobuf::FieldDescriptor* field,
                           const FileLayout& layout, absl::string_view msg_name,
                           Output& output) {
-  output(
-      R"cc(
-        UPB_INLINE $0 $1_$2(const $1* msg) {
-          return UPB_READ_ONEOF(msg, $0, $3, $4, $5, $6);
-        }
-      )cc",
-      CTypeConst(field), msg_name, field->name(), layout.GetFieldOffset(field),
-      layout.GetOneofCaseOffset(field->real_containing_oneof()),
-      field->number(), FieldDefault(field));
+  if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_ENUM) {
+    output(
+        R"cc(
+          UPB_INLINE $0 $1_$2(const $1* msg) {
+            return UPB_READ_ONEOF(msg, $0, $3, $4, $5, ($0)$6);
+          }
+        )cc",
+        CTypeConst(field), msg_name, field->name(),
+        layout.GetFieldOffset(field),
+        layout.GetOneofCaseOffset(field->real_containing_oneof()),
+        field->number(), FieldDefault(field));
+  } else {
+    output(
+        R"cc(
+          UPB_INLINE $0 $1_$2(const $1* msg) {
+            return UPB_READ_ONEOF(msg, $0, $3, $4, $5, $6);
+          }
+        )cc",
+        CTypeConst(field), msg_name, field->name(),
+        layout.GetFieldOffset(field),
+        layout.GetOneofCaseOffset(field->real_containing_oneof()),
+        field->number(), FieldDefault(field));
+  }
 }
 
 void GenerateScalarGetters(const protobuf::FieldDescriptor* field,
                            const FileLayout& layout, absl::string_view msg_name,
                            Output& output) {
   if (HasNonZeroDefault(field)) {
-    output(
-        R"cc(
-          UPB_INLINE $0 $1_$2(const $1* msg) {
-            return $1_has_$2(msg) ? *UPB_PTR_AT(msg, $3, $0) : $4;
-          }
-        )cc",
-        CTypeConst(field), msg_name, field->name(),
-        layout.GetFieldOffset(field), FieldDefault(field));
+    if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_ENUM) {
+      output(
+          R"cc(
+            UPB_INLINE $0 $1_$2(const $1* msg) {
+              return $1_has_$2(msg) ? *UPB_PTR_AT(msg, $3, $0) : ($0)$4;
+            }
+          )cc",
+          CTypeConst(field), msg_name, field->name(),
+          layout.GetFieldOffset(field), FieldDefault(field));
+    } else {
+      output(
+          R"cc(
+            UPB_INLINE $0 $1_$2(const $1* msg) {
+              return $1_has_$2(msg) ? *UPB_PTR_AT(msg, $3, $0) : $4;
+            }
+          )cc",
+          CTypeConst(field), msg_name, field->name(),
+          layout.GetFieldOffset(field), FieldDefault(field));
+    }
   } else {
     output(
         R"cc(
@@ -1214,12 +1284,21 @@ void GenerateNonRepeatedSetters(const protobuf::FieldDescriptor* field,
             ? "0"
             : "sizeof(" + CType(field) + ")");
   } else if (field->real_containing_oneof()) {
-    output(
-        "  UPB_WRITE_ONEOF(msg, $0, $1, value, $2, $3);\n"
-        "}\n",
-        CType(field), layout.GetFieldOffset(field),
-        layout.GetOneofCaseOffset(field->real_containing_oneof()),
-        field->number());
+    if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_ENUM) {
+      output(
+          "  UPB_WRITE_ONEOF(msg, $0, $1, ($0)value, $2, $3);\n"
+          "}\n",
+          CType(field), layout.GetFieldOffset(field),
+          layout.GetOneofCaseOffset(field->real_containing_oneof()),
+          field->number());
+    } else {
+      output(
+          "  UPB_WRITE_ONEOF(msg, $0, $1, value, $2, $3);\n"
+          "}\n",
+          CType(field), layout.GetFieldOffset(field),
+          layout.GetOneofCaseOffset(field->real_containing_oneof()),
+          field->number());
+    }
   } else {
     if (layout.HasHasbit(field)) {
       output("  _upb_sethas(msg, $0);\n", layout.GetHasbitIndex(field));
@@ -1307,12 +1386,12 @@ void WriteHeader(const FileLayout& layout, Output& output) {
       "#include \"upb/encode.h\"\n\n",
       ToPreproc(file->name()));
 
-  for (int i = 0; i < file->public_dependency_count(); i++) {
+  for (int i = 0; i < file->dependency_count(); i++) {
     if (i == 0) {
-      output("/* Public Imports. */\n");
+      output("/* Imports. */\n");
     }
-    output("#include \"$0\"\n", HeaderFilename(file));
-    if (i == file->public_dependency_count() - 1) {
+    output("#include \"$0\"\n", HeaderFilename(file->dependency(i)));
+    if (i == file->dependency_count() - 1) {
       output("\n");
     }
   }
