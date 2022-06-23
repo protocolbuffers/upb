@@ -240,7 +240,7 @@ bool upb_Message_Next(const upb_Message* msg, const upb_MessageDef* m,
       if (upb_FieldDef_IsMap(f)) {
         if (upb_Map_Size(test.map_val) == 0) continue;
       } else if (upb_FieldDef_IsRepeated(f)) {
-        if (upb_Array_Size(test.array_val) == 0) continue;
+        if (upb_Array_Len(test.array_val) == 0) continue;
       }
     }
 
@@ -298,7 +298,7 @@ bool _upb_Message_DiscardUnknown(upb_Message* msg, const upb_MessageDef* m,
       }
     } else if (upb_FieldDef_IsRepeated(f)) {
       const upb_Array* arr = val.array_val;
-      size_t i, n = upb_Array_Size(arr);
+      size_t i, n = upb_Array_Len(arr);
       for (i = 0; i < n; i++) {
         upb_MessageValue elem = upb_Array_Get(arr, i);
         if (!_upb_Message_DiscardUnknown((upb_Message*)elem.msg_val, subm,

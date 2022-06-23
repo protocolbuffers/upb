@@ -41,8 +41,8 @@ extern "C" {
 /* Creates a new array on the given arena that holds elements of this type. */
 upb_Array* upb_Array_New(upb_Arena* a, upb_CType type);
 
-/* Returns the size of the array. */
-size_t upb_Array_Size(const upb_Array* arr);
+/* Returns the number of elements currently in the array. */
+size_t upb_Array_Len(const upb_Array* arr);
 
 /* Returns the given element, which must be within the array's current size. */
 upb_MessageValue upb_Array_Get(const upb_Array* arr, size_t i);
@@ -61,13 +61,13 @@ void upb_Array_Move(upb_Array* array, size_t dst_idx, size_t src_idx,
 /* Inserts one or more empty elements into the array.  Existing elements are
  * shifted right.  The new elements have undefined state and must be set with
  * `upb_Array_Set()`.
- * REQUIRES: `i <= upb_Array_Size(arr)` */
+ * REQUIRES: `i <= upb_Array_Len(arr)` */
 bool upb_Array_Insert(upb_Array* array, size_t i, size_t count,
                       upb_Arena* arena);
 
 /* Deletes one or more elements from the array.  Existing elements are shifted
  * left.
- * REQUIRES: `i + count <= upb_Array_Size(arr)` */
+ * REQUIRES: `i + count <= upb_Array_Len(arr)` */
 void upb_Array_Delete(upb_Array* array, size_t i, size_t count);
 
 /* Changes the size of a vector.  New elements are initialized to empty/0.

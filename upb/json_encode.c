@@ -447,7 +447,7 @@ static void jsonenc_fieldmask(jsonenc* e, const upb_Message* msg,
   bool first = true;
   size_t i, n = 0;
 
-  if (paths) n = upb_Array_Size(paths);
+  if (paths) n = upb_Array_Len(paths);
 
   jsonenc_putstr(e, "\"");
 
@@ -496,8 +496,8 @@ static void jsonenc_listvalue(jsonenc* e, const upb_Message* msg,
   jsonenc_putstr(e, "[");
 
   if (values) {
-    const size_t size = upb_Array_Size(values);
-    for (i = 0; i < size; i++) {
+    const size_t len = upb_Array_Len(values);
+    for (i = 0; i < len; i++) {
       upb_MessageValue elem = upb_Array_Get(values, i);
 
       jsonenc_putsep(e, ",", &first);
@@ -654,12 +654,12 @@ static void jsonenc_mapkey(jsonenc* e, upb_MessageValue val,
 static void jsonenc_array(jsonenc* e, const upb_Array* arr,
                           const upb_FieldDef* f) {
   size_t i;
-  size_t size = arr ? upb_Array_Size(arr) : 0;
+  size_t len = arr ? upb_Array_Len(arr) : 0;
   bool first = true;
 
   jsonenc_putstr(e, "[");
 
-  for (i = 0; i < size; i++) {
+  for (i = 0; i < len; i++) {
     jsonenc_putsep(e, ",", &first);
     jsonenc_scalar(e, upb_Array_Get(arr, i), f);
   }

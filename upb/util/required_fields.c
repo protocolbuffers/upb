@@ -276,7 +276,7 @@ static void upb_util_FindUnsetRequiredInternal(upb_FindContext* ctx,
     } else if (upb_FieldDef_IsRepeated(f)) {
       // Repeated field.
       const upb_Array* arr = val.array_val;
-      for (size_t i = 0, n = upb_Array_Size(arr); i < n; i++) {
+      for (size_t i = 0, n = upb_Array_Len(arr); i < n; i++) {
         upb_MessageValue elem = upb_Array_Get(arr, i);
         upb_FindContext_Push(ctx, (upb_FieldPathEntry){.array_index = i});
         upb_util_FindUnsetRequiredInternal(ctx, elem.msg_val, sub_m);

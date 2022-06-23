@@ -229,9 +229,9 @@ static void txtenc_field(txtenc* e, upb_MessageValue val,
 static void txtenc_array(txtenc* e, const upb_Array* arr,
                          const upb_FieldDef* f) {
   size_t i;
-  size_t size = upb_Array_Size(arr);
+  size_t len = upb_Array_Len(arr);
 
-  for (i = 0; i < size; i++) {
+  for (i = 0; i < len; i++) {
     txtenc_field(e, upb_Array_Get(arr, i), f);
   }
 }

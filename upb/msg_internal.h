@@ -412,8 +412,8 @@ UPB_INLINE bool _upb_has_submsg_nohasbit(const upb_Message* msg, size_t ofs) {
 /* Our internal representation for repeated fields.  */
 typedef struct {
   uintptr_t data; /* Tagged ptr: low 3 bits of ptr are lg2(elem size). */
-  size_t len;     /* Measured in elements. */
-  size_t size;    /* Measured in elements. */
+  size_t len;     /* The # of elements in the array. Measured in elements. */
+  size_t size;    /* The amount of allocated storage. Measured in elements. */
   uint64_t junk;
 } upb_Array;
 

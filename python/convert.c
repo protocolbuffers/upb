@@ -298,8 +298,8 @@ bool PyUpb_Map_IsEqual(const upb_Map* map1, const upb_Map* map2,
 static bool PyUpb_ArrayElem_IsEqual(const upb_Array* arr1,
                                     const upb_Array* arr2, size_t i,
                                     const upb_FieldDef* f) {
-  assert(i < upb_Array_Size(arr1));
-  assert(i < upb_Array_Size(arr2));
+  assert(i < upb_Array_Len(arr1));
+  assert(i < upb_Array_Len(arr2));
   upb_MessageValue val1 = upb_Array_Get(arr1, i);
   upb_MessageValue val2 = upb_Array_Get(arr2, i);
   return PyUpb_ValueEq(val1, val2, f);
@@ -310,8 +310,8 @@ bool PyUpb_Array_IsEqual(const upb_Array* arr1, const upb_Array* arr2,
   assert(upb_FieldDef_IsRepeated(f) && !upb_FieldDef_IsMap(f));
   if (arr1 == arr2) return true;
 
-  size_t n1 = arr1 ? upb_Array_Size(arr1) : 0;
-  size_t n2 = arr2 ? upb_Array_Size(arr2) : 0;
+  size_t n1 = arr1 ? upb_Array_Len(arr1) : 0;
+  size_t n2 = arr2 ? upb_Array_Len(arr2) : 0;
   if (n1 != n2) return false;
 
   // Half the length rounded down.  Important: the empty list rounds to 0.

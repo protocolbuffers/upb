@@ -433,11 +433,11 @@ static int lupb_Array_New(lua_State* L) {
  */
 static int lupb_Array_Newindex(lua_State* L) {
   lupb_array* larray = lupb_array_check(L, 1);
-  size_t size = upb_Array_Size(larray->arr);
-  uint32_t n = lupb_array_checkindex(L, 2, size + 1);
+  size_t len = upb_Array_Len(larray->arr);
+  uint32_t n = lupb_array_checkindex(L, 2, len + 1);
   upb_MessageValue msgval = lupb_tomsgval(L, larray->type, 3, 1, LUPB_COPY);
 
-  if (n == size) {
+  if (n == len) {
     upb_Array_Append(larray->arr, msgval, lupb_Arenaget(L, 1));
   } else {
     upb_Array_Set(larray->arr, n, msgval);
@@ -459,8 +459,8 @@ static int lupb_Array_Newindex(lua_State* L) {
  */
 static int lupb_array_index(lua_State* L) {
   lupb_array* larray = lupb_array_check(L, 1);
-  size_t size = upb_Array_Size(larray->arr);
-  uint32_t n = lupb_array_checkindex(L, 2, size);
+  size_t len = upb_Array_Len(larray->arr);
+  uint32_t n = lupb_array_checkindex(L, 2, len);
   upb_MessageValue val = upb_Array_Get(larray->arr, n);
 
   lupb_pushmsgval(L, 1, larray->type, val);
@@ -475,7 +475,7 @@ static int lupb_array_index(lua_State* L) {
  */
 static int lupb_array_len(lua_State* L) {
   lupb_array* larray = lupb_array_check(L, 1);
-  lua_pushnumber(L, upb_Array_Size(larray->arr));
+  lua_pushnumber(L, upb_Array_Len(larray->arr));
   return 1;
 }
 
