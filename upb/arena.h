@@ -28,8 +28,6 @@
 #ifndef UPB_ARENA_H_
 #define UPB_ARENA_H_
 
-#include <string.h>
-
 #include "upb/alloc.h"
 
 // Must be last.

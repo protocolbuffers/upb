@@ -47,9 +47,6 @@
 #ifndef UPB_INTERNAL_TABLE_H_
 #define UPB_INTERNAL_TABLE_H_
 
-#include <stdint.h>
-#include <string.h>
-
 #include "upb/upb.h"
 
 // Must be last.

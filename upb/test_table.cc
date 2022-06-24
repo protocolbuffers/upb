@@ -28,7 +28,6 @@
  */
 
 #include <limits.h>
-#include <string.h>
 #include <sys/resource.h>
 
 #include <iostream>

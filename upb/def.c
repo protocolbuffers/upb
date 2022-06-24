@@ -29,14 +29,12 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <setjmp.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "upb/mini_table.h"
 #include "upb/reflection.h"
 
-/* Must be last. */
+// Must be last.
 #include "upb/port_def.inc"
 
 typedef struct {

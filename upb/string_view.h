@@ -28,8 +28,6 @@
 #ifndef UPB_STRING_VIEW_H_
 #define UPB_STRING_VIEW_H_
 
-#include <string.h>
-
 // Must be last.
 #include "upb/port_def.inc"
 

@@ -27,10 +27,10 @@
 
 #include "upb/reflection.h"
 
-#include <string.h>
-
 #include "upb/internal/table.h"
 #include "upb/msg.h"
+
+// Must be last.
 #include "upb/port_def.inc"
 
 static size_t get_field_size(const upb_MiniTable_Field* f) {

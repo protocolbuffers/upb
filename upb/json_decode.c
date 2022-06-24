@@ -32,14 +32,11 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
-#include <setjmp.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "upb/encode.h"
 #include "upb/reflection.h"
 
-/* Special header, must be included last. */
+// Must be last.
 #include "upb/port_def.inc"
 
 typedef struct {

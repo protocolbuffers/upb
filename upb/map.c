@@ -27,8 +27,6 @@
 
 #include "upb/map.h"
 
-#include <string.h>
-
 #include "upb/msg.h"
 #include "upb/msg_internal.h"
 

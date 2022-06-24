@@ -32,12 +32,7 @@
 #ifndef UPB_H_
 #define UPB_H_
 
-#include <assert.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
 
 // TODO(b/232091617): Remove these and fix everything that breaks as a result.
 #include "upb/arena.h"

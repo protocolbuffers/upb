@@ -33,9 +33,7 @@
 
 #include "upb/internal/table.h"
 
-#include <string.h>
-
-/* Must be last. */
+// Must be last.
 #include "upb/port_def.inc"
 
 #define UPB_MAXARRSIZE 16 /* 64k. */

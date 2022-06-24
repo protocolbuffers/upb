@@ -30,11 +30,8 @@
 #include <errno.h>
 #include <float.h>
 #include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "upb/arena.h"
 #include "upb/status.h"
