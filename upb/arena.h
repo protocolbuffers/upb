@@ -113,18 +113,20 @@ UPB_INLINE void* upb_Arena_Malloc(upb_Arena* a, size_t size) {
   return _upb_Arena_FastMalloc(a, size);
 }
 
-// Shrinks the last alloc from arena.
-// REQUIRES: (ptr, oldsize) was the last malloc/realloc from this arena.
-// We could also add a upb_Arena_TryShrinkLast() which is simply a no-op if
-// this was not the last alloc.
-UPB_INLINE void upb_Arena_ShrinkLast(upb_Arena* a, void* ptr, size_t oldsize,
+// Tries to shrink the last alloc from arena.
+// If (ptr, oldsize) was the last malloc/realloc from this arena,
+// succeed and return true. Otherwise do nothing and return false.
+UPB_INLINE bool upb_Arena_ShrinkLast(upb_Arena* a, void* ptr, size_t oldsize,
                                      size_t size) {
   _upb_ArenaHead* h = (_upb_ArenaHead*)a;
   oldsize = UPB_ALIGN_MALLOC(oldsize);
   size = UPB_ALIGN_MALLOC(size);
-  UPB_ASSERT((char*)ptr + oldsize == h->ptr);  // Must be the last alloc.
   UPB_ASSERT(size <= oldsize);
-  h->ptr = (char*)ptr + size;
+  if ((char*)ptr + oldsize == h->ptr) {
+    h->ptr = (char*)ptr + size;
+    return true;
+  }
+  return false;
 }
 
 UPB_INLINE void* upb_Arena_Realloc(upb_Arena* a, void* ptr, size_t oldsize,

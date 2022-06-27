@@ -792,8 +792,10 @@ static void upb_MtDecoder_ParseMessage(upb_MtDecoder* d, const char* data,
   upb_MtDecoder_Parse(d, data, len, d->fields, sizeof(*d->fields),
                       &d->table->field_count, &sub_count);
 
-  upb_Arena_ShrinkLast(d->arena, d->fields, sizeof(*d->fields) * len,
-                       sizeof(*d->fields) * d->table->field_count);
+  bool ok = upb_Arena_ShrinkLast(d->arena, d->fields, sizeof(*d->fields) * len,
+                                 sizeof(*d->fields) * d->table->field_count);
+  UPB_ASSERT(ok);
+
   d->table->fields = d->fields;
   upb_MtDecoder_AllocateSubs(d, sub_count);
 }
