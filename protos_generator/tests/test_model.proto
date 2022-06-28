@@ -1,0 +1,94 @@
+syntax = "proto2";
+
+package protos_generator.test;
+
+import "third_party/upb/protos_generator/tests/child_model.proto";
+
+option jspb_use_correct_proto2_semantics = false;  // go/jspb-correct-proto2
+
+message TestModelContainer {
+  repeated TestModel models = 1;
+  optional ChildModel3 proto_3_child = 2;
+}
+
+message TestModel {
+  optional int32 value = 1;
+  repeated int32 value_array = 2;  // _UPB_MODE_ARRAY
+  repeated int32 value_packed_array = 3
+      [packed = true];  // _UPB_MODE_ARRAY | _UPB_MODE_IS_PACKED
+  repeated int32 value_deprec = 4 [deprecated = true];
+  optional string str1 = 115;
+  optional bool b1 = 9;
+  optional bool b2 = 10;
+  optional string str2 = 50;
+  optional string str3 = 11;
+  optional float optional_float = 14;
+  optional double optional_double = 15;
+  optional int64 optional_int64 = 16;
+  optional uint32 optional_uint32 = 17;
+  optional uint64 optional_uint64 = 18;
+  optional sint32 optional_sint32 = 19;
+  optional sint64 optional_sint64 = 20;
+  optional fixed32 optional_fixed32 = 21;
+  optional fixed64 optional_fixed64 = 22;
+  optional sfixed32 optional_sfixed32 = 23;
+  optional sfixed64 optional_sfixed64 = 24;
+  repeated int64 repeated_int64 = 25;
+  repeated uint64 repeated_uint64 = 26;
+  repeated fixed64 repeated_fixed64 = 27;
+  repeated sfixed64 repeated_sfixed64 = 28;
+  repeated bool repeated_bool = 29;
+  repeated string repeated_string = 35;
+  optional bytes optional_bytes = 36;
+  message NestedChild {
+    optional string nested_child_name = 211;
+  }
+  optional NestedChild nested_child_1 = 212;
+  optional ChildModel1 child_model_1 = 222;
+  repeated ChildModel1 child_model_2 = 223;
+  optional ChildModel1 bar = 224;
+  oneof child_oneof1 {
+    string oneof_member1 = 98;
+    bool oneof_member2 = 99;
+  }
+  optional int32 int_value_with_default = 31
+      [default = 65];  // Not supported yet
+  optional string string_value_with_default = 32
+      [default = "hello"];  // Not supported yet
+
+  map<int32, ChildModel1> child_map = 225;
+
+  enum Category {
+    IMAGES = 5;
+    NEWS = 6;
+    VIDEO = 7;
+    RADIO = 8 [deprecated = true];
+  }
+  optional Category category = 37;
+  extensions 10000 to max;
+}
+
+// Old version with fewer fields to test backward/forward compatibility.
+message TestModelContainerV1 {
+  repeated TestModelV1 models = 1;
+}
+
+message TestModelV1 {
+  optional int32 value = 1;
+  repeated int32 value2 = 2;
+  repeated int32 value3 = 3 [packed = true];
+  repeated int32 value4 = 4 [deprecated = true];
+  optional bool b1 = 9;
+  optional bool b2 = 10;
+  optional string str2 = 50;
+}
+
+// TestModel extension.
+message MyExtension {
+  optional string ext_name = 1;
+  optional bool ext_bool = 2;
+}
+
+extend TestModel {
+  optional MyExtension my_ext = 12001;
+}

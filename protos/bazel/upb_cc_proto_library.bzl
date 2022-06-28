@@ -24,12 +24,12 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """Public rules for using upb protos:
-  - upb_proto_library()
-  - upb_proto_reflection_library()
+  - upb_cc_proto_library()
 """
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain", "use_cpp_toolchain")
+load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
+load("//bazel:upb_proto_library.bzl", "GeneratedSrcsInfo", "UpbProtoLibraryCoptsInfo", "UpbWrappedCcInfo", "UpbWrappedGeneratedSrcsInfo", "upb_proto_library_aspect")
 
 # Generic support code #########################################################
 
@@ -136,8 +136,8 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
 
 # Build setting for whether fasttable code generation is enabled ###############
 
-_FastTableEnabledInfo = provider(
-    "Provides fasttable configuration",
+FastTableEnabledInfo = provider(
+    "Provides fasttable configuration to compiler",
     fields = {
         "enabled": "whether fasttable is enabled",
     },
@@ -150,59 +150,27 @@ def fasttable_enabled_impl(ctx):
         # TODO(haberman): check that the target CPU supports fasttable.
         pass
 
-    return _FastTableEnabledInfo(enabled = raw_setting)
+    return FastTableEnabledInfo(enabled = raw_setting)
 
 upb_fasttable_enabled = rule(
     implementation = fasttable_enabled_impl,
     build_setting = config.bool(flag = True),
 )
 
-# Dummy rule to expose select() copts to aspects  ##############################
+_UpbCcWrappedCcInfo = provider("Provider for cc_info for protos", fields = ["cc_info"])
+_WrappedCcGeneratedSrcsInfo = provider("Provider for generated sources", fields = ["srcs"])
 
-UpbProtoLibraryCoptsInfo = provider(
-    "Provides copts for upb proto targets",
-    fields = {
-        "copts": "copts for upb_proto_library()",
-    },
-)
-
-def upb_proto_library_copts_impl(ctx):
-    return UpbProtoLibraryCoptsInfo(copts = ctx.attr.copts)
-
-upb_proto_library_copts = rule(
-    implementation = upb_proto_library_copts_impl,
-    attrs = {"copts": attr.string_list(default = [])},
-)
-
-# upb_proto_library / upb_proto_reflection_library shared code #################
-
-GeneratedSrcsInfo = provider(
-    "Provides generated headers and sources",
-    fields = {
-        "srcs": "list of srcs",
-        "hdrs": "list of hdrs",
-    },
-)
-
-UpbWrappedCcInfo = provider("Provider for cc_info for protos", fields = ["cc_info"])
-_UpbDefsWrappedCcInfo = provider("Provider for cc_info for protos", fields = ["cc_info"])
-UpbWrappedGeneratedSrcsInfo = provider("Provider for generated sources", fields = ["srcs"])
-_WrappedDefsGeneratedSrcsInfo = provider(
-    "Provider for generated reflective sources",
-    fields = ["srcs"],
-)
-
-def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
+def _compile_upb_cc_protos(ctx, generator, proto_info, proto_sources):
     if len(proto_sources) == 0:
         return GeneratedSrcsInfo(srcs = [], hdrs = [])
 
-    ext = "." + generator
     tool = getattr(ctx.executable, "_gen_" + generator)
-    srcs = [_generate_output_file(ctx, name, ext + ".c") for name in proto_sources]
-    hdrs = [_generate_output_file(ctx, name, ext + ".h") for name in proto_sources]
+    srcs = [_generate_output_file(ctx, name, ".upb.proto.cc") for name in proto_sources]
+    hdrs = [_generate_output_file(ctx, name, ".upb.proto.h") for name in proto_sources]
+    hdrs += [_generate_output_file(ctx, name, ".upb.fwd.h") for name in proto_sources]
     transitive_sets = proto_info.transitive_descriptor_sets.to_list()
     fasttable_enabled = (hasattr(ctx.attr, "_fasttable_enabled") and
-                         ctx.attr._fasttable_enabled[_FastTableEnabledInfo].enabled)
+                         ctx.attr._fasttable_enabled[FastTableEnabledInfo].enabled)
     codegen_params = "fasttable:" if fasttable_enabled else ""
     ctx.actions.run(
         inputs = depset(
@@ -218,31 +186,30 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
                         "--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]),
                     ] +
                     [_get_real_short_path(file) for file in proto_sources],
-        progress_message = "Generating upb protos for :" + ctx.label.name,
-        mnemonic = "GenUpbProtos",
+        progress_message = "Generating upb cc protos for :" + ctx.label.name,
     )
     return GeneratedSrcsInfo(srcs = srcs, hdrs = hdrs)
 
-def _upb_proto_rule_impl(ctx):
+def _upb_cc_proto_rule_impl(ctx):
     if len(ctx.attr.deps) != 1:
         fail("only one deps dependency allowed.")
     dep = ctx.attr.deps[0]
 
-    if _WrappedDefsGeneratedSrcsInfo in dep:
-        srcs = dep[_WrappedDefsGeneratedSrcsInfo].srcs
+    if _WrappedCcGeneratedSrcsInfo in dep:
+        srcs = dep[_WrappedCcGeneratedSrcsInfo].srcs
     elif UpbWrappedGeneratedSrcsInfo in dep:
         srcs = dep[UpbWrappedGeneratedSrcsInfo].srcs
     else:
         fail("proto_library rule must generate UpbWrappedGeneratedSrcsInfo or " +
-             "_WrappedDefsGeneratedSrcsInfo (aspect should have handled this).")
+             "_WrappedCcGeneratedSrcsInfo (aspect should have handled this).")
 
-    if _UpbDefsWrappedCcInfo in dep:
-        cc_info = dep[_UpbDefsWrappedCcInfo].cc_info
+    if _UpbCcWrappedCcInfo in dep:
+        cc_info = dep[_UpbCcWrappedCcInfo].cc_info
     elif UpbWrappedCcInfo in dep:
         cc_info = dep[UpbWrappedCcInfo].cc_info
     else:
         fail("proto_library rule must generate UpbWrappedCcInfo or " +
-             "_UpbDefsWrappedCcInfo (aspect should have handled this).")
+             "_UpbCcWrappedCcInfo (aspect should have handled this).")
 
     lib = cc_info.linking_context.linker_inputs.to_list()[0].libraries[0]
     files = _filter_none([
@@ -256,17 +223,16 @@ def _upb_proto_rule_impl(ctx):
         cc_info,
     ]
 
-def _upb_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
+def _upb_cc_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
     proto_info = target[ProtoInfo]
-    files = _compile_upb_protos(ctx, generator, proto_info, proto_info.direct_sources)
+    files = _compile_upb_cc_protos(ctx, generator, proto_info, proto_info.direct_sources)
     deps = ctx.rule.attr.deps + getattr(ctx.attr, "_" + generator)
     dep_ccinfos = [dep[CcInfo] for dep in deps if CcInfo in dep]
     dep_ccinfos += [dep[UpbWrappedCcInfo].cc_info for dep in deps if UpbWrappedCcInfo in dep]
-    dep_ccinfos += [dep[_UpbDefsWrappedCcInfo].cc_info for dep in deps if _UpbDefsWrappedCcInfo in dep]
-    if generator == "upbdefs":
-        if UpbWrappedCcInfo not in target:
-            fail("Target should have UpbWrappedCcInfo provider")
-        dep_ccinfos.append(target[UpbWrappedCcInfo].cc_info)
+    dep_ccinfos += [dep[_UpbCcWrappedCcInfo].cc_info for dep in deps if _UpbCcWrappedCcInfo in dep]
+    if UpbWrappedCcInfo not in target:
+        fail("Target should have UpbWrappedCcInfo provider")
+    dep_ccinfos.append(target[UpbWrappedCcInfo].cc_info)
     cc_info = _cc_library_func(
         ctx = ctx,
         name = ctx.rule.attr.name + "." + generator,
@@ -277,11 +243,8 @@ def _upb_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
     )
     return [cc_provider(cc_info = cc_info), file_provider(srcs = files)]
 
-def upb_proto_library_aspect_impl(target, ctx):
-    return _upb_proto_aspect_impl(target, ctx, "upb", UpbWrappedCcInfo, UpbWrappedGeneratedSrcsInfo)
-
-def _upb_proto_reflection_library_aspect_impl(target, ctx):
-    return _upb_proto_aspect_impl(target, ctx, "upbdefs", _UpbDefsWrappedCcInfo, _WrappedDefsGeneratedSrcsInfo)
+def _upb_cc_proto_library_aspect_impl(target, ctx):
+    return _upb_cc_proto_aspect_impl(target, ctx, "upbprotos", _UpbCcWrappedCcInfo, _WrappedCcGeneratedSrcsInfo)
 
 def _maybe_add(d):
     if _is_google3:
@@ -292,17 +255,15 @@ def _maybe_add(d):
         )
     return d
 
-# upb_proto_library() ##########################################################
-
-upb_proto_library_aspect = aspect(
+_upb_cc_proto_library_aspect = aspect(
     attrs = _maybe_add({
         "_copts": attr.label(
             default = "//:upb_proto_library_copts__for_generated_code_only_do_not_use",
         ),
-        "_gen_upb": attr.label(
+        "_gen_upbprotos": attr.label(
             executable = True,
             cfg = "exec",
-            default = "//upbc:protoc-gen-upb",
+            default = "//third_party/upb/protos_generator:protoc-gen-upb-protos",
         ),
         "_protoc": attr.label(
             executable = True,
@@ -312,64 +273,20 @@ upb_proto_library_aspect = aspect(
         "_cc_toolchain": attr.label(
             default = "@bazel_tools//tools/cpp:current_cc_toolchain",
         ),
-        "_upb": attr.label_list(default = [
-            "//:generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
-        ]),
-        "_fasttable_enabled": attr.label(default = "//:fasttable_enabled"),
-    }),
-    implementation = upb_proto_library_aspect_impl,
-    provides = [
-        UpbWrappedCcInfo,
-        UpbWrappedGeneratedSrcsInfo,
-    ],
-    attr_aspects = ["deps"],
-    fragments = ["cpp"],
-    toolchains = use_cpp_toolchain(),
-    incompatible_use_toolchain_transition = True,
-)
-
-upb_proto_library = rule(
-    output_to_genfiles = True,
-    implementation = _upb_proto_rule_impl,
-    attrs = {
-        "deps": attr.label_list(
-            aspects = [upb_proto_library_aspect],
-            allow_rules = ["proto_library"],
-            providers = [ProtoInfo],
-        ),
-    },
-)
-
-# upb_proto_reflection_library() ###############################################
-
-_upb_proto_reflection_library_aspect = aspect(
-    attrs = _maybe_add({
-        "_copts": attr.label(
-            default = "//:upb_proto_library_copts__for_generated_code_only_do_not_use",
-        ),
-        "_gen_upbdefs": attr.label(
-            executable = True,
-            cfg = "exec",
-            default = "//upbc:protoc-gen-upbdefs",
-        ),
-        "_protoc": attr.label(
-            executable = True,
-            cfg = "exec",
-            default = "@com_google_protobuf//:protoc",
-        ),
-        "_cc_toolchain": attr.label(
-            default = "@bazel_tools//tools/cpp:current_cc_toolchain",
-        ),
-        "_upbdefs": attr.label_list(
+        "_upbprotos": attr.label_list(
             default = [
-                "//:generated_reflection_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
+                # TODO: Add dependencies for cc runtime (absl/string etc..)
+                "//:generated_cpp_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
+                "@com_google_absl//absl/strings",
+                "@com_google_absl//absl/status:statusor",
+                "//third_party/upb/protos",
             ],
         ),
     }),
-    implementation = _upb_proto_reflection_library_aspect_impl,
+    implementation = _upb_cc_proto_library_aspect_impl,
     provides = [
-        _UpbDefsWrappedCcInfo,
-        _WrappedDefsGeneratedSrcsInfo,
+        _UpbCcWrappedCcInfo,
+        _WrappedCcGeneratedSrcsInfo,
     ],
     required_aspect_providers = [
         UpbWrappedCcInfo,
@@ -377,18 +294,18 @@ _upb_proto_reflection_library_aspect = aspect(
     ],
     attr_aspects = ["deps"],
     fragments = ["cpp"],
-    toolchains = use_cpp_toolchain(),
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
     incompatible_use_toolchain_transition = True,
 )
 
-upb_proto_reflection_library = rule(
+upb_cc_proto_library = rule(
     output_to_genfiles = True,
-    implementation = _upb_proto_rule_impl,
+    implementation = _upb_cc_proto_rule_impl,
     attrs = {
         "deps": attr.label_list(
             aspects = [
                 upb_proto_library_aspect,
-                _upb_proto_reflection_library_aspect,
+                _upb_cc_proto_library_aspect,
             ],
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
