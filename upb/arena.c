@@ -30,6 +30,8 @@
 // Must be last.
 #include "upb/port_def.inc"
 
+UPB_STATIC_ASSERT(UPB_ARENA_SIZEOF >= sizeof(upb_Arena) + sizeof(long long))
+
 static uint32_t* upb_cleanup_pointer(uintptr_t cleanup_metadata) {
   return (uint32_t*)(cleanup_metadata & ~0x1);
 }

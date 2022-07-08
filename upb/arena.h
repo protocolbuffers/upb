@@ -39,6 +39,13 @@
 extern "C" {
 #endif
 
+// Guaranteed to always be large enough to contain one upb_Arena struct when
+// allocated as a char array (and already accounts for alignment and padding).
+// So the following should always succeed without needing to touch the heap:
+//    char buf[UPB_ARENA_SIZEOF];
+//    upb_Arena* arena = upb_Arena_Init(buf, sizeof(buf), &upb_alloc_global);
+#define UPB_ARENA_SIZEOF 128
+
 /* upb_Arena is a specific allocator implementation that uses arena allocation.
  * The user provides an allocator that will be used to allocate the underlying
  * arena blocks.  Arenas by nature do not require the individual allocations

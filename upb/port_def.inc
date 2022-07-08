@@ -287,3 +287,13 @@ void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
 #else
 #define UPB_DEPRECATED
 #endif
+
+/* Static assert (if available) ***********************************************/
+
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define UPB_STATIC_ASSERT(expr) static_assert(expr, "error");
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define UPB_STATIC_ASSERT(expr) _Static_assert(expr, "error");
+#else
+#define UPB_STATIC_ASSERT(expr)
+#endif
