@@ -150,7 +150,6 @@ void upb_MiniTable_SetSubEnum(upb_MiniTable* table, upb_MiniTable_Field* field,
 
 const char* upb_MiniTable_BuildExtension(const char* data, size_t len,
                                          upb_MiniTable_Extension* ext,
-                                         upb_MiniTable_Sub sub,
                                          upb_Status* status);
 
 // Special-case functions for MessageSet layout and map entries.

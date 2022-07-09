@@ -139,9 +139,7 @@ void Builder::BuildExtensions(upb_ExtensionRegistry** exts) {
     while (ptr < end) {
       upb_MiniTable_Extension* ext = reinterpret_cast<upb_MiniTable_Extension*>(
           upb_Arena_Malloc(arena_, sizeof(*ext)));
-      upb_MiniTable_Sub sub;
-      ptr =
-          upb_MiniTable_BuildExtension(ptr, end - ptr, ext, sub, status.ptr());
+      ptr = upb_MiniTable_BuildExtension(ptr, end - ptr, ext, status.ptr());
       if (!ptr) break;
       if (!LinkExtension(ext)) continue;
       if (_upb_extreg_get(*exts, ext->extendee, ext->field.number)) continue;

@@ -1102,7 +1102,6 @@ upb_MiniTable_Enum* upb_MiniTable_BuildEnum(const char* data, size_t len,
 
 const char* upb_MiniTable_BuildExtension(const char* data, size_t len,
                                          upb_MiniTable_Extension* ext,
-                                         upb_MiniTable_Sub sub,
                                          upb_Status* status) {
   upb_MtDecoder decoder = {
       .arena = NULL,

@@ -264,9 +264,8 @@ void FilePlatformLayout::BuildExtensions(const protobuf::FileDescriptor* fd) {
     e.PutField(static_cast<upb_FieldType>(f->type()), f->number(),
                GetFieldModifiers(f));
     upb_MiniTable_Extension& ext = extension_map_[f];
-    upb_MiniTable_Sub sub;
     bool ok = upb_MiniTable_BuildExtension(e.data().data(), e.data().size(),
-                                           &ext, sub, status.ptr());
+                                           &ext, status.ptr());
     if (!ok) {
       // TODO(haberman): Use ABSL CHECK() when it is available.
       fprintf(stderr, "Error building mini-table: %s\n",
