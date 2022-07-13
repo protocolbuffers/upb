@@ -34,7 +34,7 @@ _DEFAULT_COPTS = []
 _DEFAULT_CPPOPTS.extend([
     "-Wextra",
     # "-Wshorten-64-to-32",  # not in GCC (and my Kokoro images doesn't have Clang)
-    "-Werror",
+    #"-Werror",
     "-Wno-long-long",
 ])
 _DEFAULT_COPTS.extend([
@@ -137,7 +137,7 @@ def _upb_amalgamation(ctx):
     ctx.actions.run(
         inputs = inputs,
         outputs = ctx.outputs.outs,
-        arguments = [ctx.bin_dir.path + "/", ctx.attr.prefix] + [f.path for f in srcs] + ["-I" + root for root in _get_real_roots(inputs)],
+        arguments = [ctx.bin_dir.path + "/", ctx.attr.prefix] + [f.path for f in srcs] + ["-I" + root for root in _get_real_roots(inputs)] + ["-I" + root +"/src" for root in _get_real_roots(inputs)],
         progress_message = "Making amalgamation",
         executable = ctx.executable._amalgamator,
     )

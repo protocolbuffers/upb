@@ -58,16 +58,31 @@ def _get_real_short_path(file):
         short_path = short_path.split(virtual_imports)[1].split("/", 1)[1]
     return short_path
 
-def _get_real_root(file):
+def _get_real_root(ctx, file):
     real_short_path = _get_real_short_path(file)
-    return file.path[:-len(real_short_path) - 1]
+    root = file.path[:-len(real_short_path) - 1]
+    if ctx.rule.attr.strip_import_prefix:
+        root = paths.join(root, ctx.rule.attr.strip_import_prefix[1:])
+    return root
 
 def _generate_output_file(ctx, src, extension):
+    package = ctx.label.package
+    if ctx.rule.attr.strip_import_prefix:
+        package = package[len(ctx.rule.attr.strip_import_prefix):]
+        #fail(package)
     real_short_path = _get_real_short_path(src)
-    real_short_path = paths.relativize(real_short_path, ctx.label.package)
+    real_short_path = paths.relativize(real_short_path, package)
     output_filename = paths.replace_extension(real_short_path, extension)
     ret = ctx.actions.declare_file(output_filename)
     return ret
+
+def _generate_include_path(ctx, src, out, extension):
+    short_path = _get_real_short_path(src)
+    short_path = paths.replace_extension(short_path, extension)
+    if not out.path.endswith(short_path):
+        fail("%s does not end with %s" % (out.path, short_path))
+
+    return out.path[:-len(short_path)]
 
 def _filter_none(elems):
     out = []
@@ -76,7 +91,7 @@ def _filter_none(elems):
             out.append(elem)
     return out
 
-def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
+def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
     """Like cc_library(), but callable from rules.
 
     Args:
@@ -85,6 +100,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
       hdrs: Public headers that can be #included from other rules.
       srcs: C/C++ source files.
       copts: Additional options for cc compilation.
+      includes: Additional include paths.
       dep_ccinfos: CcInfo providers of dependencies we should build/link against.
 
     Returns:
@@ -112,6 +128,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
         cc_toolchain = toolchain,
         name = name,
         srcs = srcs,
+        includes = includes,
         public_hdrs = hdrs,
         user_compile_flags = copts,
         compilation_contexts = compilation_contexts,
@@ -181,6 +198,7 @@ GeneratedSrcsInfo = provider(
     fields = {
         "srcs": "list of srcs",
         "hdrs": "list of hdrs",
+        "includes": "list of extra includes"
     },
 )
 
@@ -213,7 +231,7 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
         outputs = srcs + hdrs,
         executable = ctx.executable._protoc,
         arguments = [
-                        "--" + generator + "_out=" + codegen_params + _get_real_root(srcs[0]),
+                        "--" + generator + "_out=" + codegen_params + _get_real_root(ctx, srcs[0]),
                         "--plugin=protoc-gen-" + generator + "=" + tool.path,
                         "--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]),
                     ] +
@@ -221,7 +239,7 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
         progress_message = "Generating upb protos for :" + ctx.label.name,
         mnemonic = "GenUpbProtos",
     )
-    return GeneratedSrcsInfo(srcs = srcs, hdrs = hdrs)
+    return GeneratedSrcsInfo(srcs = srcs, hdrs = hdrs, includes = [_generate_include_path(ctx, proto_sources[0], hdrs[0], ext + ".h")])
 
 def _upb_proto_rule_impl(ctx):
     if len(ctx.attr.deps) != 1:
@@ -273,6 +291,7 @@ def _upb_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
         hdrs = files.hdrs,
         srcs = files.srcs,
         copts = ctx.attr._copts[UpbProtoLibraryCoptsInfo].copts,
+        includes = files.includes,
         dep_ccinfos = dep_ccinfos,
     )
     return [cc_provider(cc_info = cc_info), file_provider(srcs = files)]
@@ -337,6 +356,7 @@ upb_proto_library = rule(
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
         ),
+        "strip_import_prefix": attr.string(),
     },
 )
 
