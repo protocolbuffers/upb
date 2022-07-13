@@ -184,6 +184,7 @@ py_wheel(
         "@com_google_protobuf//:python_test_srcs",
         "@com_google_protobuf//src/google/protobuf:testdata",
     ],
+    testonly = True,
 )
 
 py_dist(
