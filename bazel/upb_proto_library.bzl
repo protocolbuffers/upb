@@ -67,9 +67,11 @@ def _get_real_root(ctx, file):
 
 def _generate_output_file(ctx, src, extension):
     package = ctx.label.package
-    if ctx.rule.attr.strip_import_prefix:
-        package = package[len(ctx.rule.attr.strip_import_prefix):]
-        #fail(package)
+    strip_import_prefix = ctx.rule.attr.strip_import_prefix
+    if strip_import_prefix:
+        if not package.startswith(strip_import_prefix[1:]):
+            fail("%s does not begin with prefix %s" % (package, strip_import_prefix))
+        package = package[len(strip_import_prefix):]
     real_short_path = _get_real_short_path(src)
     real_short_path = paths.relativize(real_short_path, package)
     output_filename = paths.replace_extension(real_short_path, extension)
@@ -356,7 +358,6 @@ upb_proto_library = rule(
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
         ),
-        "strip_import_prefix": attr.string(),
     },
 )
 

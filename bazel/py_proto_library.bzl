@@ -139,6 +139,5 @@ py_proto_library = rule(
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
         ),
-        "strip_import_prefix": attr.string(),
     },
 )
