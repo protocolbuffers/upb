@@ -131,6 +131,7 @@ py_wheel(
     strip_path_prefixes = [
         "python/dist/",
         "python/",
+        "src/",
     ],
     version = PROTOBUF_PYTHON_VERSION,
     deps = [
@@ -161,6 +162,7 @@ py_wheel(
     python_tag = "py3",
     strip_path_prefixes = [
         "python/",
+        "src/",
     ],
     version = PROTOBUF_PYTHON_VERSION,
     deps = [
@@ -175,7 +177,10 @@ py_wheel(
     distribution = "protobuftests",
     platform = "any",
     python_tag = "py3",
-    strip_path_prefixes = ["python/"],
+    strip_path_prefixes = [
+        "python/",
+        "src/",
+    ],
     version = PROTOBUF_PYTHON_VERSION,
     deps = [
         "//python/pb_unit_tests:test_files",
