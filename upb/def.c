@@ -312,9 +312,18 @@ static const char* shortdefname(const char* fullname) {
   }
 }
 
+// Sort by enum value.
+static int cmp_enums(const void* a, const void* b) {
+  const upb_EnumValueDef* A = *(const upb_EnumValueDef**)a;
+  const upb_EnumValueDef* B = *(const upb_EnumValueDef**)b;
+  if ((uint32_t)A->number < (uint32_t)B->number) return -1;
+  if ((uint32_t)A->number > (uint32_t)B->number) return 1;
+  return 0;
+}
+
 /* All submessage fields are lower than all other fields.
  * Secondly, fields are increasing in order. */
-uint32_t field_rank(const upb_FieldDef* f) {
+static uint32_t field_rank(const upb_FieldDef* f) {
   uint32_t ret = upb_FieldDef_Number(f);
   const uint32_t high_bit = 1 << 30;
   UPB_ASSERT(ret < high_bit);
@@ -322,10 +331,13 @@ uint32_t field_rank(const upb_FieldDef* f) {
   return ret;
 }
 
-int cmp_fields(const void* p1, const void* p2) {
-  const upb_FieldDef* f1 = *(upb_FieldDef* const*)p1;
-  const upb_FieldDef* f2 = *(upb_FieldDef* const*)p2;
-  return field_rank(f1) - field_rank(f2);
+// Sort by field number.
+static int cmp_fields(const void* p1, const void* p2) {
+  const upb_FieldDef* f1 = *(upb_FieldDef**)p1;
+  const upb_FieldDef* f2 = *(upb_FieldDef**)p2;
+  const uint32_t r1 = field_rank(f1);
+  const uint32_t r2 = field_rank(f2);
+  return (r1 < r2) ? -1 : (r1 > r2) ? 1 : 0;
 }
 
 static void upb_Status_setoom(upb_Status* status) {
@@ -430,6 +442,18 @@ bool upb_EnumDef_CheckNumber(const upb_EnumDef* e, int32_t num) {
 const upb_EnumValueDef* upb_EnumDef_Value(const upb_EnumDef* e, int i) {
   UPB_ASSERT(0 <= i && i < e->value_count);
   return &e->values[i];
+}
+
+const upb_EnumValueDef** _upb_EnumDef_Sort(const upb_EnumDef* e, upb_Arena* a) {
+  const upb_EnumValueDef** sorted = (const upb_EnumValueDef**)upb_Arena_Malloc(
+      a, e->value_count * sizeof(void*));
+  if (!sorted) return NULL;
+
+  for (size_t i = 0; i < e->value_count; i++) {
+    sorted[i] = upb_EnumDef_Value(e, i);
+  }
+  qsort(sorted, e->value_count, sizeof(void*), cmp_enums);
+  return sorted;
 }
 
 /* upb_EnumValueDef ***********************************************************/
@@ -862,6 +886,22 @@ const upb_FieldDef* upb_MessageDef_NestedExtension(const upb_MessageDef* m,
 
 upb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m) {
   return m->well_known_type;
+}
+
+const upb_FieldDef** _upb_MessageDef_Sort(upb_MessageDef* m, upb_Arena* a) {
+  const upb_FieldDef** sorted =
+      (const upb_FieldDef**)upb_Arena_Malloc(a, m->field_count * sizeof(void*));
+  if (!sorted) return NULL;
+
+  for (size_t i = 0; i < m->field_count; i++) {
+    sorted[i] = upb_MessageDef_Field(m, i);
+  }
+  qsort(sorted, m->field_count, sizeof(void*), cmp_fields);
+  for (size_t i = 0; i < m->field_count; i++) {
+    upb_FieldDef* f = (upb_FieldDef*)&m->fields[i];
+    f->layout_index = i;
+  }
+  return sorted;
 }
 
 /* upb_OneofDef ***************************************************************/

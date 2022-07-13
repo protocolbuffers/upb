@@ -250,6 +250,11 @@ UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
   return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
 }
 
+// Allocates and returns a sorted list of pointers to the values in an enum.
+// The original field def structs are not moved HOWEVER this function does
+// change the field layout_index values to reflect the sorted order.
+const upb_FieldDef** _upb_MessageDef_Sort(upb_MessageDef* e, upb_Arena* a);
+
 /* upb_ExtensionRange *********************************************************/
 
 const google_protobuf_ExtensionRangeOptions* upb_ExtensionRange_Options(
@@ -282,6 +287,9 @@ UPB_INLINE const upb_EnumValueDef* upb_EnumDef_FindValueByName(
     const upb_EnumDef* e, const char* name) {
   return upb_EnumDef_FindValueByNameWithSize(e, name, strlen(name));
 }
+
+// Allocates and returns a sorted list of pointers to the values in an enum.
+const upb_EnumValueDef** _upb_EnumDef_Sort(const upb_EnumDef* e, upb_Arena* a);
 
 /* upb_EnumValueDef ***********************************************************/
 
