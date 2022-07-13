@@ -41,5 +41,5 @@ const char* upb_MiniDescriptor_EncodeField(const upb_FieldDef* f,
 
 const char* upb_MiniDescriptor_EncodeMessage(const upb_MessageDef* m,
                                              upb_Arena* a) {
-  return _upb_MiniDescriptor_EncodeMessage(m, a);
+  return _upb_MessageDef_MiniDescriptor(m, a);
 }

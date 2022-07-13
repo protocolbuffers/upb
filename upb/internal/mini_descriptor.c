@@ -113,15 +113,6 @@ static uint64_t upb_Message_Modifiers(const upb_MessageDef* m) {
 
 /******************************************************************************/
 
-// Sort by field number.
-static int upb_MiniDescriptor_CompareFields(const void* a, const void* b) {
-  const upb_FieldDef* A = *(void**)a;
-  const upb_FieldDef* B = *(void**)b;
-  if (upb_FieldDef_Number(A) < upb_FieldDef_Number(B)) return -1;
-  if (upb_FieldDef_Number(A) > upb_FieldDef_Number(B)) return 1;
-  return 0;
-}
-
 const char* _upb_MiniDescriptor_EncodeEnum(const upb_EnumDef* e,
                                            const upb_EnumValueDef** sorted,
                                            upb_Arena* a) {
@@ -130,11 +121,10 @@ const char* _upb_MiniDescriptor_EncodeEnum(const upb_EnumDef* e,
 
   upb_MtDataEncoder_StartEnum(&s.e);
 
-  const size_t value_count = upb_EnumDef_ValueCount(e);
-
   // Duplicate values are allowed but we only encode each value once.
   uint32_t previous = 0;
 
+  const size_t value_count = upb_EnumDef_ValueCount(e);
   for (size_t i = 0; i < value_count; i++) {
     const uint32_t current =
         upb_EnumValueDef_Number(sorted ? sorted[i] : upb_EnumDef_Value(e, i));
@@ -164,14 +154,14 @@ const char* _upb_MiniDescriptor_EncodeField(const upb_FieldDef* f,
   upb_DescState_Init(&s);
 
   if (!upb_DescState_Grow(&s, a)) return NULL;
-  upb_MtDataEncoder_StartMessage(&s.e, s.ptr, 0);
+  s.ptr = upb_MtDataEncoder_StartMessage(&s.e, s.ptr, 0);
 
   const upb_FieldType type = upb_FieldDef_Type(f);
   const int number = upb_FieldDef_Number(f);
   const uint64_t modifiers = upb_Field_Modifiers(f);
 
   if (!upb_DescState_Grow(&s, a)) return NULL;
-  upb_MtDataEncoder_PutField(&s.e, s.ptr, type, number, modifiers);
+  s.ptr = upb_MtDataEncoder_PutField(&s.e, s.ptr, type, number, modifiers);
 
   if (!upb_DescState_Grow(&s, a)) return NULL;
   *s.ptr++ = '\0';
@@ -180,48 +170,34 @@ const char* _upb_MiniDescriptor_EncodeField(const upb_FieldDef* f,
 }
 
 const char* _upb_MiniDescriptor_EncodeMessage(const upb_MessageDef* m,
+                                              const upb_FieldDef** sorted,
                                               upb_Arena* a) {
   DescState s;
   upb_DescState_Init(&s);
 
-  // Make a copy.
-  const size_t field_count = upb_MessageDef_FieldCount(m);
-  const upb_FieldDef** sorted =
-      (const upb_FieldDef**)upb_Arena_Malloc(a, field_count * sizeof(void*));
-  if (!sorted) return NULL;
-
-  // Sort the copy.
-  for (size_t i = 0; i < field_count; i++) {
-    sorted[i] = upb_MessageDef_Field(m, i);
-  }
-  qsort(sorted, field_count, sizeof(void*), upb_MiniDescriptor_CompareFields);
-
-  // Start encoding.
   if (!upb_DescState_Grow(&s, a)) return NULL;
-  upb_MtDataEncoder_StartMessage(&s.e, s.ptr, upb_Message_Modifiers(m));
+  s.ptr = upb_MtDataEncoder_StartMessage(&s.e, s.ptr, upb_Message_Modifiers(m));
 
-  // Encode the fields.
+  const size_t field_count = upb_MessageDef_FieldCount(m);
   for (size_t i = 0; i < field_count; i++) {
-    const upb_FieldDef* field_def = sorted[i];
-    const upb_FieldType type = upb_FieldDef_Type(field_def);
-    const int number = upb_FieldDef_Number(field_def);
-    const uint64_t modifiers = upb_Field_Modifiers(field_def);
+    const upb_FieldDef* f = sorted ? sorted[i] : upb_MessageDef_Field(m, i);
+    const upb_FieldType type = upb_FieldDef_Type(f);
+    const int number = upb_FieldDef_Number(f);
+    const uint64_t modifiers = upb_Field_Modifiers(f);
 
     if (!upb_DescState_Grow(&s, a)) return NULL;
     s.ptr = upb_MtDataEncoder_PutField(&s.e, s.ptr, type, number, modifiers);
   }
 
-  // Encode the oneofs.
   const int oneof_count = upb_MessageDef_OneofCount(m);
   for (int i = 0; i < oneof_count; i++) {
     if (!upb_DescState_Grow(&s, a)) return NULL;
     s.ptr = upb_MtDataEncoder_StartOneof(&s.e, s.ptr);
 
-    const upb_OneofDef* oneof_def = upb_MessageDef_Oneof(m, i);
-    const int field_count = upb_OneofDef_FieldCount(oneof_def);
+    const upb_OneofDef* o = upb_MessageDef_Oneof(m, i);
+    const int field_count = upb_OneofDef_FieldCount(o);
     for (int j = 0; j < field_count; j++) {
-      const upb_FieldDef* field_def = upb_OneofDef_Field(oneof_def, j);
-      const int number = upb_FieldDef_Number(field_def);
+      const int number = upb_FieldDef_Number(upb_OneofDef_Field(o, j));
 
       if (!upb_DescState_Grow(&s, a)) return NULL;
       s.ptr = upb_MtDataEncoder_PutOneofField(&s.e, s.ptr, number);

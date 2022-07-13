@@ -53,6 +53,8 @@ typedef struct {
 static const char opt_default_buf[_UPB_MAXOPT_SIZE + sizeof(void*)] = {0};
 static const char* opt_default = &opt_default_buf[sizeof(void*)];
 
+static const char kOutOfMemory[] = "out of memory";
+
 struct upb_FieldDef {
   const google_protobuf_FieldOptions* opts;
   const upb_FileDef* file;
@@ -81,7 +83,7 @@ struct upb_FieldDef {
   uint16_t layout_index; /* Index into msgdef->layout->fields or file->exts */
   bool has_default;
   bool is_extension_;
-  bool packed_;
+  bool is_packed_;
   bool proto3_optional_;
   bool has_json_name_;
   upb_FieldType type_;
@@ -125,6 +127,7 @@ struct upb_MessageDef {
   int nested_enum_count;
   int nested_ext_count;
   bool in_message_set;
+  bool is_sorted;
   upb_WellKnown well_known_type;
 #if UINTPTR_MAX == 0xffffffff
   uint32_t padding;  // Increase size to a multiple of 8.
@@ -312,26 +315,16 @@ static const char* shortdefname(const char* fullname) {
   }
 }
 
-/* All submessage fields are lower than all other fields.
- * Secondly, fields are increasing in order. */
-uint32_t field_rank(const upb_FieldDef* f) {
-  uint32_t ret = upb_FieldDef_Number(f);
-  const uint32_t high_bit = 1 << 30;
-  UPB_ASSERT(ret < high_bit);
-  if (!upb_FieldDef_IsSubMessage(f)) ret |= high_bit;
-  return ret;
+static int cmp_fields(const void* p1, const void* p2) {
+  const uint32_t v1 = (*(upb_FieldDef**)p1)->number_;
+  const uint32_t v2 = (*(upb_FieldDef**)p2)->number_;
+  return (v1 < v2) ? -1 : (v1 > v2);
 }
 
-static int cmp_values(const void* a, const void* b) {
-  const upb_EnumValueDef* A = *(const upb_EnumValueDef**)a;
-  const upb_EnumValueDef* B = *(const upb_EnumValueDef**)b;
-  if ((uint32_t)A->number < (uint32_t)B->number) return -1;
-  if ((uint32_t)A->number > (uint32_t)B->number) return 1;
-  return 0;
-}
-
-static void upb_Status_setoom(upb_Status* status) {
-  upb_Status_SetErrorMessage(status, "out of memory");
+static int cmp_values(const void* p1, const void* p2) {
+  const uint32_t v1 = (*(upb_EnumValueDef**)p1)->number;
+  const uint32_t v2 = (*(upb_EnumValueDef**)p2)->number;
+  return (v1 < v2) ? -1 : (v1 > v2);
 }
 
 static void assign_msg_wellknowntype(upb_MessageDef* m) {
@@ -479,8 +472,7 @@ uint32_t upb_EnumValueDef_Index(const upb_EnumValueDef* ev) {
   return ev - ev->parent->values;
 }
 
-/* upb_ExtensionRange
- * ***************************************************************/
+/* upb_ExtensionRange *********************************************************/
 
 const google_protobuf_ExtensionRangeOptions* upb_ExtensionRange_Options(
     const upb_ExtensionRange* r) {
@@ -559,7 +551,7 @@ bool upb_FieldDef_IsExtension(const upb_FieldDef* f) {
   return f->is_extension_;
 }
 
-bool upb_FieldDef_IsPacked(const upb_FieldDef* f) { return f->packed_; }
+bool upb_FieldDef_IsPacked(const upb_FieldDef* f) { return f->is_packed_; }
 
 const char* upb_FieldDef_Name(const upb_FieldDef* f) {
   return shortdefname(f->full_name);
@@ -709,8 +701,7 @@ bool upb_FieldDef_checkdescriptortype(int32_t type) {
   return between(type, 1, 18);
 }
 
-/* upb_MessageDef
- * *****************************************************************/
+/* upb_MessageDef *************************************************************/
 
 const google_protobuf_MessageOptions* upb_MessageDef_Options(
     const upb_MessageDef* m) {
@@ -802,14 +793,6 @@ const upb_FieldDef* upb_MessageDef_FindByJsonNameWithSize(
   return f;
 }
 
-int upb_MessageDef_numfields(const upb_MessageDef* m) { return m->field_count; }
-
-int upb_MessageDef_numoneofs(const upb_MessageDef* m) { return m->oneof_count; }
-
-int upb_MessageDef_numrealoneofs(const upb_MessageDef* m) {
-  return m->real_oneof_count;
-}
-
 int upb_MessageDef_ExtensionRangeCount(const upb_MessageDef* m) {
   return m->ext_range_count;
 }
@@ -832,10 +815,6 @@ int upb_MessageDef_NestedEnumCount(const upb_MessageDef* m) {
 
 int upb_MessageDef_NestedExtensionCount(const upb_MessageDef* m) {
   return m->nested_ext_count;
-}
-
-int upb_MessageDef_realoneofcount(const upb_MessageDef* m) {
-  return m->real_oneof_count;
 }
 
 const upb_MiniTable* upb_MessageDef_MiniTable(const upb_MessageDef* m) {
@@ -877,6 +856,26 @@ const upb_FieldDef* upb_MessageDef_NestedExtension(const upb_MessageDef* m,
 
 upb_WellKnown upb_MessageDef_WellKnownType(const upb_MessageDef* m) {
   return m->well_known_type;
+}
+
+const char* _upb_MessageDef_MiniDescriptor(const upb_MessageDef* m,
+                                           upb_Arena* a) {
+  if (m->is_sorted) return _upb_MiniDescriptor_EncodeMessage(m, NULL, a);
+
+  upb_FieldDef** sorted =
+      (upb_FieldDef**)upb_Arena_Malloc(a, m->field_count * sizeof(void*));
+  if (!sorted) return NULL;
+
+  for (size_t i = 0; i < m->field_count; i++) {
+    sorted[i] = (upb_FieldDef*)&m->fields[i];
+  }
+  qsort(sorted, m->field_count, sizeof(void*), cmp_fields);
+
+  for (size_t i = 0; i < m->field_count; i++) {
+    sorted[i]->layout_index = i;
+  }
+
+  return _upb_MiniDescriptor_EncodeMessage(m, (const upb_FieldDef**)sorted, a);
 }
 
 /* upb_OneofDef ***************************************************************/
@@ -1298,7 +1297,7 @@ UPB_NORETURN UPB_NOINLINE UPB_PRINTF(2, 3) static void symtab_errf(
 }
 
 UPB_NORETURN UPB_NOINLINE static void symtab_oomerr(symtab_addctx* ctx) {
-  upb_Status_setoom(ctx->status);
+  upb_Status_SetErrorMessage(ctx->status, kOutOfMemory);
   UPB_LONGJMP(ctx->err, 1);
 }
 
@@ -1355,340 +1354,73 @@ static void check_ident(symtab_addctx* ctx, upb_StringView name, bool full) {
   }
 }
 
-static size_t div_round_up(size_t n, size_t d) { return (n + d - 1) / d; }
+static bool upb_DefBuilder_IsClosedEnum(const upb_FieldDef* f) {
+  if (UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3) return false;
+  if (f->type_ != kUpb_FieldType_Enum) return false;
 
-static size_t upb_MessageValue_sizeof(upb_CType type) {
-  switch (type) {
-    case kUpb_CType_Double:
-    case kUpb_CType_Int64:
-    case kUpb_CType_UInt64:
-      return 8;
-    case kUpb_CType_Enum:
-    case kUpb_CType_Int32:
-    case kUpb_CType_UInt32:
-    case kUpb_CType_Float:
-      return 4;
-    case kUpb_CType_Bool:
-      return 1;
-    case kUpb_CType_Message:
-      return sizeof(void*);
-    case kUpb_CType_Bytes:
-    case kUpb_CType_String:
-      return sizeof(upb_StringView);
-  }
-  UPB_UNREACHABLE();
-}
-
-static uint8_t upb_msg_fielddefsize(const upb_FieldDef* f) {
+  // TODO(https://github.com/protocolbuffers/upb/issues/541):
+  // fix map enum values to check for unknown enum values and put
+  // them in the unknown field set.
   if (upb_MessageDef_IsMapEntry(upb_FieldDef_ContainingType(f))) {
-    upb_MapEntry ent;
-    UPB_ASSERT(sizeof(ent.k) == sizeof(ent.v));
-    return sizeof(ent.k);
-  } else if (upb_FieldDef_IsRepeated(f)) {
-    return sizeof(void*);
+    return false;
+  }
+
+  return f->sub.enumdef->file->syntax == kUpb_Syntax_Proto2;
+}
+
+static upb_MiniTable* upb_DefBuilder_MakeRegularMiniTable(
+    symtab_addctx* ctx, const upb_MessageDef* m) {
+  const char* desc = upb_MiniDescriptor_EncodeMessage(m, ctx->tmp_arena);
+  CHK_OOM(desc);
+
+  upb_MiniTable* ret =
+      upb_MiniTable_Build(desc, strlen(desc), kUpb_MiniTablePlatform_Native,
+                          ctx->arena, ctx->status);
+  CHK_OOM(ret);
+  return ret;
+}
+
+static upb_MiniTable* upb_DefBuilder_MakeMiniTable(symtab_addctx* ctx,
+                                                   const upb_MessageDef* m) {
+  if (google_protobuf_MessageOptions_message_set_wire_format(m->opts)) {
+    return upb_MiniTable_BuildMessageSet(kUpb_MiniTablePlatform_Native,
+                                         ctx->arena);
+  } else if (upb_MessageDef_IsMapEntry(m)) {
+    bool value_is_proto3_enum = m->fields[1].type_ == kUpb_FieldType_Enum &&
+                                !upb_DefBuilder_IsClosedEnum(&m->fields[1]);
+    upb_FieldDef* fields = (upb_FieldDef*)m->fields;
+    fields[0].layout_index = 0;
+    fields[1].layout_index = 1;
+    return upb_MiniTable_BuildMapEntry(
+        m->fields[0].type_, m->fields[1].type_, value_is_proto3_enum,
+        kUpb_MiniTablePlatform_Native, ctx->arena);
   } else {
-    return upb_MessageValue_sizeof(upb_FieldDef_CType(f));
+    return upb_DefBuilder_MakeRegularMiniTable(ctx, m);
   }
 }
 
-static uint32_t upb_MiniTable_place(symtab_addctx* ctx, upb_MiniTable* l,
-                                    size_t size, const upb_MessageDef* m) {
-  size_t ofs = UPB_ALIGN_UP(l->size, size);
-  size_t next = ofs + size;
-
-  if (next > UINT16_MAX) {
-    symtab_errf(ctx, "size of message %s exceeded max size of %zu bytes",
-                upb_MessageDef_FullName(m), (size_t)UINT16_MAX);
-  }
-
-  l->size = next;
-  return ofs;
-}
-
-static int field_number_cmp(const void* p1, const void* p2) {
-  const upb_MiniTable_Field* f1 = p1;
-  const upb_MiniTable_Field* f2 = p2;
-  return f1->number - f2->number;
-}
-
-static void assign_layout_indices(const upb_MessageDef* m, upb_MiniTable* l,
-                                  upb_MiniTable_Field* fields) {
-  int i;
-  int n = upb_MessageDef_numfields(m);
-  int dense_below = 0;
-  for (i = 0; i < n; i++) {
-    upb_FieldDef* f =
-        (upb_FieldDef*)upb_MessageDef_FindFieldByNumber(m, fields[i].number);
-    UPB_ASSERT(f);
-    f->layout_index = i;
-    if (i < UINT8_MAX && fields[i].number == i + 1 &&
-        (i == 0 || fields[i - 1].number == i)) {
-      dense_below = i + 1;
-    }
-  }
-  l->dense_below = dense_below;
-}
-
-static uint8_t map_descriptortype(const upb_FieldDef* f) {
-  uint8_t type = upb_FieldDef_Type(f);
-  /* See TableDescriptorType() in upbc/generator.cc for details and
-   * rationale of these exceptions. */
-  if (type == kUpb_FieldType_String && f->file->syntax == kUpb_Syntax_Proto2) {
-    return kUpb_FieldType_Bytes;
-  } else if (type == kUpb_FieldType_Enum &&
-             (f->sub.enumdef->file->syntax == kUpb_Syntax_Proto3 ||
-              UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3 ||
-              // TODO(https://github.com/protocolbuffers/upb/issues/541):
-              // fix map enum values to check for unknown enum values and put
-              // them in the unknown field set.
-              upb_MessageDef_IsMapEntry(upb_FieldDef_ContainingType(f)))) {
-    return kUpb_FieldType_Int32;
-  }
-  return type;
-}
-
-static void fill_fieldlayout(upb_MiniTable_Field* field,
-                             const upb_FieldDef* f) {
-  field->number = upb_FieldDef_Number(f);
-  field->descriptortype = map_descriptortype(f);
-
-  if (upb_FieldDef_IsMap(f)) {
-    field->mode =
-        kUpb_FieldMode_Map | (kUpb_FieldRep_Pointer << kUpb_FieldRep_Shift);
-  } else if (upb_FieldDef_IsRepeated(f)) {
-    field->mode =
-        kUpb_FieldMode_Array | (kUpb_FieldRep_Pointer << kUpb_FieldRep_Shift);
-  } else {
-    /* Maps descriptor type -> elem_size_lg2.  */
-    static const uint8_t sizes[] = {
-        -1,                       /* invalid descriptor type */
-        kUpb_FieldRep_8Byte,      /* DOUBLE */
-        kUpb_FieldRep_4Byte,      /* FLOAT */
-        kUpb_FieldRep_8Byte,      /* INT64 */
-        kUpb_FieldRep_8Byte,      /* UINT64 */
-        kUpb_FieldRep_4Byte,      /* INT32 */
-        kUpb_FieldRep_8Byte,      /* FIXED64 */
-        kUpb_FieldRep_4Byte,      /* FIXED32 */
-        kUpb_FieldRep_1Byte,      /* BOOL */
-        kUpb_FieldRep_StringView, /* STRING */
-        kUpb_FieldRep_Pointer,    /* GROUP */
-        kUpb_FieldRep_Pointer,    /* MESSAGE */
-        kUpb_FieldRep_StringView, /* BYTES */
-        kUpb_FieldRep_4Byte,      /* UINT32 */
-        kUpb_FieldRep_4Byte,      /* ENUM */
-        kUpb_FieldRep_4Byte,      /* SFIXED32 */
-        kUpb_FieldRep_8Byte,      /* SFIXED64 */
-        kUpb_FieldRep_4Byte,      /* SINT32 */
-        kUpb_FieldRep_8Byte,      /* SINT64 */
-    };
-    field->mode = kUpb_FieldMode_Scalar |
-                  (sizes[field->descriptortype] << kUpb_FieldRep_Shift);
-  }
-
-  if (upb_FieldDef_IsPacked(f)) {
-    field->mode |= kUpb_LabelFlags_IsPacked;
-  }
-
-  if (upb_FieldDef_IsExtension(f)) {
-    field->mode |= kUpb_LabelFlags_IsExtension;
-  }
-}
-
-/* This function is the dynamic equivalent of message_layout.{cc,h} in upbc.
- * It computes a dynamic layout for all of the fields in |m|. */
-static void make_layout(symtab_addctx* ctx, const upb_MessageDef* m) {
-  upb_MiniTable* l = (upb_MiniTable*)m->layout;
-  size_t field_count = upb_MessageDef_numfields(m);
-  size_t sublayout_count = 0;
-  upb_MiniTable_Sub* subs;
-  upb_MiniTable_Field* fields;
-
-  memset(l, 0, sizeof(*l) + sizeof(_upb_FastTable_Entry));
-
-  /* Count sub-messages. */
-  for (size_t i = 0; i < field_count; i++) {
-    const upb_FieldDef* f = &m->fields[i];
-    if (upb_FieldDef_IsSubMessage(f)) {
-      sublayout_count++;
-    }
-    if (upb_FieldDef_CType(f) == kUpb_CType_Enum &&
-        f->sub.enumdef->file->syntax == kUpb_Syntax_Proto2) {
-      sublayout_count++;
-    }
-  }
-
-  fields = symtab_alloc(ctx, field_count * sizeof(*fields));
-  subs = symtab_alloc(ctx, sublayout_count * sizeof(*subs));
-
-  l->field_count = upb_MessageDef_numfields(m);
-  l->fields = fields;
-  l->subs = subs;
-  l->table_mask = 0;
-  l->required_count = 0;
-
-  if (upb_MessageDef_ExtensionRangeCount(m) > 0) {
-    if (google_protobuf_MessageOptions_message_set_wire_format(m->opts)) {
-      l->ext = kUpb_ExtMode_IsMessageSet;
-    } else {
-      l->ext = kUpb_ExtMode_Extendable;
-    }
-  } else {
-    l->ext = kUpb_ExtMode_NonExtendable;
-  }
-
-  /* TODO(haberman): initialize fast tables so that reflection-based parsing
-   * can get the same speeds as linked-in types. */
-  l->fasttable[0].field_parser = &fastdecode_generic;
-  l->fasttable[0].field_data = 0;
-
-  if (upb_MessageDef_IsMapEntry(m)) {
-    /* TODO(haberman): refactor this method so this special case is more
-     * elegant. */
-    const upb_FieldDef* key = upb_MessageDef_FindFieldByNumber(m, 1);
-    const upb_FieldDef* val = upb_MessageDef_FindFieldByNumber(m, 2);
-    fields[0].number = 1;
-    fields[1].number = 2;
-    fields[0].mode = kUpb_FieldMode_Scalar;
-    fields[1].mode = kUpb_FieldMode_Scalar;
-    fields[0].presence = 0;
-    fields[1].presence = 0;
-    fields[0].descriptortype = map_descriptortype(key);
-    fields[1].descriptortype = map_descriptortype(val);
-    fields[0].offset = 0;
-    fields[1].offset = sizeof(upb_StringView);
-    fields[1].submsg_index = 0;
-
-    if (upb_FieldDef_CType(val) == kUpb_CType_Message) {
-      subs[0].submsg = upb_FieldDef_MessageSubDef(val)->layout;
-    }
-
-    upb_FieldDef* fielddefs = (upb_FieldDef*)&m->fields[0];
-    UPB_ASSERT(fielddefs[0].number_ == 1);
-    UPB_ASSERT(fielddefs[1].number_ == 2);
-    fielddefs[0].layout_index = 0;
-    fielddefs[1].layout_index = 1;
-
-    l->field_count = 2;
-    l->size = 2 * sizeof(upb_StringView);
-    l->size = UPB_ALIGN_UP(l->size, 8);
-    l->dense_below = 2;
-    return;
-  }
-
-  /* Allocate data offsets in three stages:
-   *
-   * 1. hasbits.
-   * 2. regular fields.
-   * 3. oneof fields.
-   *
-   * OPT: There is a lot of room for optimization here to minimize the size.
-   */
-
-  /* Assign hasbits for required fields first. */
-  size_t hasbit = 0;
-
+static void upb_DefBuilder_LinkMiniTable(symtab_addctx* ctx,
+                                         const upb_MessageDef* m) {
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = &m->fields[i];
-    upb_MiniTable_Field* field = &fields[upb_FieldDef_Index(f)];
-    if (upb_FieldDef_Label(f) == kUpb_Label_Required) {
-      field->presence = ++hasbit;
-      if (hasbit >= 63) {
-        symtab_errf(ctx, "Message with >=63 required fields: %s",
-                    upb_MessageDef_FullName(m));
-      }
-      l->required_count++;
+    const upb_MessageDef* sub_m = upb_FieldDef_MessageSubDef(f);
+    const upb_EnumDef* sub_e = upb_FieldDef_EnumSubDef(f);
+    upb_MiniTable* mt = (upb_MiniTable*)m->layout;
+    assert(f->layout_index < m->field_count);
+    upb_MiniTable_Field* mt_f =
+        (upb_MiniTable_Field*)&m->layout->fields[f->layout_index];
+    if (sub_m) {
+      assert(mt_f);
+      assert(sub_m->layout);
+      upb_MiniTable_SetSubMessage(mt, mt_f, sub_m->layout);
+    } else if (upb_DefBuilder_IsClosedEnum(f)) {
+      upb_MiniTable_SetSubEnum(mt, mt_f, sub_e->layout);
     }
   }
 
-  /* Allocate hasbits and set basic field attributes. */
-  sublayout_count = 0;
-  for (int i = 0; i < m->field_count; i++) {
-    const upb_FieldDef* f = &m->fields[i];
-    upb_MiniTable_Field* field = &fields[upb_FieldDef_Index(f)];
-
-    fill_fieldlayout(field, f);
-
-    if (field->descriptortype == kUpb_FieldType_Message ||
-        field->descriptortype == kUpb_FieldType_Group) {
-      field->submsg_index = sublayout_count++;
-      subs[field->submsg_index].submsg = upb_FieldDef_MessageSubDef(f)->layout;
-    } else if (field->descriptortype == kUpb_FieldType_Enum) {
-      field->submsg_index = sublayout_count++;
-      subs[field->submsg_index].subenum = upb_FieldDef_EnumSubDef(f)->layout;
-      UPB_ASSERT(subs[field->submsg_index].subenum);
-    }
-
-    if (upb_FieldDef_Label(f) == kUpb_Label_Required) {
-      /* Hasbit was already assigned. */
-    } else if (upb_FieldDef_HasPresence(f) &&
-               !upb_FieldDef_RealContainingOneof(f)) {
-      /* We don't use hasbit 0, so that 0 can indicate "no presence" in the
-       * table. This wastes one hasbit, but we don't worry about it for now. */
-      field->presence = ++hasbit;
-    } else {
-      field->presence = 0;
-    }
+  for (int i = 0; i < m->nested_msg_count; i++) {
+    upb_DefBuilder_LinkMiniTable(ctx, &m->nested_msgs[i]);
   }
-
-  /* Account for space used by hasbits. */
-  l->size = hasbit ? div_round_up(hasbit + 1, 8) : 0;
-
-  /* Allocate non-oneof fields. */
-  for (int i = 0; i < m->field_count; i++) {
-    const upb_FieldDef* f = &m->fields[i];
-    size_t field_size = upb_msg_fielddefsize(f);
-    size_t index = upb_FieldDef_Index(f);
-
-    if (upb_FieldDef_RealContainingOneof(f)) {
-      /* Oneofs are handled separately below. */
-      continue;
-    }
-
-    fields[index].offset = upb_MiniTable_place(ctx, l, field_size, m);
-  }
-
-  /* Allocate oneof fields.  Each oneof field consists of a uint32 for the case
-   * and space for the actual data. */
-  for (int i = 0; i < m->oneof_count; i++) {
-    const upb_OneofDef* o = &m->oneofs[i];
-    size_t case_size = sizeof(uint32_t); /* Could potentially optimize this. */
-    size_t field_size = 0;
-    uint32_t case_offset;
-    uint32_t data_offset;
-
-    if (upb_OneofDef_IsSynthetic(o)) continue;
-
-    if (o->field_count == 0) {
-      symtab_errf(ctx, "Oneof must have at least one field (%s)", o->full_name);
-    }
-
-    /* Calculate field size: the max of all field sizes. */
-    for (int j = 0; j < o->field_count; j++) {
-      const upb_FieldDef* f = o->fields[j];
-      field_size = UPB_MAX(field_size, upb_msg_fielddefsize(f));
-    }
-
-    /* Align and allocate case offset. */
-    case_offset = upb_MiniTable_place(ctx, l, case_size, m);
-    data_offset = upb_MiniTable_place(ctx, l, field_size, m);
-
-    for (int i = 0; i < o->field_count; i++) {
-      const upb_FieldDef* f = o->fields[i];
-      fields[upb_FieldDef_Index(f)].offset = data_offset;
-      fields[upb_FieldDef_Index(f)].presence = ~case_offset;
-    }
-  }
-
-  /* Size of the entire structure should be a multiple of its greatest
-   * alignment.  TODO: track overall alignment for real? */
-  l->size = UPB_ALIGN_UP(l->size, 8);
-
-  /* Sort fields by number. */
-  if (fields) {
-    qsort(fields, upb_MessageDef_numfields(m), sizeof(*fields),
-          field_number_cmp);
-  }
-  assign_layout_indices(m, l, fields);
 }
 
 static char* strviewdup(symtab_addctx* ctx, upb_StringView view) {
@@ -2250,8 +1982,7 @@ static void create_fielddef(
       google_protobuf_FieldDescriptorProto_proto3_optional(field_proto);
 
   bool has_type = google_protobuf_FieldDescriptorProto_has_type(field_proto);
-  bool has_type_name =
-      google_protobuf_FieldDescriptorProto_has_type_name(field_proto);
+  bool has_type_name = google_protobuf_FieldDescriptorProto_has_type_name(field_proto);
 
   f->type_ = (int)google_protobuf_FieldDescriptorProto_type(field_proto);
 
@@ -2399,12 +2130,12 @@ static void create_fielddef(
   SET_OPTIONS(f->opts, FieldDescriptorProto, FieldOptions, field_proto);
 
   if (google_protobuf_FieldOptions_has_packed(f->opts)) {
-    f->packed_ = google_protobuf_FieldOptions_packed(f->opts);
+    f->is_packed_ = google_protobuf_FieldOptions_packed(f->opts);
   } else {
     /* Repeated fields default to packed for proto3 only. */
-    f->packed_ = upb_FieldDef_IsPrimitive(f) &&
-                 f->label_ == kUpb_Label_Repeated &&
-                 f->file->syntax == kUpb_Syntax_Proto3;
+    f->is_packed_ = upb_FieldDef_IsPrimitive(f) &&
+                    f->label_ == kUpb_Label_Repeated &&
+                    f->file->syntax == kUpb_Syntax_Proto3;
   }
 }
 
@@ -2474,7 +2205,7 @@ static int compare_int32(const void* a_ptr, const void* b_ptr) {
 
 static upb_MiniTable_Enum* create_enumlayout(symtab_addctx* ctx,
                                              const upb_EnumDef* e) {
-  const char* desc = _upb_EnumDef_MiniDescriptor(e, ctx->tmp_arena);
+  const char* desc = upb_MiniDescriptor_EncodeEnum(e, ctx->tmp_arena);
   if (!desc) symtab_errf(ctx, "OOM while building enum MiniDescriptor");
 
   upb_Status status;
@@ -2587,6 +2318,7 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
 
   m->file = ctx->file; /* Must happen prior to symtab_add(). */
   m->containing_type = containing_type;
+  m->is_sorted = true;
 
   name = google_protobuf_DescriptorProto_name(msg_proto);
   check_ident(ctx, name, false);
@@ -2596,8 +2328,7 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
 
   oneofs = google_protobuf_DescriptorProto_oneof_decl(msg_proto, &n_oneof);
   fields = google_protobuf_DescriptorProto_field(msg_proto, &n_field);
-  ext_ranges =
-      google_protobuf_DescriptorProto_extension_range(msg_proto, &n_ext_range);
+  ext_ranges = google_protobuf_DescriptorProto_extension_range(msg_proto, &n_ext_range);
 
   CHK_OOM(upb_inttable_init(&m->itof, ctx->arena));
   CHK_OOM(upb_strtable_init(&m->ntof, n_oneof + n_field, ctx->arena));
@@ -2623,9 +2354,13 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
 
   m->field_count = n_field;
   m->fields = symtab_alloc(ctx, sizeof(*m->fields) * n_field);
-  for (i = 0; i < n_field; i++) {
-    create_fielddef(ctx, m->full_name, m, fields[i], &m->fields[i],
-                    /* is_extension= */ false);
+  uint32_t previous = 0;
+  for (int i = 0; i < n_field; i++) {
+    create_fielddef(ctx, m->full_name, m, fields[i], &m->fields[i], false);
+    if (!ctx->layout) ((upb_FieldDef*)&m->fields[i])->layout_index = i;
+    const uint32_t current = m->fields[i].number_;
+    if (previous > current) m->is_sorted = false;
+    previous = current;
   }
 
   m->ext_range_count = n_ext_range;
@@ -2678,9 +2413,8 @@ static void msgdef_create_nested(
       google_protobuf_DescriptorProto_extension(msg_proto, &n);
   m->nested_ext_count = n;
   m->nested_exts = symtab_alloc(ctx, sizeof(*m->nested_exts) * n);
-  for (size_t i = 0; i < n; i++) {
-    create_fielddef(ctx, m->full_name, m, exts[i], &m->nested_exts[i],
-                    /* is_extension= */ true);
+  for (int i = 0; i < n; i++) {
+    create_fielddef(ctx, m->full_name, m, exts[i], &m->nested_exts[i], true);
     ((upb_FieldDef*)&m->nested_exts[i])->index_ = i;
   }
 
@@ -2769,16 +2503,28 @@ static void resolve_extension(
   }
 
   const upb_MiniTable_Extension* ext = ctx->file->ext_layouts[f->layout_index];
+
   if (ctx->layout) {
     UPB_ASSERT(upb_FieldDef_Number(f) == ext->field.number);
   } else {
+    const char* desc = upb_MiniDescriptor_EncodeField(f, ctx->tmp_arena);
+    CHK_OOM(desc);
+
     upb_MiniTable_Extension* mut_ext = (upb_MiniTable_Extension*)ext;
-    fill_fieldlayout(&mut_ext->field, f);
-    mut_ext->field.presence = 0;
-    mut_ext->field.offset = 0;
-    mut_ext->field.submsg_index = 0;
+    upb_MiniTable_Sub sub;
+    sub.submsg = NULL;
+    sub.subenum = NULL;
+    bool ok = upb_MiniTable_BuildExtension(desc, sizeof(desc), mut_ext, sub,
+                                           ctx->status);
+    if (!ok) UPB_LONGJMP(ctx->err, 1);
+
+    assert(mut_ext->field.number == f->number_);
     mut_ext->extendee = f->msgdef->layout;
-    mut_ext->sub.submsg = f->sub.msgdef->layout;
+    if (upb_FieldDef_IsSubMessage(f)) {
+      mut_ext->sub.submsg = f->sub.msgdef->layout;
+    } else if (mut_ext->field.descriptortype == kUpb_FieldType_Enum) {
+      mut_ext->sub.subenum = f->sub.enumdef->layout;
+    }
   }
 
   CHK_OOM(upb_inttable_insert(&ctx->symtab->exts, (uintptr_t)ext,
@@ -2842,7 +2588,10 @@ static void resolve_msgdef(symtab_addctx* ctx, upb_MessageDef* m) {
     }
   }
 
-  if (!ctx->layout) make_layout(ctx, m);
+  if (!ctx->layout) {
+    m->layout = upb_DefBuilder_MakeMiniTable(ctx, m);
+    CHK_OOM(m->layout);
+  }
 
   for (int i = 0; i < m->nested_msg_count; i++) {
     resolve_msgdef(ctx, (upb_MessageDef*)&m->nested_msgs[i]);
@@ -2989,8 +2738,7 @@ static void build_filedef(
   file->top_lvl_exts = symtab_alloc(ctx, sizeof(*file->top_lvl_exts) * n);
   for (i = 0; i < n; i++) {
     create_fielddef(ctx, file->package, NULL, exts[i], &file->top_lvl_exts[i],
-                    /* is_extension= */ true);
-    ((upb_FieldDef*)&file->top_lvl_exts[i])->index_ = i;
+                    true);
   }
 
   /* Create messages. */
@@ -3017,6 +2765,13 @@ static void build_filedef(
 
   for (i = 0; i < (size_t)file->top_lvl_msg_count; i++) {
     resolve_msgdef(ctx, (upb_MessageDef*)&file->top_lvl_msgs[i]);
+  }
+
+  if (!ctx->layout) {
+    for (i = 0; i < (size_t)file->top_lvl_msg_count; i++) {
+      upb_DefBuilder_LinkMiniTable(ctx,
+                                   (upb_MessageDef*)&file->top_lvl_msgs[i]);
+    }
   }
 
   if (file->ext_count) {
@@ -3059,10 +2814,9 @@ static void remove_filedef(upb_DefPool* s, upb_FileDef* file) {
 static const upb_FileDef* _upb_DefPool_AddFile(
     upb_DefPool* s, const google_protobuf_FileDescriptorProto* file_proto,
     const upb_MiniTable_File* layout, upb_Status* status) {
-  symtab_addctx ctx;
-  upb_StringView name = google_protobuf_FileDescriptorProto_name(file_proto);
-  upb_value v;
+  const upb_StringView name = google_protobuf_FileDescriptorProto_name(file_proto);
 
+  upb_value v;
   if (upb_strtable_lookup2(&s->files, name.data, name.size, &v)) {
     if (unpack_def(v, UPB_DEFTYPE_FILE)) {
       upb_Status_SetErrorFormat(status, "duplicate file name (%.*s)",
@@ -3080,21 +2834,21 @@ static const upb_FileDef* _upb_DefPool_AddFile(
     layout = registered;
   }
 
-  ctx.symtab = s;
-  ctx.layout = layout;
-  ctx.msg_count = 0;
-  ctx.enum_count = 0;
-  ctx.ext_count = 0;
-  ctx.status = status;
-  ctx.file = NULL;
-  ctx.arena = upb_Arena_New();
-  ctx.tmp_arena = upb_Arena_New();
+  symtab_addctx ctx = {
+      .symtab = s,
+      .layout = layout,
+      .msg_count = 0,
+      .enum_count = 0,
+      .ext_count = 0,
+      .status = status,
+      .file = NULL,
+      .arena = upb_Arena_New(),
+      .tmp_arena = upb_Arena_New(),
+  };
 
-  if (!ctx.arena || !ctx.tmp_arena) {
-    if (ctx.arena) upb_Arena_Free(ctx.arena);
-    if (ctx.tmp_arena) upb_Arena_Free(ctx.tmp_arena);
-    upb_Status_setoom(status);
-    return NULL;
+  if (UPB_UNLIKELY(!ctx.arena || !ctx.tmp_arena)) {
+    upb_Status_SetErrorMessage(status, kOutOfMemory);
+    goto done;
   }
 
   if (UPB_UNLIKELY(UPB_SETJMP(ctx.err))) {
@@ -3103,17 +2857,19 @@ static const upb_FileDef* _upb_DefPool_AddFile(
       remove_filedef(s, ctx.file);
       ctx.file = NULL;
     }
-  } else {
-    ctx.file = symtab_alloc(&ctx, sizeof(*ctx.file));
-    build_filedef(&ctx, ctx.file, file_proto);
-    upb_strtable_insert(&s->files, name.data, name.size,
-                        pack_def(ctx.file, UPB_DEFTYPE_FILE), ctx.arena);
-    UPB_ASSERT(upb_Status_IsOk(status));
-    upb_Arena_Fuse(s->arena, ctx.arena);
+    goto done;
   }
 
-  upb_Arena_Free(ctx.arena);
-  upb_Arena_Free(ctx.tmp_arena);
+  ctx.file = symtab_alloc(&ctx, sizeof(*ctx.file));
+  build_filedef(&ctx, ctx.file, file_proto);
+  upb_strtable_insert(&s->files, name.data, name.size,
+                      pack_def(ctx.file, UPB_DEFTYPE_FILE), ctx.arena);
+  UPB_ASSERT(upb_Status_IsOk(status));
+  upb_Arena_Fuse(s->arena, ctx.arena);
+
+done:
+  if (ctx.arena) upb_Arena_Free(ctx.arena);
+  if (ctx.tmp_arena) upb_Arena_Free(ctx.tmp_arena);
   return ctx.file;
 }
 

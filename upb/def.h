@@ -250,6 +250,10 @@ UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
   return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
 }
 
+// Builds and returns a mini descriptor, or NULL if OOM.
+const char* _upb_MessageDef_MiniDescriptor(const upb_MessageDef* m,
+                                           upb_Arena* a);
+
 /* upb_ExtensionRange *********************************************************/
 
 const google_protobuf_ExtensionRangeOptions* upb_ExtensionRange_Options(

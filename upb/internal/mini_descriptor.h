@@ -38,9 +38,9 @@ extern "C" {
 #endif
 
 // Creates and returns a mini descriptor string for an enum, or NULL on error.
-// If the values in the enum happen to be defined in ascending order (when cast
-// to uint32_t) then |sorted| should be NULL. Otherwise it must point to an
-// array containing pointers to the enum value defs in sorted order.
+// If the enum values happen to be defined in ascending order (when cast to
+// uint32_t) then |sorted| should be NULL. Otherwise it must point to an array
+// containing pointers to the enum value defs in sorted order.
 const char* _upb_MiniDescriptor_EncodeEnum(const upb_EnumDef* e,
                                            const upb_EnumValueDef** sorted,
                                            upb_Arena* a);
@@ -50,7 +50,11 @@ const char* _upb_MiniDescriptor_EncodeField(const upb_FieldDef* f,
                                             upb_Arena* a);
 
 // Creates and returns a mini descriptor string for a message, or NULL on error.
+// If the field numbers happen to be defined in ascending order then |sorted|
+// should be NULL. Otherwise it must point to an array containing pointers to
+// the field defs in sorted order.
 const char* _upb_MiniDescriptor_EncodeMessage(const upb_MessageDef* m,
+                                              const upb_FieldDef** sorted,
                                               upb_Arena* a);
 
 #ifdef __cplusplus
