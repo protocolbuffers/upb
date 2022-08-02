@@ -495,6 +495,29 @@ TEST(MessageTest, MapField) {
       upb_test_TestMapFieldExtra_map_field_get(test_msg_extra2, 0, nullptr));
 }
 
+TEST(MessageTest, TooManyRequiredFields) {
+  const upb::fuzz::MiniTableFuzzInput& input = {
+      .mini_descriptors = {"\012"},
+      .enum_mini_descriptors = {""},
+      .extensions = ".\244",
+      .links = {},
+  };
+  const std::string proto_payload = "\013\032\005\212a#\365\336\020\001\226";
+  const int decode_options = 0;
+
+  upb::Arena arena;
+  upb_ExtensionRegistry* exts;
+
+  const upb_MiniTable* mini_table =
+      upb::fuzz::BuildMiniTable(input, &exts, arena.ptr());
+  EXPECT_NE(mini_table, nullptr);
+
+  upb_Message* msg = _upb_Message_New(mini_table, arena.ptr());
+  auto result = upb_Decode(proto_payload.data(), proto_payload.size(), msg,
+                           mini_table, exts, decode_options, arena.ptr());
+  EXPECT_EQ(result, kUpb_DecodeStatus_Malformed);
+}
+
 // begin:google_only
 //
 // static void DecodeEncodeArbitrarySchemaAndPayload(
@@ -507,11 +530,13 @@ TEST(MessageTest, MapField) {
 //   if (!mini_table) return;
 //   upb::Status status;
 //   upb_Message* msg = _upb_Message_New(mini_table, arena.ptr());
-//   upb_Decode(proto_payload.data(), proto_payload.size(), msg, mini_table, exts,
-//              decode_options, arena.ptr());
-//   char* ptr;
-//   size_t size;
-//   upb_Encode(msg, mini_table, encode_options, arena.ptr(), &ptr, &size);
+//   auto result = upb_Decode(proto_payload.data(), proto_payload.size(), msg,
+//                            mini_table, exts, decode_options, arena.ptr());
+//   if (result == kUpb_DecodeStatus_Ok) {
+//     char* ptr;
+//     size_t size;
+//     upb_Encode(msg, mini_table, encode_options, arena.ptr(), &ptr, &size);
+//   }
 // }
 // FUZZ_TEST(FuzzTest, DecodeEncodeArbitrarySchemaAndPayload);
 //

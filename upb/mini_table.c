@@ -388,6 +388,7 @@ typedef struct {
   upb_Arena* arena;
   upb_Status* status;
   jmp_buf err;
+  uint8_t required_count;  // total # of required fields in the message
 } upb_MtDecoder;
 
 UPB_PRINTF(2, 3)
@@ -572,6 +573,12 @@ static void upb_MtDecoder_ModifyField(upb_MtDecoder* d,
     upb_MtDecoder_ErrorFormat(
         d, "Field %" PRIu32 " cannot be both singular and required",
         field->number);
+    UPB_UNREACHABLE();
+  }
+  if (required && ++d->required_count > kUpb_MiniTable_MaxRequiredFields) {
+    upb_MtDecoder_ErrorFormat(
+        d, "Too many required fields in message, must not exceed %d",
+        kUpb_MiniTable_MaxRequiredFields);
     UPB_UNREACHABLE();
   }
 
@@ -950,6 +957,7 @@ upb_MiniTable* upb_MiniTable_BuildWithBuf(const char* data, size_t len,
       .arena = arena,
       .status = status,
       .table = upb_Arena_Malloc(arena, sizeof(*decoder.table)),
+      .required_count = 0,
   };
 
   if (UPB_SETJMP(decoder.err)) {

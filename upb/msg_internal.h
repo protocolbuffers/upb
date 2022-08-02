@@ -202,6 +202,8 @@ typedef struct {
   int ext_count;
 } upb_MiniTable_File;
 
+#define kUpb_MiniTable_MaxRequiredFields 63
+
 // Computes a bitmask in which the |l->required_count| lowest bits are set,
 // except that we skip the lowest bit (because upb never uses hasbit 0).
 //
@@ -210,7 +212,7 @@ typedef struct {
 //    requiredmask(5) => 0b111110 (0x3e)
 UPB_INLINE uint64_t upb_MiniTable_requiredmask(const upb_MiniTable* l) {
   int n = l->required_count;
-  assert(0 < n && n <= 63);
+  assert(0 < n && n <= kUpb_MiniTable_MaxRequiredFields);
   return ((1ULL << n) - 1) << 1;
 }
 
