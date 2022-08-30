@@ -30,6 +30,7 @@
 #include <stdio.h>
 
 #include "upb/internal/unicode.h"
+#include "upb/io/ascii.h"
 #include "upb/io/string.h"
 #include "upb/io/strtod.h"
 
@@ -51,103 +52,9 @@ typedef enum {
   kUpb_CommentType_None,
 } upb_CommentType;
 
-static bool upb_Tokenizer_IsUnprintable(char c) { return '\0' < c && c < ' '; }
-
 // Since we count columns we need to interpret tabs somehow.  We'll take
 // the standard 8-character definition for lack of any way to do better.
 static const int kUpb_Tokenizer_TabWidth = 8;
-
-// Given a char, interpret it as a numeric digit and return its value.
-// This supports any number base up to 36.
-// Represents integer values of digits.
-// Uses 36 to indicate an invalid character since we support
-// bases up to 36.
-static const int8_t kUpb_Tokenizer_AsciiToInt[256] = {
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // 00-0F
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // 10-1F
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // ' '-'/'
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,                           // '0'-'9'
-    36, 36, 36, 36, 36, 36, 36,                                      // ':'-'@'
-    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  // 'A'-'P'
-    26, 27, 28, 29, 30, 31, 32, 33, 34, 35,                          // 'Q'-'Z'
-    36, 36, 36, 36, 36, 36,                                          // '['-'`'
-    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  // 'a'-'p'
-    26, 27, 28, 29, 30, 31, 32, 33, 34, 35,                          // 'q'-'z'
-    36, 36, 36, 36, 36,                                              // '{'-DEL
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // 80-8F
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // 90-9F
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // A0-AF
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // B0-BF
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // C0-CF
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // D0-DF
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // E0-EF
-    36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36, 36,  // F0-FF
-};
-
-static int DigitValue(char digit) {
-  return kUpb_Tokenizer_AsciiToInt[digit & 0xFF];
-}
-
-static bool upb_Tokenizer_IsLetter(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || (c == '_');
-}
-
-static bool upb_Tokenizer_IsDigit(char c) { return '0' <= c && c <= '9'; }
-
-static bool upb_Tokenizer_IsOctalDigit(char c) { return '0' <= c && c <= '7'; }
-
-static bool upb_Tokenizer_IsHexDigit(char c) {
-  return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') ||
-         ('A' <= c && c <= 'F');
-}
-
-static bool upb_Tokenizer_IsAlphanumeric(char c) {
-  return upb_Tokenizer_IsLetter(c) || upb_Tokenizer_IsDigit(c);
-}
-
-static bool upb_Tokenizer_IsWhitespaceNoNewline(char c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f';
-}
-
-static bool upb_Tokenizer_IsWhitespace(char c) {
-  return c == '\n' || upb_Tokenizer_IsWhitespaceNoNewline(c);
-}
-
-static bool upb_Tokenizer_IsEscape(char c) {
-  return c == 'a' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't' ||
-         c == 'v' || c == '\\' || c == '?' || c == '\'' || c == '\"';
-}
-
-static char TranslateEscape(char c) {
-  switch (c) {
-    case 'a':
-      return '\a';
-    case 'b':
-      return '\b';
-    case 'f':
-      return '\f';
-    case 'n':
-      return '\n';
-    case 'r':
-      return '\r';
-    case 't':
-      return '\t';
-    case 'v':
-      return '\v';
-    case '\\':
-      return '\\';
-    case '?':
-      return '\?';  // Trigraphs = :(
-    case '\'':
-      return '\'';
-    case '"':
-      return '\"';
-
-    // We expect escape sequences to have been validated separately.
-    default:
-      return '?';
-  }
-}
 
 // ===================================================================
 
@@ -374,22 +281,22 @@ static void ConsumeString(upb_Tokenizer* t, char delimiter) {
       case '\\': {
         // An escape sequence.
         NextChar(t);
-        if (TryConsumeOne(t, upb_Tokenizer_IsEscape)) {
+        if (TryConsumeOne(t, upb_Ascii_IsEscape)) {
           // Valid escape sequence.
-        } else if (TryConsumeOne(t, upb_Tokenizer_IsOctalDigit)) {
+        } else if (TryConsumeOne(t, upb_Ascii_IsOctalDigit)) {
           // Possibly followed by two more octal digits, but these will
           // just be consumed by the main loop anyway so we don't need
           // to do so explicitly here.
         } else if (TryConsume(t, 'x')) {
-          if (!TryConsumeOne(t, upb_Tokenizer_IsHexDigit)) {
+          if (!TryConsumeOne(t, upb_Ascii_IsHexDigit)) {
             ReportError(t, "Expected hex digits for escape sequence.");
           }
           // Possibly followed by another hex digit, but again we don't care.
         } else if (TryConsume(t, 'u')) {
-          if (!TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit)) {
+          if (!TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit)) {
             ReportError(t, "Expected four hex digits for \\u escape sequence.");
           }
         } else if (TryConsume(t, 'U')) {
@@ -397,11 +304,11 @@ static void ConsumeString(upb_Tokenizer* t, char delimiter) {
           // legal.
           if (!TryConsume(t, '0') || !TryConsume(t, '0') ||
               !(TryConsume(t, '0') || TryConsume(t, '1')) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit) ||
-              !TryConsumeOne(t, upb_Tokenizer_IsHexDigit)) {
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit) ||
+              !TryConsumeOne(t, upb_Ascii_IsHexDigit)) {
             ReportError(t,
                         "Expected eight hex digits up to 10ffff for \\U escape "
                         "sequence");
@@ -434,13 +341,13 @@ static upb_TokenType ConsumeNumber(upb_Tokenizer* t, bool started_with_zero,
 
   if (started_with_zero && (TryConsume(t, 'x') || TryConsume(t, 'X'))) {
     // A hex number (started with "0x").
-    ConsumeOneOrMore(t, upb_Tokenizer_IsHexDigit,
+    ConsumeOneOrMore(t, upb_Ascii_IsHexDigit,
                      "\"0x\" must be followed by hex digits.");
 
-  } else if (started_with_zero && LookingAt(t, upb_Tokenizer_IsDigit)) {
+  } else if (started_with_zero && LookingAt(t, upb_Ascii_IsDigit)) {
     // An octal number (had a leading zero).
-    ConsumeZeroOrMore(t, upb_Tokenizer_IsOctalDigit);
-    if (LookingAt(t, upb_Tokenizer_IsDigit)) {
+    ConsumeZeroOrMore(t, upb_Ascii_IsOctalDigit);
+    if (LookingAt(t, upb_Ascii_IsDigit)) {
       ReportError(t, "Numbers starting with leading zero must be in octal.");
     }
 
@@ -448,20 +355,20 @@ static upb_TokenType ConsumeNumber(upb_Tokenizer* t, bool started_with_zero,
     // A decimal number.
     if (started_with_dot) {
       is_float = true;
-      ConsumeZeroOrMore(t, upb_Tokenizer_IsDigit);
+      ConsumeZeroOrMore(t, upb_Ascii_IsDigit);
     } else {
-      ConsumeZeroOrMore(t, upb_Tokenizer_IsDigit);
+      ConsumeZeroOrMore(t, upb_Ascii_IsDigit);
 
       if (TryConsume(t, '.')) {
         is_float = true;
-        ConsumeZeroOrMore(t, upb_Tokenizer_IsDigit);
+        ConsumeZeroOrMore(t, upb_Ascii_IsDigit);
       }
     }
 
     if (TryConsume(t, 'e') || TryConsume(t, 'E')) {
       is_float = true;
       if (!TryConsume(t, '-')) TryConsume(t, '+');
-      ConsumeOneOrMore(t, upb_Tokenizer_IsDigit,
+      ConsumeOneOrMore(t, upb_Ascii_IsDigit,
                        "\"e\" must be followed by exponent.");
     }
 
@@ -470,7 +377,7 @@ static upb_TokenType ConsumeNumber(upb_Tokenizer* t, bool started_with_zero,
     }
   }
 
-  if (LookingAt(t, upb_Tokenizer_IsLetter)) {
+  if (LookingAt(t, upb_Ascii_IsLetter)) {
     ReportError(t, "Need space between number and identifier.");
   }
 
@@ -514,7 +421,7 @@ static void ConsumeBlockComment(upb_Tokenizer* t, upb_String* content) {
       if (content != NULL) StopRecording(t);
 
       // Consume leading whitespace and asterisk;
-      ConsumeZeroOrMore(t, upb_Tokenizer_IsWhitespaceNoNewline);
+      ConsumeZeroOrMore(t, upb_Ascii_IsWhitespaceNoNewline);
       if (TryConsume(t, '*')) {
         if (TryConsume(t, '/')) {
           // End of comment.
@@ -575,15 +482,15 @@ static upb_CommentType TryConsumeCommentStart(upb_Tokenizer* t) {
 // consume it and return true.
 static bool TryConsumeWhitespace(upb_Tokenizer* t) {
   if (t->options & kUpb_TokenizerOption_ReportNewlines) {
-    if (TryConsumeOne(t, upb_Tokenizer_IsWhitespaceNoNewline)) {
-      ConsumeZeroOrMore(t, upb_Tokenizer_IsWhitespaceNoNewline);
+    if (TryConsumeOne(t, upb_Ascii_IsWhitespaceNoNewline)) {
+      ConsumeZeroOrMore(t, upb_Ascii_IsWhitespaceNoNewline);
       t->token_type = kUpb_TokenType_Whitespace;
       return true;
     }
     return false;
   }
-  if (TryConsumeOne(t, upb_Tokenizer_IsWhitespace)) {
-    ConsumeZeroOrMore(t, upb_Tokenizer_IsWhitespace);
+  if (TryConsumeOne(t, upb_Ascii_IsWhitespace)) {
+    ConsumeZeroOrMore(t, upb_Ascii_IsWhitespace);
     t->token_type = kUpb_TokenType_Whitespace;
     return (t->options & kUpb_TokenizerOption_ReportWhitespace) != 0;
   }
@@ -655,15 +562,15 @@ bool upb_Tokenizer_Next(upb_Tokenizer* t, upb_Status* status) {
     // Check for EOF before continuing.
     if (t->read_error) break;
 
-    if (LookingAt(t, upb_Tokenizer_IsUnprintable) || t->current_char == '\0') {
+    if (LookingAt(t, upb_Ascii_IsUnprintable) || t->current_char == '\0') {
       ReportError(t, "Invalid control characters encountered in text.");
     }
 
     // Reading some sort of token.
     StartToken(t);
 
-    if (TryConsumeOne(t, upb_Tokenizer_IsLetter)) {
-      ConsumeZeroOrMore(t, upb_Tokenizer_IsAlphanumeric);
+    if (TryConsumeOne(t, upb_Ascii_IsLetter)) {
+      ConsumeZeroOrMore(t, upb_Ascii_IsAlphanumeric);
       t->token_type = kUpb_TokenType_Identifier;
     } else if (TryConsume(t, '0')) {
       t->token_type = ConsumeNumber(t, true, false);
@@ -671,7 +578,7 @@ bool upb_Tokenizer_Next(upb_Tokenizer* t, upb_Status* status) {
       // This could be the beginning of a floating-point number, or it could
       // just be a '.' symbol.
 
-      if (TryConsumeOne(t, upb_Tokenizer_IsDigit)) {
+      if (TryConsumeOne(t, upb_Ascii_IsDigit)) {
         // It's a floating-point number.
         if (t->previous_type == kUpb_TokenType_Identifier &&
             t->token_line == t->previous_line &&
@@ -684,7 +591,7 @@ bool upb_Tokenizer_Next(upb_Tokenizer* t, upb_Status* status) {
       } else {
         t->token_type = kUpb_TokenType_Symbol;
       }
-    } else if (TryConsumeOne(t, upb_Tokenizer_IsDigit)) {
+    } else if (TryConsumeOne(t, upb_Ascii_IsDigit)) {
       t->token_type = ConsumeNumber(t, false, false);
     } else if (TryConsume(t, '\"')) {
       ConsumeString(t, '\"');
@@ -747,7 +654,7 @@ bool upb_Parse_Integer(const char* text, uint64_t max_value, uint64_t* output) {
   // For all the leading '0's, and also the first non-zero character, we
   // don't need to multiply.
   while (*ptr != '\0') {
-    int digit = DigitValue(*ptr++);
+    int digit = upb_Ascii_DigitValue(*ptr++);
     if (digit >= base) {
       // The token provided by Tokenizer is invalid. i.e., 099 is an invalid
       // token, but Tokenizer still think it's integer.
@@ -759,7 +666,7 @@ bool upb_Parse_Integer(const char* text, uint64_t max_value, uint64_t* output) {
     }
   }
   for (; *ptr != '\0'; ptr++) {
-    int digit = DigitValue(*ptr);
+    int digit = upb_Ascii_DigitValue(*ptr);
     if (digit < 0 || digit >= base) {
       // The token provided by Tokenizer is invalid. i.e., 099 is an invalid
       // token, but Tokenizer still think it's integer.
@@ -802,9 +709,9 @@ double upb_Parse_Float(const char* text) {
 
   if ((end - text) != strlen(text) || *text == '-') {
     fprintf(stderr,
-            "upb_Parse_Float() passed text that could not have"
+            "%s() passed text that could not have"
             " been tokenized as a float: %s\n",
-            text);
+            __func__, text);
     UPB_ASSERT(0);
   }
   return result;
@@ -830,7 +737,7 @@ static bool ReadHexDigits(const char* ptr, int len, uint32_t* result) {
   if (len == 0) return false;
   for (const char* end = ptr + len; ptr < end; ++ptr) {
     if (*ptr == '\0') return false;
-    *result = (*result << 4) + DigitValue(*ptr);
+    *result = (*result << 4) + upb_Ascii_DigitValue(*ptr);
   }
   return true;
 }
@@ -901,16 +808,16 @@ upb_StringView upb_Parse_String(const char* text, upb_Arena* arena) {
       // An escape sequence.
       ++ptr;
 
-      if (upb_Tokenizer_IsOctalDigit(*ptr)) {
+      if (upb_Ascii_IsOctalDigit(*ptr)) {
         // An octal escape.  May one, two, or three digits.
-        int code = DigitValue(*ptr);
-        if (upb_Tokenizer_IsOctalDigit(ptr[1])) {
+        int code = upb_Ascii_DigitValue(*ptr);
+        if (upb_Ascii_IsOctalDigit(ptr[1])) {
           ++ptr;
-          code = code * 8 + DigitValue(*ptr);
+          code = code * 8 + upb_Ascii_DigitValue(*ptr);
         }
-        if (upb_Tokenizer_IsOctalDigit(ptr[1])) {
+        if (upb_Ascii_IsOctalDigit(ptr[1])) {
           ++ptr;
-          code = code * 8 + DigitValue(*ptr);
+          code = code * 8 + upb_Ascii_DigitValue(*ptr);
         }
         upb_String_PushBack(&output, (char)code);
 
@@ -918,13 +825,13 @@ upb_StringView upb_Parse_String(const char* text, upb_Arena* arena) {
         // A hex escape.  May zero, one, or two digits.  (The zero case
         // will have been caught as an error earlier.)
         int code = 0;
-        if (upb_Tokenizer_IsHexDigit(ptr[1])) {
+        if (upb_Ascii_IsHexDigit(ptr[1])) {
           ++ptr;
-          code = DigitValue(*ptr);
+          code = upb_Ascii_DigitValue(*ptr);
         }
-        if (upb_Tokenizer_IsHexDigit(ptr[1])) {
+        if (upb_Ascii_IsHexDigit(ptr[1])) {
           ++ptr;
-          code = code * 16 + DigitValue(*ptr);
+          code = code * 16 + upb_Ascii_DigitValue(*ptr);
         }
         upb_String_PushBack(&output, (char)code);
 
@@ -940,7 +847,7 @@ upb_StringView upb_Parse_String(const char* text, upb_Arena* arena) {
         }
       } else {
         // Some other escape code.
-        upb_String_PushBack(&output, TranslateEscape(*ptr));
+        upb_String_PushBack(&output, upb_Ascii_TranslateEscape(*ptr));
       }
 
     } else if (*ptr == text[0] && ptr[1] == '\0') {
@@ -964,9 +871,8 @@ static bool AllInClass(bool (*f)(char), const char* text, int size) {
 bool upb_Tokenizer_IsIdentifier(const char* data, int size) {
   // Mirrors IDENTIFIER definition in Tokenizer::Next() above.
   if (size == 0) return false;
-  if (!upb_Tokenizer_IsLetter(data[0])) return false;
-  if (!AllInClass(upb_Tokenizer_IsAlphanumeric, data + 1, size - 1))
-    return false;
+  if (!upb_Ascii_IsLetter(data[0])) return false;
+  if (!AllInClass(upb_Ascii_IsAlphanumeric, data + 1, size - 1)) return false;
   return true;
 }
 

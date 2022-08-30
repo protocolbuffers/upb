@@ -1,4 +1,13 @@
 cc_library(
+    name = "ascii",
+    srcs = ["ascii.c"],
+    hdrs = ["ascii.h"],
+    deps = [
+        "//:port",
+    ],
+)
+
+cc_library(
     name = "string",
     hdrs = ["string.h"],
     deps = [
@@ -21,6 +30,7 @@ cc_library(
     srcs = ["tokenizer.c"],
     hdrs = ["tokenizer.h"],
     deps = [
+        ":ascii",
         ":string",
         ":strtod",
         ":zero_copy_stream",
