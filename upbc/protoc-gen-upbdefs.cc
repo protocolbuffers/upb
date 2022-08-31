@@ -27,8 +27,8 @@
 
 #include "google/protobuf/compiler/code_generator.h"
 #include "google/protobuf/compiler/plugin.h"
+#include "google/protobuf/descriptor.proto.h"
 #include "google/protobuf/descriptor.h"
-#include "google/protobuf/descriptor.pb.h"
 #include "upbc/common.h"
 
 namespace upbc {

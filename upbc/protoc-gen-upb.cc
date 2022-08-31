@@ -27,7 +27,7 @@
 
 #include "google/protobuf/compiler/code_generator.h"
 #include "google/protobuf/compiler/plugin.h"
-#include "google/protobuf/descriptor.pb.h"
+#include "google/protobuf/descriptor.proto.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/wire_format.h"
 #include "absl/container/flat_hash_map.h"
