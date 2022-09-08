@@ -59,6 +59,18 @@ upb_UnknownCompareResult upb_Message_UnknownFieldsAreEqual(const char* buf1,
                                                            size_t size2,
                                                            int max_depth);
 
+// Returns true if the given values (of type `f`) are equal.
+bool upb_MessageValue_IsEqual(upb_MessageValue val1, upb_MessageValue val2,
+                              const upb_FieldDef* f);
+
+// Returns true if the two arrays (with element type `f`) are equal.
+bool upb_Array_IsEqual(const upb_Array* arr1, const upb_Array* arr2,
+                       const upb_FieldDef* f);
+
+// Returns true if the given messages (of type `m`) are equal.
+bool upb_Message_IsEqual(const upb_Message* msg1, const upb_Message* msg2,
+                         const upb_MessageDef* m);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
