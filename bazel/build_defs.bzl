@@ -42,6 +42,7 @@ _DEFAULT_CPPOPTS.extend([
 _DEFAULT_COPTS.extend([
     "-std=c99",
     "-Wall",
+    "-Werror",
     "-Wstrict-prototypes",
     # GCC (at least) emits spurious warnings for this that cannot be fixed
     # without introducing redundant initialization (with runtime cost):
