@@ -186,7 +186,6 @@ upb_GetExtension_Status upb_MiniTable_GetOrPromoteExtension(
   int field_number = ext_table->field.number;
   upb_FindUnknownRet result = upb_MiniTable_FindUnknown(msg, field_number);
   if (result.status != kUpb_FindUnknown_Ok) {
-    UPB_ASSERT(result.status != kUpb_GetExtension_ParseError);
     return kUpb_GetExtension_NotPresent;
   }
   // Decode and promote from unknown.
