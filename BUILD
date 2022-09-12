@@ -716,7 +716,6 @@ exports_files(
 filegroup(
     name = "cmake_files",
     srcs = glob([
-        "upbc/**/*",
         "upb/**/*",
         "third_party/**/*",
     ]),
