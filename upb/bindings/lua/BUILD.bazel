@@ -35,6 +35,15 @@ load(
 
 licenses(["notice"])
 
+proto_lang_toolchain(
+    name = "lua_proto_toolchain",
+    command_line = "--lua_out=%s",
+    plugin = ":protoc-gen-lua",
+    plugin_format_flag = "--plugin=protoc-gen-lua=%s",
+    progress_message = "Generating Lua protos for: %{label}",
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "lupb",
     srcs = [

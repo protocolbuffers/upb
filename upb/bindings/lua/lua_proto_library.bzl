@@ -25,51 +25,9 @@
 
 """lua_proto_library(): a rule for building Lua protos."""
 
-load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@rules_proto//proto:defs.bzl", "proto_common")
 
 # Generic support code #########################################################
-
-# begin:github_only
-_is_google3 = False
-# end:github_only
-
-# begin:google_only
-# _is_google3 = True
-# end:google_only
-
-def _get_real_short_path(file):
-    # For some reason, files from other archives have short paths that look like:
-    #   ../com_google_protobuf/google/protobuf/descriptor.proto
-    short_path = file.short_path
-    if short_path.startswith("../"):
-        second_slash = short_path.index("/", 3)
-        short_path = short_path[second_slash + 1:]
-
-    # Sometimes it has another few prefixes like:
-    #   _virtual_imports/any_proto/google/protobuf/any.proto
-    #   benchmarks/_virtual_imports/100_msgs_proto/benchmarks/100_msgs.proto
-    # We want just google/protobuf/any.proto.
-    virtual_imports = "_virtual_imports/"
-    if virtual_imports in short_path:
-        short_path = short_path.split(virtual_imports)[1].split("/", 1)[1]
-    return short_path
-
-def _get_real_root(ctx, file):
-    real_short_path = _get_real_short_path(file)
-    root = file.path[:-len(real_short_path) - 1]
-    if not _is_google3 and ctx.rule.attr.strip_import_prefix:
-        root = paths.join(root, ctx.rule.attr.strip_import_prefix[1:])
-    return root
-
-def _generate_output_file(ctx, src, extension):
-    package = ctx.label.package
-    if not _is_google3 and ctx.rule.attr.strip_import_prefix:
-        package = package[len(ctx.rule.attr.strip_import_prefix):]
-    real_short_path = _get_real_short_path(src)
-    real_short_path = paths.relativize(real_short_path, package)
-    output_filename = paths.replace_extension(real_short_path, extension)
-    ret = ctx.actions.declare_file(output_filename)
-    return ret
 
 # upb_proto_library / upb_proto_reflection_library shared code #################
 
@@ -79,23 +37,14 @@ _LuaFilesInfo = provider(
 )
 
 def _compile_upb_protos(ctx, proto_info, proto_sources):
-    files = [_generate_output_file(ctx, name, "_pb.lua") for name in proto_sources]
+    files = proto_common.declare_generated_files(ctx.actions, proto_info, extension = "_pb.lua")
     transitive_sets = proto_info.transitive_descriptor_sets.to_list()
-    ctx.actions.run(
-        inputs = depset(
-            direct = [proto_info.direct_descriptor_set],
-            transitive = [proto_info.transitive_descriptor_sets],
-        ),
-        tools = [ctx.executable._upbc],
-        outputs = files,
-        executable = ctx.executable._protoc,
-        arguments = [
-                        "--lua_out=" + _get_real_root(ctx, files[0]),
-                        "--plugin=protoc-gen-lua=" + ctx.executable._upbc.path,
-                        "--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]),
-                    ] +
-                    [_get_real_short_path(file) for file in proto_sources],
-        progress_message = "Generating Lua protos for :" + ctx.label.name,
+    proto_common.compile(
+        ctx.actions,
+        proto_info,
+        ctx.attr._lua_proto_toolchain[proto_common.ProtoLangToolchainInfo],
+        generated_files = files,
+        plugin_output = proto_info.proto_source_root if proto_info.proto_source_root != '.' else ctx.bin_dir.path,
     )
     return files
 
@@ -124,21 +73,13 @@ def _lua_proto_library_aspect_impl(target, ctx):
 
 _lua_proto_library_aspect = aspect(
     attrs = {
-        "_upbc": attr.label(
-            executable = True,
-            cfg = "exec",
-            default = "//upb/bindings/lua:protoc-gen-lua",
-        ),
-        "_protoc": attr.label(
-            executable = True,
-            cfg = "exec",
-            default = "@com_google_protobuf//:protoc",
+        "_lua_proto_toolchain": attr.label(
+            default = "//upb/bindings/lua:lua_proto_toolchain",
         ),
     },
     implementation = _lua_proto_library_aspect_impl,
     provides = [_LuaFilesInfo],
     attr_aspects = ["deps"],
-    fragments = ["cpp"],
 )
 
 lua_proto_library = rule(
