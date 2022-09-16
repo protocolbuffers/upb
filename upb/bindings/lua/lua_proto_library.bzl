@@ -44,7 +44,7 @@ def _compile_upb_protos(ctx, proto_info, proto_sources):
         proto_info,
         ctx.attr._lua_proto_toolchain[proto_common.ProtoLangToolchainInfo],
         generated_files = files,
-        plugin_output = proto_info.proto_source_root if proto_info.proto_source_root != '.' else ctx.bin_dir.path,
+        plugin_output = proto_info.proto_source_root if proto_info.proto_source_root != "." else ctx.bin_dir.path,
     )
     return files
 
