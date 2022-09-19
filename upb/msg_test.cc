@@ -569,7 +569,7 @@ TEST(MessageTest, MapField) {
 //       "x\203\251\006\013\032\002S\376\010\273\'\020\014\365\207\244\234",
 //       -696925610, -654590577);
 // }
-//
+// // test change
 // TEST(FuzzTest, ExtendMessageSetWithEmptyExtension) {
 //   DecodeEncodeArbitrarySchemaAndPayload({{"\n"}, {}, "_", {}}, std::string(), 0,
 //                                         0);
