@@ -755,6 +755,7 @@ static const char* upb_MtDecoder_Parse(upb_MtDecoder* d, const char* ptr,
     char ch = *ptr++;
     if (ch <= kUpb_EncodedValue_MaxField) {
       if (!d->table && last_field) {
+        // Test change
         // For extensions, consume only a single field and then return.
         return --ptr;
       }
