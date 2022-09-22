@@ -276,6 +276,11 @@ const upb_MiniTable* upb_MessageDef_MiniTable(const upb_MessageDef* m) {
   return m->layout;
 }
 
+const upb_MiniTable* const* _upb_MessageDef_MiniTablePtr(
+    const upb_MessageDef* m) {
+  return &m->layout;
+}
+
 const upb_ExtensionRange* upb_MessageDef_ExtensionRange(const upb_MessageDef* m,
                                                         int i) {
   UPB_ASSERT(0 <= i && i < m->ext_range_count);

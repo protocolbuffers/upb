@@ -445,8 +445,14 @@ static const char* upb_MtDecoder_ParseModifier(upb_MtDecoder* d,
 
 static void upb_MtDecoder_AllocateSubs(upb_MtDecoder* d, uint32_t sub_count) {
   size_t subs_bytes = sizeof(*d->table->subs) * sub_count;
-  void* subs = upb_Arena_Malloc(d->arena, subs_bytes);
-  memset(subs, 0, subs_bytes);
+  const upb_MiniTable** sub_ptrs = upb_Arena_Malloc(d->arena, subs_bytes);
+  upb_MiniTableSub* subs = upb_Arena_Malloc(d->arena, subs_bytes);
+  upb_MtDecoder_CheckOutOfMemory(d, sub_ptrs);
+  upb_MtDecoder_CheckOutOfMemory(d, subs);
+  memset(sub_ptrs, 0, subs_bytes);
+  for (uint32_t i = 0; i < sub_count; i++) {
+    subs[i].submsg = sub_ptrs + i;
+  }
   d->table->subs = subs;
   upb_MtDecoder_CheckOutOfMemory(d, d->table->subs);
 }
@@ -1031,8 +1037,9 @@ bool upb_MiniTable_SetSubMessage(upb_MiniTable* table,
       return false;
   }
 
-  upb_MiniTableSub* table_sub = (void*)&table->subs[field->submsg_index];
-  table_sub->submsg = sub;
+  const upb_MiniTable** submsg = table->subs[field->submsg_index].submsg;
+  assert(submsg);
+  *submsg = sub;
   return true;
 }
 

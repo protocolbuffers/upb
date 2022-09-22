@@ -31,7 +31,7 @@
 #include "upb/mini_table/types.h"
 
 union upb_MiniTableSub {
-  const upb_MiniTable* submsg;
+  const upb_MiniTable** submsg;
   const upb_MiniTableEnum* subenum;
 };
 

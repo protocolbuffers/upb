@@ -1,0 +1,49 @@
+syntax = "proto2";
+
+package upb_test;
+
+message NotReferenced {}
+message RepeatedNotReferenced {}
+message MapNotReferenced {}
+
+message GetNonRepeated {}
+message SetNonRepeated {}
+message HasNonRepeated {}
+message ClearNonRepeated {}
+message GetRepeated {}
+message AddRepeated {}
+message MutableRepeated {}
+message ResizeRepeated {}
+message GetMap {}
+message SizeMap {}
+message ClearMap {}
+message NextMap {}
+
+message TopLevelMessage {
+  optional NotReferenced not_referenced = 1;
+  repeated RepeatedNotReferenced repeated_not_referenced = 15;
+  map<int32, MapNotReferenced> map_not_referenced = 16;
+
+  optional GetNonRepeated get_non_repeated = 2;
+  optional SetNonRepeated set_non_repeated = 3;
+  optional HasNonRepeated has_non_repeated = 4;
+  optional ClearNonRepeated clear_non_repeated = 5;
+  repeated GetRepeated get_repeated = 6;
+  repeated AddRepeated add_repeated = 7;
+  repeated MutableRepeated mutable_repeated = 8;
+  repeated ResizeRepeated resize_repeated = 9;
+  repeated ResizeRepeated clear_repeated = 10;
+  map<int32, GetMap> get_map = 11;
+  map<int32, SizeMap> size_map = 12;
+  map<int32, ClearMap> clear_map = 13;
+  map<int32, ClearMap> next_map = 14;
+
+  extensions 1000 to max;
+}
+
+extend TopLevelMessage {
+  // Verify that un-referenced extensions in this file will not pull in those
+  // messages.
+  optional NotReferenced not_referenced = 1001;
+  repeated RepeatedNotReferenced repeated_not_referenced = 1015;
+}

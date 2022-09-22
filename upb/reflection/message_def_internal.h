@@ -48,6 +48,8 @@ void _upb_MessageDef_CreateMiniTable(upb_DefBuilder* ctx, upb_MessageDef* m);
 void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
                                    const upb_MessageDef* m);
 void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m);
+const upb_MiniTable* const* _upb_MessageDef_MiniTablePtr(
+    const upb_MessageDef* m);
 
 // Allocate and initialize an array of |n| message defs.
 upb_MessageDef* _upb_MessageDefs_New(

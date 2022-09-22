@@ -32,6 +32,7 @@ load(
     "upb_proto_library",
     "upb_proto_reflection_library",
 )
+load("@bazel_skylib//lib:selects.bzl", "selects")
 
 cc_library(
     name = "parse_text_proto",
@@ -200,3 +201,46 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+proto_library(
+    name = "implicit_weak_test_proto",
+    srcs = ["implicit_weak_test.proto"],
+)
+
+upb_proto_library(
+    name = "implicit_weak_test_upb_proto",
+    deps = [":implicit_weak_test_proto"],
+)
+
+# begin:google_only
+# cc_test(
+#     name = "implicit_weak_test",
+#     srcs = ["implicit_weak_test.cc"],
+#     copts = selects.with_or({
+#         "//tools/compilation_mode:opt": ["-DCOMPILATION_MODE_OPT"],
+#         "//conditions:default": [],
+#     }),
+#     deps = [
+#         ":implicit_weak_test_upb_proto",
+#         "//:upb",
+#         "//:base",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
+#
+# cc_test(
+#     name = "implicit_weak_test_reference_file",
+#     srcs = ["implicit_weak_test.cc"],
+#     copts = ["-DUPB_REFERENCE_FILE"] +
+#             selects.with_or({
+#                 "//tools/compilation_mode:opt": ["-DCOMPILATION_MODE_OPT"],
+#                 "//conditions:default": [],
+#             }),
+#     deps = [
+#         ":implicit_weak_test_upb_proto",
+#         "//:upb",
+#         "//:base",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
+# end:google_only

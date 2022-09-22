@@ -109,11 +109,13 @@ UPB_API_INLINE bool upb_MiniTableField_HasPresence(
 
 UPB_API_INLINE const upb_MiniTable* upb_MiniTable_GetSubMessageTable(
     const upb_MiniTable* mini_table, const upb_MiniTableField* field) {
-  return mini_table->subs[field->submsg_index].submsg;
+  UPB_ASSERT(upb_MiniTableField_CType(field) == kUpb_CType_Message);
+  return *mini_table->subs[field->submsg_index].submsg;
 }
 
 UPB_API_INLINE const upb_MiniTableEnum* upb_MiniTable_GetSubEnumTable(
     const upb_MiniTable* mini_table, const upb_MiniTableField* field) {
+  UPB_ASSERT(upb_MiniTableField_Type(field) == kUpb_FieldType_Enum);
   return mini_table->subs[field->submsg_index].subenum;
 }
 

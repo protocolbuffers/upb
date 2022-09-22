@@ -90,7 +90,7 @@ upb_GetExtension_Status upb_MiniTable_GetOrPromoteExtension(
   size_t len;
   size_t ofs = result.ptr - upb_Message_GetUnknown(msg, &len);
   // Decode and promote from unknown.
-  const upb_MiniTable* extension_table = ext_table->sub.submsg;
+  const upb_MiniTable* extension_table = *ext_table->sub.submsg;
   upb_UnknownToMessageRet parse_result = upb_MiniTable_ParseUnknownMessage(
       result.ptr, result.len, extension_table,
       /* base_message= */ NULL, decode_options, arena);
@@ -126,7 +126,7 @@ upb_GetExtensionAsBytes_Status upb_MiniTable_GetExtensionAsBytes(
   UPB_ASSERT(ext_table->field.descriptortype == kUpb_FieldType_Message);
   if (msg_ext) {
     upb_EncodeStatus status =
-        upb_Encode(msg_ext->data.ptr, msg_ext->ext->sub.submsg, encode_options,
+        upb_Encode(msg_ext->data.ptr, *msg_ext->ext->sub.submsg, encode_options,
                    arena, (char**)extension_data, len);
     if (status != kUpb_EncodeStatus_Ok) {
       return kUpb_GetExtensionAsBytes_EncodeError;
@@ -196,7 +196,7 @@ upb_UnknownToMessageRet upb_MiniTable_PromoteUnknownToMessage(
   upb_Message* message = NULL;
   // Callers should check that message is not set first before calling
   // PromotoUnknownToMessage.
-  UPB_ASSERT(mini_table->subs[field->submsg_index].submsg == sub_mini_table);
+  UPB_ASSERT(*mini_table->subs[field->submsg_index].submsg == sub_mini_table);
   bool is_oneof = _upb_MiniTableField_InOneOf(field);
   if (!is_oneof || _upb_getoneofcase_field(msg, field) == field->number) {
     UPB_ASSERT(upb_Message_GetMessage(msg, field, NULL) == NULL);
@@ -281,7 +281,7 @@ upb_MapInsertStatus upb_Message_InsertMapEntry(upb_Map* map,
                                                upb_Message* map_entry_message,
                                                upb_Arena* arena) {
   const upb_MiniTable* map_entry_mini_table =
-      mini_table->subs[field->submsg_index].submsg;
+      *mini_table->subs[field->submsg_index].submsg;
   UPB_ASSERT(map_entry_mini_table);
   UPB_ASSERT(map_entry_mini_table->field_count == 2);
   const upb_MiniTableField* map_entry_key_field =
@@ -306,7 +306,7 @@ upb_UnknownToMessage_Status upb_MiniTable_PromoteUnknownToMap(
     upb_Message* msg, const upb_MiniTable* mini_table,
     const upb_MiniTableField* field, int decode_options, upb_Arena* arena) {
   const upb_MiniTable* map_entry_mini_table =
-      mini_table->subs[field->submsg_index].submsg;
+      *mini_table->subs[field->submsg_index].submsg;
   UPB_ASSERT(map_entry_mini_table);
   UPB_ASSERT(map_entry_mini_table);
   UPB_ASSERT(map_entry_mini_table->field_count == 2);

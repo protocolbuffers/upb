@@ -107,7 +107,7 @@ def _filter_none(elems):
             out.append(elem)
     return out
 
-def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
+def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos, cc_toolchain, feature_configuration):
     """Like cc_library(), but callable from rules.
 
     Args:
@@ -125,13 +125,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
 
     compilation_contexts = [info.compilation_context for info in dep_ccinfos]
     linking_contexts = [info.linking_context for info in dep_ccinfos]
-    toolchain = find_cpp_toolchain(ctx)
-    feature_configuration = cc_common.configure_features(
-        ctx = ctx,
-        cc_toolchain = toolchain,
-        requested_features = ctx.features,
-        unsupported_features = ctx.disabled_features,
-    )
 
     blaze_only_args = {}
 
@@ -141,7 +134,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
     (compilation_context, compilation_outputs) = cc_common.compile(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
-        cc_toolchain = toolchain,
+        cc_toolchain = cc_toolchain,
         name = name,
         srcs = srcs,
         includes = includes,
@@ -156,7 +149,7 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
         actions = ctx.actions,
         name = name,
         feature_configuration = feature_configuration,
-        cc_toolchain = toolchain,
+        cc_toolchain = cc_toolchain,
         compilation_outputs = compilation_outputs,
         linking_contexts = linking_contexts,
         disallow_dynamic_library = cc_common.is_enabled(feature_configuration = feature_configuration, feature_name = "targets_windows"),
@@ -204,21 +197,75 @@ _WrappedDefsGeneratedSrcsInfo = provider(
     fields = ["srcs"],
 )
 
-def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
+def _get_implicit_weak_field_sources(ctx, proto_info):
+    # Creating one .cc file for each Message in a proto allows the linker to be more aggressive
+    # about removing unused classes. However, since the number of outputs won't be known at Blaze
+    # analysis time, all of the generated source files are put in a directory and a TreeArtifact is
+    # used to represent them.
+    proto_artifacts = []
+    for proto_source in proto_info.direct_sources:
+        # We can have slashes in the target name. For example, proto_source can be:
+        # dir/a.proto. However proto_source.basename will return a.proto, when in reality
+        # the BUILD file declares it as dir/a.proto, because target name contains a slash.
+        # There is no good workaround for this.
+        # I am using ctx.label.package to check if the name of the target contains slash or not.
+        # This is similar to what declare_directory does.
+        if not proto_source.short_path.startswith(ctx.label.package):
+            fail("This should never happen, proto source {} path does not start with {}.".format(
+                proto_source.short_path,
+                ctx.label.package,
+            ))
+        proto_source_name = proto_source.short_path[len(ctx.label.package) + 1:]
+        last_dot = proto_source_name.rfind(".")
+        if last_dot != -1:
+            proto_source_name = proto_source_name[:last_dot]
+        proto_artifacts.append(ctx.actions.declare_directory(proto_source_name + ".upb_weak_msgs"))
+
+    return proto_artifacts
+
+def _get_feature_configuration(ctx, cc_toolchain, proto_info):
+    requested_features = list(ctx.features)
+
+    # Disable the whole-archive behavior for protobuf generated code. We request this
+    # unconditionally here, but in practice it only applies when the proto_one_output_per_message
+    # feature is enabled, due to the way the toolchains are configured.
+    requested_features.append("disable_whole_archive_for_static_lib")
+    unsupported_features = list(ctx.disabled_features)
+    if len(proto_info.direct_sources) != 0:
+        requested_features.append("header_modules")
+    else:
+        unsupported_features.append("header_modules")
+
+    return cc_common.configure_features(
+        ctx = ctx,
+        cc_toolchain = cc_toolchain,
+        requested_features = requested_features,
+        unsupported_features = unsupported_features,
+    )
+
+def _compile_upb_protos(ctx, generator, proto_info, proto_sources, feature_configuration):
     if len(proto_sources) == 0:
         return GeneratedSrcsInfo(srcs = [], hdrs = [], includes = [])
 
+    one_output_per_message = cc_common.is_enabled(
+        feature_configuration = feature_configuration,
+        feature_name = "proto_one_output_per_message",
+    )
     ext = "." + generator
     tool = getattr(ctx.executable, "_gen_" + generator)
     srcs = [_generate_output_file(ctx, name, ext + ".c") for name in proto_sources]
     hdrs = [_generate_output_file(ctx, name, ext + ".h") for name in proto_sources]
+    codegen_params = ""
+    if generator == "upb" and one_output_per_message:
+        srcs.extend(_get_implicit_weak_field_sources(ctx, proto_info))
+        codegen_params = "implicit_weak:"
     transitive_sets = proto_info.transitive_descriptor_sets.to_list()
 
     args = ctx.actions.args()
     args.use_param_file(param_file_arg = "@%s")
     args.set_param_file_format("multiline")
 
-    args.add("--" + generator + "_out=" + _get_real_root(ctx, srcs[0]))
+    args.add("--" + generator + "_out=" + codegen_params + _get_real_root(ctx, srcs[0]))
     args.add("--plugin=protoc-gen-" + generator + "=" + tool.path)
     args.add("--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]))
     args.add_all(proto_sources, map_each = _get_real_short_path)
@@ -276,7 +323,9 @@ def _upb_proto_rule_impl(ctx):
 
 def _upb_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
     proto_info = target[ProtoInfo]
-    files = _compile_upb_protos(ctx, generator, proto_info, proto_info.direct_sources)
+    cc_toolchain = find_cpp_toolchain(ctx)
+    feature_configuration = _get_feature_configuration(ctx, cc_toolchain, proto_info)
+    files = _compile_upb_protos(ctx, generator, proto_info, proto_info.direct_sources, feature_configuration)
     deps = ctx.rule.attr.deps + getattr(ctx.attr, "_" + generator)
     dep_ccinfos = [dep[CcInfo] for dep in deps if CcInfo in dep]
     dep_ccinfos += [dep[UpbWrappedCcInfo].cc_info for dep in deps if UpbWrappedCcInfo in dep]
@@ -291,6 +340,8 @@ def _upb_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider):
         hdrs = files.hdrs,
         srcs = files.srcs,
         includes = files.includes,
+        feature_configuration = feature_configuration,
+        cc_toolchain = cc_toolchain,
         copts = ctx.attr._copts[UpbProtoLibraryCoptsInfo].copts,
         dep_ccinfos = dep_ccinfos,
     )

@@ -571,14 +571,7 @@ upb_MiniTable* CreateMiniTableWithEmptySubTables(upb_Arena* arena) {
   upb_MiniTable* table =
       upb_MiniTable_Build(e.data().data(), e.data().size(), arena, &status);
   EXPECT_EQ(status.ok, true);
-  // Initialize sub table to null. Not using upb_MiniTable_SetSubMessage
-  // since it checks ->ext on parameter.
-  upb_MiniTableSub* sub = const_cast<upb_MiniTableSub*>(
-      &table->subs[table->fields[1].submsg_index]);
-  sub->submsg = nullptr;
-  sub = const_cast<upb_MiniTableSub*>(
-      &table->subs[table->fields[2].submsg_index]);
-  sub->submsg = nullptr;
+  // Sub-tables will be initialized to nullptr by default.
   return table;
 }
 
@@ -596,14 +589,7 @@ upb_MiniTable* CreateMiniTableWithEmptySubTablesForMaps(upb_Arena* arena) {
   upb_MiniTable* table =
       upb_MiniTable_Build(e.data().data(), e.data().size(), arena, &status);
   EXPECT_EQ(status.ok, true);
-  // Initialize sub table to null. Not using upb_MiniTable_SetSubMessage
-  // since it checks ->ext on parameter.
-  upb_MiniTableSub* sub = const_cast<upb_MiniTableSub*>(
-      &table->subs[table->fields[1].submsg_index]);
-  sub->submsg = nullptr;
-  sub = const_cast<upb_MiniTableSub*>(
-      &table->subs[table->fields[2].submsg_index]);
-  sub->submsg = nullptr;
+  // Sub-tables will be initialized to nullptr by default.
   return table;
 }
 

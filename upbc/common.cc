@@ -70,12 +70,20 @@ std::string HeaderFilename(upb::FileDefPtr file) {
   return StripExtension(file.name()) + ".upb.h";
 }
 
-std::string MessageInit(absl::string_view full_name) {
+std::string MessageInit(std::string full_name) {
   return ToCIdent(full_name) + "_msg_init";
+}
+
+std::string MessageInit(upb::MessageDefPtr descriptor) {
+  return MessageInit(descriptor.full_name());
 }
 
 std::string EnumInit(upb::EnumDefPtr descriptor) {
   return ToCIdent(descriptor.full_name()) + "_enum_init";
+}
+
+std::string MessagePtr(upb::MessageDefPtr descriptor) {
+  return MessageName(descriptor) + "_msg_ptr";
 }
 
 }  // namespace upbc

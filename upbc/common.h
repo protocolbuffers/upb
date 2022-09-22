@@ -81,9 +81,10 @@ std::string MessageName(upb::MessageDefPtr descriptor);
 std::string FileLayoutName(upb::FileDefPtr file);
 std::string HeaderFilename(upb::FileDefPtr file);
 
-std::string MessageInit(absl::string_view full_name);
+std::string MessageInit(std::string full_name);
+std::string MessageInit(upb::MessageDefPtr descriptor);
 std::string EnumInit(upb::EnumDefPtr descriptor);
-
+std::string MessagePtr(upb::MessageDefPtr descriptor);
 }  // namespace upbc
 
 #endif  // UPBC_COMMON_H

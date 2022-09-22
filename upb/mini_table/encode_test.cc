@@ -248,8 +248,8 @@ TEST_P(MiniTableTest, SubsInitializedToNull) {
       e.data().data(), e.data().size(), GetParam(), arena.ptr(), status.ptr());
   ASSERT_NE(nullptr, table);
   EXPECT_EQ(table->field_count, 2);
-  EXPECT_EQ(table->subs[0].submsg, nullptr);
-  EXPECT_EQ(table->subs[1].submsg, nullptr);
+  EXPECT_EQ(*table->subs[0].submsg, nullptr);
+  EXPECT_EQ(*table->subs[1].submsg, nullptr);
 }
 
 TEST(MiniTableEnumTest, PositiveAndNegative) {

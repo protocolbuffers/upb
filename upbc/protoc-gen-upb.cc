@@ -63,6 +63,7 @@ namespace {
 
 struct Options {
   bool bootstrap = false;
+  bool implicit_weak = false;
 };
 
 // Returns fields in order of "hotness", eg. how frequently they appear in
@@ -88,16 +89,17 @@ std::string SourceFilename(upb::FileDefPtr file) {
   return StripExtension(file.name()) + ".upb.c";
 }
 
-std::string MessageInitName(upb::MessageDefPtr descriptor) {
-  return absl::StrCat(MessageName(descriptor), "_msg_init");
+std::string ImplicitWeakFilename(upb::MessageDefPtr message) {
+  return absl::StrCat(StripExtension(message.file().name()), ".upb_weak_msgs/",
+                      message.full_name(), ".upb.c");
 }
 
 std::string MessageMiniTableRef(upb::MessageDefPtr descriptor,
                                 const Options& options) {
   if (options.bootstrap) {
-    return absl::StrCat(MessageInitName(descriptor), "()");
+    return absl::StrCat(MessageInit(descriptor), "()");
   } else {
-    return absl::StrCat("&", MessageInitName(descriptor));
+    return absl::StrCat("&", MessageInit(descriptor));
   }
 }
 
@@ -403,6 +405,21 @@ void GenerateOneofInHeader(upb::OneofDefPtr oneof, const DefPoolPair& pools,
       FieldInitializer(pools, oneof.field(0), options));
 }
 
+std::string StrongReferenceSingle(upb::FieldDefPtr field) {
+  if (!field.message_type()) return "";
+  return absl::Substitute("  _upb_MiniTable_StrongReference(&$0);\n  ",
+                          MessageInit(field.message_type()));
+}
+
+std::string StrongReference(upb::FieldDefPtr field) {
+  if (field.IsMap()) {
+    return StrongReferenceSingle(field) +
+           StrongReferenceSingle(field.message_type().FindFieldByNumber(2));
+  } else {
+    return StrongReferenceSingle(field);
+  }
+}
+
 void GenerateHazzer(upb::FieldDefPtr field, const DefPoolPair& pools,
                     absl::string_view msg_name,
                     const NameToFieldDefMap& field_names,
@@ -412,11 +429,12 @@ void GenerateHazzer(upb::FieldDefPtr field, const DefPoolPair& pools,
     output(
         R"cc(
           UPB_INLINE bool $0_has_$1(const $0* msg) {
-            const upb_MiniTableField field = $2;
+            $3const upb_MiniTableField field = $2;
             return _upb_Message_HasNonExtensionField(msg, &field);
           }
         )cc",
-        msg_name, resolved_name, FieldInitializer(pools, field, options));
+        msg_name, resolved_name, FieldInitializer(pools, field, options),
+        StrongReference(field));
   } else if (field.IsMap()) {
     // Do nothing.
   } else if (field.IsSequence()) {
@@ -446,11 +464,12 @@ void GenerateClear(upb::FieldDefPtr field, const DefPoolPair& pools,
   output(
       R"cc(
         UPB_INLINE void $0_clear_$1($0* msg) {
-          const upb_MiniTableField field = $2;
+          $3const upb_MiniTableField field = $2;
           _upb_Message_ClearNonExtensionField(msg, &field);
         }
       )cc",
-      msg_name, resolved_name, FieldInitializer(pools, field, options));
+      msg_name, resolved_name, FieldInitializer(pools, field, options),
+      StrongReference(field));
 }
 
 void GenerateMapGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
@@ -461,16 +480,17 @@ void GenerateMapGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
   output(
       R"cc(
         UPB_INLINE size_t $0_$1_size(const $0* msg) {
-          const upb_MiniTableField field = $2;
+          $3const upb_MiniTableField field = $2;
           const upb_Map* map = upb_Message_GetMap(msg, &field);
           return map ? _upb_Map_Size(map) : 0;
         }
       )cc",
-      msg_name, resolved_name, FieldInitializer(pools, field, options));
+      msg_name, resolved_name, FieldInitializer(pools, field, options),
+      StrongReference(field));
   output(
       R"cc(
         UPB_INLINE bool $0_$1_get(const $0* msg, $2 key, $3* val) {
-          const upb_MiniTableField field = $4;
+          $7const upb_MiniTableField field = $4;
           const upb_Map* map = upb_Message_GetMap(msg, &field);
           if (!map) return false;
           return _upb_Map_Get(map, &key, $5, val, $6);
@@ -478,18 +498,18 @@ void GenerateMapGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
       )cc",
       msg_name, resolved_name, MapKeyCType(field), MapValueCType(field),
       FieldInitializer(pools, field, options), MapKeySize(field, "key"),
-      MapValueSize(field, "*val"));
+      MapValueSize(field, "*val"), StrongReference(field));
   output(
       R"cc(
         UPB_INLINE $0 $1_$2_next(const $1* msg, size_t* iter) {
-          const upb_MiniTableField field = $3;
+          $4const upb_MiniTableField field = $3;
           const upb_Map* map = upb_Message_GetMap(msg, &field);
           if (!map) return NULL;
           return ($0)_upb_map_next(map, iter);
         }
       )cc",
       CTypeConst(field), msg_name, resolved_name,
-      FieldInitializer(pools, field, options));
+      FieldInitializer(pools, field, options), StrongReference(field));
 }
 
 void GenerateMapEntryGetters(upb::FieldDefPtr field, absl::string_view msg_name,
@@ -513,7 +533,7 @@ void GenerateRepeatedGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
   output(
       R"cc(
         UPB_INLINE $0 const* $1_$2(const $1* msg, size_t* size) {
-          const upb_MiniTableField field = $3;
+          $4const upb_MiniTableField field = $3;
           const upb_Array* arr = upb_Message_GetArray(msg, &field);
           if (arr) {
             if (size) *size = arr->size;
@@ -525,7 +545,7 @@ void GenerateRepeatedGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
         }
       )cc",
       CTypeConst(field), msg_name, ResolveFieldName(field, field_names),
-      FieldInitializer(pools, field, options));
+      FieldInitializer(pools, field, options), StrongReference(field));
 }
 
 void GenerateScalarGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
@@ -536,7 +556,7 @@ void GenerateScalarGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
   output(
       R"cc(
         UPB_INLINE $0 $1_$2(const $1* msg) {
-          $0 default_val = $3;
+          $5$0 default_val = $3;
           $0 ret;
           const upb_MiniTableField field = $4;
           _upb_Message_GetNonExtensionField(msg, &field, &default_val, &ret);
@@ -544,7 +564,7 @@ void GenerateScalarGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
         }
       )cc",
       CTypeConst(field), msg_name, field_name, FieldDefault(field),
-      FieldInitializer(pools, field, Options));
+      FieldInitializer(pools, field, Options), StrongReference(field));
 }
 
 void GenerateGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
@@ -623,7 +643,7 @@ void GenerateRepeatedSetters(upb::FieldDefPtr field, const DefPoolPair& pools,
   output(
       R"cc(
         UPB_INLINE $0* $1_mutable_$2($1* msg, size_t* size) {
-          upb_MiniTableField field = $3;
+          $4upb_MiniTableField field = $3;
           upb_Array* arr = upb_Message_GetMutableArray(msg, &field);
           if (arr) {
             if (size) *size = arr->size;
@@ -635,16 +655,16 @@ void GenerateRepeatedSetters(upb::FieldDefPtr field, const DefPoolPair& pools,
         }
       )cc",
       CType(field), msg_name, resolved_name,
-      FieldInitializer(pools, field, options));
+      FieldInitializer(pools, field, options), StrongReference(field));
   output(
       R"cc(
         UPB_INLINE $0* $1_resize_$2($1* msg, size_t size, upb_Arena* arena) {
-          upb_MiniTableField field = $3;
+          $4upb_MiniTableField field = $3;
           return ($0*)upb_Message_ResizeArray(msg, &field, size, arena);
         }
       )cc",
       CType(field), msg_name, resolved_name,
-      FieldInitializer(pools, field, options));
+      FieldInitializer(pools, field, options), StrongReference(field));
   if (field.ctype() == kUpb_CType_Message) {
     output(
         R"cc(
@@ -696,21 +716,22 @@ void GenerateNonRepeatedSetters(upb::FieldDefPtr field,
   if (field == field.containing_type().map_value()) {
     output(R"cc(
              UPB_INLINE void $0_set_$1($0 *msg, $2 value) {
-               _upb_msg_map_set_value(msg, &value, $3);
+               $4_upb_msg_map_set_value(msg, &value, $3);
              }
            )cc",
            msg_name, field_name, CType(field),
            field.ctype() == kUpb_CType_String ? "0"
-                                              : "sizeof(" + CType(field) + ")");
+                                              : "sizeof(" + CType(field) + ")",
+           StrongReference(field));
   } else {
     output(R"cc(
              UPB_INLINE void $0_set_$1($0 *msg, $2 value) {
-               const upb_MiniTableField field = $3;
+               $4const upb_MiniTableField field = $3;
                _upb_Message_SetNonExtensionField(msg, &field, &value);
              }
            )cc",
            msg_name, field_name, CType(field),
-           FieldInitializer(pools, field, options));
+           FieldInitializer(pools, field, options), StrongReference(field));
   }
 
   // Message fields also have a Msg_mutable_foo() accessor that will create
@@ -777,12 +798,12 @@ void GenerateMessageInHeader(upb::MessageDefPtr message,
   output("\n");
 }
 
-void ForwardDeclareMiniTableInit(upb::MessageDefPtr message,
-                                 const Options& options, Output& output) {
+void DeclareMiniTable(upb::MessageDefPtr message, const Options& options,
+                      Output& output) {
   if (options.bootstrap) {
-    output("extern const upb_MiniTable* $0();\n", MessageInitName(message));
+    output("extern const upb_MiniTable* $0();\n", MessageInit(message));
   } else {
-    output("extern const upb_MiniTable $0;\n", MessageInitName(message));
+    output("extern const upb_MiniTable $0;\n", MessageInit(message));
   }
 }
 
@@ -830,7 +851,7 @@ void WriteHeader(const DefPoolPair& pools, upb::FileDefPtr file,
     output("typedef struct $0 $0;\n", ToCIdent(message.full_name()));
   }
   for (auto message : this_file_messages) {
-    ForwardDeclareMiniTableInit(message, options, output);
+    DeclareMiniTable(message, options, output);
   }
   for (auto ext : this_file_exts) {
     output("extern const upb_MiniTableExtension $0;\n", ExtensionLayout(ext));
@@ -860,7 +881,7 @@ void WriteHeader(const DefPoolPair& pools, upb::FileDefPtr file,
     output("struct $0;\n", MessageName(pair.second));
   }
   for (const auto& pair : forward_messages) {
-    ForwardDeclareMiniTableInit(pair.second, options, output);
+    DeclareMiniTable(pair.second, options, output);
   }
 
   if (!this_file_messages.empty()) {
@@ -1277,7 +1298,7 @@ void WriteMessageField(upb::FieldDefPtr field,
 
 std::string GetSub(upb::FieldDefPtr field) {
   if (auto message_def = field.message_type()) {
-    return absl::Substitute("{.submsg = &$0}", MessageInitName(message_def));
+    return absl::Substitute("{.submsg = &$0}", MessagePtr(message_def));
   }
 
   if (auto enum_def = field.enum_subdef()) {
@@ -1290,8 +1311,8 @@ std::string GetSub(upb::FieldDefPtr field) {
 }
 
 // Writes a single message into a .upb.c source file.
-void WriteMessage(upb::MessageDefPtr message, const DefPoolPair& pools,
-                  const Options& options, Output& output) {
+void DefineMiniTable(upb::MessageDefPtr message, const DefPoolPair& pools,
+                     const Options& options, Output& output) {
   std::string msg_name = ToCIdent(message.full_name());
   std::string fields_array_ref = "NULL";
   std::string submsgs_array_ref = "NULL";
@@ -1352,7 +1373,7 @@ void WriteMessage(upb::MessageDefPtr message, const DefPoolPair& pools,
     }
   }
 
-  output("const upb_MiniTable $0 = {\n", MessageInitName(message));
+  output("const upb_MiniTable $0 = {\n", MessageInit(message));
   output("  $0,\n", submsgs_array_ref);
   output("  $0,\n", fields_array_ref);
   output("  $0, $1, $2, $3, UPB_FASTTABLE_MASK($4), $5,\n",
@@ -1366,7 +1387,13 @@ void WriteMessage(upb::MessageDefPtr message, const DefPoolPair& pools,
     }
     output("  })\n");
   }
-  output("};\n\n");
+  output("};\n");
+
+  output(R"cc(
+           const upb_MiniTable* $0 = &$1;
+         )cc",
+         MessagePtr(message), MessageInit(message));
+  output("\n");
 }
 
 void WriteEnum(upb::EnumDefPtr e, Output& output) {
@@ -1419,14 +1446,16 @@ int WriteMessages(const DefPoolPair& pools, upb::FileDefPtr file,
 
   if (file_messages.empty()) return 0;
 
-  for (auto message : file_messages) {
-    WriteMessage(message, pools, options, output);
+  if (!options.implicit_weak) {
+    for (auto message : file_messages) {
+      DefineMiniTable(message, pools, options, output);
+    }
   }
 
   output("static const upb_MiniTable *$0[$1] = {\n", kMessagesInit,
          file_messages.size());
   for (auto message : file_messages) {
-    output("  &$0,\n", MessageInitName(message));
+    output("  &$0,\n", MessageInit(message));
   }
   output("};\n");
   output("\n");
@@ -1436,15 +1465,21 @@ int WriteMessages(const DefPoolPair& pools, upb::FileDefPtr file,
 void WriteExtension(upb::FieldDefPtr ext, const DefPoolPair& pools,
                     const Options& options, Output& output) {
   output("$0,\n", FieldInitializer(pools, ext, options));
-  output("  &$0,\n", MessageInitName(ext.containing_type()));
+  output("  &$0,\n", MessageInit(ext.containing_type()));
   output("  $0,\n", GetSub(ext));
 }
 
-int WriteExtensions(const DefPoolPair& pools, upb::FileDefPtr file,
-                    const Options& options, Output& output) {
-  auto exts = SortedExtensions(file);
+void DefineMiniTableExtension(upb::FieldDefPtr ext, const DefPoolPair& pools,
+                              upb::FileDefPtr file, const Options& options,
+                              Output& output) {
+  output("const upb_MiniTableExtension $0 = {\n  ", ExtensionLayout(ext));
+  WriteExtension(ext, pools, options, output);
+  output("\n};\n");
+}
 
-  if (exts.empty()) return 0;
+void DefineMiniTableExtensions(const DefPoolPair& pools, upb::FileDefPtr file,
+                               const Options& options, Output& output) {
+  auto exts = SortedExtensions(file);
 
   // Order by full name for consistent ordering.
   std::map<std::string, upb::MessageDefPtr> forward_messages;
@@ -1457,14 +1492,21 @@ int WriteExtensions(const DefPoolPair& pools, upb::FileDefPtr file,
   }
 
   for (const auto& decl : forward_messages) {
-    ForwardDeclareMiniTableInit(decl.second, options, output);
+    DeclareMiniTable(decl.second, options, output);
   }
 
   for (auto ext : exts) {
-    output("const upb_MiniTableExtension $0 = {\n  ", ExtensionLayout(ext));
-    WriteExtension(ext, pools, options, output);
-    output("\n};\n");
+    DefineMiniTableExtension(ext, pools, file, options, output);
   }
+}
+
+int WriteExtensions(const DefPoolPair& pools, upb::FileDefPtr file,
+                    const Options& options, Output& output) {
+  auto exts = SortedExtensions(file);
+
+  if (exts.empty()) return 0;
+
+  DefineMiniTableExtensions(pools, file, options, output);
 
   output(
       "\n"
@@ -1479,6 +1521,88 @@ int WriteExtensions(const DefPoolPair& pools, upb::FileDefPtr file,
       "};\n"
       "\n");
   return exts.size();
+}
+
+class SortedSubMessages {
+ public:
+  explicit SortedSubMessages(upb::FileDefPtr file) : file_per_message_(false) {
+    AddFile(file);
+  }
+
+  explicit SortedSubMessages(upb::MessageDefPtr msg) : file_per_message_(true) {
+    AddMessage(msg);
+  }
+
+  static SortedSubMessages ForExtensions(upb::FileDefPtr file) {
+    SortedSubMessages sub;
+    for (auto ext : SortedExtensions(file)) sub.AddField(ext);
+    return sub;
+  }
+
+  struct Message {
+    Message() = default;
+    explicit Message(upb::MessageDefPtr msg_, bool cross_file_)
+        : msg(msg_), is_cross_file(cross_file_) {}
+    upb::MessageDefPtr msg;
+    bool is_cross_file;
+  };
+
+  template <class T>
+  void ForEach(bool file_per_message, T&& callback) const {
+    for (const auto& pair : messages_) {
+      callback(pair.second);
+    }
+  }
+
+ private:
+  SortedSubMessages() {}
+
+  bool IsSameFile(upb::FieldDefPtr field) const {
+    if (file_per_message_) {
+      if (field.is_extension()) return false;
+      return field.message_type() == field.containing_type();
+    } else {
+      return field.file() == field.message_type().file();
+    }
+  }
+
+  void AddField(upb::FieldDefPtr field) {
+    upb::MessageDefPtr sub = field.message_type();
+    if (!sub) return;
+    messages_[sub.full_name()] = Message(sub, !IsSameFile(field));
+  }
+
+  void AddMessage(upb::MessageDefPtr message) {
+    for (int i = 0; i < message.field_count(); i++) AddField(message.field(i));
+  }
+
+  void AddFile(upb::FileDefPtr file) {
+    for (auto message : SortedMessages(file)) AddMessage(message);
+    for (auto ext : SortedExtensions(file)) AddField(ext);
+  }
+
+  using MessageMap = absl::flat_hash_map<std::string, Message>;
+  bool file_per_message_;
+  MessageMap messages_;
+};
+
+void DeclareSubMiniTables(const SortedSubMessages& subs, const Options& options,
+                          Output& output) {
+  subs.ForEach(options.implicit_weak, [&](SortedSubMessages::Message msg) {
+    if (options.implicit_weak && msg.is_cross_file) {
+      output(R"cc(
+               __attribute__((weak)) const upb_MiniTable* $0 = NULL;
+             )cc",
+             MessagePtr(msg.msg));
+    } else {
+      output(R"cc(
+               extern const upb_MiniTable* $0;
+             )cc",
+             MessagePtr(msg.msg));
+    }
+  });
+
+  output("\n");
 }
 
 void WriteMiniTableSource(const DefPoolPair& pools, upb::FileDefPtr file,
@@ -1502,6 +1626,13 @@ void WriteMiniTableSource(const DefPoolPair& pools, upb::FileDefPtr file,
       "// Must be last.\n"
       "#include \"upb/port/def.inc\"\n"
       "\n");
+
+  if (options.implicit_weak) {
+    DeclareSubMiniTables(SortedSubMessages::ForExtensions(file), options,
+                         output);
+  } else {
+    DeclareSubMiniTables(SortedSubMessages(file), options, output);
+  }
 
   int msg_count = WriteMessages(pools, file, options, output);
   int ext_count = WriteExtensions(pools, file, options, output);
@@ -1554,7 +1685,7 @@ void WriteMessageMiniDescriptorInitializer(upb::MessageDefPtr msg,
           $2return mini_table;
         }
       )cc",
-      MessageInitName(msg), msg.MiniDescriptorEncode(), resolve_calls.output());
+      MessageInit(msg), msg.MiniDescriptorEncode(), resolve_calls.output());
   output("\n");
 }
 
@@ -1577,8 +1708,7 @@ void WriteEnumMiniDescriptorInitializer(upb::EnumDefPtr enum_def,
   output("\n");
 }
 
-void WriteMiniDescriptorSource(const DefPoolPair& pools, upb::FileDefPtr file,
-                               const Options& options, Output& output) {
+void WriteMiniDescriptorSourceIncludes(Output& output, upb::FileDefPtr file) {
   output(
       "#include <stddef.h>\n"
       "#include \"upb/collections/array_internal.h\"\n"
@@ -1587,6 +1717,11 @@ void WriteMiniDescriptorSource(const DefPoolPair& pools, upb::FileDefPtr file,
       "#include \"upb/mini_table/enum_internal.h\"\n"
       "#include \"$0\"\n\n",
       HeaderFilename(file));
+}
+
+void WriteMiniDescriptorSource(const DefPoolPair& pools, upb::FileDefPtr file,
+                               const Options& options, Output& output) {
+  WriteMiniDescriptorSourceIncludes(output, file);
 
   for (int i = 0; i < file.dependency_count(); i++) {
     output("#include \"$0\"\n", HeaderFilename(file.dependency(i)));
@@ -1621,6 +1756,29 @@ void WriteSource(const DefPoolPair& pools, upb::FileDefPtr file,
   }
 }
 
+void GenerateImplicitWeakFileForMessage(const DefPoolPair& pools,
+                                        upb::FileDefPtr file,
+                                        upb::MessageDefPtr msg,
+                                        const Options& options,
+                                        Plugin* plugin) {
+  Output output;
+
+  output(
+      "#include <stddef.h>\n"
+      "#include \"upb/collections/array_internal.h\"\n"
+      "#include \"upb/message/internal.h\"\n"
+      "#include \"upb/mini_table/enum_internal.h\"\n"
+      "#include \"$0\"\n\n",
+      HeaderFilename(file));
+  output("#include \"upb/port/def.inc\"\n");
+  output("\n");
+  DeclareSubMiniTables(SortedSubMessages(msg), options, output);
+  DefineMiniTable(msg, pools, options, output);
+  output("#include \"upb/port/undef.inc\"\n");
+
+  plugin->AddOutputFile(ImplicitWeakFilename(msg), output.output());
+}
+
 void GenerateFile(const DefPoolPair& pools, upb::FileDefPtr file,
                   const Options& options, Plugin* plugin) {
   Output h_output;
@@ -1630,12 +1788,20 @@ void GenerateFile(const DefPoolPair& pools, upb::FileDefPtr file,
   Output c_output;
   WriteSource(pools, file, options, c_output);
   plugin->AddOutputFile(SourceFilename(file), c_output.output());
+
+  if (options.implicit_weak) {
+    for (auto msg : SortedMessages(file)) {
+      GenerateImplicitWeakFileForMessage(pools, file, msg, options, plugin);
+    }
+  }
 }
 
 bool ParseOptions(Plugin* plugin, Options* options) {
   for (const auto& pair : ParseGeneratorParameter(plugin->parameter())) {
     if (pair.first == "bootstrap_upb") {
       options->bootstrap = true;
+    } else if (pair.first == "implicit_weak") {
+      options->implicit_weak = true;
     } else {
       plugin->SetError(absl::Substitute("Unknown parameter: $0", pair.first));
       return false;

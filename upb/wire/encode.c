@@ -262,7 +262,7 @@ static void encode_scalar(upb_encstate* e, const void* _field_mem,
     case kUpb_FieldType_Group: {
       size_t size;
       void* submsg = *(void**)field_mem;
-      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
+      const upb_MiniTable* subm = *subs[f->submsg_index].submsg;
       if (submsg == NULL) {
         return;
       }
@@ -276,7 +276,7 @@ static void encode_scalar(upb_encstate* e, const void* _field_mem,
     case kUpb_FieldType_Message: {
       size_t size;
       void* submsg = *(void**)field_mem;
-      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
+      const upb_MiniTable* subm = *subs[f->submsg_index].submsg;
       if (submsg == NULL) {
         return;
       }
@@ -365,7 +365,7 @@ static void encode_array(upb_encstate* e, const upb_Message* msg,
     case kUpb_FieldType_Group: {
       const void* const* start = _upb_array_constptr(arr);
       const void* const* ptr = start + arr->size;
-      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
+      const upb_MiniTable* subm = *subs[f->submsg_index].submsg;
       if (--e->depth == 0) encode_err(e, kUpb_EncodeStatus_MaxDepthExceeded);
       do {
         size_t size;
@@ -380,7 +380,7 @@ static void encode_array(upb_encstate* e, const upb_Message* msg,
     case kUpb_FieldType_Message: {
       const void* const* start = _upb_array_constptr(arr);
       const void* const* ptr = start + arr->size;
-      const upb_MiniTable* subm = subs[f->submsg_index].submsg;
+      const upb_MiniTable* subm = *subs[f->submsg_index].submsg;
       if (--e->depth == 0) encode_err(e, kUpb_EncodeStatus_MaxDepthExceeded);
       do {
         size_t size;
@@ -419,7 +419,7 @@ static void encode_map(upb_encstate* e, const upb_Message* msg,
                        const upb_MiniTableSub* subs,
                        const upb_MiniTableField* f) {
   const upb_Map* map = *UPB_PTR_AT(msg, f->offset, const upb_Map*);
-  const upb_MiniTable* layout = subs[f->submsg_index].submsg;
+  const upb_MiniTable* layout = *subs[f->submsg_index].submsg;
   UPB_ASSERT(layout->field_count == 2);
 
   if (map == NULL) return;
@@ -506,7 +506,7 @@ static void encode_msgset_item(upb_encstate* e,
                                const upb_Message_Extension* ext) {
   size_t size;
   encode_tag(e, kUpb_MsgSet_Item, kUpb_WireType_EndGroup);
-  encode_message(e, ext->data.ptr, ext->ext->sub.submsg, &size);
+  encode_message(e, ext->data.ptr, *ext->ext->sub.submsg, &size);
   encode_varint(e, size);
   encode_tag(e, kUpb_MsgSet_Message, kUpb_WireType_Delimited);
   encode_varint(e, ext->ext->field.number);

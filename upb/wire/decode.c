@@ -217,7 +217,7 @@ static void _upb_Decoder_Munge(int type, wireval* val) {
 static upb_Message* _upb_Decoder_NewSubMessage(
     upb_Decoder* d, const upb_MiniTableSub* subs,
     const upb_MiniTableField* field) {
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+  const upb_MiniTable* subl = *subs[field->submsg_index].submsg;
   UPB_ASSERT(subl);
   upb_Message* msg = _upb_Message_New(subl, &d->arena);
   if (!msg) _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
@@ -256,7 +256,7 @@ static const char* _upb_Decoder_DecodeSubMessage(
     upb_Decoder* d, const char* ptr, upb_Message* submsg,
     const upb_MiniTableSub* subs, const upb_MiniTableField* field, int size) {
   int saved_delta = upb_EpsCopyInputStream_PushLimit(&d->input, ptr, size);
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+  const upb_MiniTable* subl = *subs[field->submsg_index].submsg;
   UPB_ASSERT(subl);
   ptr = _upb_Decoder_RecurseSubMessage(d, ptr, submsg, subl, DECODE_NOGROUP);
   upb_EpsCopyInputStream_PopLimit(&d->input, ptr, saved_delta);
@@ -287,7 +287,7 @@ UPB_FORCEINLINE
 static const char* _upb_Decoder_DecodeKnownGroup(
     upb_Decoder* d, const char* ptr, upb_Message* submsg,
     const upb_MiniTableSub* subs, const upb_MiniTableField* field) {
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+  const upb_MiniTable* subl = *subs[field->submsg_index].submsg;
   UPB_ASSERT(subl);
   return _upb_Decoder_DecodeGroup(d, ptr, submsg, subl, field->number);
 }
@@ -583,7 +583,7 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
   upb_Map* map = *map_p;
   upb_MapEntry ent;
   UPB_ASSERT(upb_MiniTableField_Type(field) == kUpb_FieldType_Message);
-  const upb_MiniTable* entry = subs[field->submsg_index].submsg;
+  const upb_MiniTable* entry = *subs[field->submsg_index].submsg;
 
   UPB_ASSERT(entry->field_count == 2);
   UPB_ASSERT(!upb_IsRepeatedOrMap(&entry->fields[0]));
@@ -599,7 +599,7 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
 
   if (entry->fields[1].descriptortype == kUpb_FieldType_Message ||
       entry->fields[1].descriptortype == kUpb_FieldType_Group) {
-    const upb_MiniTable* submsg_table = entry->subs[0].submsg;
+    const upb_MiniTable* submsg_table = *entry->subs[0].submsg;
     // Any sub-message entry must be linked.  We do not allow dynamic tree
     // shaking in this case.
     UPB_ASSERT(submsg_table);
@@ -774,7 +774,7 @@ static void upb_Decoder_AddKnownMessageSetItem(
   }
   upb_Message* submsg =
       _upb_Decoder_NewSubMessage(d, &ext->ext->sub, &ext->ext->field);
-  upb_DecodeStatus status = upb_Decode(data, size, submsg, item_mt->sub.submsg,
+  upb_DecodeStatus status = upb_Decode(data, size, submsg, *item_mt->sub.submsg,
                                        d->extreg, d->options, &d->arena);
   memcpy(&ext->data, &submsg, sizeof(submsg));
   if (status != kUpb_DecodeStatus_Ok) _upb_Decoder_ErrorJmp(d, status);
@@ -961,7 +961,7 @@ static void _upb_Decoder_CheckUnlinked(const upb_MiniTable* mt,
   // If sub-message is not linked, treat as unknown.
   if (field->mode & kUpb_LabelFlags_IsExtension) return;
   const upb_MiniTableSub* sub = &mt->subs[field->submsg_index];
-  if (!sub->submsg) *op = kUpb_DecodeOp_UnknownField;
+  if (!*sub->submsg) *op = kUpb_DecodeOp_UnknownField;
 }
 
 int _upb_Decoder_GetDelimitedOp(const upb_MiniTable* mt,

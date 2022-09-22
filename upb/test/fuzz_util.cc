@@ -109,7 +109,7 @@ bool Builder::LinkExtension(upb_MiniTableExtension* ext) {
       field->descriptortype == kUpb_FieldType_Group) {
     auto mt = NextMiniTable();
     if (!mt) field->descriptortype = kUpb_FieldType_Int32;
-    ext->sub.submsg = mt;
+    *ext->sub.submsg = mt;
   }
   if (field->descriptortype == kUpb_FieldType_Enum) {
     auto et = NextEnumTable();

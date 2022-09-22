@@ -1234,6 +1234,8 @@ TEST(TokenizerHandlesUnicode, BMPCodes) {
   }
 }
 
+#ifndef __ANDROID__
+
 TEST(TokenizerHandlesUnicode, NonBMPCodes) {
   for (uint32_t code_point = 0x10000; code_point < 0x110000; ++code_point) {
     const std::string expectation = StandardUTF8(code_point);
@@ -1247,6 +1249,8 @@ TEST(TokenizerHandlesUnicode, NonBMPCodes) {
                                               upb_Unicode_ToLow(code_point)));
   }
 }
+
+#endif
 
 }  // namespace
 }  // namespace io

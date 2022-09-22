@@ -87,6 +87,11 @@ UPB_INLINE void _upb_Message_SetPresence(upb_Message* msg,
   }
 }
 
+UPB_INLINE void _upb_MiniTable_StrongReference(const upb_MiniTable* mt) {
+  const upb_MiniTable* volatile unused = mt;
+  (void)&unused;
+}
+
 UPB_INLINE bool _upb_MiniTable_ValueIsNonZero(const void* default_val,
                                               const upb_MiniTableField* field) {
   char zero[16] = {0};
@@ -560,7 +565,7 @@ UPB_API_INLINE upb_Message* upb_Message_GetOrCreateMutableMessage(
   upb_Message* sub_message = *UPB_PTR_AT(msg, field->offset, upb_Message*);
   if (!sub_message) {
     const upb_MiniTable* sub_mini_table =
-        mini_table->subs[field->submsg_index].submsg;
+        *mini_table->subs[field->submsg_index].submsg;
     UPB_ASSERT(sub_mini_table);
     sub_message = _upb_Message_New(sub_mini_table, arena);
     *UPB_PTR_AT(msg, field->offset, upb_Message*) = sub_message;
