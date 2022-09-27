@@ -76,7 +76,7 @@ typedef struct {
   uint16_t offset;
   int16_t presence;       // If >0, hasbit_index.  If <0, ~oneof_index
   uint16_t submsg_index;  // kUpb_NoSub if descriptortype != MESSAGE/GROUP/ENUM
-  uint8_t descriptortype;
+  uint8_t UPB_PRIVATE(descriptortype);
   uint8_t mode; /* upb_FieldMode | upb_LabelFlags |
                    (upb_FieldRep << kUpb_FieldRep_Shift) */
 } upb_MiniTable_Field;
@@ -120,8 +120,8 @@ UPB_INLINE bool upb_IsRepeatedOrMap(const upb_MiniTable_Field* field) {
 }
 
 UPB_INLINE bool upb_IsSubMessage(const upb_MiniTable_Field* field) {
-  return field->descriptortype == kUpb_FieldType_Message ||
-         field->descriptortype == kUpb_FieldType_Group;
+  return UPB_PRIVATE(field->descriptortype) == kUpb_FieldType_Message ||
+         UPB_PRIVATE(field->descriptortype) == kUpb_FieldType_Group;
 }
 
 struct upb_Decoder;

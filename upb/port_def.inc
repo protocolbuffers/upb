@@ -269,7 +269,7 @@ void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
   ((void)(addr), (void)(size))
 #endif
 
-/* Disable proto2 arena behavior (TEMPORARY) **********************************/
+/* Disable proto2 enum behavior (TEMPORARY) ***********************************/
 
 #ifdef UPB_DISABLE_PROTO2_ENUM_CHECKING
 #define UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3 1
@@ -291,3 +291,10 @@ void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
 #else
 #define UPB_DEPRECATED
 #endif
+
+/* Hide struct members. This is for structs where we cannot hide their
+ * definitions, but the members are not meant for users. C gives us no way of
+ * marking these private so we have to mangle the names with macros. Please do
+ * not copy and paste these, we will regularly be changing the exact string
+ * so you cannot rely on the name. */
+#define UPB_PRIVATE(x) x##__do_not_use__i_give_permission_to_break_me

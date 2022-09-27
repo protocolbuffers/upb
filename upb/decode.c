@@ -409,7 +409,7 @@ static const char* _upb_Decoder_DecodeVarintPacked(
   while (!_upb_Decoder_IsDone(d, &ptr)) {
     wireval elem;
     ptr = _upb_Decoder_DecodeVarint(d, ptr, &elem.uint64_val);
-    _upb_Decoder_Munge(field->descriptortype, &elem);
+    _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), &elem);
     if (_upb_Decoder_Reserve(d, arr, 1)) {
       out = UPB_PTR_AT(_upb_array_ptr(arr), arr->size << lg2, void);
     }
@@ -472,7 +472,7 @@ upb_Array* _upb_Decoder_CreateArray(upb_Decoder* d,
       [kUpb_FieldType_SInt64] = 3,
   };
 
-  size_t lg2 = kElemSizeLg2[field->descriptortype];
+  size_t lg2 = kElemSizeLg2[field->UPB_PRIVATE(descriptortype)];
   upb_Array* ret = _upb_Array_New(&d->arena, 4, lg2);
   if (!ret) _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
   return ret;
@@ -518,7 +518,8 @@ static const char* _upb_Decoder_DecodeToArray(upb_Decoder* d, const char* ptr,
       *UPB_PTR_AT(_upb_array_ptr(arr), arr->size * sizeof(void*),
                   upb_Message*) = submsg;
       arr->size++;
-      if (UPB_UNLIKELY(field->descriptortype == kUpb_FieldType_Group)) {
+      if (UPB_UNLIKELY(field->UPB_PRIVATE(descriptortype) ==
+                       kUpb_FieldType_Group)) {
         return _upb_Decoder_DecodeKnownGroup(d, ptr, submsg, subs, field);
       } else {
         return _upb_Decoder_DecodeSubMessage(d, ptr, submsg, subs, field,
@@ -569,8 +570,8 @@ upb_Map* _upb_Decoder_CreateMap(upb_Decoder* d, const upb_MiniTable* entry) {
 
   const upb_MiniTable_Field* key_field = &entry->fields[0];
   const upb_MiniTable_Field* val_field = &entry->fields[1];
-  char key_size = kSizeInMap[key_field->descriptortype];
-  char val_size = kSizeInMap[val_field->descriptortype];
+  char key_size = kSizeInMap[key_field->UPB_PRIVATE(descriptortype)];
+  char val_size = kSizeInMap[val_field->UPB_PRIVATE(descriptortype)];
   UPB_ASSERT(key_field->offset == 0);
   UPB_ASSERT(val_field->offset == sizeof(upb_StringView));
   upb_Map* ret = _upb_Map_New(&d->arena, key_size, val_size);
@@ -596,8 +597,8 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
   /* Parse map entry. */
   memset(&ent, 0, sizeof(ent));
 
-  if (entry->fields[1].descriptortype == kUpb_FieldType_Message ||
-      entry->fields[1].descriptortype == kUpb_FieldType_Group) {
+  if (entry->fields[1].UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+      entry->fields[1].UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
     /* Create proactively to handle the case where it doesn't appear. */
     ent.v.val =
         upb_value_ptr(_upb_Message_New(entry->subs[0].submsg, &d->arena));
@@ -628,7 +629,7 @@ static const char* _upb_Decoder_DecodeToSubMessage(
     const upb_MiniTable_Sub* subs, const upb_MiniTable_Field* field,
     wireval* val, int op) {
   void* mem = UPB_PTR_AT(msg, field->offset, void);
-  int type = field->descriptortype;
+  int type = field->UPB_PRIVATE(descriptortype);
 
   if (UPB_UNLIKELY(op == kUpb_DecodeOp_Enum) &&
       !_upb_Decoder_CheckEnum(d, ptr, msg, subs[field->submsg_index].subenum,
@@ -937,7 +938,7 @@ int _upb_Decoder_GetVarintOp(const upb_MiniTable_Field* field) {
       [kUpb_FakeFieldType_MessageSetItem] = kUpb_DecodeOp_UnknownField,
   };
 
-  return kVarintOps[field->descriptortype];
+  return kVarintOps[field->UPB_PRIVATE(descriptortype)];
 }
 
 int _upb_Decoder_GetDelimitedOp(const upb_MiniTable_Field* field) {
@@ -989,7 +990,7 @@ int _upb_Decoder_GetDelimitedOp(const upb_MiniTable_Field* field) {
       // repeated msgset type
   };
 
-  int ndx = field->descriptortype;
+  int ndx = field->UPB_PRIVATE(descriptortype);
   if (upb_FieldMode_Get(field) == kUpb_FieldMode_Array) ndx += kRepeatedBase;
   return kDelimitedOps[ndx];
 }
@@ -1010,13 +1011,13 @@ static const char* _upb_Decoder_DecodeWireValue(
     case kUpb_WireType_Varint:
       ptr = _upb_Decoder_DecodeVarint(d, ptr, &val->uint64_val);
       *op = _upb_Decoder_GetVarintOp(field);
-      _upb_Decoder_Munge(field->descriptortype, val);
+      _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), val);
       return ptr;
     case kUpb_WireType_32Bit:
       memcpy(&val->uint32_val, ptr, 4);
       val->uint32_val = _upb_BigEndian_Swap32(val->uint32_val);
       *op = kUpb_DecodeOp_Scalar4Byte;
-      if (((1 << field->descriptortype) & kFixed32OkMask) == 0) {
+      if (((1 << field->UPB_PRIVATE(descriptortype)) & kFixed32OkMask) == 0) {
         *op = kUpb_DecodeOp_UnknownField;
       }
       return ptr + 4;
@@ -1024,7 +1025,7 @@ static const char* _upb_Decoder_DecodeWireValue(
       memcpy(&val->uint64_val, ptr, 8);
       val->uint64_val = _upb_BigEndian_Swap64(val->uint64_val);
       *op = kUpb_DecodeOp_Scalar8Byte;
-      if (((1 << field->descriptortype) & kFixed64OkMask) == 0) {
+      if (((1 << field->UPB_PRIVATE(descriptortype)) & kFixed64OkMask) == 0) {
         *op = kUpb_DecodeOp_UnknownField;
       }
       return ptr + 8;
@@ -1034,9 +1035,10 @@ static const char* _upb_Decoder_DecodeWireValue(
       return ptr;
     case kUpb_WireType_StartGroup:
       val->uint32_val = field->number;
-      if (field->descriptortype == kUpb_FieldType_Group) {
+      if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
         *op = kUpb_DecodeOp_SubMessage;
-      } else if (field->descriptortype == kUpb_FakeFieldType_MessageSetItem) {
+      } else if (field->UPB_PRIVATE(descriptortype) ==
+                 kUpb_FakeFieldType_MessageSetItem) {
         *op = kUpb_DecodeOp_MessageSetItem;
       } else {
         *op = kUpb_DecodeOp_UnknownField;

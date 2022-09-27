@@ -414,7 +414,7 @@ static uint8_t map_descriptortype(const upb_FieldDef* f) {
 static void fill_fieldlayout(upb_MiniTable_Field* field,
                              const upb_FieldDef* f) {
   field->number = upb_FieldDef_Number(f);
-  field->descriptortype = map_descriptortype(f);
+  field->UPB_PRIVATE(descriptortype) = map_descriptortype(f);
 
   if (upb_FieldDef_IsMap(f)) {
     field->mode =
@@ -445,8 +445,9 @@ static void fill_fieldlayout(upb_MiniTable_Field* field,
         kUpb_FieldRep_4Byte,      /* SINT32 */
         kUpb_FieldRep_8Byte,      /* SINT64 */
     };
-    field->mode = kUpb_FieldMode_Scalar |
-                  (sizes[field->descriptortype] << kUpb_FieldRep_Shift);
+    field->mode =
+        kUpb_FieldMode_Scalar |
+        (sizes[field->UPB_PRIVATE(descriptortype)] << kUpb_FieldRep_Shift);
   }
 
   if (upb_FieldDef_IsPacked(f)) {
@@ -518,8 +519,8 @@ void _upb_FieldDef_MakeLayout(upb_DefBuilder* ctx, const upb_MessageDef* m) {
     fields[1].mode = kUpb_FieldMode_Scalar;
     fields[0].presence = 0;
     fields[1].presence = 0;
-    fields[0].descriptortype = map_descriptortype(key);
-    fields[1].descriptortype = map_descriptortype(val);
+    fields[0].UPB_PRIVATE(descriptortype) = map_descriptortype(key);
+    fields[1].UPB_PRIVATE(descriptortype) = map_descriptortype(val);
     fields[0].offset = 0;
     fields[1].offset = sizeof(upb_StringView);
     fields[1].submsg_index = 0;
@@ -575,12 +576,12 @@ void _upb_FieldDef_MakeLayout(upb_DefBuilder* ctx, const upb_MessageDef* m) {
 
     fill_fieldlayout(field, f);
 
-    if (field->descriptortype == kUpb_FieldType_Message ||
-        field->descriptortype == kUpb_FieldType_Group) {
+    if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+        field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].submsg =
           upb_MessageDef_MiniTable(upb_FieldDef_MessageSubDef(f));
-    } else if (field->descriptortype == kUpb_FieldType_Enum) {
+    } else if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Enum) {
       field->submsg_index = sublayout_count++;
       subs[field->submsg_index].subenum =
           _upb_EnumDef_MiniTable(upb_FieldDef_EnumSubDef(f));

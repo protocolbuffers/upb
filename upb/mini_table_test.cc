@@ -41,6 +41,9 @@
 // #include "testing/fuzzing/fuzztest.h"
 // end:google_only
 
+// Must be last
+#include "upb/port_def.inc"
+
 namespace protobuf = ::google::protobuf;
 
 class MiniTableTest : public testing::TestWithParam<upb_MiniTablePlatform> {};
@@ -127,7 +130,7 @@ TEST_P(MiniTableTest, Skips) {
   for (size_t i = 0; i < field_numbers.size(); i++) {
     const upb_MiniTable_Field* f = &table->fields[i];
     EXPECT_EQ(field_numbers[i], f->number);
-    EXPECT_EQ(kUpb_FieldType_Float, f->descriptortype);
+    EXPECT_EQ(kUpb_FieldType_Float, f->UPB_PRIVATE(descriptortype));
     EXPECT_EQ(kUpb_FieldMode_Scalar, f->mode & kUpb_FieldMode_Mask);
     EXPECT_TRUE(offsets.insert(f->offset).second);
     EXPECT_TRUE(f->offset < table->size);

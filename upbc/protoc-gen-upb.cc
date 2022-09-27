@@ -1063,7 +1063,7 @@ bool TryFillTableEntry(const FileLayout& layout,
       upb_MiniTable_FindFieldByNumber(mt, field->number());
   std::string type = "";
   std::string cardinality = "";
-  switch (mt_f->descriptortype) {
+  switch (mt_f->UPB_PRIVATE(descriptortype)) {
     case kUpb_FieldType_Bool:
       type = "b1";
       break;
@@ -1279,7 +1279,7 @@ void WriteField(const upb_MiniTable_Field* field64,
          field64->submsg_index == kUpb_NoSub
              ? "kUpb_NoSub"
              : absl::StrCat(field64->submsg_index).c_str(),
-         field64->descriptortype, GetModeInit(field64->mode));
+         field64->UPB_PRIVATE(descriptortype), GetModeInit(field64->mode));
 }
 
 // Writes a single field into a .upb.c source file.

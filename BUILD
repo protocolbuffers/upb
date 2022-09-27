@@ -822,6 +822,7 @@ cc_library(
     hdrs = ["upb/fuzz_test_util.h"],
     deps = [
         ":mini_table",
+        ":port",
         ":upb",
     ],
 )

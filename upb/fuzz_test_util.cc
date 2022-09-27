@@ -30,6 +30,9 @@
 #include "upb/msg.h"
 #include "upb/upb.hpp"
 
+// Must be last
+#include "upb/port_def.inc"
+
 namespace upb {
 namespace fuzz {
 
@@ -111,15 +114,15 @@ void Builder::BuildEnums() {
 
 bool Builder::LinkExtension(upb_MiniTable_Extension* ext) {
   upb_MiniTable_Field* field = &ext->field;
-  if (field->descriptortype == kUpb_FieldType_Message ||
-      field->descriptortype == kUpb_FieldType_Group) {
+  if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+      field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
     auto mt = NextMiniTable();
-    if (!mt) field->descriptortype = kUpb_FieldType_Int32;
+    if (!mt) field->UPB_PRIVATE(descriptortype) = kUpb_FieldType_Int32;
     ext->sub.submsg = mt;
   }
-  if (field->descriptortype == kUpb_FieldType_Enum) {
+  if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Enum) {
     auto et = NextEnumTable();
-    if (!et) field->descriptortype = kUpb_FieldType_Int32;
+    if (!et) field->UPB_PRIVATE(descriptortype) = kUpb_FieldType_Int32;
     ext->sub.subenum = et;
   }
   return true;
@@ -159,18 +162,18 @@ void Builder::LinkMessages() {
       upb_MiniTable_Field* field =
           const_cast<upb_MiniTable_Field*>(&table->fields[i]);
       if (link_ == input_->links.size()) link_ = 0;
-      if (field->descriptortype == kUpb_FieldType_Message ||
-          field->descriptortype == kUpb_FieldType_Group) {
+      if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+          field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
         upb_MiniTable_SetSubMessage(table, field, NextMiniTable());
       }
-      if (field->descriptortype == kUpb_FieldType_Enum) {
+      if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Enum) {
         auto* et = NextEnumTable();
         if (et) {
           upb_MiniTable_SetSubEnum(table, field, et);
         } else {
           // We don't have any sub-enums.  Override the field type so that it is
           // not needed.
-          field->descriptortype = kUpb_FieldType_Int32;
+          field->UPB_PRIVATE(descriptortype) = kUpb_FieldType_Int32;
         }
       }
     }

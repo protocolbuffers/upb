@@ -57,7 +57,8 @@ size_t upb_MiniTable_Field_GetSize(const upb_MiniTable_Field* f) {
       4,                      /* kUpb_FieldType_SInt32 */
       8,                      /* kUpb_FieldType_SInt64 */
   };
-  return upb_IsRepeatedOrMap(f) ? sizeof(void*) : sizes[f->descriptortype];
+  return upb_IsRepeatedOrMap(f) ? sizeof(void*)
+                                : sizes[f->UPB_PRIVATE(descriptortype)];
 }
 
 // Maps descriptor type to elem_size_lg2.
@@ -83,7 +84,7 @@ int upb_MiniTable_Field_CTypeLg2Size(const upb_MiniTable_Field* f) {
       2,              /* SINT32 */
       3,              /* SINT64 */
   };
-  return sizes[f->descriptortype];
+  return sizes[f->UPB_PRIVATE(descriptortype)];
 }
 
 bool upb_MiniTable_HasField(const upb_Message* msg,
@@ -93,8 +94,8 @@ bool upb_MiniTable_HasField(const upb_Message* msg,
   } else if (field->presence > 0) {
     return _upb_hasbit_field(msg, field);
   } else {
-    UPB_ASSERT(field->descriptortype == kUpb_FieldType_Message ||
-               field->descriptortype == kUpb_FieldType_Group);
+    UPB_ASSERT(field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+               field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group);
     return upb_MiniTable_GetMessage(msg, field) != NULL;
   }
 }
@@ -176,7 +177,8 @@ upb_GetExtension_Status upb_MiniTable_GetOrPromoteExtension(
     upb_Message* msg, const upb_MiniTable_Extension* ext_table,
     int decode_options, upb_Arena* arena,
     const upb_Message_Extension** extension) {
-  UPB_ASSERT(ext_table->field.descriptortype == kUpb_FieldType_Message);
+  UPB_ASSERT(ext_table->field.UPB_PRIVATE(descriptortype) ==
+             kUpb_FieldType_Message);
   *extension = _upb_Message_Getext(msg, ext_table);
   if (*extension) {
     return kUpb_GetExtension_Ok;
@@ -231,7 +233,8 @@ upb_GetExtensionAsBytes_Status upb_MiniTable_GetExtensionAsBytes(
     int encode_options, upb_Arena* arena, const char** extension_data,
     size_t* len) {
   const upb_Message_Extension* msg_ext = _upb_Message_Getext(msg, ext_table);
-  UPB_ASSERT(ext_table->field.descriptortype == kUpb_FieldType_Message);
+  UPB_ASSERT(ext_table->field.UPB_PRIVATE(descriptortype) ==
+             kUpb_FieldType_Message);
   if (msg_ext) {
     upb_EncodeStatus status =
         upb_Encode(msg_ext->data.ptr, msg_ext->ext->sub.submsg, encode_options,

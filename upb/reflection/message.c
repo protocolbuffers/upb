@@ -64,7 +64,8 @@ static size_t get_field_size(const upb_MiniTable_Field* f) {
       4,                      /* kUpb_FieldType_SInt32 */
       8,                      /* kUpb_FieldType_SInt64 */
   };
-  return upb_IsRepeatedOrMap(f) ? sizeof(void*) : sizes[f->descriptortype];
+  return upb_IsRepeatedOrMap(f) ? sizeof(void*)
+                                : sizes[f->UPB_PRIVATE(descriptortype)];
 }
 
 upb_Message* upb_Message_New(const upb_MessageDef* m, upb_Arena* a) {
@@ -96,8 +97,8 @@ bool upb_Message_Has(const upb_Message* msg, const upb_FieldDef* f) {
     } else if (field->presence > 0) {
       return _upb_hasbit_field(msg, field);
     } else {
-      UPB_ASSERT(field->descriptortype == kUpb_FieldType_Message ||
-                 field->descriptortype == kUpb_FieldType_Group);
+      UPB_ASSERT(field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+                 field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group);
       return _upb_Message_Getraw(msg, f).msg_val != NULL;
     }
   }

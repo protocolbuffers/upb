@@ -449,14 +449,14 @@ static const char* upb_MiniTable_DecodeBase92Varint(upb_MtDecoder* d,
 
 static bool upb_MiniTable_HasSub(upb_MiniTable_Field* field,
                                  uint64_t msg_modifiers) {
-  switch (field->descriptortype) {
+  switch (UPB_PRIVATE(field->descriptortype)) {
     case kUpb_FieldType_Message:
     case kUpb_FieldType_Group:
     case kUpb_FieldType_Enum:
       return true;
     case kUpb_FieldType_String:
       if (!(msg_modifiers & kUpb_MessageModifier_ValidateUtf8)) {
-        field->descriptortype = kUpb_FieldType_Bytes;
+        UPB_PRIVATE(field->descriptortype) = kUpb_FieldType_Bytes;
       }
       return false;
     default:
@@ -466,13 +466,13 @@ static bool upb_MiniTable_HasSub(upb_MiniTable_Field* field,
 
 static bool upb_MtDecoder_FieldIsPackable(upb_MiniTable_Field* field) {
   return (field->mode & kUpb_FieldMode_Array) &&
-         upb_IsTypePackable(field->descriptortype);
+         upb_IsTypePackable(UPB_PRIVATE(field->descriptortype));
 }
 
 static void upb_MiniTable_SetTypeAndSub(upb_MiniTable_Field* field,
                                         upb_FieldType type, uint32_t* sub_count,
                                         uint64_t msg_modifiers) {
-  field->descriptortype = type;
+  UPB_PRIVATE(field->descriptortype) = type;
   if (upb_MiniTable_HasSub(field, msg_modifiers)) {
     field->submsg_index = sub_count ? (*sub_count)++ : 0;
   } else {

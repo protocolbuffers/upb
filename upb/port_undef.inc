@@ -44,6 +44,7 @@
 #undef UPB_NOINLINE
 #undef UPB_NORETURN
 #undef UPB_PRINTF
+#undef UPB_PRIVATE
 #undef UPB_MAX
 #undef UPB_MIN
 #undef UPB_UNUSED
