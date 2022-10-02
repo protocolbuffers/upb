@@ -514,7 +514,6 @@ cc_test(
     name = "test_generated_code",
     srcs = ["upb/test_generated_code.cc"],
     deps = [
-        ":empty_upbdefs_proto",
         ":port",
         ":test_messages_proto2_proto_upb",
         ":test_messages_proto3_proto_upb",
@@ -534,17 +533,6 @@ upb_proto_library(
     name = "test_upb_proto",
     testonly = 1,
     deps = [":test_proto"],
-)
-
-proto_library(
-    name = "empty_proto",
-    srcs = ["upb/empty.proto"],
-)
-
-upb_proto_reflection_library(
-    name = "empty_upbdefs_proto",
-    testonly = 1,
-    deps = [":empty_proto"],
 )
 
 upb_proto_library(
