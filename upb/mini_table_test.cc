@@ -30,16 +30,13 @@
 #include "google/protobuf/descriptor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "fuzztest/fuzztest.h"
 #include "absl/container/flat_hash_set.h"
 #include "upb/decode.h"
 #include "upb/mini_table.h"
 #include "upb/msg_internal.h"
 #include "upb/upb.h"
 #include "upb/upb.hpp"
-
-// begin:google_only
-// #include "testing/fuzzing/fuzztest.h"
-// end:google_only
 
 namespace protobuf = ::google::protobuf;
 
@@ -294,20 +291,16 @@ TEST_P(MiniTableTest, Extendible) {
   EXPECT_EQ(kUpb_ExtMode_Extendable, table->ext & kUpb_ExtMode_Extendable);
 }
 
-// begin:google_only
-//
-// static void BuildMiniTable(std::string_view s, bool is_32bit) {
-//   upb::Arena arena;
-//   upb::Status status;
-//   upb_MiniTable_Build(
-//       s.data(), s.size(),
-//       is_32bit ? kUpb_MiniTablePlatform_32Bit : kUpb_MiniTablePlatform_64Bit,
-//       arena.ptr(), status.ptr());
-// }
-// FUZZ_TEST(FuzzTest, BuildMiniTable);
-//
-// TEST(FuzzTest, BuildMiniTableRegression) {
-//   BuildMiniTable("g}{v~fq{\271", false);
-// }
-//
-// end:google_only
+static void BuildMiniTable(std::string_view s, bool is_32bit) {
+  upb::Arena arena;
+  upb::Status status;
+  upb_MiniTable_Build(
+      s.data(), s.size(),
+      is_32bit ? kUpb_MiniTablePlatform_32Bit : kUpb_MiniTablePlatform_64Bit,
+      arena.ptr(), status.ptr());
+}
+FUZZ_TEST(FuzzTest, BuildMiniTable);
+
+TEST(FuzzTest, BuildMiniTableRegression) {
+  BuildMiniTable("g}{v~fq{\271", false);
+}

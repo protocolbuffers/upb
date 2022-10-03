@@ -66,3 +66,30 @@ pip_install(
     name="pip_deps",
     requirements = "@com_google_protobuf//python:requirements.txt"
 )
+
+# To use the latest version of FuzzTest, update this regularly to the latest
+# commit in the main branch: https://github.com/google/fuzztest/commits/main
+FUZZTEST_COMMIT = "6d79ceb1dc2398e02a39efc23ce40d68baa16a42"
+
+http_archive(
+    name = "com_google_fuzztest",
+    sha256="3fe79ede8e860ba7331987b2c1f84d3eeaf5bea00fd76398d6ff0006635586c6",
+    strip_prefix = "fuzztest-" + FUZZTEST_COMMIT,
+    url = "https://github.com/google/fuzztest/archive/" + FUZZTEST_COMMIT + ".zip",
+ )
+
+# Required by com_google_fuzztest.
+http_archive(
+    name = "com_googlesource_code_re2",
+    sha256 = "f89c61410a072e5cbcf8c27e3a778da7d6fd2f2b5b1445cd4f4508bee946ab0f",
+    strip_prefix = "re2-2022-06-01",
+    url = "https://github.com/google/re2/archive/refs/tags/2022-06-01.tar.gz",
+)
+
+# Required by com_google_fuzztest.
+http_archive(
+    name = "com_google_absl",
+    sha256 = "da79745569dd8767ebd8f738fd3eec55ccd23e45b0e680a7b5b6bab7624de77b",
+    strip_prefix = "abseil-cpp-6acb60c161f1203e6eca929b87f2041da7714bfe",
+    url = "https://github.com/abseil/abseil-cpp/archive/6acb60c161f1203e6eca929b87f2041da7714bfe.tar.gz",
+)
