@@ -2515,7 +2515,7 @@ static void create_fielddef(
     CHK_OOM(
         upb_strtable_insert(&oneof->ntof, name.data, name.size, v, ctx->arena));
   } else {
-    if (f->proto3_optional_) {
+    if (f->proto3_optional_ && !is_extension) {
       symtab_errf(ctx, "field with proto3_optional was not in a oneof (%s)",
                   f->full_name);
     }
