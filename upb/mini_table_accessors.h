@@ -279,8 +279,35 @@ typedef struct {
   size_t len;
 } upb_FindUnknownRet;
 
+// Finds first occurrence of unknown data by tag id in message.
 upb_FindUnknownRet upb_MiniTable_FindUnknown(const upb_Message* msg,
                                              uint32_t field_number);
+
+// Removes unknown data from message.
+void upb_MiniTable_RemoveUnknown(upb_Message* msg, const char* unknown_data,
+                                 size_t unknown_size);
+
+typedef enum {
+  kUpb_UnknownToMessage_Ok,
+  kUpb_UnknownToMessage_ParseError,
+  kUpb_UnknownToMessage_OutOfMemory,
+} upb_UnknownToMessage_Status;
+
+typedef struct {
+  upb_UnknownToMessage_Status status;
+  upb_Message* message;
+} upb_UnknownToMessageRet;
+
+// Promotes unknown data inside message to a upb_Message by patching
+// unlinked minitable and parsing the unknown into the message.
+//
+// The unknown data is removed from message after field value is set
+// using upb_MiniTable_SetMessage.
+upb_UnknownToMessageRet upb_MiniTable_PromoteUnknownToMessage(
+    upb_Message* msg, const upb_MiniTable* mini_table,
+    const upb_MiniTable_Field* field, const char* unknown_data,
+    size_t unknown_size, const upb_MiniTable* sub_mini_table,
+    int decode_options, upb_Arena* arena);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -33,6 +33,8 @@
 #include "upb/mini_table.h"
 
 // Must be last.
+#include "upb/msg.h"
+#include "upb/msg_internal.h"
 #include "upb/port_def.inc"
 
 size_t upb_MiniTable_Field_GetSize(const upb_MiniTable_Field* f) {
@@ -214,16 +216,21 @@ upb_GetExtension_Status upb_MiniTable_GetOrPromoteExtension(
   }
   memcpy(&ext->data, &extension_msg, sizeof(extension_msg));
   *extension = ext;
-  // Remove unknown field.
+  upb_MiniTable_RemoveUnknown(msg, result.ptr, result.len);
+  return kUpb_GetExtension_Ok;
+}
+
+// Removes unknown field data.
+void upb_MiniTable_RemoveUnknown(upb_Message* msg, const char* unknown_data,
+                                 size_t unknown_size) {
   upb_Message_Internal* in = upb_Message_Getinternal(msg);
   const char* internal_unknown_end =
       UPB_PTR_AT(in->internal, in->internal->unknown_end, char);
-  if ((result.ptr + result.len) != internal_unknown_end) {
-    memmove((char*)result.ptr, result.ptr + result.len,
-            internal_unknown_end - result.ptr - result.len);
+  if ((unknown_data + unknown_size) != internal_unknown_end) {
+    memmove((char*)unknown_data, unknown_data + unknown_size,
+            internal_unknown_end - unknown_data - unknown_size);
   }
-  in->internal->unknown_end -= result.len;
-  return kUpb_GetExtension_Ok;
+  in->internal->unknown_end -= unknown_size;
 }
 
 upb_GetExtensionAsBytes_Status upb_MiniTable_GetExtensionAsBytes(
@@ -380,5 +387,37 @@ upb_FindUnknownRet upb_MiniTable_FindUnknown(const upb_Message* msg,
   ret.status = kUpb_FindUnknown_NotPresent;
   ret.ptr = NULL;
   ret.len = 0;
+  return ret;
+}
+
+upb_UnknownToMessageRet upb_MiniTable_PromoteUnknownToMessage(
+    upb_Message* msg, const upb_MiniTable* mini_table,
+    const upb_MiniTable_Field* field, const char* unknown_data,
+    size_t unknown_size, const upb_MiniTable* sub_mini_table,
+    int decode_options, upb_Arena* arena) {
+  upb_UnknownToMessageRet ret;
+  ret.message = _upb_Message_New(sub_mini_table, arena);
+  if (!ret.message) {
+    ret.status = kUpb_UnknownToMessage_OutOfMemory;
+    return ret;
+  }
+  // Decode sub message using unknown field contents.
+  const char* data = unknown_data;
+  uint32_t tag;
+  uint64_t message_len = 0;
+  data = decode_tag(data, &tag);
+  data = decode_varint64(data, &message_len);
+  upb_DecodeStatus status =
+      upb_Decode(data, message_len, ret.message, sub_mini_table, NULL,
+                 decode_options, arena);
+  if (status == kUpb_DecodeStatus_OutOfMemory) {
+    ret.status = kUpb_UnknownToMessage_OutOfMemory;
+  } else if (status == kUpb_DecodeStatus_Ok) {
+    ret.status = kUpb_UnknownToMessage_Ok;
+    upb_MiniTable_SetMessage(msg, mini_table, field, ret.message);
+    upb_MiniTable_RemoveUnknown(msg, unknown_data, unknown_size);
+  } else {
+    ret.status = kUpb_UnknownToMessage_ParseError;
+  }
   return ret;
 }
