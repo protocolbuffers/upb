@@ -31,7 +31,7 @@
 #include <stdio.h>
 
 #include "google/protobuf/compiler/plugin.upb.h"
-#include "upb/mini_table.h"
+#include "upb/mini_table/encode.h"
 #include "upb/reflection/def.h"
 
 // Must be last.

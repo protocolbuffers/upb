@@ -28,11 +28,9 @@
 #ifndef UPB_MINI_TABLE_HPP_
 #define UPB_MINI_TABLE_HPP_
 
-#include <assert.h>
-
 #include <string>
 
-#include "upb/mini_table.h"
+#include "upb/mini_table/encode.h"
 
 namespace upb {
 

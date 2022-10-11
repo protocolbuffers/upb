@@ -29,8 +29,7 @@
 #define UPB_MINI_TABLE_ACCESSORS_H_
 
 #include "upb/array.h"
-#include "upb/internal/mini_table_accessors.h"
-#include "upb/mini_table.h"
+#include "upb/mini_table/util.h"
 
 // Must be last.
 #include "upb/port_def.inc"
@@ -39,11 +38,20 @@
 extern "C" {
 #endif
 
-bool upb_MiniTable_HasField(const upb_Message* msg,
-                            const upb_MiniTable_Field* field);
+UPB_INLINE bool _upb_MiniTable_Field_InOneOf(const upb_MiniTable_Field* field) {
+  return field->presence < 0;
+}
 
-void upb_MiniTable_ClearField(upb_Message* msg,
-                              const upb_MiniTable_Field* field);
+UPB_INLINE void _upb_MiniTable_SetPresence(upb_Message* msg,
+                                           const upb_MiniTable_Field* field) {
+  if (field->presence > 0) {
+    _upb_sethas_field(msg, field);
+  } else if (_upb_MiniTable_Field_InOneOf(field)) {
+    *_upb_oneofcase_field(msg, field) = field->number;
+  }
+}
+
+// EVERYTHING ABOVE THIS LINE IS INTERNAL - DO NOT USE /////////////////////////
 
 UPB_INLINE bool upb_MiniTable_GetBool(const upb_Message* msg,
                                       const upb_MiniTable_Field* field) {
@@ -227,6 +235,12 @@ UPB_INLINE upb_Array* upb_MiniTable_GetMutableArray(
     upb_Message* msg, const upb_MiniTable_Field* field) {
   return (upb_Array*)*UPB_PTR_AT(msg, field->offset, upb_Array*);
 }
+
+void upb_MiniTable_ClearField(upb_Message* msg,
+                              const upb_MiniTable_Field* field);
+
+bool upb_MiniTable_HasField(const upb_Message* msg,
+                            const upb_MiniTable_Field* field);
 
 void* upb_MiniTable_ResizeArray(upb_Message* msg,
                                 const upb_MiniTable_Field* field, size_t len,

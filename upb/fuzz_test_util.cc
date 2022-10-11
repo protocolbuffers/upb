@@ -27,6 +27,7 @@
 
 #include "upb/fuzz_test_util.h"
 
+#include "upb/mini_table/decode.h"
 #include "upb/msg.h"
 #include "upb/upb.hpp"
 

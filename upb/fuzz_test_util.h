@@ -31,7 +31,7 @@
 #include <string>
 #include <vector>
 
-#include "upb/mini_table.h"
+#include "upb/mini_table/util.h"
 
 namespace upb {
 namespace fuzz {
