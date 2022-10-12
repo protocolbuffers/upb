@@ -1179,7 +1179,15 @@ filegroup(
 #     ]) + [
 #         "upb/extension_registry.h",
 #     ],
-#     no_string_conversion = ["upb_MiniTable_Build"],
+#     no_string_conversion = [
+#         "upb_Decode",
+#         "upb_Message_AddUnknown",
+#         "upb_Message_DeleteUnknown",
+#         "upb_MiniTable_Build",
+#         "upb_MiniTable_BuildEnum",
+#         "upb_MiniTable_BuildExtension",
+#         "upb_MiniTable_BuildWithBuf",
+#     ],
 #     strict_enums = ["upb_FieldType"],
 # )
 #
