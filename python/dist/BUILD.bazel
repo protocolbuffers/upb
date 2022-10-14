@@ -26,6 +26,7 @@
 load("//bazel:py_proto_library.bzl", "py_proto_library")
 load(":dist.bzl", "py_dist", "py_dist_module")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@com_google_protobuf//:protobuf_version.bzl", "PROTOBUF_PYTHON_VERSION")
 load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@system_python//:version.bzl", "SYSTEM_PYTHON_VERSION")
@@ -91,12 +92,36 @@ config_setting(
     values = {"cpu": "win64"},
 )
 
+# Flags for customizing local wheel builds.  These can be specified at the
+# command-line to build local wheels, outside of our release cross-compilation
+# docker image.  This set can be expanded as necessary.
+#
+# For example, on Monterey with python 3.10, the following will build an
+# installable wheel:
+#  bazel build //:protoc @upb//python/dist:binary_wheel \
+#    --@upb//python/dist:wheel_abi=none \
+#    --@upb//python:limited_api=true
+string_flag(
+    name = "wheel_abi",
+    build_setting_default = "abi3",
+    values = [
+        "none",
+        "abi3",
+    ],
+)
+
+config_setting(
+    name = "wheel_no_abi",
+    flag_values = {":wheel_abi": "none"},
+)
+
 py_wheel(
     name = "binary_wheel",
     abi = select({
         "//python:full_api_3.7": "cp37m",
         "//python:full_api_3.8": "cp38",
         "//python:full_api_3.9": "cp39",
+        ":wheel_no_abi": "none",
         "//conditions:default": "abi3",
     }),
     author = "protobuf@googlegroups.com",
