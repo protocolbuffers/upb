@@ -1526,6 +1526,10 @@ static void make_layout(symtab_addctx* ctx, const upb_MessageDef* m) {
      * elegant. */
     const upb_FieldDef* key = upb_MessageDef_FindFieldByNumber(m, 1);
     const upb_FieldDef* val = upb_MessageDef_FindFieldByNumber(m, 2);
+    if (key == NULL || val == NULL) {
+      symtab_errf(ctx, "Malformed map entry from message: %s",
+                  upb_MessageDef_FullName(m));
+    }
     fields[0].number = 1;
     fields[1].number = 2;
     fields[0].mode = kUpb_FieldMode_Scalar;
