@@ -28,11 +28,11 @@
 #include "python/descriptor_pool.h"
 
 #include "google/protobuf/descriptor.upbdefs.h"
-#include "python/convert.h"
 #include "python/descriptor.h"
 #include "python/message.h"
 #include "python/protobuf.h"
 #include "upb/reflection/def.h"
+#include "upb/util/compare.h"
 #include "upb/util/def_to_proto.h"
 
 // -----------------------------------------------------------------------------

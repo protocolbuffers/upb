@@ -35,6 +35,7 @@
 #include "upb/reflection/def.h"
 #include "upb/reflection/message.h"
 #include "upb/text_encode.h"
+#include "upb/util/compare.h"
 #include "upb/util/required_fields.h"
 
 static const upb_MessageDef* PyUpb_MessageMeta_GetMsgdef(PyObject* cls);
