@@ -9,13 +9,13 @@ jobs:
        sanitizer: [address, undefined]
    steps:
    - name: Build Fuzzers (${{ matrix.sanitizer }})
-     uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+     uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@871ea5240a4cadbc9fd9a78cf5b1e258734fe6cf # Oct 20, 2022
      with:
        oss-fuzz-project-name: 'upb'
        dry-run: false
        sanitizer: ${{ matrix.sanitizer }}
    - name: Run Fuzzers (${{ matrix.sanitizer }})
-     uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+     uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@871ea5240a4cadbc9fd9a78cf5b1e258734fe6cf # Oct 20, 2022
      with:
        oss-fuzz-project-name: 'upb'
        fuzz-seconds: 600
