@@ -32,8 +32,8 @@
 #include "google/protobuf/compiler/plugin.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/descriptor.h"
-#include "google/protobuf/wire_format.h"
 #include "absl/container/flat_hash_map.h"
+#include "third_party/protobuf/wire_format.h"
 #include "protos_generator/output.h"
 
 namespace protos_generator {

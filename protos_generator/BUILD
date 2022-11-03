@@ -70,6 +70,7 @@ cc_library(
     ],
     visibility = ["//visibility:private"],
     deps = [
+        "//third_party/protobuf",
         "//upbc:common",
         "//upbc:file_layout",
         "//upbc:keywords",
