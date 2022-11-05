@@ -96,6 +96,16 @@ package_group(
 
 # Public C/C++ libraries #######################################################
 
+alias(
+    name = "mem",
+    actual = "//upb/mem:mem",
+)
+
+alias(
+    name = "mem_internal",
+    actual = "//upb/mem:internal",
+)
+
 cc_library(
     name = "port",
     hdrs = [
@@ -124,15 +134,11 @@ cc_library(
         "upb/wire/encode.c",
     ],
     hdrs = [
-        "upb/alloc.h",
-        "upb/arena.h",
         "upb/array.h",
         "upb/collections/array.h",
         "upb/decode.h",
         "upb/encode.h",
         "upb/extension_registry.h",
-        "upb/mem/alloc.h",
-        "upb/mem/arena.h",
         "upb/msg.h",
         "upb/status.h",
         "upb/string_view.h",
@@ -171,6 +177,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":collections_internal",
+        ":mem",
         ":port",
         ":table_internal",
     ],
@@ -217,6 +224,7 @@ cc_library(
     deps = [
         ":collections_internal",
         ":extension_registry",
+        ":mem",
         ":mini_table_internal",
         ":port",
         ":table_internal",
@@ -298,6 +306,7 @@ cc_library(
     deps = [
         ":collections_internal",
         ":extension_registry",
+        ":mem",
         ":mem_internal",
         ":port",
         ":table_internal",
@@ -331,6 +340,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":collections_internal",
+        ":mem",
         ":table_internal",
         ":upb",
     ],
@@ -353,6 +363,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":collections_internal",
+        ":mem",
         ":mini_table",
         ":table_internal",
         ":upb",
@@ -427,6 +438,7 @@ cc_library(
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
+        ":mem",
         ":port",
         ":table_internal",
     ],
@@ -987,33 +999,6 @@ cc_library(
 )
 
 cc_library(
-    name = "mem",
-    srcs = [
-        "upb/mem/alloc.c",
-        "upb/mem/arena.c",
-        "upb/mem/arena_internal.h",
-    ],
-    hdrs = [
-        "upb/mem/alloc.h",
-        "upb/mem/arena.h",
-    ],
-    copts = UPB_DEFAULT_COPTS,
-    visibility = ["//:__subpackages__"],
-    deps = [":port"],
-)
-
-cc_library(
-    name = "mem_internal",
-    hdrs = ["upb/mem/arena_internal.h"],
-    copts = UPB_DEFAULT_COPTS,
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":mem",
-        ":port",
-    ],
-)
-
-cc_library(
     name = "atoi_internal",
     srcs = ["upb/internal/atoi.c"],
     hdrs = ["upb/internal/atoi.h"],
@@ -1039,6 +1024,7 @@ cc_library(
     visibility = ["//:__subpackages__"],
     deps = [
         ":collections_internal",
+        ":mem",
         ":mem_internal",
         ":port",
         ":table_internal",
@@ -1053,15 +1039,16 @@ cc_library(
     ],
     hdrs = [
         "upb/internal/table.h",
-        "upb/mem/alloc.h",
-        "upb/mem/arena.h",
         "upb/status.h",
         "upb/string_view.h",
         "upb/upb.h",
     ],
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//:__subpackages__"],
-    deps = [":port"],
+    deps = [
+        ":mem",
+        ":port",
+    ],
 )
 
 cc_library(
