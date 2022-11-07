@@ -87,8 +87,6 @@ upb_proto_library_copts(
     visibility = ["//visibility:public"],
 )
 
-# Please update copy.bara.sky target = ":friends" if
-# you make changes to this list.
 package_group(
     name = "friends",
     packages = [],
