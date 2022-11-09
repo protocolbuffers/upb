@@ -69,10 +69,7 @@ upb_proto_library(
 
 upb_cc_proto_library(
     name = "test_model_upb_cc_proto",
-    visibility = [
-        "//protos:__pkg__",
-        "//protos_generator/nc_tests:__pkg__",
-    ],
+    visibility = ["//protos:__pkg__"],
     deps = [":test_model_proto"],
 )
 
