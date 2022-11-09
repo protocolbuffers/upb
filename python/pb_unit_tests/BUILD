@@ -80,5 +80,7 @@ pyproto_test_wrapper(name = "wire_format_test")
 filegroup(
     name = "test_files",
     srcs = glob(["*.py"]),
-    visibility = ["//python/dist:__pkg__"],
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
 )
