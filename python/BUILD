@@ -30,6 +30,7 @@ load("//python:py_extension.bzl", "py_extension")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("//bazel:build_defs.bzl", "UPB_DEFAULT_COPTS")
+load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
 
 licenses(["notice"])
 
@@ -169,6 +170,24 @@ selects.config_setting_group(
     match_any = [
         ":limited_api_3.10_win32",
         ":limited_api_3.10_win64",
+    ],
+)
+
+py_proto_library(
+    name = "b_10950_repro_pb2",
+    srcs = ["b_10950_repro.proto"],
+)
+
+py_test(
+    name = "b_10950_repro_test",
+    srcs = ["b_10950_repro_test.py"],
+    deps = [
+        ":_message",
+        ":b_10950_repro_pb2",
+        "@com_google_protobuf//:python_common_test_protos",
+        "@com_google_protobuf//:python_specific_test_protos",
+        "@com_google_protobuf//:python_srcs",
+        "@com_google_protobuf//:python_test_srcs",
     ],
 )
 

@@ -1,0 +1,48 @@
+
+// Proto file to reproduce https://github.com/protocolbuffers/protobuf/issues/10950
+
+syntax = "proto2";
+package Test;
+
+message Person {
+  enum PhoneType {
+    blaa = 0;
+    HOME = 1;
+    WORK = 2;
+    a = 3;
+    b = 4;
+    c = 5;
+    d = 6;
+    e = 7;
+    f = 8;
+    g = 9;
+    h = 10;
+    i = 11;
+    j = 12;
+    k = 13;
+    l = 14;
+    m = 15;
+    n = 16;
+    o = 17;
+    p = 18;
+    q = 19;
+    r = 20;
+    s = 21;
+    t = 22;
+    u = 23;
+    v = 24;
+    w = 25;
+    x = 26;
+    y = 27;
+    z = 28;
+    aa = 29;
+    ab = 30;
+    ac = 31;
+    ad = 32;
+    ae = 33;
+
+  }
+
+  optional PhoneType TaskType = 1;
+  optional string Name = 2;
+}
