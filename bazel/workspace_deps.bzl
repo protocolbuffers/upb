@@ -26,6 +26,7 @@ def upb_deps():
         repo = "https://github.com/protocolbuffers/protobuf",
         commit = "accd49b95a70b522fee863cc6dd731ceb1004d65",
         patches = ["//bazel:protobuf.patch"],
+        sha256 = "4f4274e42ef3d6c81c69c6c5b330ee4c5b04d7c320d81ae3243d8546dcf1b5c0",
     )
 
     rules_python_version = "0.12.0"  # Latest @ August 31, 2022
