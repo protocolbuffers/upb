@@ -1,7 +1,7 @@
 """Test to reproduce https://github.com/protocolbuffers/protobuf/issues/10950"""
 
 import unittest
-import b_10950_repro_pb2
+from pb_unit_tests import b_10950_repro_pb2
 
 class B10950ReproTest(unittest.TestCase):
 
