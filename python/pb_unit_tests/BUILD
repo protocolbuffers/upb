@@ -24,6 +24,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 load(":pyproto_test_wrapper.bzl", "pyproto_test_wrapper")
+load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
 
 licenses(["notice"])
 
@@ -72,3 +73,25 @@ filegroup(
     srcs = glob(["*.py"]),
     visibility = ["//python/dist:__pkg__"],
 )
+
+py_proto_library(
+    name = "b_10950_repro_pb2",
+    srcs = ["b_10950_repro.proto"],
+    visibility = ["//python/dist:__pkg__"],
+    testonly=1,
+)
+
+py_test(
+    name = "b_10950_repro_test",
+    srcs = ["b_10950_repro_test.py"],
+    deps = [
+        "//python:_message",
+        ":b_10950_repro_pb2",
+        "@com_google_protobuf//:python_common_test_protos",
+        "@com_google_protobuf//:python_specific_test_protos",
+        "@com_google_protobuf//:python_srcs",
+        "@com_google_protobuf//:python_test_srcs",
+    ],
+    visibility = ["//python/dist:__pkg__"],
+)
+

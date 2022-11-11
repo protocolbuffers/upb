@@ -179,11 +179,14 @@ py_wheel(
     version = PROTOBUF_PYTHON_VERSION,
     deps = [
         "//python/pb_unit_tests:test_files",
+        "//python/pb_unit_tests:b_10950_repro_pb2",
+        "//python/pb_unit_tests:b_10950_repro_test",
         "@com_google_protobuf//:python_common_test_protos",
         "@com_google_protobuf//:python_specific_test_protos",
         "@com_google_protobuf//:python_test_srcs",
         "@com_google_protobuf//:testdata",
     ],
+    testonly = 1,
 )
 
 py_dist(
