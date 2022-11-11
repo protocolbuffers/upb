@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'protocolbuffers' }}
     env:
-      DOCKER_IMAGE: gcr.io/protobuf-build/bazel/linux@sha256:05a41edee21f620445ca01c46b9d33be2e4d06c3d8adced4341ac5abea754baa
+      DOCKER_IMAGE: gcr.io/protobuf-build/bazel/linux@sha256:9dba7773926bb6dce839de098948055c9e80260d7470a7fefb94b6a4fed363ba
       BAZEL_CACHE: --remote_cache=https://storage.googleapis.com/protobuf-bazel-cache --google_default_credentials
 
     steps:
