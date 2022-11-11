@@ -45,9 +45,11 @@ UPB_INLINE const upb_MiniTable* upb_MiniTable_GetSubMessageTable(
   return mini_table->subs[field->submsg_index].submsg;
 }
 
+#include <stdio.h>
 UPB_INLINE bool upb_MiniTable_Enum_CheckValue(const upb_MiniTable_Enum* e,
                                               int32_t val) {
   uint32_t uval = (uint32_t)val;
+  fprintf(stderr, "upb_MiniTable_Enum_CheckValue: v=%d, mask: %lld, enum=%p\n", (int)uval, (long long)e->mask, (void*)e);
   if (uval < 64) return e->mask & (1ULL << uval);
   // OPT: binary search long lists?
   int n = e->value_count;
