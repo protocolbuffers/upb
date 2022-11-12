@@ -407,6 +407,7 @@ static void upb_Decode_AddUnknownVarints(upb_Decoder* d, upb_Message* msg,
   }
 }
 
+#include <stdio.h>
 UPB_NOINLINE
 static bool decode_checkenum_slow(upb_Decoder* d, const char* ptr,
                                   upb_Message* msg, const upb_MiniTable_Enum* e,
@@ -415,7 +416,10 @@ static bool decode_checkenum_slow(upb_Decoder* d, const char* ptr,
   // OPT: binary search long lists?
   int n = e->value_count;
   for (int i = 0; i < n; i++) {
-    if ((uint32_t)e->values[i] == v) return true;
+    if ((uint32_t)e->values[i] == v) {
+      fprintf(stderr, "(2) returning true\n");
+      return true;
+    }
   }
 
   // Unrecognized enum goes into unknown fields.
@@ -425,10 +429,10 @@ static bool decode_checkenum_slow(upb_Decoder* d, const char* ptr,
   upb_Message* unknown_msg =
       field->mode & kUpb_LabelFlags_IsExtension ? d->unknown_msg : msg;
   upb_Decode_AddUnknownVarints(d, unknown_msg, tag, v);
+  fprintf(stderr, "(3) returning false\n");
   return false;
 }
 
-#include <stdio.h>
 UPB_FORCEINLINE
 static bool decode_checkenum(upb_Decoder* d, const char* ptr, upb_Message* msg,
                              const upb_MiniTable_Enum* e,
@@ -436,7 +440,11 @@ static bool decode_checkenum(upb_Decoder* d, const char* ptr, upb_Message* msg,
   uint32_t v = val->uint32_val;
 
   fprintf(stderr, "decode_checkenum: v=%d, mask: %lld, enum=%p\n", (int)v, (long long)e->mask, (void*)e);
-  if (UPB_LIKELY(v < 64) && UPB_LIKELY(((1ULL << v) & e->mask))) return true;
+  fprintf(stderr, "mask check=\n", (int)(bool)(((1ULL << v) & e->mask)));
+  if (UPB_LIKELY(v < 64) && UPB_LIKELY(((1ULL << v) & e->mask))) {
+    fprintf(stderr, "(1) returning true\n");
+    return true;
+  }
 
   return decode_checkenum_slow(d, ptr, msg, e, field, v);
 }
