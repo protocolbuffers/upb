@@ -51,7 +51,7 @@ UPB_INLINE bool upb_MiniTable_Enum_CheckValue(const upb_MiniTable_Enum* e,
   uint32_t uval = (uint32_t)val;
   fprintf(stderr, "upb_MiniTable_Enum_CheckValue: v=%d, mask: %lld, enum=%p\n", (int)uval, (long long)e->mask, (void*)e);
   if (uval < 64) {
-    fprintf(stderr, "(1) Returning: %d\n", (int)(bool)(e->mask & (1ULL << uval)));
+    fprintf(stderr, "(1) Returning: %lld\n", (long long)(e->mask & (1ULL << uval)));
     return e->mask & (1ULL << uval);
   }
   // OPT: binary search long lists?

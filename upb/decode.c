@@ -440,7 +440,7 @@ static bool decode_checkenum(upb_Decoder* d, const char* ptr, upb_Message* msg,
   uint32_t v = val->uint32_val;
 
   fprintf(stderr, "decode_checkenum: v=%d, mask: %lld, enum=%p\n", (int)v, (long long)e->mask, (void*)e);
-  fprintf(stderr, "mask check=\n", (int)(bool)(((1ULL << v) & e->mask)));
+  fprintf(stderr, "mask check=%lld\n", (long long)(((1ULL << v) & e->mask)));
   if (UPB_LIKELY(v < 64) && UPB_LIKELY(((1ULL << v) & e->mask))) {
     fprintf(stderr, "(1) returning true\n");
     return true;
