@@ -95,9 +95,9 @@
 #define UPB_ALIGN_OF(type) offsetof (struct { char c; type member; }, member)
 
 /* Hints to the compiler about likely/unlikely branches. */
-#if (defined (__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-#define UPB_LIKELY(x) __builtin_expect((x),1)
-#define UPB_UNLIKELY(x) __builtin_expect((x),0)
+#if (defined (__GNUC__) || defined(__clang__))
+#define UPB_LIKELY(x) __builtin_expect((bool)(x),1)
+#define UPB_UNLIKELY(x) __builtin_expect((bool)(x),0)
 #else
 #define UPB_LIKELY(x) (x)
 #define UPB_UNLIKELY(x) (x)
