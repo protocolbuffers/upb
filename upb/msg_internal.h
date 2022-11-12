@@ -118,16 +118,9 @@ UPB_INLINE bool upb_IsSubMessage(const upb_MiniTableField* field) {
          field->descriptortype == kUpb_FieldType_Group;
 }
 
-struct upb_Decoder;
-struct upb_MiniTable;
-
-typedef const char* _upb_FieldParser(struct upb_Decoder* d, const char* ptr,
-                                     upb_Message* msg, intptr_t table,
-                                     uint64_t hasbits, uint64_t data);
-
 typedef struct {
   uint64_t field_data;
-  _upb_FieldParser* field_parser;
+  void* field_parser;  // Function pointer, details are defined elsewhere.
 } _upb_FastTable_Entry;
 
 typedef struct {

@@ -160,6 +160,10 @@ bool _upb_Decoder_IsDone(upb_Decoder* d, const char** ptr) {
 }
 
 #if UPB_FASTTABLE
+typedef const char* _upb_FieldParser(struct upb_Decoder* d, const char* ptr,
+                                     upb_Message* msg, intptr_t table,
+                                     uint64_t hasbits, uint64_t data);
+
 UPB_INLINE
 const char* _upb_FastDecoder_TagDispatch(upb_Decoder* d, const char* ptr,
                                          upb_Message* msg, intptr_t table,
@@ -171,8 +175,11 @@ const char* _upb_FastDecoder_TagDispatch(upb_Decoder* d, const char* ptr,
   UPB_ASSUME((idx & 7) == 0);
   idx >>= 3;
   data = table_p->fasttable[idx].field_data ^ tag;
-  UPB_MUSTTAIL return table_p->fasttable[idx].field_parser(d, ptr, msg, table,
-                                                           hasbits, data);
+
+  _upb_FieldParser* field_parser =
+      (_upb_FieldParser*)table_p->fasttable[idx].field_parser;
+
+  UPB_MUSTTAIL return field_parser(d, ptr, msg, table, hasbits, data);
 }
 #endif
 
