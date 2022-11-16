@@ -24,7 +24,7 @@ def upb_deps():
         _github_archive,
         name = "com_google_protobuf",
         repo = "https://github.com/protocolbuffers/protobuf",
-        commit = "d938afd6e35676f6b8c8012d9eacd1dc0bb693b4",
+        commit = "d0c1a633474c388b2718c2b8f2e29d335d96f783",
         patches = ["@upb//bazel:protobuf.patch"],
     )
 
