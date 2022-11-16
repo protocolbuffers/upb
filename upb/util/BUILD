@@ -4,6 +4,8 @@ load(
     "upb_proto_reflection_library",
 )
 
+package(default_applicable_licenses = ["//:license"])
+
 licenses(["notice"])
 
 # Def to Proto

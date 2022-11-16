@@ -25,6 +25,8 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
+package(default_applicable_licenses = ["//:license"])
+
 licenses(["notice"])
 
 py_binary(

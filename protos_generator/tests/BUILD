@@ -40,6 +40,8 @@ load(
     "cc_proto_library",
 )
 
+package(default_applicable_licenses = ["//:license"])
+
 licenses(["notice"])
 
 proto_library(

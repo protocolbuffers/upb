@@ -32,6 +32,8 @@ load(
     "upb_cc_proto_library_copts",
 )
 
+package(default_applicable_licenses = ["//:license"])
+
 licenses(["notice"])
 
 cc_library(

@@ -34,6 +34,7 @@ load("//bazel:build_defs.bzl", "UPB_DEFAULT_COPTS")
 licenses(["notice"])
 
 package(
+    default_applicable_licenses = ["//:license"],
     default_visibility = ["//python/dist:__pkg__"],
 )
 

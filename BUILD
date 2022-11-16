@@ -23,6 +23,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+load("//tools/build_defs/license:license.bzl", "license")
 load(
     "//bazel:build_defs.bzl",
     "UPB_DEFAULT_COPTS",
@@ -50,6 +51,13 @@ load(
     "upb_amalgamation",
 )
 # end:github_only
+
+package(default_applicable_licenses = ["//:license"])
+
+license(
+    name = "license",
+    package_name = "upb",
+)
 
 licenses(["notice"])
 

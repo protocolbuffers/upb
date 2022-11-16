@@ -28,6 +28,8 @@ load(
     "UPB_DEFAULT_CPPOPTS",
 )
 
+package(default_applicable_licenses = ["//:license"])
+
 licenses(["notice"])
 
 cc_binary(
