@@ -1,3 +1,4 @@
+#include "absl/log/log.h"
 /*
  * Copyright (c) 2009-2021, Google LLC
  * All rights reserved.
@@ -31,7 +32,7 @@
 #include <vector>
 
 #include "absl/base/log_severity.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/substitute.h"
 #include "google/protobuf/descriptor.h"
@@ -58,7 +59,8 @@ class Output {
   void Outdent() { Outdent(kIndentationSize); }
   void Outdent(size_t size) {
     if (indent_ < size) {
-      LOG(FATAL) << "mismatched Output indent/unindent calls";
+      ABSL_LOG(FATAL) << "mismatched Output indent/unindent calls";
+      /*test*/ LOG(FATAL) << "mismatched Output indent/unindent calls";
     }
     indent_ -= size;
   }
