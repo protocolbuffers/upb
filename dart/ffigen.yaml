@@ -1,0 +1,22 @@
+# To generate dart ffi bindings, run the following from root:
+# dart pub global run ffigen --config=third_party/upb/dart/ffigen.yaml
+name: 'upb_api'
+description: 'bindings to upb'
+output: '../../dart/pb_runtime/generated_bindings.dart'
+compiler-opts:
+  - '-I.'
+  - '-DUPB_BUILD_API'
+macros:
+  exclude:
+    - .*
+headers:
+  entry-points:
+    - '../upb/mem/arena.h'
+    - '../upb/message/message.h'
+    - '../upb/mini_table/decode.h'
+  include-directives:
+    - '../upb/**'
+preamble: |
+  /// AUTO GENERATED FILE, DO NOT EDIT.
+  ///
+  /// See the documentation in `ffigen.yaml` for regeneration instructions.

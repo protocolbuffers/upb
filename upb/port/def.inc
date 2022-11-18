@@ -91,13 +91,24 @@
 
 #define UPB_MAPTYPE_STRING 0
 
-/* UPB_INLINE: inline if possible, emit standalone code if required. */
+// UPB_EXPORT: always generate a public symbol.
+#define UPB_EXPORT __attribute__((visibility("default"))) __attribute__((used))
+
+// UPB_INLINE: inline if possible, emit standalone code if required.
 #ifdef __cplusplus
 #define UPB_INLINE inline
 #elif defined (__GNUC__) || defined(__clang__)
 #define UPB_INLINE static __inline__
 #else
 #define UPB_INLINE static
+#endif
+
+#ifdef UPB_BUILD_API
+#define UPB_API_EXPORT UPB_EXPORT
+#define UPB_API_INLINE UPB_EXPORT
+#else
+#define UPB_API_EXPORT
+#define UPB_API_INLINE UPB_INLINE
 #endif
 
 #define UPB_MALLOC_ALIGN 8
