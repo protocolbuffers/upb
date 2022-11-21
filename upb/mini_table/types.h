@@ -25,6 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// IWYU pragma: private, include "upb/message/message.h"
+
 #ifndef UPB_MINI_TABLE_TYPES_H_
 #define UPB_MINI_TABLE_TYPES_H_
 
