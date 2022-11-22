@@ -115,13 +115,17 @@ struct upb_MessageDef {
   const upb_FieldDef* fields;
   const upb_OneofDef* oneofs;
   const upb_ExtensionRange* ext_ranges;
+  const upb_StringView* res_names;
   const upb_MessageDef* nested_msgs;
+  const upb_MessageReservedRange* res_ranges;
   const upb_EnumDef* nested_enums;
   const upb_FieldDef* nested_exts;
   int field_count;
   int real_oneof_count;
   int oneof_count;
   int ext_range_count;
+  int res_range_count;
+  int res_name_count;
   int nested_msg_count;
   int nested_enum_count;
   int nested_ext_count;
@@ -141,7 +145,11 @@ struct upb_EnumDef {
   upb_strtable ntoi;
   upb_inttable iton;
   const upb_EnumValueDef* values;
+  const upb_EnumReservedRange* res_ranges;
+  const upb_StringView* res_names;
   int value_count;
+  int res_range_count;
+  int res_name_count;
   int32_t defaultval;
 #if UINTPTR_MAX == 0xffffffff
   uint32_t padding;  // Increase size to a multiple of 8.
@@ -246,6 +254,24 @@ typedef enum {
 } upb_deftype_t;
 
 #define FIELD_TYPE_UNSPECIFIED 0
+
+struct upb_MessageReservedRange {
+  int32_t start;
+  int32_t end;
+};
+
+struct symtab_addctx {
+  upb_DefPool* symtab;
+  upb_FileDef* file;                /* File we are building. */
+  upb_Arena* arena;                 /* Allocate defs here. */
+  upb_Arena* tmp_arena;             /* For temporary allocations. */
+  const upb_MiniTable_File* layout; /* NULL if we should build layouts. */
+  int enum_count;                   /* Count of enums built so far. */
+  int msg_count;                    /* Count of messages built so far. */
+  int ext_count;                    /* Count of extensions built so far. */
+  upb_Status* status;               /* Record errors here. */
+  jmp_buf err;                      /* longjmp() on error. */
+};
 
 static upb_deftype_t deftype(upb_value v) {
   uintptr_t num = (uintptr_t)upb_value_getconstptr(v);
@@ -403,6 +429,85 @@ const upb_MessageDef* upb_EnumDef_ContainingType(const upb_EnumDef* e) {
 int32_t upb_EnumDef_Default(const upb_EnumDef* e) {
   UPB_ASSERT(upb_EnumDef_FindValueByNumber(e, e->defaultval));
   return e->defaultval;
+}
+
+int upb_EnumDef_ReservedRangeCount(const upb_EnumDef* e) {
+  return e->res_range_count;
+}
+
+/* upb_EnumReservedRange ******************************************************/
+
+struct upb_EnumReservedRange {
+  int32_t start;
+  int32_t end;
+};
+
+upb_EnumReservedRange* _upb_EnumReservedRange_At(const upb_EnumReservedRange* r,
+                                                 int i) {
+  return (upb_EnumReservedRange*)&r[i];
+}
+
+int32_t upb_EnumReservedRange_Start(const upb_EnumReservedRange* r) {
+  return r->start;
+}
+int32_t upb_EnumReservedRange_End(const upb_EnumReservedRange* r) {
+  return r->end;
+}
+
+UPB_NORETURN UPB_NOINLINE UPB_PRINTF(2, 3) static void symtab_errf(
+    symtab_addctx* ctx, const char* fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  upb_Status_VSetErrorFormat(ctx->status, fmt, argp);
+  va_end(argp);
+  UPB_LONGJMP(ctx->err, 1);
+}
+
+upb_EnumReservedRange* _upb_EnumReservedRanges_New(
+    symtab_addctx* ctx, int n,
+    const google_protobuf_EnumDescriptorProto_EnumReservedRange* const* protos,
+    const upb_EnumDef* e) {
+  upb_EnumReservedRange* r =
+      upb_Arena_Malloc(ctx->arena, sizeof(upb_EnumReservedRange) * n);
+
+  for (int i = 0; i < n; i++) {
+    const int32_t start =
+        google_protobuf_EnumDescriptorProto_EnumReservedRange_start(protos[i]);
+    const int32_t end =
+        google_protobuf_EnumDescriptorProto_EnumReservedRange_end(protos[i]);
+    const int32_t max = kUpb_MaxFieldNumber + 1;
+
+    // A full validation would also check that each range is disjoint, and that
+    // none of the fields overlap with the extension ranges, but we are just
+    // sanity checking here.
+
+    // Note: Not a typo! Unlike extension ranges and message reserved ranges,
+    // the end value of an enum reserved range is *inclusive*!
+    if (start < 1 || end < start || end > max) {
+      symtab_errf(ctx, "Reserved range (%d, %d) is invalid, enum=%s\n",
+                           (int)start, (int)end, upb_EnumDef_FullName(e));
+    }
+
+    r[i].start = start;
+    r[i].end = end;
+  }
+
+  return r;
+}
+
+const upb_EnumReservedRange* upb_EnumDef_ReservedRange(const upb_EnumDef* e,
+                                                       int i) {
+  UPB_ASSERT(0 <= i && i < e->res_range_count);
+  return _upb_EnumReservedRange_At(e->res_ranges, i);
+}
+
+int upb_EnumDef_ReservedNameCount(const upb_EnumDef* e) {
+  return e->res_name_count;
+}
+
+upb_StringView upb_EnumDef_ReservedName(const upb_EnumDef* e, int i) {
+  UPB_ASSERT(0 <= i && i < e->res_name_count);
+  return e->res_names[i];
 }
 
 int upb_EnumDef_ValueCount(const upb_EnumDef* e) { return e->value_count; }
@@ -792,6 +897,14 @@ int upb_MessageDef_ExtensionRangeCount(const upb_MessageDef* m) {
   return m->ext_range_count;
 }
 
+int upb_MessageDef_ReservedRangeCount(const upb_MessageDef* m) {
+  return m->res_range_count;
+}
+
+int upb_MessageDef_ReservedNameCount(const upb_MessageDef* m) {
+  return m->res_name_count;
+}
+
 int upb_MessageDef_FieldCount(const upb_MessageDef* m) {
   return m->field_count;
 }
@@ -824,6 +937,57 @@ const upb_ExtensionRange* upb_MessageDef_ExtensionRange(const upb_MessageDef* m,
                                                         int i) {
   UPB_ASSERT(0 <= i && i < m->ext_range_count);
   return &m->ext_ranges[i];
+}
+
+upb_MessageReservedRange* _upb_MessageReservedRange_At(
+    const upb_MessageReservedRange* r, int i) {
+  return (upb_MessageReservedRange*)&r[i];
+}
+
+const upb_MessageReservedRange* upb_MessageDef_ReservedRange(
+    const upb_MessageDef* m, int i) {
+  UPB_ASSERT(0 <= i && i < m->res_range_count);
+  return _upb_MessageReservedRange_At(m->res_ranges, i);
+}
+
+upb_StringView upb_MessageDef_ReservedName(const upb_MessageDef* m, int i) {
+  UPB_ASSERT(0 <= i && i < m->res_name_count);
+  return m->res_names[i];
+}
+
+int32_t upb_MessageReservedRange_Start(const upb_MessageReservedRange* r) {
+  return r->start;
+}
+int32_t upb_MessageReservedRange_End(const upb_MessageReservedRange* r) {
+  return r->end;
+}
+
+upb_MessageReservedRange* _upb_MessageReservedRanges_New(
+    symtab_addctx* ctx, int n,
+    const google_protobuf_DescriptorProto_ReservedRange* const* protos,
+    const upb_MessageDef* m) {
+  upb_MessageReservedRange* r =
+      upb_Arena_Malloc(ctx->arena, sizeof(upb_MessageReservedRange) * n);
+
+  for (int i = 0; i < n; i++) {
+    const int32_t start = google_protobuf_DescriptorProto_ReservedRange_start(protos[i]);
+    const int32_t end = google_protobuf_DescriptorProto_ReservedRange_end(protos[i]);
+    const int32_t max = kUpb_MaxFieldNumber + 1;
+
+    // A full validation would also check that each range is disjoint, and that
+    // none of the fields overlap with the extension ranges, but we are just
+    // sanity checking here.
+    if (start < 1 || end <= start || end > max) {
+      symtab_errf(ctx,
+                           "Reserved range (%d, %d) is invalid, message=%s\n",
+                           (int)start, (int)end, upb_MessageDef_FullName(m));
+    }
+
+    r[i].start = start;
+    r[i].end = end;
+  }
+
+  return r;
 }
 
 const upb_FieldDef* upb_MessageDef_Field(const upb_MessageDef* m, int i) {
@@ -1254,28 +1418,6 @@ const upb_FileDef* upb_DefPool_FindFileContainingSymbol(const upb_DefPool* s,
   if (!(x)) {           \
     symtab_oomerr(ctx); \
   }
-
-typedef struct {
-  upb_DefPool* symtab;
-  upb_FileDef* file;                /* File we are building. */
-  upb_Arena* arena;                 /* Allocate defs here. */
-  upb_Arena* tmp_arena;             /* For temporary allocations. */
-  const upb_MiniTable_File* layout; /* NULL if we should build layouts. */
-  int enum_count;                   /* Count of enums built so far. */
-  int msg_count;                    /* Count of messages built so far. */
-  int ext_count;                    /* Count of extensions built so far. */
-  upb_Status* status;               /* Record errors here. */
-  jmp_buf err;                      /* longjmp() on error. */
-} symtab_addctx;
-
-UPB_NORETURN UPB_NOINLINE UPB_PRINTF(2, 3) static void symtab_errf(
-    symtab_addctx* ctx, const char* fmt, ...) {
-  va_list argp;
-  va_start(argp, fmt);
-  upb_Status_VSetErrorFormat(ctx->status, fmt, argp);
-  va_end(argp);
-  UPB_LONGJMP(ctx->err, 1);
-}
 
 UPB_NORETURN UPB_NOINLINE static void symtab_oomerr(symtab_addctx* ctx) {
   upb_Status_setoom(ctx->status);
@@ -2536,6 +2678,18 @@ static void create_enumvaldef(
   }
 }
 
+static upb_StringView* _upb_EnumReservedNames_New(
+    symtab_addctx* ctx, int n, const upb_StringView* protos) {
+  upb_StringView* sv =
+      upb_Arena_Malloc(ctx->arena, sizeof(upb_StringView) * n);
+  for (size_t i = 0; i < n; i++) {
+    sv[i].data =
+        upb_strdup2(protos[i].data, protos[i].size, ctx->arena);
+    sv[i].size = protos[i].size;
+  }
+  return sv;
+}
+
 static void create_enumdef(
     symtab_addctx* ctx, const char* prefix,
     const google_protobuf_EnumDescriptorProto* enum_proto,
@@ -2543,8 +2697,10 @@ static void create_enumdef(
   upb_EnumDef* e = (upb_EnumDef*)_e;
   ;
   const google_protobuf_EnumValueDescriptorProto* const* values;
+  const google_protobuf_EnumDescriptorProto_EnumReservedRange* const* res_ranges;
+  const upb_StringView* res_names;
   upb_StringView name;
-  size_t i, n;
+  size_t i, n, n_res_range, n_res_name;
 
   e->file = ctx->file; /* Must happen prior to symtab_add() */
   e->containing_type = containing_type;
@@ -2567,6 +2723,15 @@ static void create_enumdef(
     symtab_errf(ctx, "enums must contain at least one value (%s)",
                 e->full_name);
   }
+
+  res_ranges =
+      google_protobuf_EnumDescriptorProto_reserved_range(enum_proto, &n_res_range);
+  e->res_range_count = n_res_range;
+  e->res_ranges = _upb_EnumReservedRanges_New(ctx, n_res_range, res_ranges, e);
+
+  res_names = google_protobuf_EnumDescriptorProto_reserved_name(enum_proto, &n_res_name);
+  e->res_name_count = n_res_name;
+  e->res_names = _upb_EnumReservedNames_New(ctx, n_res_name, res_names);
 
   SET_OPTIONS(e->opts, EnumDescriptorProto, EnumOptions, enum_proto);
 
@@ -2594,6 +2759,17 @@ static void msgdef_create_nested(
     symtab_addctx* ctx, const google_protobuf_DescriptorProto* msg_proto,
     upb_MessageDef* m);
 
+static upb_StringView* _upb_ReservedNames_New(symtab_addctx* ctx, int n,
+                                              const upb_StringView* protos) {
+  upb_StringView* sv = upb_Arena_Malloc(ctx->arena, sizeof(upb_StringView) * n);
+  for (size_t i = 0; i < n; i++) {
+    sv[i].data =
+        upb_strdup2(protos[i].data, protos[i].size, ctx->arena);
+    sv[i].size = protos[i].size;
+  }
+  return sv;
+}
+
 static void create_msgdef(symtab_addctx* ctx, const char* prefix,
                           const google_protobuf_DescriptorProto* msg_proto,
                           const upb_MessageDef* containing_type,
@@ -2602,7 +2778,11 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
   const google_protobuf_OneofDescriptorProto* const* oneofs;
   const google_protobuf_FieldDescriptorProto* const* fields;
   const google_protobuf_DescriptorProto_ExtensionRange* const* ext_ranges;
+
+  const google_protobuf_DescriptorProto_ReservedRange* const* res_ranges;
+  const upb_StringView* res_names;
   size_t i, n_oneof, n_field, n_ext_range;
+  size_t n_res_range, n_res_name;
   upb_StringView name;
 
   m->file = ctx->file; /* Must happen prior to symtab_add(). */
@@ -2618,6 +2798,8 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
   fields = google_protobuf_DescriptorProto_field(msg_proto, &n_field);
   ext_ranges =
       google_protobuf_DescriptorProto_extension_range(msg_proto, &n_ext_range);
+  res_ranges = google_protobuf_DescriptorProto_reserved_range(msg_proto, &n_res_range);
+  res_names = google_protobuf_DescriptorProto_reserved_name(msg_proto, &n_res_name);
 
   CHK_OOM(upb_inttable_init(&m->itof, ctx->arena));
   CHK_OOM(upb_strtable_init(&m->ntof, n_oneof + n_field, ctx->arena));
@@ -2673,6 +2855,13 @@ static void create_msgdef(symtab_addctx* ctx, const char* prefix,
     SET_OPTIONS(r_def->opts, DescriptorProto_ExtensionRange,
                 ExtensionRangeOptions, r);
   }
+
+  m->res_range_count = n_res_range;
+  m->res_ranges =
+      _upb_MessageReservedRanges_New(ctx, n_res_range, res_ranges, m);
+
+  m->res_name_count = n_res_name;
+  m->res_names = _upb_ReservedNames_New(ctx, n_res_name, res_names);
 
   finalize_oneofs(ctx, m);
   assign_msg_wellknowntype(m);

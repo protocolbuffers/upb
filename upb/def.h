@@ -61,6 +61,9 @@ struct upb_streamdef;
 typedef struct upb_streamdef upb_streamdef;
 struct upb_DefPool;
 typedef struct upb_DefPool upb_DefPool;
+typedef struct upb_EnumReservedRange upb_EnumReservedRange;
+typedef struct upb_MessageReservedRange upb_MessageReservedRange;
+typedef struct symtab_addctx symtab_addctx;
 
 typedef enum { kUpb_Syntax_Proto2 = 2, kUpb_Syntax_Proto3 = 3 } upb_Syntax;
 
@@ -248,6 +251,16 @@ UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
   return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
 }
 
+upb_StringView upb_MessageDef_ReservedName(const upb_MessageDef* m, int i);
+int upb_MessageDef_ReservedNameCount(const upb_MessageDef* m);
+
+const upb_MessageReservedRange* upb_MessageDef_ReservedRange(
+    const upb_MessageDef* m, int i);
+int upb_MessageDef_ReservedRangeCount(const upb_MessageDef* m);
+
+int32_t upb_MessageReservedRange_Start(const upb_MessageReservedRange* r);
+int32_t upb_MessageReservedRange_End(const upb_MessageReservedRange* r);
+
 /* upb_ExtensionRange *********************************************************/
 
 const google_protobuf_ExtensionRangeOptions* upb_ExtensionRange_Options(
@@ -279,6 +292,16 @@ UPB_INLINE const upb_EnumValueDef* upb_EnumDef_FindValueByName(
     const upb_EnumDef* e, const char* name) {
   return upb_EnumDef_FindValueByNameWithSize(e, name, strlen(name));
 }
+
+upb_StringView upb_EnumDef_ReservedName(const upb_EnumDef* e, int i);
+int upb_EnumDef_ReservedNameCount(const upb_EnumDef* e);
+
+const upb_EnumReservedRange* upb_EnumDef_ReservedRange(const upb_EnumDef* e,
+                                                       int i);
+int upb_EnumDef_ReservedRangeCount(const upb_EnumDef* e);
+
+int32_t upb_EnumReservedRange_Start(const upb_EnumReservedRange* r);
+int32_t upb_EnumReservedRange_End(const upb_EnumReservedRange* r);
 
 /* upb_EnumValueDef ***********************************************************/
 
