@@ -169,34 +169,6 @@ static upb_StringView default_string(upb_ToProto_Context* ctx,
   }
 }
 
-static google_protobuf_DescriptorProto_ReservedRange* resrange_toproto(
-    upb_ToProto_Context* ctx, const upb_MessageReservedRange* r) {
-  google_protobuf_DescriptorProto_ReservedRange* proto =
-      google_protobuf_DescriptorProto_ReservedRange_new(ctx->arena);
-  CHK_OOM(proto);
-
-  google_protobuf_DescriptorProto_ReservedRange_set_start(
-      proto, upb_MessageReservedRange_Start(r));
-  google_protobuf_DescriptorProto_ReservedRange_set_end(proto,
-                                               upb_MessageReservedRange_End(r));
-
-  return proto;
-}
-
-static google_protobuf_EnumDescriptorProto_EnumReservedRange* enumresrange_toproto(
-    upb_ToProto_Context* ctx, const upb_EnumReservedRange* r) {
-  google_protobuf_EnumDescriptorProto_EnumReservedRange* proto =
-      google_protobuf_EnumDescriptorProto_EnumReservedRange_new(ctx->arena);
-  CHK_OOM(proto);
-
-  google_protobuf_EnumDescriptorProto_EnumReservedRange_set_start(
-      proto, upb_EnumReservedRange_Start(r));
-  google_protobuf_EnumDescriptorProto_EnumReservedRange_set_end(
-      proto, upb_EnumReservedRange_End(r));
-
-  return proto;
-}
-
 static google_protobuf_FieldDescriptorProto* fielddef_toproto(
     upb_ToProto_Context* ctx, const upb_FieldDef* f) {
   google_protobuf_FieldDescriptorProto* proto =
@@ -308,19 +280,7 @@ static google_protobuf_EnumDescriptorProto* enumdef_toproto(
     vals[i] = enumvaldef_toproto(ctx, upb_EnumDef_Value(e, i));
   }
 
-  n = upb_EnumDef_ReservedRangeCount(e);
-  google_protobuf_EnumDescriptorProto_EnumReservedRange** res_ranges =
-      google_protobuf_EnumDescriptorProto_resize_reserved_range(proto, n, ctx->arena);
-  for (int i = 0; i < n; i++) {
-    res_ranges[i] = enumresrange_toproto(ctx, upb_EnumDef_ReservedRange(e, i));
-  }
-
-  n = upb_EnumDef_ReservedNameCount(e);
-  upb_StringView* res_names =
-      google_protobuf_EnumDescriptorProto_resize_reserved_name(proto, n, ctx->arena);
-  for (int i = 0; i < n; i++) {
-    res_names[i] = upb_EnumDef_ReservedName(e, i);
-  }
+  // TODO: reserved range, reserved name
 
   if (upb_EnumDef_HasOptions(e)) {
     SET_OPTIONS(proto, EnumDescriptorProto, EnumOptions,
@@ -405,19 +365,7 @@ static google_protobuf_DescriptorProto* msgdef_toproto(
     ext_ranges[i] = extrange_toproto(ctx, upb_MessageDef_ExtensionRange(m, i));
   }
 
-  n = upb_MessageDef_ReservedRangeCount(m);
-  google_protobuf_DescriptorProto_ReservedRange** res_ranges =
-      google_protobuf_DescriptorProto_resize_reserved_range(proto, n, ctx->arena);
-  for (int i = 0; i < n; i++) {
-    res_ranges[i] = resrange_toproto(ctx, upb_MessageDef_ReservedRange(m, i));
-  }
-
-  n = upb_MessageDef_ReservedNameCount(m);
-  upb_StringView* res_names =
-      google_protobuf_DescriptorProto_resize_reserved_name(proto, n, ctx->arena);
-  for (int i = 0; i < n; i++) {
-    res_names[i] = upb_MessageDef_ReservedName(m, i);
-  }
+  // TODO: reserved ranges and reserved names
 
   if (upb_MessageDef_HasOptions(m)) {
     SET_OPTIONS(proto, DescriptorProto, MessageOptions,
