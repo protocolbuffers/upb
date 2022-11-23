@@ -20,13 +20,11 @@ def upb_deps():
         sha256 = "e7fdfe0bed87702a22c5b73b6b5fe08bedd25f17d617e52df6061b0f47d480b0",
     )
 
-    maybe(
-        _github_archive,
-        name = "com_google_protobuf",
-        repo = "https://github.com/protocolbuffers/protobuf",
-        commit = "c79832bddc3931d798d31d417238e4377f869c79",
-        patches = ["@upb//bazel:protobuf.patch"],
-    )
+    if not native.existing_rule("com_google_protobuf"):
+        native.local_repository(
+            name = "com_google_protobuf",
+            path = "/usr/local/google/home/mkruskal/protobuf"
+        )
 
     rules_python_version = "0.12.0"  # Latest @ August 31, 2022
 
