@@ -31,6 +31,10 @@ py_binary(
     name = "amalgamate",
     srcs = ["amalgamate.py"],
     visibility = ["//:__pkg__"],
+    target_compatible_with = select({
+        "@system_python//:exists": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
 )
 
 # py_proto_library() is private rule, only intended for internal use by upb.

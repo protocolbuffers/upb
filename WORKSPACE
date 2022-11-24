@@ -4,7 +4,6 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("//bazel:workspace_deps.bzl", "upb_deps")
 
 upb_deps()
-register_toolchains("@system_python//:python_toolchain")
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
@@ -69,9 +68,21 @@ load("@rules_fuzzing//fuzzing:init.bzl", "rules_fuzzing_init")
 
 rules_fuzzing_init()
 
-load("@rules_python//python:pip.bzl", "pip_install")
-
-pip_install(
-    name="pip_deps",
-    requirements = "@com_google_protobuf//python:requirements.txt"
+load("//bazel:system_python.bzl", "system_python", "register_system_python")
+system_python(
+    name = "system_python",
+    #pip_repo = "pip_deps",
 )
+
+load("@system_python//:register.bzl", "register_toolchain")
+register_toolchain()
+
+load("@system_python//:pip.bzl", "pip_parse")
+pip_parse(
+    name="pip_deps",
+    requirements = "@com_google_protobuf//python:requirements.txt",
+    python_interpreter_target = "@system_python//:wrapper",
+)
+
+load("@pip_deps//:requirements.bzl", "install_deps")
+install_deps()

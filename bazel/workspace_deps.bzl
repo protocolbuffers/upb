@@ -1,7 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//bazel:python_downloads.bzl", "python_nuget_package", "python_source_archive")
-load("//bazel:system_python.bzl", "system_python")
 
 def _github_archive(repo, commit, **kwargs):
     repo_name = repo.split("/")[-1]
@@ -20,20 +19,22 @@ def upb_deps():
         sha256 = "e7fdfe0bed87702a22c5b73b6b5fe08bedd25f17d617e52df6061b0f47d480b0",
     )
 
-    if not native.existing_rule("com_google_protobuf"):
-        native.local_repository(
-            name = "com_google_protobuf",
-            path = "/usr/local/google/home/mkruskal/protobuf"
-        )
+    maybe(
+        _github_archive,
+        name = "com_google_protobuf",
+        repo = "https://github.com/protocolbuffers/protobuf",
+        commit = "016ef2393e163cb8a49186adab8e2981476eec37",
+        patches = ["@upb//bazel:protobuf.patch"],
+    )
 
-    rules_python_version = "0.12.0"  # Latest @ August 31, 2022
+    rules_python_version = "0.14.0"  # Latest @ November 20, 2022
 
     maybe(
         http_archive,
         name = "rules_python",
         strip_prefix = "rules_python-{}".format(rules_python_version),
         url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/{}.tar.gz".format(rules_python_version),
-        sha256 = "b593d13bb43c94ce94b483c2858e53a9b811f6f10e1e0eedc61073bd90e58d9c",
+        sha256 = "a868059c8c6dd6ad45a205cca04084c652cfe1852e6df2d5aca036f6e5438380",
     )
 
     maybe(
@@ -41,10 +42,6 @@ def upb_deps():
         name = "bazel_skylib",
         strip_prefix = "bazel-skylib-main",
         urls = ["https://github.com/bazelbuild/bazel-skylib/archive/main.tar.gz"],
-    )
-
-    system_python(
-        name = "system_python",
     )
 
     #Python Downloads

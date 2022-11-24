@@ -25,7 +25,40 @@
 
 """Repository rule for using Python 3.x headers from the system."""
 
+# Mock out rules_python's pip.bzl for cases where no system python is found.
+_mock_pip = """
+def _pip_parse_impl(repository_ctx):
+    repository_ctx.file("BUILD.bazel", '''
+py_library(
+    name = "noop",
+    visibility = ["//visibility:public"],
+)
+''')
+    repository_ctx.file("requirements.bzl", '''
+def install_deps(*args, **kwargs):
+    print("WARNING: could not install pip dependencies")
+
+def requirement(*args, **kwargs):
+    return "@{}//:noop"
+'''.format(repository_ctx.attr.name))
+pip_parse = repository_rule(
+    implementation = _pip_parse_impl,
+    attrs = {
+        "requirements": attr.string(),
+        "python_interpreter_target": attr.string(),
+    },
+)
+"""
+
+# Alias rules_python's pip.bzl for cases where a system pythong is found.
+_alias_pip = """
+load("@rules_python//python:pip.bzl", _pip_parse = "pip_parse")
+pip_parse = _pip_parse
+"""
+
 _build_file = """
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_tools//tools/python:toolchain.bzl", "py_runtime_pair")
 
 cc_library(
@@ -35,9 +68,55 @@ cc_library(
    visibility = ["//visibility:public"],
 )
 
+string_flag(
+    name = "internal_python_support",
+    build_setting_default = "{support}",
+    values = [
+        "None",
+        "Supported",
+        "Unsupported",
+    ]
+)
+
+config_setting(
+    name = "none",
+    flag_values = {{
+        ":internal_python_support": "None",
+    }},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "supported",
+    flag_values = {{
+        ":internal_python_support": "Supported",
+    }},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "unsupported",
+    flag_values = {{
+        ":internal_python_support": "Unsupported",
+    }},
+    visibility = ["//visibility:public"],
+)
+
+selects.config_setting_group(
+    name = "exists",
+    match_any = [":supported", ":unsupported"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "wrapper",
+    srcs = ["wrapper"],
+    visibility = ["//visibility:public"],
+)
+
 py_runtime(
     name = "py3_runtime",
-    interpreter_path = "{}",
+    interpreter_path = "{interpreter}",
     python_version = "PY3",
 )
 
@@ -53,31 +132,72 @@ toolchain(
 )
 """
 
+_register = """
+def register_toolchain():
+    native.register_toolchains("@{}//:python_toolchain")
+"""
+
+_mock_register = """
+def register_toolchain():
+    pass
+"""
+
 def _get_python_version(repository_ctx):
     py_program = "import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))"
     result = repository_ctx.execute(["python3", "-c", py_program])
     return (result.stdout).strip()
 
-def _get_config_var(repository_ctx, name):
+def _get_python_path(repository_ctx):
     py_program = "import sysconfig; print(sysconfig.get_config_var('%s'), end='')"
-    result = repository_ctx.execute(["python3", "-c", py_program % (name)])
+    result = repository_ctx.execute(["python3", "-c", py_program % ("INCLUDEPY")])
     if result.return_code != 0:
         return None
     return result.stdout
 
-def _python_headers_impl(repository_ctx):
-    path = _get_config_var(repository_ctx, "INCLUDEPY")
-    if not path:
-        # buildifier: disable=print
-        print("WARNING: no system python available, builds against system python will fail")
-        repository_ctx.file("BUILD.bazel", "")
-        repository_ctx.file("version.bzl", "SYSTEM_PYTHON_VERSION = None")
-        return
-    repository_ctx.symlink(path, "python")
+def _populate_package(ctx, path, python3, python_version):
+    ctx.symlink(path, "python")
+    support = "Supported" if float(python_version) >= 3.7 else "Unsupported"
+
+    build_file = _build_file.format(
+        interpreter = python3,
+        support = support,
+    );
+
+    ctx.file("wrapper", "exec {} \"$@\"".format(python3))
+    ctx.file("BUILD.bazel", build_file)
+    ctx.file("version.bzl", "SYSTEM_PYTHON_VERSION = '{}'".format(python_version))
+    ctx.file("register.bzl", _register.format(ctx.attr.name))
+    ctx.file("pip.bzl", """
+load("@rules_python//python:pip.bzl", _pip_parse = "pip_parse")
+pip_parse = _pip_parse
+    """)
+
+def _populate_empty_package(ctx):
+    # Mock out all the entrypoints we need to run from WORKSPACE.  Targets that
+    # actually need python should use `target_compatible_with` and the generated
+    # @system_python//:exists or @system_python//:supported constraints.
+    ctx.file("BUILD.bazel",
+        _build_file.format(
+            interpreter = "",
+            support = "None",
+        )
+    )
+    ctx.file("version.bzl", "SYSTEM_PYTHON_VERSION = 'None'")
+    ctx.file("register.bzl", _mock_register)
+    ctx.file("pip.bzl", _mock_pip)
+
+def _system_python_impl(repository_ctx):
+    path = _get_python_path(repository_ctx)
     python3 = repository_ctx.which("python3")
     python_version = _get_python_version(repository_ctx)
-    repository_ctx.file("BUILD.bazel", _build_file.format(python3))
-    repository_ctx.file("version.bzl", "SYSTEM_PYTHON_VERSION = '{}'".format(python_version))
+
+    if path and float(python_version) >= 3:
+        _populate_package(repository_ctx, path, python3, python_version)
+    else:
+        # buildifier: disable=print
+        print("WARNING: no system python available, builds against system python will fail")
+        _populate_empty_package(repository_ctx)
+
 
 # The system_python() repository rule exposes Python headers from the system.
 #
@@ -96,6 +216,14 @@ def _python_headers_impl(repository_ctx):
 # The headers should correspond to the version of python obtained by running
 # the `python3` command on the system.
 system_python = repository_rule(
-    implementation = _python_headers_impl,
+    implementation = _system_python_impl,
+    attrs = {
+        "pip_repo": attr.string(
+            doc = "The name of the repository created by pip_parse."
+        ),
+    },
     local = True,
 )
+
+def register_system_python(name):
+    native.register_toolchains("@{}//:python_toolchain" % name)
