@@ -44,6 +44,11 @@ typedef struct {
 extern "C" {
 #endif
 
+// These functions are useful for languages like Dart which require all C
+// objects to be created from within C.
+upb_Status* upb_Status_New();
+void upb_Status_Free(upb_Status* status);
+
 const char* upb_Status_ErrorMessage(const upb_Status* status);
 bool upb_Status_IsOk(const upb_Status* status);
 

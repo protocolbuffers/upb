@@ -42,6 +42,17 @@ void upb_Status_Clear(upb_Status* status) {
   status->msg[0] = '\0';
 }
 
+upb_Status* upb_Status_New() {
+  upb_Status* status = malloc(sizeof(upb_Status));
+  upb_Status_Clear(status);
+  return status;
+}
+
+void upb_Status_Free(upb_Status* status) {
+  if (!status) return;
+  free(status);
+}
+
 bool upb_Status_IsOk(const upb_Status* status) { return status->ok; }
 
 const char* upb_Status_ErrorMessage(const upb_Status* status) {
