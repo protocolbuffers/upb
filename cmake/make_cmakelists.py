@@ -200,7 +200,7 @@ class WorkspaceFileFunctions(object):
   def __init__(self, converter):
     self.converter = converter
 
-  def load(self, *args, **kwargs):
+  def load(self, *args):
     pass
 
   def workspace(self, **kwargs):
@@ -225,12 +225,6 @@ class WorkspaceFileFunctions(object):
   def protobuf_deps(self):
     pass
 
-  def utf8_range_deps(self):
-    pass
-
-  def pip_parse(self, **kwargs):
-    pass
-
   def rules_fuzzing_dependencies(self):
     pass
 
@@ -247,12 +241,6 @@ class WorkspaceFileFunctions(object):
     pass
 
   def python_nuget_package(self, **kwargs):
-    pass
-
-  def install_deps(self):
-    pass
-
-  def fuzzing_py_install_deps(self):
     pass
 
 
