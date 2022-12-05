@@ -56,3 +56,27 @@ rules_fuzzing_dependencies()
 load("@rules_fuzzing//fuzzing:init.bzl", "rules_fuzzing_init")
 
 rules_fuzzing_init()
+
+load("//bazel:system_python.bzl", "system_python")
+system_python(
+    name = "system_python",
+    minimum_python_version = "3.7",
+)
+
+load("@system_python//:register.bzl", "register_system_python")
+register_system_python()
+
+load("@system_python//:pip.bzl", "pip_parse", "fuzzing_py_install_deps")
+
+pip_parse(
+    name="pip_deps",
+    requirements = "//python:requirements.txt",
+    requirements_overrides = {
+        "3.11": "//python:requirements_311.txt",
+    },
+)
+
+load("@pip_deps//:requirements.bzl", "install_deps")
+install_deps()
+
+fuzzing_py_install_deps()
