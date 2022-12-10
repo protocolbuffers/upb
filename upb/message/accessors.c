@@ -36,55 +36,15 @@
 // Must be last.
 #include "upb/port/def.inc"
 
-static size_t _upb_MiniTableField_Size(const upb_MiniTableField* f) {
-  static unsigned char sizes[] = {
-      0,                      /* 0 */
-      8,                      /* kUpb_FieldType_Double */
-      4,                      /* kUpb_FieldType_Float */
-      8,                      /* kUpb_FieldType_Int64 */
-      8,                      /* kUpb_FieldType_UInt64 */
-      4,                      /* kUpb_FieldType_Int32 */
-      8,                      /* kUpb_FieldType_Fixed64 */
-      4,                      /* kUpb_FieldType_Fixed32 */
-      1,                      /* kUpb_FieldType_Bool */
-      sizeof(upb_StringView), /* kUpb_FieldType_String */
-      sizeof(void*),          /* kUpb_FieldType_Group */
-      sizeof(void*),          /* kUpb_FieldType_Message */
-      sizeof(upb_StringView), /* kUpb_FieldType_Bytes */
-      4,                      /* kUpb_FieldType_UInt32 */
-      4,                      /* kUpb_FieldType_Enum */
-      4,                      /* kUpb_FieldType_SFixed32 */
-      8,                      /* kUpb_FieldType_SFixed64 */
-      4,                      /* kUpb_FieldType_SInt32 */
-      8,                      /* kUpb_FieldType_SInt64 */
-  };
-  return upb_IsRepeatedOrMap(f) ? sizeof(void*) : sizes[f->descriptortype];
-}
-
 // Maps descriptor type to elem_size_lg2.
 static int _upb_MiniTableField_CTypeLg2Size(const upb_MiniTableField* f) {
   static const uint8_t sizes[] = {
-      -1,             /* invalid descriptor type */
-      3,              /* DOUBLE */
-      2,              /* FLOAT */
-      3,              /* INT64 */
-      3,              /* UINT64 */
-      2,              /* INT32 */
-      3,              /* FIXED64 */
-      2,              /* FIXED32 */
-      0,              /* BOOL */
-      UPB_SIZE(3, 4), /* STRING */
-      UPB_SIZE(2, 3), /* GROUP */
-      UPB_SIZE(2, 3), /* MESSAGE */
-      UPB_SIZE(3, 4), /* BYTES */
-      2,              /* UINT32 */
-      2,              /* ENUM */
-      2,              /* SFIXED32 */
-      3,              /* SFIXED64 */
-      2,              /* SINT32 */
-      3,              /* SINT64 */
+      [kUpb_FieldRep_1Byte] = 0,
+      [kUpb_FieldRep_4Byte] = 2,
+      [kUpb_FieldRep_8Byte] = 3,
+      [kUpb_FieldRep_StringView] = UPB_SIZE(3, 4),
   };
-  return sizes[f->descriptortype];
+  return sizes[_upb_MiniTableField_GetRep(f)];
 }
 
 void* upb_MiniTable_ResizeArray(upb_Message* msg,
