@@ -48,13 +48,6 @@ http_archive(
 )
 
 http_archive(
-    name = "rules_fuzzing",
-    sha256 = "d9002dd3cd6437017f08593124fdd1b13b3473c7b929ceb0e60d317cb9346118",
-    strip_prefix = "rules_fuzzing-0.3.2",
-    urls = ["https://github.com/bazelbuild/rules_fuzzing/archive/v0.3.2.zip"],
-)
-
-http_archive(
     name = "com_google_absl",
     sha256 = "e7fdfe0bed87702a22c5b73b6b5fe08bedd25f17d617e52df6061b0f47d480b0",
     strip_prefix = "abseil-cpp-e6044634dd7caec2d79a13aecc9e765023768757",
