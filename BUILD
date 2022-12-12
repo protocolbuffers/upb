@@ -439,6 +439,25 @@ upb_proto_library(
     deps = [":msg_test_proto"],
 )
 
+proto_library(
+    name = "proto3_test_proto",
+    testonly = 1,
+    srcs = ["upb/proto3_test.proto"],
+    deps = ["@com_google_protobuf//:descriptor_proto"],
+)
+
+upb_proto_library(
+    name = "proto3_test_upb_proto",
+    testonly = 1,
+    deps = [":proto3_test_proto"],
+)
+
+upb_proto_reflection_library(
+    name = "proto3_test_upb_proto_reflection",
+    testonly = 1,
+    deps = [":proto3_test_proto"],
+)
+
 upb_proto_reflection_library(
     name = "msg_test_upb_proto_reflection",
     testonly = 1,
@@ -469,6 +488,18 @@ upb_proto_library(
 upb_proto_reflection_library(
     name = "timestamp_upb_proto_reflection",
     deps = ["@com_google_protobuf//:timestamp_proto"],
+)
+
+cc_test(
+    name = "proto3_test",
+    srcs = ["upb/proto3_test.cc"],
+    copts = UPB_DEFAULT_CPPOPTS,
+    deps = [
+        ":proto3_test_upb_proto",
+        ":proto3_test_upb_proto_reflection",
+        ":reflection",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_test(
