@@ -1246,15 +1246,16 @@ const char* _upb_Decoder_IsDoneFallback(upb_EpsCopyInputStream* e,
       e, ptr, overrun, _upb_Decoder_BufferFlipCallback);
 }
 
-upb_DecodeStatus upb_Decode(const char* buf, size_t size, void* msg,
-                            const upb_MiniTable* l,
-                            const upb_ExtensionRegistry* extreg, int options,
-                            upb_Arena* arena) {
+upb_DecodeStatus upb_Decode2(const char* buf, size_t size,
+                             upb_ZeroCopyInputStream* zcis, void* msg,
+                             const upb_MiniTable* l,
+                             const upb_ExtensionRegistry* extreg, int options,
+                             upb_Arena* arena) {
   upb_Decoder state;
   unsigned depth = (unsigned)options >> 16;
 
-  upb_EpsCopyInputStream_Init(&state.input, &buf, size,
-                              options & kUpb_DecodeOption_AliasString);
+  buf = upb_EpsCopyInputStream_Init(&state.input, buf, size, zcis,
+                                    options & kUpb_DecodeOption_AliasString);
 
   state.extreg = extreg;
   state.unknown = NULL;

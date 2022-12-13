@@ -159,7 +159,7 @@ upb_FindUnknownRet upb_MiniTable_FindUnknown(const upb_Message* msg,
 
   const char* ptr = upb_Message_GetUnknown(msg, &size);
   upb_EpsCopyInputStream stream;
-  upb_EpsCopyInputStream_Init(&stream, &ptr, size, true);
+  upb_EpsCopyInputStream_Init(&stream, &ptr, size, NULL, true);
 
   while (!upb_EpsCopyInputStream_IsDone(&stream, &ptr)) {
     uint32_t tag;
