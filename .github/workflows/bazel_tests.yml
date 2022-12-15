@@ -43,7 +43,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
           export_environment_variables: true
-        if: ${{ github.event.pull_request.head.repo.full_name == 'protocolbuffers/upb' }}
       - name: Download historical Bazel version
         run: |
              FILENAME=$HOME/bin/${{ matrix.BAZEL }}
@@ -86,7 +85,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
           export_environment_variables: true
-        if: ${{ github.event.pull_request.head.repo.full_name == 'protocolbuffers/upb' }}
       - name: Set up Bazel read/write caching
         run: echo "BAZEL_CACHE_AUTH=--google_default_credentials" >> $GITHUB_ENV
         if: ${{ github.event.pull_request.head.repo.full_name == 'protocolbuffers/upb' }}
