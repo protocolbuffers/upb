@@ -69,23 +69,8 @@ def _get_real_short_path(file):
         short_path = short_path.split(virtual_imports)[1].split("/", 1)[1]
     return short_path
 
-def _get_real_root(ctx, file):
-    real_short_path = _get_real_short_path(file)
-    root = file.path[:-len(real_short_path) - 1]
-
-    if not _is_google3 and ctx.rule.attr.strip_import_prefix:
-        root = paths.join(root, ctx.rule.attr.strip_import_prefix[1:])
-    return root
-
 def _generate_output_file(ctx, src, extension):
     package = ctx.label.package
-    if not _is_google3:
-        strip_import_prefix = ctx.rule.attr.strip_import_prefix
-        if strip_import_prefix and strip_import_prefix != "/":
-            if not package.startswith(strip_import_prefix[1:]):
-                fail("%s does not begin with prefix %s" % (package, strip_import_prefix))
-            package = package[len(strip_import_prefix):]
-
     real_short_path = _get_real_short_path(src)
     real_short_path = paths.relativize(real_short_path, package)
     output_filename = paths.replace_extension(real_short_path, extension)
@@ -234,6 +219,7 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
     tool = getattr(ctx.executable, "_gen_" + generator)
     srcs = [_generate_output_file(ctx, name, ext + ".c") for name in proto_sources]
     hdrs = [_generate_output_file(ctx, name, ext + ".h") for name in proto_sources]
+    output_root = srcs[0].path[:-len(_get_real_short_path(srcs[0])) - 1]
     transitive_sets = proto_info.transitive_descriptor_sets.to_list()
     fasttable_enabled = (hasattr(ctx.attr, "_fasttable_enabled") and
                          ctx.attr._fasttable_enabled[_FastTableEnabledInfo].enabled)
@@ -247,7 +233,7 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
         outputs = srcs + hdrs,
         executable = ctx.executable._protoc,
         arguments = [
-                        "--" + generator + "_out=" + codegen_params + _get_real_root(ctx, srcs[0]),
+                        "--" + generator + "_out=" + codegen_params + output_root,
                         "--plugin=protoc-gen-" + generator + "=" + tool.path,
                         "--descriptor_set_in=" + ctx.configuration.host_path_separator.join([f.path for f in transitive_sets]),
                     ] +
