@@ -116,7 +116,7 @@ cc_library(
         "//:upb",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 
@@ -146,7 +146,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 
@@ -190,7 +190,7 @@ cc_binary(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 
@@ -204,7 +204,7 @@ cc_binary(
     deps = [
         ":common",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 

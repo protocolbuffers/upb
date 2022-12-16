@@ -41,7 +41,7 @@ cc_binary(
         ":generator",
         "//upbc:file_layout",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
 
@@ -76,6 +76,6 @@ cc_library(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//src/google/protobuf/compiler:code_generator",
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
