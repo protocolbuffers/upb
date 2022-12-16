@@ -237,6 +237,8 @@ def _compile_upb_protos(ctx, generator, proto_info, proto_sources):
     transitive_sets = proto_info.transitive_descriptor_sets.to_list()
     fasttable_enabled = (hasattr(ctx.attr, "_fasttable_enabled") and
                          ctx.attr._fasttable_enabled[_FastTableEnabledInfo].enabled)
+
+    # TEST
     codegen_params = "fasttable:" if fasttable_enabled else ""
     ctx.actions.run(
         inputs = depset(
