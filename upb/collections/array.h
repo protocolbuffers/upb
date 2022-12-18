@@ -76,6 +76,10 @@ UPB_API void upb_Array_Delete(upb_Array* array, size_t i, size_t count);
 // Returns false on allocation failure.
 UPB_API bool upb_Array_Resize(upb_Array* array, size_t size, upb_Arena* arena);
 
+// Same as above, but does not initialize new elements.
+UPB_API bool upb_Array_ResizeUninitialized(upb_Array* arr, size_t size,
+                                           upb_Arena* arena);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

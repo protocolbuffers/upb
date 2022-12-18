@@ -89,20 +89,6 @@ void* _upb_Array_Resize_fallback(upb_Array** arr_ptr, size_t size,
 bool _upb_Array_Append_fallback(upb_Array** arr_ptr, const void* value,
                                 int elem_size_lg2, upb_Arena* arena);
 
-UPB_INLINE bool _upb_array_reserve(upb_Array* arr, size_t size,
-                                   upb_Arena* arena) {
-  if (arr->capacity < size) return _upb_array_realloc(arr, size, arena);
-  return true;
-}
-
-// Resize without initializing new elements.
-UPB_INLINE bool _upb_Array_ResizeUninitialized(upb_Array* arr, size_t size,
-                                               upb_Arena* arena) {
-  if (!_upb_array_reserve(arr, size, arena)) return false;
-  arr->size = size;
-  return true;
-}
-
 UPB_INLINE void _upb_array_detach(const void* msg, size_t ofs) {
   *UPB_PTR_AT(msg, ofs, upb_Array*) = NULL;
 }
