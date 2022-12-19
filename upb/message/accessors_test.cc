@@ -227,8 +227,8 @@ TEST(GeneratedCode, Strings) {
   protobuf_test_messages_proto2_TestAllTypesProto2_set_optional_string(
       msg, upb_StringView_FromString(kTestStr1));
   EXPECT_EQ(true, upb_Message_HasField(msg, optional_string_field));
-  upb_StringView value = upb_Message_GetString(msg, optional_string_field,
-                                               upb_StringView{NULL, 0});
+  upb_StringView value =
+      upb_Message_GetString(msg, optional_string_field, NULL, 0);
   std::string read_value = std::string(value.data, value.size);
   EXPECT_EQ(kTestStr1, read_value);
   // Clear.
@@ -238,8 +238,8 @@ TEST(GeneratedCode, Strings) {
       false,
       protobuf_test_messages_proto2_TestAllTypesProto2_has_optional_string(
           msg));
-  upb_Message_SetString(msg, optional_string_field,
-                        upb_StringView_FromString(kTestStr2), NULL);
+  upb_Message_SetString(msg, optional_string_field, kTestStr2,
+                        strlen(kTestStr2), NULL);
   EXPECT_EQ(true, upb_Message_HasField(msg, optional_string_field));
   EXPECT_EQ(
       true,

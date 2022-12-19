@@ -445,23 +445,26 @@ UPB_API_INLINE bool upb_Message_SetDouble(upb_Message* msg,
 
 UPB_API_INLINE upb_StringView
 upb_Message_GetString(const upb_Message* msg, const upb_MiniTableField* field,
-                      upb_StringView def_val) {
+                      const char* def_data, size_t def_size) {
   UPB_ASSERT(field->descriptortype == kUpb_FieldType_Bytes ||
              field->descriptortype == kUpb_FieldType_String);
   UPB_ASSUME(!upb_IsRepeatedOrMap(field));
   UPB_ASSUME(_upb_MiniTableField_GetRep(field) == kUpb_FieldRep_StringView);
+  const upb_StringView def_value = {.data = def_data, .size = def_size};
   upb_StringView ret;
-  _upb_Message_GetField(msg, field, &def_val, &ret);
+  _upb_Message_GetField(msg, field, &def_value, &ret);
   return ret;
 }
 
 UPB_API_INLINE bool upb_Message_SetString(upb_Message* msg,
                                           const upb_MiniTableField* field,
-                                          upb_StringView value, upb_Arena* a) {
+                                          const char* data, size_t size,
+                                          upb_Arena* a) {
   UPB_ASSERT(field->descriptortype == kUpb_FieldType_Bytes ||
              field->descriptortype == kUpb_FieldType_String);
   UPB_ASSUME(!upb_IsRepeatedOrMap(field));
   UPB_ASSUME(_upb_MiniTableField_GetRep(field) == kUpb_FieldRep_StringView);
+  const upb_StringView value = {.data = data, .size = size};
   return _upb_Message_SetField(msg, field, &value, a);
 }
 
