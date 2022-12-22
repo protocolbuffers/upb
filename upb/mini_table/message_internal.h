@@ -76,7 +76,7 @@ struct upb_MiniTable {
   // To statically initialize the tables of variable length, we need a flexible
   // array member, and we need to compile in gnu99 mode (constant initialization
   // of flexible array members is a GNU extension, not in C99 unfortunately.
-  _upb_FastTable_Entry fasttable[];
+  _upb_FastTable_Entry fasttable[0];
 };
 
 // Map entries aren't actually stored for map fields, they are only used during

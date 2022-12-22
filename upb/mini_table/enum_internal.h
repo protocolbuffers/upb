@@ -36,7 +36,7 @@
 struct upb_MiniTableEnum {
   uint32_t mask_limit;   // Limit enum value that can be tested with mask.
   uint32_t value_count;  // Number of values after the bitfield.
-  uint32_t data[];       // Bitmask + enumerated values follow.
+  uint32_t data[0];      // Bitmask + enumerated values follow.
 };
 
 typedef enum {
