@@ -223,6 +223,9 @@ class WorkspaceFileFunctions(object):
   def new_git_repository(self, **kwargs):
     pass
 
+  def new_local_repository(self, **kwargs):
+    pass
+
   def bazel_version_repository(self, **kwargs):
     pass
 
