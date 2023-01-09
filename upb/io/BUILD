@@ -27,6 +27,8 @@ cc_library(
         "zero_copy_input_stream.h",
         "zero_copy_output_stream.h",
     ],
+    compatible_with = ["//buildenv/target:non_prod"],
+    visibility = ["//:__pkg__"],
     deps = [
         "//:base",
         "//:mem",
@@ -47,6 +49,7 @@ cc_library(
         "chunked_input_stream.h",
         "chunked_output_stream.h",
     ],
+    visibility = ["//:__subpackages__"],
     deps = [
         ":zero_copy_stream",
         "//:upb",

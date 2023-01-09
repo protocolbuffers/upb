@@ -28,12 +28,18 @@
 #ifndef UPB_WIRE_EPS_COPY_INPUT_STREAM_H_
 #define UPB_WIRE_EPS_COPY_INPUT_STREAM_H_
 
+#include <limits.h>
 #include <string.h>
 
+#include "upb/base/string_view.h"
+#include "upb/io/zero_copy_input_stream.h"
 #include "upb/mem/arena.h"
 
 // Must be last.
 #include "upb/port/def.inc"
+
+#define DBG(...)
+// #define DBG(...) fprintf(stderr, __VA_ARGS__)
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,21 +53,186 @@ extern "C" {
 // this invariant.
 #define kUpb_EpsCopyInputStream_SlopBytes 16
 
-enum {
-  kUpb_EpsCopyInputStream_NoAliasing = 0,
-  kUpb_EpsCopyInputStream_OnPatch = 1,
-  kUpb_EpsCopyInputStream_NoDelta = 2
-};
+// We reference this constant a lot, so create a local alias and undef later.
+#define kSlopBytes kUpb_EpsCopyInputStream_SlopBytes
+
+typedef enum {
+  kUpb_EpsCopyInputStream_CannotAlias = -1,
+} upb_EpsCopyInpuStream_AliasingConstants;
 
 typedef struct {
-  const char* end;        // Can read up to SlopBytes bytes beyond this.
-  const char* limit_ptr;  // For bounds checks, = end + UPB_MIN(limit, 0)
-  uintptr_t aliasing;
-  int limit;              // Submessage limit relative to end
-  bool error;             // To distinguish between EOF and error.
-  char patch[kUpb_EpsCopyInputStream_SlopBytes * 2];
+  // The underlying ZeroCopyInputStream that provides our input.
+  upb_ZeroCopyInputStream* zcis;
+
+  // The end of the current buffer.  The kSlopBytes after this pointer are the
+  // slop region, and can always be read safely without error.  The slop bytes
+  // must represent the true next bytes of the stream, if any such bytes exist,
+  // otherwise they will have undetermined value.
+  const char* end;
+
+  // The next buffer to be returned to the user. This member is the primary
+  // state in the state machine; see the comments above Next() in this file.
+  const char* next_buffer;
+  size_t next_buffer_size;
+
+  // A delta that we can add to the current `ptr` to get the corresponding
+  // pointer into an input buffer, or kUpb_EpsCopyInputStream_CannotAlias if the
+  // patch buffer spans multiple input buffers.
+  //
+  // If we are currently parsing from an actual input buffer this will be zero.
+  // If we are parsing from the patch buffer, but this is the final buffer of
+  // the stream, this will be a nonzero delta between the patch buffer and the
+  // input buffer. Otherwise this will be kUpb_EpsCopyInputStream_CannotAlias
+  // because the patch buffer contains data from multiple input buffers.
+  uintptr_t aliasing_delta;
+
+  // The patch buffer.  We copy data into this when we cross buffer boundaries
+  // or when the input buffers are too small, to construct contiguous regions
+  // of input data.
+  char patch[kSlopBytes * 2];
 } upb_EpsCopyInputStream;
 
+// A potentially specialized memcpy() for copies smaller than kSlopBytes. We use
+// this in several cases where we need memcpy() a small amount of data (less
+// than kSlopBytes) but the size is not known at compile time. Normally such
+// a call would require an out-of-line call to a fully generalized memcpy(), but
+// we may be able to write an inlinable version that will do better.
+UPB_INLINE void _upb_SmallMemcpy(void* __restrict dst,
+                                 const void* __restrict src, size_t n) {
+  UPB_ASSUME(n <= kSlopBytes);
+  memcpy(dst, src, n);
+}
+
+UPB_INLINE const char* upb_EpsCopyInputStream_Init(
+    upb_EpsCopyInputStream* e, const char* ptr, size_t size,
+    upb_ZeroCopyInputStream* zcis) {
+  e->next_buffer = e->patch;
+  e->zcis = zcis;
+  memset(e->patch, 0, sizeof(e->patch));
+  if (size > kSlopBytes) {
+    e->end = ptr + size - kSlopBytes;
+    e->aliasing_delta = 0;
+    return ptr;
+  } else {
+    char* patch_ptr = e->patch + kSlopBytes - size;
+    if (size) _upb_SmallMemcpy(patch_ptr, ptr, size);
+    if (e->zcis) {
+      e->aliasing_delta = kUpb_EpsCopyInputStream_CannotAlias;
+      e->end = e->patch;
+      return e->patch + kSlopBytes - size;  // Start with overrun.
+    } else {
+      e->aliasing_delta = (uintptr_t)ptr - (uintptr_t)patch_ptr;
+      e->end = patch_ptr + size;
+      e->next_buffer = NULL;  // We have already yielded the last buffer.
+      return patch_ptr;
+    }
+  }
+}
+
+// The next buffer to yield.  This buffer acts as a state machine according
+// to the following coroutine-style loop:
+//
+//    while (zcis_Next(&ptr, &next_chunk_size)) {
+//      if (size > kSlopBytes) {
+//          memcpy(patch + kSlopBytes, ptr, kSlopBytes);
+//          next_buffer = ptr;
+//          yield(patch, patch + kSlopBytes);
+//          big:
+//          end = ptr + size - kSlopBytes;
+//          next_buffer = patch;
+//          yield(next_buffer, end);
+//      } else {
+//          memcpy(patch + kSlopBytes, ptr, size);
+//          end = patch + size;
+//          next_buffer = patch;
+//          yield(patch, end);
+//      }
+//      small:
+//      memmove(patch, end, kSlopBytes);
+//  }
+//  next_buffer = NULL;
+//  end = patch + kSlopBytes;
+//  yield(patch, end);
+//  eof:
+//  while(1) yield(NULL, NULL);
+//
+// Then next_buffer represents the state machine:
+//   - next_buffer == NULL indicates state "eof"
+//   - next_buffer == patch indicates state "small"
+//   - next_buffer != patch indicates state "big"
+UPB_INLINE const char* upb_EpsCopyInputStream_Next(upb_EpsCopyInputStream* e) {
+  if (e->next_buffer == NULL) return NULL;  // state "eof"
+
+  if (e->next_buffer != e->patch) {  // state "big"
+    const char* ret = e->next_buffer;
+    e->end = ret + e->next_buffer_size - kSlopBytes;
+    e->next_buffer = e->patch;
+    e->aliasing_delta = 0;
+    return ret;
+  }
+
+  // state "small"
+  memmove(e->patch, e->end, kSlopBytes);
+  const char* buf = e->zcis ? (const char*)upb_ZeroCopyInputStream_Next(
+                                  e->zcis, &e->next_buffer_size, NULL)
+                            : NULL;
+
+  if (!buf) {  // End of stream.
+    e->aliasing_delta = (uintptr_t)e->end - (uintptr_t)e->patch;
+    e->next_buffer = NULL;
+    e->end = e->patch + kSlopBytes;
+    e->next_buffer_size = 0;  // Successful end (no error).
+    return e->patch;
+  }
+
+  if (e->next_buffer_size > kSlopBytes) {
+    memcpy(e->patch + kSlopBytes, buf, kSlopBytes);
+    e->next_buffer = buf;
+    e->end = e->patch + kSlopBytes;
+  } else {
+    _upb_SmallMemcpy(e->patch + kSlopBytes, buf, e->next_buffer_size);
+    e->next_buffer = e->patch;
+    e->end = e->patch + e->next_buffer_size;
+  }
+  e->aliasing_delta = kUpb_EpsCopyInputStream_CannotAlias;
+  return e->patch;
+}
+
+UPB_INLINE const char* upb_EpsCopyInputStream_Skip(upb_EpsCopyInputStream* e,
+                                                   int bytes, int* advanced) {
+  UPB_ASSUME(bytes >= 0);
+  const char* ptr;
+  while (bytes >= 0) {
+    ptr = upb_EpsCopyInputStream_Next(e);
+    if (!ptr) return NULL;
+    *advanced += e->end - ptr;
+    ptr += bytes;
+    bytes = ptr - e->end;
+  }
+  return ptr;
+}
+
+typedef struct {
+  upb_EpsCopyInputStream eps;
+
+  // This is the pointer we use for bounds checks. It is similar to `eps.end`,
+  // but it also takes into account pushed limits, so it may be smaller than
+  // `eps.end`.  When the pointer reaches `limit_ptr`, we have hit either a
+  // pushed limit or end-of-buffer. This should always be exactly equal to:
+  //    end + UPB_MIN(limit, 0)
+  const char* limit_ptr;
+
+  // The current submessage limit relative to `eps.end`. This can be negative,
+  // zero, or positive, depending on whether the current limit is before, equal
+  // to, or beyond the current `eps.end`.
+  //
+  // This must be an integer and not a pointer, because we cannot safely
+  // construct pointers that are beyond the current buffer (even if we could,
+  // they would be vulnerable to wrapping).
+  int limit;
+} upb_WireReader;
+
+#if 0
 // Returns true if the stream is in the error state. A stream enters the error
 // state when the user reads past a limit (caught in IsDone()) or the
 // ZeroCopyInputStream returns an error.
@@ -75,28 +246,179 @@ typedef const char* upb_EpsCopyInputStream_BufferFlipCallback(
 typedef const char* upb_EpsCopyInputStream_IsDoneFallbackFunc(
     upb_EpsCopyInputStream* e, const char* ptr, int overrun);
 
+UPB_INLINE void _upb_EpsCopyInputStream_CheckLimit(upb_EpsCopyInputStream* e) {
+  UPB_ASSERT(e->limit_ptr == e->end + UPB_MIN(0, e->limit));
+}
+
+UPB_INLINE const char* _upb_EpsCopyInputStream_SetEndOfStream(
+    upb_EpsCopyInputStream* e, const char* ptr, const char* new_start) {
+  // We are at end-of-stream. Is there is no stream, we know we can alias.
+  // Otherwise assume we cannot; while it may be possible, the benefit is low
+  // and it's not worth it to calculate.
+  DBG("  - End of stream.\n");
+  if (e->zcis) {
+    e->aliasing_delta = kUpb_EpsCopyInputStream_CannotAlias;
+    DBG("    - limit=%d\n", e->limit);
+  } else {
+    e->aliasing_delta = (uintptr_t)ptr - (uintptr_t)new_start;
+  }
+  e->limit = 0;
+  return new_start;
+}
+
+UPB_INLINE bool _upb_EpsCopyInputStream_NextBuffer(upb_EpsCopyInputStream* e) {
+  UPB_ASSERT(!e->next_chunk);
+  return _upb_EpsCopyInputStream_NextBufferRaw(e, &e->next_chunk,
+                                               &e->next_chunk_size);
+}
+
+const char* _upb_EpsCopyInputStream_FillPatchBufferSlow(
+    upb_EpsCopyInputStream* e, int have);
+
+UPB_INLINE const char* _upb_EpsCopyInputStream_ResetBuffer(
+    upb_EpsCopyInputStream* e, const char* ptr, size_t size) {
+  DBG("- EpsCopyInputStream_ResetBuffer(size=%zu)\n", size);
+  if (size <= kSlopBytes) {
+    DBG("  - small buffer\n");
+    if (size) upb_EpsCopyInputStream_SmallMemcpy(&e->patch, ptr, size);
+    e->end = e->patch + size;
+    e->limit -= size;
+    e->aliasing_delta = (uintptr_t)ptr - (uintptr_t)e->patch;
+    ptr = e->patch;
+    if (e->zcis) {
+      e->aliasing_delta = kUpb_EpsCopyInputStream_CannotAlias;
+      if (!_upb_EpsCopyInputStream_NextBuffer(e)) {
+        DBG("EOF, leaving remaining bytes undetermined\n");
+        e->limit = 0;
+      } else if (UPB_LIKELY(e->next_chunk_size >= kSlopBytes)) {
+        DBG("  - ZCIS fast path, big enough buffer (%zu) to compensate for "
+            "small size (%zu)\n",
+            e->next_chunk_size, size);
+        memcpy(e->patch + size, e->next_chunk, kSlopBytes);
+      } else {
+        DBG("  - ZCIS slow path, small buffer (%zu)\n", e->next_chunk_size);
+        return _upb_EpsCopyInputStream_FillPatchBufferSlow(e, size);
+      }
+    }
+  } else {
+    e->end = ptr + size - kSlopBytes;
+    e->limit -= size - kSlopBytes;
+    e->aliasing_delta = 0;
+  }
+  return ptr;
+}
+
 // Initializes a upb_EpsCopyInputStream using the contents of the buffer
 // [*ptr, size].  Updates `*ptr` as necessary to guarantee that at least
 // kUpb_EpsCopyInputStream_SlopBytes are available to read.
-UPB_INLINE void upb_EpsCopyInputStream_Init(upb_EpsCopyInputStream* e,
-                                            const char** ptr, size_t size,
-                                            bool enable_aliasing) {
-  if (size <= kUpb_EpsCopyInputStream_SlopBytes) {
-    memset(&e->patch, 0, 32);
-    if (size) memcpy(&e->patch, *ptr, size);
-    e->aliasing = enable_aliasing ? (uintptr_t)*ptr - (uintptr_t)e->patch
-                                  : kUpb_EpsCopyInputStream_NoAliasing;
-    *ptr = e->patch;
-    e->end = *ptr + size;
-    e->limit = 0;
-  } else {
-    e->end = *ptr + size - kUpb_EpsCopyInputStream_SlopBytes;
-    e->limit = kUpb_EpsCopyInputStream_SlopBytes;
-    e->aliasing = enable_aliasing ? kUpb_EpsCopyInputStream_NoDelta
-                                  : kUpb_EpsCopyInputStream_NoAliasing;
-  }
-  e->limit_ptr = e->end;
+UPB_INLINE const char* upb_EpsCopyInputStream_Init(
+    upb_EpsCopyInputStream* e, const char* ptr, size_t size,
+    upb_ZeroCopyInputStream* zcis, bool enable_aliasing) {
+  DBG("- EpsCopyInputStream_Init(size=%zu)\n", size);
+  e->next_chunk = NULL;
+  e->zcis = zcis;
   e->error = false;
+  e->enable_aliasing = enable_aliasing;
+  memset(e->patch, 0, sizeof(e->patch));
+  e->limit = zcis ? INT_MAX : size;
+  ptr = _upb_EpsCopyInputStream_ResetBuffer(e, ptr, size);
+  e->limit_ptr = e->end;
+  return ptr;
+}
+
+UPB_INLINE const char* _upb_EpsCopyInputStream_TryFillPatchBufferFast(
+    upb_EpsCopyInputStream* e, const char* ptr, int overrun) {
+  // We need to build a patch buffer. The fast path is when we can get at least
+  // kSlopBytes of data with at most one buffer from the input stream. We copy
+  // the old slop region to the first half of the patch, and fill the second
+  // half with more data (or nothing in the case of EOF). This effectively
+  // advances e->end by kSlopBytes. The fast path does not require any
+  // out-of-line calls to memcpy() (we only use a compile-time-known size).
+  UPB_ASSERT(!e->next_chunk);
+  DBG("- TryFillPatchBufferFast()\n");
+  const char* new_start = &e->patch[overrun];
+  e->end = &e->patch[kSlopBytes];
+  e->limit -= kSlopBytes;
+  e->limit_ptr = e->end + UPB_MIN(e->limit, 0);
+
+  if (!e->zcis || !_upb_EpsCopyInputStream_NextBuffer(e)) {
+    new_start = _upb_EpsCopyInputStream_SetEndOfStream(e, ptr, new_start);
+    return new_start;
+  }
+
+  if (UPB_LIKELY(e->next_chunk_size >= kSlopBytes)) {
+    // We just retrieved a new chunk that is big enough.
+    DBG("  - Big enough next chunk (%zu)!\n", e->next_chunk_size);
+    e->aliasing_delta = kUpb_EpsCopyInputStream_CannotAlias;
+    memcpy(e->patch + kSlopBytes, e->next_chunk, kSlopBytes);
+    return new_start;
+  }
+
+  return NULL;  // Couldn't fill fast.
+}
+
+UPB_INLINE const char* _upb_EpsCopyInputStream_DoIsDoneFallbackInline(
+    upb_EpsCopyInputStream* e, const char* ptr, int overrun) {
+  DBG("- DoIsDoneFallbackInline(), zcis=%p, overrun=%d\n", e->zcis, overrun);
+  if (UPB_UNLIKELY(overrun > e->limit)) return NULL;  // Parsed beyond limit.
+
+  _upb_EpsCopyInputStream_CheckLimit(e);
+  UPB_ASSERT(overrun < e->limit);
+  UPB_ASSERT(overrun <= kSlopBytes);
+  UPB_ASSERT(e->limit > 0);
+  UPB_ASSERT(e->limit_ptr == e->end);
+
+  if (e->next_chunk) {
+    if ((int)e->next_chunk_size - overrun <= kSlopBytes) {
+      // We have a next chunk, but it is too small to use directly because it
+      // does not provide enough bytes of slop from the current position. We
+      // will need to copy it into the patch buffer, after the previous contents
+      // of the slop region.
+      e->next_chunk += kSlopBytes;
+      e->next_chunk_size -= kSlopBytes;
+      memmove(e->patch, e->end, kSlopBytes);
+      goto slow;
+    }
+    // Fast path: the next chunk is ready and large enough.
+    DBG("  - Fast path! Another buffer of size %zu is available.\n",
+        e->next_chunk_size);
+    ptr = e->next_chunk + overrun;
+    e->end = e->next_chunk + e->next_chunk_size - kSlopBytes;
+    e->limit -= e->next_chunk_size - kSlopBytes;
+    e->limit_ptr = e->end + UPB_MIN(e->limit, 0);
+    e->next_chunk = NULL;
+    e->aliasing_delta = 0;
+    return ptr;
+  }
+
+  memmove(e->patch, e->end, kSlopBytes);
+  ptr = _upb_EpsCopyInputStream_TryFillPatchBufferFast(e, ptr, overrun);
+  DBG("  - _TryFillPatchBufferFast returned %p\n", ptr);
+  if (ptr) return ptr;
+
+slow:
+  memmove(e->patch, e->patch + overrun, kSlopBytes);
+  e->limit -= kSlopBytes;
+  DBG("  - Fallback, next chunk too small (only %zu)!\n", e->next_chunk_size);
+  return _upb_EpsCopyInputStream_FillPatchBufferSlow(e, kSlopBytes - overrun);
+}
+
+UPB_INLINE const char* _upb_EpsCopyInputStream_IsDoneFallbackInline(
+    upb_EpsCopyInputStream* e, const char* ptr, int overrun,
+    upb_EpsCopyInputStream_BufferFlipCallback* callback) {
+  DBG("- IsDoneFallbackInline(), overrun=%d\n", overrun);
+  const char* new_start =
+      _upb_EpsCopyInputStream_DoIsDoneFallbackInline(e, ptr, overrun);
+  DBG("  - Fallback finished! Results: ptr-to-limit=%d, ptr-to-end=%d, "
+      "limit=%d\n",
+      (int)(e->limit_ptr - new_start), (int)(e->end - new_start), e->limit);
+  UPB_ASSERT(new_start < e->limit_ptr);
+  if (new_start) {
+    return callback(e, ptr, new_start);
+  } else {
+    e->error = true;
+    return callback(e, NULL, NULL);
+  }
 }
 
 typedef enum {
@@ -114,24 +436,28 @@ typedef enum {
 // Returns the status of the current stream position.  This is a low-level
 // function, it is simpler to call upb_EpsCopyInputStream_IsDone() if possible.
 UPB_INLINE upb_IsDoneStatus upb_EpsCopyInputStream_IsDoneStatus(
-    upb_EpsCopyInputStream* e, const char* ptr, int* overrun) {
-  *overrun = ptr - e->end;
-  if (UPB_LIKELY(ptr < e->limit_ptr)) {
-    return kUpb_IsDoneStatus_NotDone;
-  } else if (UPB_LIKELY(*overrun == e->limit)) {
+    upb_EpsCopyInputStream* e, const char* ptr, int* out_overrun) {
+  DBG("- IsDoneStatus(): overrun=%d, e->limit=%d, limit overrun=%d\n",
+      (int)(ptr - e->end), e->limit, (int)(ptr - e->limit_ptr));
+  if (UPB_LIKELY(ptr < e->limit_ptr)) return kUpb_IsDoneStatus_NotDone;
+
+  int overrun = ptr - e->end;
+  assert(overrun <= kSlopBytes);
+  if (overrun == e->limit) {
     return kUpb_IsDoneStatus_Done;
   } else {
+    *out_overrun = overrun;
     return kUpb_IsDoneStatus_NeedFallback;
   }
 }
 
 // Returns true if the stream has hit a limit, either the current delimited
 // limit or the overall end-of-stream. As a side effect, this function may flip
-// the pointer to a new buffer if there are less than
-// kUpb_EpsCopyInputStream_SlopBytes of data to be read in the current buffer.
+// the pointer to a new buffer if there are less than kSlopBytes of data to be
+// read in the current buffer.
 //
-// Postcondition: if the function returns false, there are at least
-// kUpb_EpsCopyInputStream_SlopBytes of data available to read at *ptr.
+// Postcondition: if the function returns false, there are at least kSlopBytes
+// of data available to read at *ptr.
 UPB_INLINE bool upb_EpsCopyInputStream_IsDoneWithCallback(
     upb_EpsCopyInputStream* e, const char** ptr,
     upb_EpsCopyInputStream_IsDoneFallbackFunc* func) {
@@ -173,7 +499,7 @@ UPB_INLINE bool upb_EpsCopyInputStream_IsDone(upb_EpsCopyInputStream* e,
 // (ie. you can read without triggering UBSAN or ASAN).
 UPB_INLINE size_t upb_EpsCopyInputStream_BytesAvailable(
     upb_EpsCopyInputStream* e, const char* ptr) {
-  return (e->end - ptr) + kUpb_EpsCopyInputStream_SlopBytes;
+  return (e->end - ptr) + kSlopBytes;
 }
 
 // Returns true if the given delimited field size is valid (it does not extend
@@ -185,6 +511,8 @@ UPB_INLINE size_t upb_EpsCopyInputStream_BytesAvailable(
 UPB_INLINE bool upb_EpsCopyInputStream_CheckSize(
     const upb_EpsCopyInputStream* e, const char* ptr, int size) {
   UPB_ASSERT(size >= 0);
+  DBG("- EpsStream_CheckSize(size=%d), ptr - e->end = %d, limit=%d\n", size,
+      (int)(ptr - e->end), e->limit);
   return ptr - e->end + size <= e->limit;
 }
 
@@ -198,7 +526,7 @@ UPB_INLINE bool _upb_EpsCopyInputStream_CheckSizeAvailable(
   uintptr_t uptr = (uintptr_t)ptr;
   uintptr_t uend = (uintptr_t)e->limit_ptr;
   uintptr_t res = uptr + (size_t)size;
-  if (!submessage) uend += kUpb_EpsCopyInputStream_SlopBytes;
+  if (!submessage) uend += kSlopBytes;
   // NOTE: this check depends on having a linear address space.  This is not
   // technically guaranteed by uintptr_t.
   bool ret = res >= uptr && res <= uend;
@@ -223,7 +551,7 @@ UPB_INLINE bool upb_EpsCopyInputStream_CheckDataSizeAvailable(
 //
 // This implies that all fields from the sub-message can be parsed from the
 // current buffer while maintaining the invariant that we always have at least
-// kUpb_EpsCopyInputStream_SlopBytes of data available past the beginning of
+// kSlopBytes of data available past the beginning of
 // any individual field start.
 //
 // If the size is negative, this function will always return false. This
@@ -237,7 +565,7 @@ UPB_INLINE bool upb_EpsCopyInputStream_CheckSubMessageSizeAvailable(
 // upb_EpsCopyInputStream_Init() when this stream was initialized.
 UPB_INLINE bool upb_EpsCopyInputStream_AliasingEnabled(
     upb_EpsCopyInputStream* e) {
-  return e->aliasing != kUpb_EpsCopyInputStream_NoAliasing;
+  return e->enable_aliasing;
 }
 
 // Returns true if aliasing_enabled=true was passed to
@@ -248,7 +576,8 @@ UPB_INLINE bool upb_EpsCopyInputStream_AliasingAvailable(
   // When EpsCopyInputStream supports streaming, this will need to become a
   // runtime check.
   return upb_EpsCopyInputStream_CheckDataSizeAvailable(e, ptr, size) &&
-         e->aliasing >= kUpb_EpsCopyInputStream_NoDelta;
+         e->enable_aliasing &&
+         e->aliasing_delta != kUpb_EpsCopyInputStream_CannotAlias;
 }
 
 // Returns a pointer into an input buffer that corresponds to the parsing
@@ -260,9 +589,7 @@ UPB_INLINE bool upb_EpsCopyInputStream_AliasingAvailable(
 UPB_INLINE const char* upb_EpsCopyInputStream_GetAliasedPtr(
     upb_EpsCopyInputStream* e, const char* ptr) {
   UPB_ASSUME(upb_EpsCopyInputStream_AliasingAvailable(e, ptr, 0));
-  uintptr_t delta =
-      e->aliasing == kUpb_EpsCopyInputStream_NoDelta ? 0 : e->aliasing;
-  return (const char*)((uintptr_t)ptr + delta);
+  return (const char*)((uintptr_t)ptr + e->aliasing_delta);
 }
 
 // Reads string data from the input, aliasing into the input buffer instead of
@@ -289,12 +616,23 @@ UPB_INLINE const char* upb_EpsCopyInputStream_Skip(upb_EpsCopyInputStream* e,
   return ptr + size;
 }
 
+const char* _upb_EpsCopyInputStream_CopyFallback(upb_EpsCopyInputStream* e,
+                                                 const char* ptr, char* to,
+                                                 int size);
+
 // Copies `size` bytes of data from the input `ptr` into the buffer `to`, and
-// returns a pointer past the end. Returns NULL on end of stream or error.
+// returns a pointer past the end. Returns NULL on premature end of stream or
+// error.
 UPB_INLINE const char* upb_EpsCopyInputStream_Copy(upb_EpsCopyInputStream* e,
-                                                   const char* ptr, void* to,
+                                                   const char* ptr, char* to,
                                                    int size) {
-  if (!upb_EpsCopyInputStream_CheckDataSizeAvailable(e, ptr, size)) return NULL;
+  DBG("- EpsCopyInputStream_Copy(), avail=%d, size=%d\n",
+      (int)(e->limit_ptr - ptr) + kSlopBytes - 1, size);
+  if (UPB_UNLIKELY(e->limit_ptr - ptr + kSlopBytes - 1 < size)) {
+    return _upb_EpsCopyInputStream_CopyFallback(e, ptr, to, size);
+  }
+  // Common case, data lies completely within this buffer/limit, and overrun
+  // will be less than kSlopBytes.
   memcpy(to, ptr, size);
   return ptr + size;
 }
@@ -309,24 +647,23 @@ UPB_INLINE const char* upb_EpsCopyInputStream_Copy(upb_EpsCopyInputStream* e,
 UPB_INLINE const char* upb_EpsCopyInputStream_ReadString(
     upb_EpsCopyInputStream* e, const char** ptr, size_t size,
     upb_Arena* arena) {
+  DBG("- EpsCopyInputStream_ReadString(%zu), available in buffer=%d, first "
+      "three=%.*s\n",
+      size, (int)(e->limit_ptr - *ptr + kSlopBytes), (int)size, *ptr);
   if (upb_EpsCopyInputStream_AliasingAvailable(e, *ptr, size)) {
+    DBG("  - aliasing is available!\n");
     return upb_EpsCopyInputStream_ReadStringAliased(e, ptr, size);
   } else {
+    DBG("  - aliasing is unavailable!\n");
     // We need to allocate and copy.
-    if (!upb_EpsCopyInputStream_CheckDataSizeAvailable(e, *ptr, size)) {
-      return NULL;
-    }
     UPB_ASSERT(arena);
     char* data = (char*)upb_Arena_Malloc(arena, size);
     if (!data) return NULL;
     const char* ret = upb_EpsCopyInputStream_Copy(e, *ptr, data, size);
+    if (!ret) return NULL;
     *ptr = data;
     return ret;
   }
-}
-
-UPB_INLINE void _upb_EpsCopyInputStream_CheckLimit(upb_EpsCopyInputStream* e) {
-  UPB_ASSERT(e->limit_ptr == e->end + UPB_MIN(0, e->limit));
 }
 
 // Pushes a limit onto the stack of limits for the current stream.  The limit
@@ -349,41 +686,17 @@ UPB_INLINE int upb_EpsCopyInputStream_PushLimit(upb_EpsCopyInputStream* e,
 // Pops the last limit that was pushed on this stream.  This may only be called
 // once IsDone() returns true.  The user must pass the delta that was returned
 // from PushLimit().
-UPB_INLINE void upb_EpsCopyInputStream_PopLimit(upb_EpsCopyInputStream* e,
+UPB_INLINE bool upb_EpsCopyInputStream_PopLimit(upb_EpsCopyInputStream* e,
                                                 const char* ptr,
                                                 int saved_delta) {
   UPB_ASSERT(ptr - e->end == e->limit);
   _upb_EpsCopyInputStream_CheckLimit(e);
+  DBG("- EpsCopy_PopLimit(saved_delta=%d), limit before=%d\n", saved_delta,
+      e->limit);
   e->limit += saved_delta;
   e->limit_ptr = e->end + UPB_MIN(0, e->limit);
   _upb_EpsCopyInputStream_CheckLimit(e);
-}
-
-UPB_INLINE const char* _upb_EpsCopyInputStream_IsDoneFallbackInline(
-    upb_EpsCopyInputStream* e, const char* ptr, int overrun,
-    upb_EpsCopyInputStream_BufferFlipCallback* callback) {
-  if (overrun < e->limit) {
-    // Need to copy remaining data into patch buffer.
-    UPB_ASSERT(overrun < kUpb_EpsCopyInputStream_SlopBytes);
-    const char* old_end = ptr;
-    const char* new_start = &e->patch[0] + overrun;
-    memset(e->patch + kUpb_EpsCopyInputStream_SlopBytes, 0,
-           kUpb_EpsCopyInputStream_SlopBytes);
-    memcpy(e->patch, e->end, kUpb_EpsCopyInputStream_SlopBytes);
-    ptr = new_start;
-    e->end = &e->patch[kUpb_EpsCopyInputStream_SlopBytes];
-    e->limit -= kUpb_EpsCopyInputStream_SlopBytes;
-    e->limit_ptr = e->end + e->limit;
-    UPB_ASSERT(ptr < e->limit_ptr);
-    if (e->aliasing != kUpb_EpsCopyInputStream_NoAliasing) {
-      e->aliasing = (uintptr_t)old_end - (uintptr_t)new_start;
-    }
-    return callback(e, old_end, new_start);
-  } else {
-    UPB_ASSERT(overrun > e->limit);
-    e->error = true;
-    return callback(e, NULL, NULL);
-  }
+  return true;
 }
 
 typedef const char* upb_EpsCopyInputStream_ParseDelimitedFunc(
@@ -394,7 +707,7 @@ typedef const char* upb_EpsCopyInputStream_ParseDelimitedFunc(
 // fits within this buffer, calls `func` with `ctx` as a parameter, where the
 // pushing and popping of limits is handled automatically and with lower cost
 // than the normal PushLimit()/PopLimit() sequence.
-static UPB_FORCEINLINE bool upb_EpsCopyInputStream_TryParseDelimitedFast(
+UPB_FORCEINLINE bool upb_EpsCopyInputStream_TryParseDelimitedFast(
     upb_EpsCopyInputStream* e, const char** ptr, int len,
     upb_EpsCopyInputStream_ParseDelimitedFunc* func, void* ctx) {
   if (!upb_EpsCopyInputStream_CheckSubMessageSizeAvailable(e, *ptr, len)) {
@@ -415,9 +728,13 @@ static UPB_FORCEINLINE bool upb_EpsCopyInputStream_TryParseDelimitedFast(
   return true;
 }
 
+#endif
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
+
+#undef kSlopBytes
 
 #include "upb/port/undef.inc"
 

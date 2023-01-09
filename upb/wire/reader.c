@@ -33,6 +33,8 @@
 // Must be last.
 #include "upb/port/def.inc"
 
+#if 0
+
 UPB_NOINLINE _upb_WireReader_ReadLongVarintRet
 _upb_WireReader_ReadLongVarint(const char* ptr, uint64_t val) {
   _upb_WireReader_ReadLongVarintRet ret = {NULL, 0};
@@ -65,3 +67,5 @@ const char* _upb_WireReader_SkipGroup(const char* ptr, uint32_t tag,
   }
   return ptr;
 }
+
+#endif

@@ -693,7 +693,7 @@ static void fastdecode_docopy(upb_Decoder* d, const char* ptr, uint32_t size,
   size_t common_has;                                                           \
   char* buf;                                                                   \
                                                                                \
-  UPB_ASSERT(!upb_EpsCopyInputStream_AliasingAvailable(&d->input, ptr, 0));    \
+  UPB_ASSERT((d->options & kUpb_DecodeOption_AliasString) == 0);               \
   UPB_ASSERT(fastdecode_checktag(data, tagbytes));                             \
                                                                                \
   dst = fastdecode_getfield(d, ptr, msg, &data, &hasbits, &farr,               \
