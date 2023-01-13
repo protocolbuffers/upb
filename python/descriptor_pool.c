@@ -110,10 +110,14 @@ static void PyUpb_DescriptorPool_Dealloc(PyUpb_DescriptorPool* self) {
  */
 static PyObject* PyUpb_DescriptorPool_New(PyTypeObject* type, PyObject* args,
                                           PyObject* kwargs) {
-  char* kwlist[] = {"descriptor_db", 0};
+  char* kwlist[] = {"descriptor_db",
+                    "use_deprecated_legacy_json_field_conflicts", 0};
   PyObject* db = NULL;
+  int use_deprecated_legacy_json_field_conflicts = 0;
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &db)) {
+  if (!PyArg_ParseTupleAndKeywords(
+          args, kwargs, "|O$i", kwlist, &db,
+          &use_deprecated_legacy_json_field_conflicts)) {
     return NULL;
   }
 
