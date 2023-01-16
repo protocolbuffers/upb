@@ -1108,6 +1108,9 @@ bool TryFillTableEntry(const DefPoolPair& pools, upb::FieldDefPtr field,
   if (field.real_containing_oneof()) {
     uint64_t case_offset = ~mt_f->presence;
     if (case_offset > 0xffff) return false;
+    if (field.number() >= 256) {
+        LogFatal(absl::StrCat("Field '", field.full_name(), "'s number of ", field.number(), " exceeds max of 256.")); 
+    }
     assert(field.number() < 256);
     data |= field.number() << 24;
     data |= case_offset << 32;
