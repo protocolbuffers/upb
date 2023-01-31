@@ -4,6 +4,9 @@ build --features=-debug_prefix_map_pwd_is_dot
 # Pin to C++17
 build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
 
+# Fail if a glob doesn't match anything (https://github.com/bazelbuild/bazel/issues/8195)
+build --incompatible_disallow_empty_glob
+
 # Use our custom-configured c++ toolchain.
 
 build:m32 --copt=-m32 --linkopt=-m32
