@@ -531,6 +531,8 @@ UPB_API_INLINE const upb_Message* upb_Message_GetMessage(
     upb_Message* default_val) {
   UPB_ASSERT(field->descriptortype == kUpb_FieldType_Message ||
              field->descriptortype == kUpb_FieldType_Group);
+  UPB_ASSERT(!_upb_MiniTableField_InOneOf(field) ||
+             (_upb_getoneofcase_field(msg, field)) == field->number);
   UPB_ASSUME(!upb_IsRepeatedOrMap(field));
   UPB_ASSUME(_upb_MiniTableField_GetRep(field) ==
              UPB_SIZE(kUpb_FieldRep_4Byte, kUpb_FieldRep_8Byte));
