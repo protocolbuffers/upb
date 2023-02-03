@@ -81,6 +81,12 @@ extern const upb_MiniTable google_protobuf_GeneratedCodeInfo_msg_init;
 extern const upb_MiniTable google_protobuf_GeneratedCodeInfo_Annotation_msg_init;
 
 typedef enum {
+  google_protobuf_FieldDescriptorProto_LABEL_OPTIONAL = 1,
+  google_protobuf_FieldDescriptorProto_LABEL_REQUIRED = 2,
+  google_protobuf_FieldDescriptorProto_LABEL_REPEATED = 3
+} google_protobuf_FieldDescriptorProto_Label;
+
+typedef enum {
   google_protobuf_FieldDescriptorProto_TYPE_DOUBLE = 1,
   google_protobuf_FieldDescriptorProto_TYPE_FLOAT = 2,
   google_protobuf_FieldDescriptorProto_TYPE_INT64 = 3,
@@ -100,18 +106,6 @@ typedef enum {
   google_protobuf_FieldDescriptorProto_TYPE_SINT32 = 17,
   google_protobuf_FieldDescriptorProto_TYPE_SINT64 = 18
 } google_protobuf_FieldDescriptorProto_Type;
-
-typedef enum {
-  google_protobuf_FieldDescriptorProto_LABEL_OPTIONAL = 1,
-  google_protobuf_FieldDescriptorProto_LABEL_REQUIRED = 2,
-  google_protobuf_FieldDescriptorProto_LABEL_REPEATED = 3
-} google_protobuf_FieldDescriptorProto_Label;
-
-typedef enum {
-  google_protobuf_FileOptions_SPEED = 1,
-  google_protobuf_FileOptions_CODE_SIZE = 2,
-  google_protobuf_FileOptions_LITE_RUNTIME = 3
-} google_protobuf_FileOptions_OptimizeMode;
 
 typedef enum {
   google_protobuf_FieldOptions_STRING = 0,
@@ -145,10 +139,10 @@ typedef enum {
 } google_protobuf_FieldOptions_OptionTargetType;
 
 typedef enum {
-  google_protobuf_MethodOptions_IDEMPOTENCY_UNKNOWN = 0,
-  google_protobuf_MethodOptions_NO_SIDE_EFFECTS = 1,
-  google_protobuf_MethodOptions_IDEMPOTENT = 2
-} google_protobuf_MethodOptions_IdempotencyLevel;
+  google_protobuf_FileOptions_SPEED = 1,
+  google_protobuf_FileOptions_CODE_SIZE = 2,
+  google_protobuf_FileOptions_LITE_RUNTIME = 3
+} google_protobuf_FileOptions_OptimizeMode;
 
 typedef enum {
   google_protobuf_GeneratedCodeInfo_Annotation_NONE = 0,
@@ -156,16 +150,22 @@ typedef enum {
   google_protobuf_GeneratedCodeInfo_Annotation_ALIAS = 2
 } google_protobuf_GeneratedCodeInfo_Annotation_Semantic;
 
+typedef enum {
+  google_protobuf_MethodOptions_IDEMPOTENCY_UNKNOWN = 0,
+  google_protobuf_MethodOptions_NO_SIDE_EFFECTS = 1,
+  google_protobuf_MethodOptions_IDEMPOTENT = 2
+} google_protobuf_MethodOptions_IdempotencyLevel;
 
-extern const upb_MiniTableEnum google_protobuf_FieldDescriptorProto_Type_enum_init;
+
 extern const upb_MiniTableEnum google_protobuf_FieldDescriptorProto_Label_enum_init;
-extern const upb_MiniTableEnum google_protobuf_FileOptions_OptimizeMode_enum_init;
+extern const upb_MiniTableEnum google_protobuf_FieldDescriptorProto_Type_enum_init;
 extern const upb_MiniTableEnum google_protobuf_FieldOptions_CType_enum_init;
 extern const upb_MiniTableEnum google_protobuf_FieldOptions_JSType_enum_init;
 extern const upb_MiniTableEnum google_protobuf_FieldOptions_OptionRetention_enum_init;
 extern const upb_MiniTableEnum google_protobuf_FieldOptions_OptionTargetType_enum_init;
-extern const upb_MiniTableEnum google_protobuf_MethodOptions_IdempotencyLevel_enum_init;
+extern const upb_MiniTableEnum google_protobuf_FileOptions_OptimizeMode_enum_init;
 extern const upb_MiniTableEnum google_protobuf_GeneratedCodeInfo_Annotation_Semantic_enum_init;
+extern const upb_MiniTableEnum google_protobuf_MethodOptions_IdempotencyLevel_enum_init;
 
 /* google.protobuf.FileDescriptorSet */
 
