@@ -44,9 +44,11 @@ bool _upb_MessageDef_Insert(upb_MessageDef* m, const char* name, size_t size,
 void _upb_MessageDef_InsertField(upb_DefBuilder* ctx, upb_MessageDef* m,
                                  const upb_FieldDef* f);
 bool _upb_MessageDef_IsValidExtensionNumber(const upb_MessageDef* m, int n);
-void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
-                                   const upb_MessageDef* m);
-void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m);
+
+void _upb_MessageDefs_LinkMiniTable(upb_DefBuilder* ctx,
+                                    const upb_MessageDef* mm, int n);
+
+void _upb_MessageDefs_Resolve(upb_DefBuilder* ctx, upb_MessageDef* mm, int n);
 
 // Allocate and initialize an array of |n| message defs.
 upb_MessageDef* _upb_MessageDefs_New(

@@ -697,19 +697,6 @@ static void _upb_FieldDef_CreateNotExt(upb_DefBuilder* ctx, const char* prefix,
   }
 
   _upb_MessageDef_InsertField(ctx, m, f);
-
-  if (!ctx->layout) return;
-
-  const upb_MiniTable* mt = upb_MessageDef_MiniTable(m);
-  const upb_MiniTableField* fields = mt->fields;
-  for (int i = 0; i < mt->field_count; i++) {
-    if (fields[i].number == f->number_) {
-      f->layout_index = i;
-      return;
-    }
-  }
-
-  UPB_ASSERT(false);  // It should be impossible to reach this point.
 }
 
 upb_FieldDef* _upb_Extensions_New(
@@ -744,7 +731,22 @@ upb_FieldDef* _upb_FieldDefs_New(
 
     _upb_FieldDef_CreateNotExt(ctx, prefix, protos[i], m, f);
     f->index_ = i;
-    if (!ctx->layout) f->layout_index = i;
+
+    if (ctx->layout) {
+      const upb_MiniTable* mt = upb_MessageDef_MiniTable(m);
+      const upb_MiniTableField* fields = mt->fields;
+      bool found = false;
+      for (int j = 0; j < mt->field_count; j++) {
+        if (fields[j].number == f->number_) {
+          f->layout_index = j;
+          found = true;
+          break;
+        }
+      }
+      UPB_ASSERT(found);
+    } else {
+      f->layout_index = i;
+    }
 
     const uint32_t current = f->number_;
     if (previous > current) *is_sorted = false;
@@ -918,15 +920,55 @@ static void resolve_default(upb_DefBuilder* ctx, upb_FieldDef* f,
   }
 }
 
-void _upb_FieldDef_Resolve(upb_DefBuilder* ctx, const char* prefix,
-                           upb_FieldDef* f) {
+static void _upb_Extension_Resolve(upb_DefBuilder* ctx, const char* prefix,
+                                   upb_FieldDef* f) {
+  UPB_ASSERT(f->is_extension);
+
   // We have to stash this away since resolve_subdef() may overwrite it.
   const UPB_DESC(FieldDescriptorProto)* field_proto = f->sub.unresolved;
 
   resolve_subdef(ctx, prefix, f);
   resolve_default(ctx, f, field_proto);
+  resolve_extension(ctx, prefix, f, field_proto);
+}
 
-  if (f->is_extension) {
-    resolve_extension(ctx, prefix, f, field_proto);
+bool _upb_Extensions_Resolve(upb_DefBuilder* ctx, const upb_MessageDef* m,
+                             upb_FieldDef* ff, int n) {
+  bool out = false;
+  const char* prefix =
+      m ? upb_MessageDef_FullName(m) : _upb_FileDef_RawPackage(ctx->file);
+  for (int i = 0; i < n; i++) {
+    upb_FieldDef* f = &ff[i];
+    _upb_Extension_Resolve(ctx, prefix, f);
+
+    if (!m) continue;
+    if (upb_FieldDef_Type(f) != kUpb_FieldType_Message) continue;
+    if (upb_FieldDef_Label(f) != kUpb_Label_Optional) continue;
+    if (upb_FieldDef_MessageSubDef(f) != m) continue;
+
+    const upb_MessageDef* extendee = upb_FieldDef_ContainingType(f);
+    const UPB_DESC(MessageOptions)* options = upb_MessageDef_Options(extendee);
+    if (UPB_DESC(MessageOptions_message_set_wire_format)(options)) out = true;
+  }
+  return out;
+}
+
+static void _upb_FieldDef_Resolve(upb_DefBuilder* ctx, const char* prefix,
+                                  upb_FieldDef* f) {
+  UPB_ASSERT(!f->is_extension);
+
+  // We have to stash this away since resolve_subdef() may overwrite it.
+  const UPB_DESC(FieldDescriptorProto)* field_proto = f->sub.unresolved;
+
+  resolve_subdef(ctx, prefix, f);
+  resolve_default(ctx, f, field_proto);
+}
+
+void _upb_FieldDefs_Resolve(upb_DefBuilder* ctx, const upb_MessageDef* m,
+                            upb_FieldDef* ff, int n) {
+  const char* prefix = upb_MessageDef_FullName(m);
+  for (int i = 0; i < n; i++) {
+    upb_FieldDef* f = &ff[i];
+    _upb_FieldDef_Resolve(ctx, prefix, f);
   }
 }

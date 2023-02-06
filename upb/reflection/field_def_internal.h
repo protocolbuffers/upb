@@ -45,8 +45,12 @@ bool _upb_FieldDef_IsClosedEnum(const upb_FieldDef* f);
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef* f);
 int _upb_FieldDef_LayoutIndex(const upb_FieldDef* f);
 uint64_t _upb_FieldDef_Modifiers(const upb_FieldDef* f);
-void _upb_FieldDef_Resolve(upb_DefBuilder* ctx, const char* prefix,
-                           upb_FieldDef* f);
+
+// Returns true if m is in a message set.
+bool _upb_Extensions_Resolve(upb_DefBuilder* ctx, const upb_MessageDef* m,
+                             upb_FieldDef* ff, int n);
+void _upb_FieldDefs_Resolve(upb_DefBuilder* ctx, const upb_MessageDef* m,
+                            upb_FieldDef* ff, int n);
 
 // Allocate and initialize an array of |n| extensions (field defs).
 upb_FieldDef* _upb_Extensions_New(

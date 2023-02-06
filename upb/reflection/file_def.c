@@ -337,21 +337,14 @@ void _upb_FileDef_Create(upb_DefBuilder* ctx,
 
   // Now that all names are in the table, build layouts and resolve refs.
 
-  for (int i = 0; i < file->top_lvl_msg_count; i++) {
-    upb_MessageDef* m = (upb_MessageDef*)upb_FileDef_TopLevelMessage(file, i);
-    _upb_MessageDef_Resolve(ctx, m);
-  }
-
-  for (int i = 0; i < file->top_lvl_ext_count; i++) {
-    upb_FieldDef* f = (upb_FieldDef*)upb_FileDef_TopLevelExtension(file, i);
-    _upb_FieldDef_Resolve(ctx, file->package, f);
-  }
+  _upb_MessageDefs_Resolve(ctx, (upb_MessageDef*)file->top_lvl_msgs,
+                           file->top_lvl_msg_count);
+  _upb_Extensions_Resolve(ctx, NULL, (upb_FieldDef*)file->top_lvl_exts,
+                          file->top_lvl_ext_count);
 
   if (!ctx->layout) {
-    for (int i = 0; i < file->top_lvl_msg_count; i++) {
-      upb_MessageDef* m = (upb_MessageDef*)upb_FileDef_TopLevelMessage(file, i);
-      _upb_MessageDef_LinkMiniTable(ctx, m);
-    }
+    _upb_MessageDefs_LinkMiniTable(ctx, file->top_lvl_msgs,
+                                   file->top_lvl_msg_count);
   }
 
   if (file->ext_count) {

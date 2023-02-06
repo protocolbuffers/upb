@@ -362,11 +362,8 @@ static upb_MiniTable* _upb_MessageDef_MakeMiniTable(upb_DefBuilder* ctx,
   return ret;
 }
 
-void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m) {
-  for (int i = 0; i < m->field_count; i++) {
-    upb_FieldDef* f = (upb_FieldDef*)upb_MessageDef_Field(m, i);
-    _upb_FieldDef_Resolve(ctx, m->full_name, f);
-  }
+static void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m) {
+  _upb_FieldDefs_Resolve(ctx, m, (upb_FieldDef*)m->fields, m->field_count);
 
   if (!ctx->layout) {
     m->layout = _upb_MessageDef_MakeMiniTable(ctx, m);
@@ -384,22 +381,16 @@ void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m) {
   }
 #endif
 
-  m->in_message_set = false;
-  for (int i = 0; i < upb_MessageDef_NestedExtensionCount(m); i++) {
-    upb_FieldDef* ext = (upb_FieldDef*)upb_MessageDef_NestedExtension(m, i);
-    _upb_FieldDef_Resolve(ctx, m->full_name, ext);
-    if (upb_FieldDef_Type(ext) == kUpb_FieldType_Message &&
-        upb_FieldDef_Label(ext) == kUpb_Label_Optional &&
-        upb_FieldDef_MessageSubDef(ext) == m &&
-        UPB_DESC(MessageOptions_message_set_wire_format)(
-            upb_MessageDef_Options(upb_FieldDef_ContainingType(ext)))) {
-      m->in_message_set = true;
-    }
-  }
+  m->in_message_set = _upb_Extensions_Resolve(
+      ctx, m, (upb_FieldDef*)m->nested_exts, m->nested_ext_count);
 
-  for (int i = 0; i < upb_MessageDef_NestedMessageCount(m); i++) {
-    upb_MessageDef* n = (upb_MessageDef*)upb_MessageDef_NestedMessage(m, i);
-    _upb_MessageDef_Resolve(ctx, n);
+  _upb_MessageDefs_Resolve(ctx, (upb_MessageDef*)m->nested_msgs,
+                           m->nested_msg_count);
+}
+
+void _upb_MessageDefs_Resolve(upb_DefBuilder* ctx, upb_MessageDef* mm, int n) {
+  for (int i = 0; i < n; i++) {
+    _upb_MessageDef_Resolve(ctx, &mm[i]);
   }
 }
 
@@ -446,8 +437,8 @@ void _upb_MessageDef_InsertField(upb_DefBuilder* ctx, upb_MessageDef* m,
   if (!ok) _upb_DefBuilder_OomErr(ctx);
 }
 
-void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
-                                   const upb_MessageDef* m) {
+static void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
+                                          const upb_MessageDef* m) {
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = upb_MessageDef_Field(m, i);
     const upb_MessageDef* sub_m = upb_FieldDef_MessageSubDef(f);
@@ -475,8 +466,13 @@ void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
     }
   }
 
-  for (int i = 0; i < m->nested_msg_count; i++) {
-    _upb_MessageDef_LinkMiniTable(ctx, upb_MessageDef_NestedMessage(m, i));
+  _upb_MessageDefs_LinkMiniTable(ctx, m->nested_msgs, m->nested_msg_count);
+}
+
+void _upb_MessageDefs_LinkMiniTable(upb_DefBuilder* ctx,
+                                    const upb_MessageDef* mm, int n) {
+  for (int i = 0; i < n; i++) {
+    _upb_MessageDef_LinkMiniTable(ctx, &mm[i]);
   }
 }
 
