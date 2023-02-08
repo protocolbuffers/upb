@@ -79,10 +79,11 @@ struct upb_FieldDef {
   uint16_t index_;
   uint16_t layout_index;  // Index into msgdef->layout->fields or file->exts
   bool has_default;
-  bool is_extension_;
-  bool is_packed_;
-  bool proto3_optional_;
-  bool has_json_name_;
+  bool has_json_name;
+  bool has_presence;
+  bool is_extension;
+  bool is_packed;
+  bool is_proto3_optional;
   upb_FieldType type_;
   upb_Label label_;
 #if UINTPTR_MAX == 0xffffffff
@@ -149,11 +150,9 @@ upb_Label upb_FieldDef_Label(const upb_FieldDef* f) { return f->label_; }
 
 uint32_t upb_FieldDef_Number(const upb_FieldDef* f) { return f->number_; }
 
-bool upb_FieldDef_IsExtension(const upb_FieldDef* f) {
-  return f->is_extension_;
-}
+bool upb_FieldDef_IsExtension(const upb_FieldDef* f) { return f->is_extension; }
 
-bool upb_FieldDef_IsPacked(const upb_FieldDef* f) { return f->is_packed_; }
+bool upb_FieldDef_IsPacked(const upb_FieldDef* f) { return f->is_packed; }
 
 const char* upb_FieldDef_Name(const upb_FieldDef* f) {
   return _upb_DefBuilder_FullToShort(f->full_name);
@@ -164,7 +163,7 @@ const char* upb_FieldDef_JsonName(const upb_FieldDef* f) {
 }
 
 bool upb_FieldDef_HasJsonName(const upb_FieldDef* f) {
-  return f->has_json_name_;
+  return f->has_json_name;
 }
 
 const upb_FileDef* upb_FieldDef_File(const upb_FieldDef* f) { return f->file; }
@@ -174,11 +173,11 @@ const upb_MessageDef* upb_FieldDef_ContainingType(const upb_FieldDef* f) {
 }
 
 const upb_MessageDef* upb_FieldDef_ExtensionScope(const upb_FieldDef* f) {
-  return f->is_extension_ ? f->scope.extension_scope : NULL;
+  return f->is_extension ? f->scope.extension_scope : NULL;
 }
 
 const upb_OneofDef* upb_FieldDef_ContainingOneof(const upb_FieldDef* f) {
-  return f->is_extension_ ? NULL : f->scope.oneof;
+  return f->is_extension ? NULL : f->scope.oneof;
 }
 
 const upb_OneofDef* upb_FieldDef_RealContainingOneof(const upb_FieldDef* f) {
@@ -255,22 +254,18 @@ const upb_MiniTableExtension* _upb_FieldDef_ExtensionMiniTable(
 }
 
 bool _upb_FieldDef_IsClosedEnum(const upb_FieldDef* f) {
-  if (UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3) return false;
   if (f->type_ != kUpb_FieldType_Enum) return false;
-
-  // TODO: Maybe make is_proto2 a bool at creation?
-  const upb_FileDef* file = upb_EnumDef_File(f->sub.enumdef);
-  return upb_FileDef_Syntax(file) == kUpb_Syntax_Proto2;
+  return upb_EnumDef_IsClosed(f->sub.enumdef);
 }
 
 bool _upb_FieldDef_IsProto3Optional(const upb_FieldDef* f) {
-  return f->proto3_optional_;
+  return f->is_proto3_optional;
 }
 
 int _upb_FieldDef_LayoutIndex(const upb_FieldDef* f) { return f->layout_index; }
 
 uint64_t _upb_FieldDef_Modifiers(const upb_FieldDef* f) {
-  uint64_t out = f->is_packed_ ? kUpb_FieldModifier_IsPacked : 0;
+  uint64_t out = f->is_packed ? kUpb_FieldModifier_IsPacked : 0;
 
   switch (f->label_) {
     case kUpb_Label_Optional:
@@ -293,13 +288,7 @@ uint64_t _upb_FieldDef_Modifiers(const upb_FieldDef* f) {
 }
 
 bool upb_FieldDef_HasDefault(const upb_FieldDef* f) { return f->has_default; }
-
-bool upb_FieldDef_HasPresence(const upb_FieldDef* f) {
-  if (upb_FieldDef_IsRepeated(f)) return false;
-  const upb_FileDef* file = upb_FieldDef_File(f);
-  return upb_FieldDef_IsSubMessage(f) || upb_FieldDef_ContainingOneof(f) ||
-         upb_FileDef_Syntax(file) == kUpb_Syntax_Proto2;
-}
+bool upb_FieldDef_HasPresence(const upb_FieldDef* f) { return f->has_presence; }
 
 bool upb_FieldDef_HasSubDef(const upb_FieldDef* f) {
   return upb_FieldDef_IsSubMessage(f) ||
@@ -560,10 +549,17 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
   }
 
   const upb_StringView name = UPB_DESC(FieldDescriptorProto_name)(field_proto);
-  _upb_DefBuilder_CheckIdentNotFull(ctx, name);
 
-  f->has_json_name_ = UPB_DESC(FieldDescriptorProto_has_json_name)(field_proto);
-  if (f->has_json_name_) {
+  f->full_name = _upb_DefBuilder_MakeFullName(ctx, prefix, name);
+  f->label_ = (int)UPB_DESC(FieldDescriptorProto_label)(field_proto);
+  f->number_ = UPB_DESC(FieldDescriptorProto_number)(field_proto);
+  f->is_proto3_optional =
+      UPB_DESC(FieldDescriptorProto_proto3_optional)(field_proto);
+  f->msgdef = m;
+  f->scope.oneof = NULL;
+
+  f->has_json_name = UPB_DESC(FieldDescriptorProto_has_json_name)(field_proto);
+  if (f->has_json_name) {
     const upb_StringView sv =
         UPB_DESC(FieldDescriptorProto_json_name)(field_proto);
     f->json_name = upb_strdup2(sv.data, sv.size, ctx->arena);
@@ -571,14 +567,6 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
     f->json_name = make_json_name(name.data, name.size, ctx->arena);
   }
   if (!f->json_name) _upb_DefBuilder_OomErr(ctx);
-
-  f->full_name = _upb_DefBuilder_MakeFullName(ctx, prefix, name);
-  f->label_ = (int)UPB_DESC(FieldDescriptorProto_label)(field_proto);
-  f->number_ = UPB_DESC(FieldDescriptorProto_number)(field_proto);
-  f->proto3_optional_ =
-      UPB_DESC(FieldDescriptorProto_proto3_optional)(field_proto);
-  f->msgdef = m;
-  f->scope.oneof = NULL;
 
   const bool has_type = UPB_DESC(FieldDescriptorProto_has_type)(field_proto);
   const bool has_type_name =
@@ -657,21 +645,26 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
   UPB_DEF_SET_OPTIONS(f->opts, FieldDescriptorProto, FieldOptions, field_proto);
 
   if (UPB_DESC(FieldOptions_has_packed)(f->opts)) {
-    f->is_packed_ = UPB_DESC(FieldOptions_packed)(f->opts);
+    f->is_packed = UPB_DESC(FieldOptions_packed)(f->opts);
   } else {
     // Repeated fields default to packed for proto3 only.
-    f->is_packed_ = upb_FieldDef_IsPrimitive(f) &&
-                    f->label_ == kUpb_Label_Repeated &&
-                    upb_FileDef_Syntax(f->file) == kUpb_Syntax_Proto3;
+    f->is_packed = upb_FieldDef_IsPrimitive(f) &&
+                   f->label_ == kUpb_Label_Repeated &&
+                   upb_FileDef_Syntax(f->file) == kUpb_Syntax_Proto3;
   }
+
+  f->has_presence =
+      (!upb_FieldDef_IsRepeated(f)) &&
+      (upb_FieldDef_IsSubMessage(f) || upb_FieldDef_ContainingOneof(f) ||
+       (upb_FileDef_Syntax(f->file) == kUpb_Syntax_Proto2));
 }
 
 static void _upb_FieldDef_CreateExt(upb_DefBuilder* ctx, const char* prefix,
                                     const UPB_DESC(FieldDescriptorProto) *
                                         field_proto,
                                     upb_MessageDef* m, upb_FieldDef* f) {
+  f->is_extension = true;
   _upb_FieldDef_Create(ctx, prefix, field_proto, m, f);
-  f->is_extension_ = true;
 
   if (UPB_DESC(FieldDescriptorProto_has_oneof_index)(field_proto)) {
     _upb_DefBuilder_Errf(ctx, "oneof_index provided for extension field (%s)",
@@ -691,11 +684,11 @@ static void _upb_FieldDef_CreateNotExt(upb_DefBuilder* ctx, const char* prefix,
                                        const UPB_DESC(FieldDescriptorProto) *
                                            field_proto,
                                        upb_MessageDef* m, upb_FieldDef* f) {
+  f->is_extension = false;
   _upb_FieldDef_Create(ctx, prefix, field_proto, m, f);
-  f->is_extension_ = false;
 
   if (!UPB_DESC(FieldDescriptorProto_has_oneof_index)(field_proto)) {
-    if (f->proto3_optional_) {
+    if (f->is_proto3_optional) {
       _upb_DefBuilder_Errf(
           ctx,
           "non-extension field (%s) with proto3_optional was not in a oneof",
@@ -704,19 +697,24 @@ static void _upb_FieldDef_CreateNotExt(upb_DefBuilder* ctx, const char* prefix,
   }
 
   _upb_MessageDef_InsertField(ctx, m, f);
+}
 
-  if (!ctx->layout) return;
+upb_FieldDef* _upb_Extensions_New(
+    upb_DefBuilder* ctx, int n,
+    const UPB_DESC(FieldDescriptorProto) * const* protos, const char* prefix,
+    upb_MessageDef* m) {
+  _upb_DefType_CheckPadding(sizeof(upb_FieldDef));
+  upb_FieldDef* defs =
+      (upb_FieldDef*)_upb_DefBuilder_Alloc(ctx, sizeof(upb_FieldDef) * n);
 
-  const upb_MiniTable* mt = upb_MessageDef_MiniTable(m);
-  const upb_MiniTableField* fields = mt->fields;
-  for (int i = 0; i < mt->field_count; i++) {
-    if (fields[i].number == f->number_) {
-      f->layout_index = i;
-      return;
-    }
+  for (int i = 0; i < n; i++) {
+    upb_FieldDef* f = &defs[i];
+
+    _upb_FieldDef_CreateExt(ctx, prefix, protos[i], m, f);
+    f->index_ = i;
   }
 
-  UPB_ASSERT(false);  // It should be impossible to reach this point.
+  return defs;
 }
 
 upb_FieldDef* _upb_FieldDefs_New(
@@ -727,28 +725,23 @@ upb_FieldDef* _upb_FieldDefs_New(
   upb_FieldDef* defs =
       (upb_FieldDef*)_upb_DefBuilder_Alloc(ctx, sizeof(upb_FieldDef) * n);
 
-  // If we are creating extensions then is_sorted will be NULL.
-  // If we are not creating extensions then is_sorted will be non-NULL.
-  if (is_sorted) {
-    uint32_t previous = 0;
-    for (int i = 0; i < n; i++) {
-      upb_FieldDef* f = &defs[i];
+  uint32_t previous = 0;
+  for (int i = 0; i < n; i++) {
+    upb_FieldDef* f = &defs[i];
 
-      _upb_FieldDef_CreateNotExt(ctx, prefix, protos[i], m, f);
-      f->index_ = i;
-      if (!ctx->layout) f->layout_index = i;
-
-      const uint32_t current = f->number_;
-      if (previous > current) *is_sorted = false;
-      previous = current;
+    _upb_FieldDef_CreateNotExt(ctx, prefix, protos[i], m, f);
+    f->index_ = i;
+    if (!ctx->layout) {
+      // Speculate that the def fields are sorted.  We will always sort the
+      // MiniTable fields, so if defs are sorted then indices will match.
+      //
+      // If this is incorrect, we will overwrite later.
+      f->layout_index = i;
     }
-  } else {
-    for (int i = 0; i < n; i++) {
-      upb_FieldDef* f = &defs[i];
 
-      _upb_FieldDef_CreateExt(ctx, prefix, protos[i], m, f);
-      f->index_ = i;
-    }
+    const uint32_t current = f->number_;
+    if (previous > current) *is_sorted = false;
+    previous = current;
   }
 
   return defs;
@@ -804,9 +797,12 @@ static int _upb_FieldDef_Compare(const void* p1, const void* p2) {
   return (v1 < v2) ? -1 : (v1 > v2);
 }
 
+// _upb_FieldDefs_Sorted() is mostly a pure function of its inputs, but has one
+// critical side effect that we depend on: it sets layout_index appropriately
+// for non-sorted lists of fields.
 const upb_FieldDef** _upb_FieldDefs_Sorted(const upb_FieldDef* f, int n,
                                            upb_Arena* a) {
-  // TODO: Try to replace this arena alloc with a persistent scratch buffer.
+  // TODO(salo): Replace this arena alloc with a persistent scratch buffer.
   upb_FieldDef** out = (upb_FieldDef**)upb_Arena_Malloc(a, n * sizeof(void*));
   if (!out) return NULL;
 
@@ -823,7 +819,7 @@ const upb_FieldDef** _upb_FieldDefs_Sorted(const upb_FieldDef* f, int n,
 
 bool upb_FieldDef_MiniDescriptorEncode(const upb_FieldDef* f, upb_Arena* a,
                                        upb_StringView* out) {
-  UPB_ASSERT(f->is_extension_);
+  UPB_ASSERT(f->is_extension);
 
   upb_DescState s;
   _upb_DescState_Init(&s);
@@ -861,7 +857,10 @@ static void resolve_extension(upb_DefBuilder* ctx, const char* prefix,
         "field number %u in extension %s has no extension range in message %s",
         (unsigned)f->number_, f->full_name, upb_MessageDef_FullName(m));
   }
+}
 
+void _upb_FieldDef_BuildMiniTableExtension(upb_DefBuilder* ctx,
+                                           const upb_FieldDef* f) {
   const upb_MiniTableExtension* ext = _upb_FieldDef_ExtensionMiniTable(f);
 
   if (ctx->layout) {
@@ -880,8 +879,8 @@ static void resolve_extension(upb_DefBuilder* ctx, const char* prefix,
       sub.subenum = _upb_EnumDef_MiniTable(f->sub.enumdef);
     }
     bool ok2 = upb_MiniTableExtension_Build(desc.data, desc.size, mut_ext,
-                                            upb_MessageDef_MiniTable(m), sub,
-                                            ctx->status);
+                                            upb_MessageDef_MiniTable(f->msgdef),
+                                            sub, ctx->status);
     if (!ok2) _upb_DefBuilder_Errf(ctx, "Could not build extension mini table");
   }
 
@@ -926,7 +925,7 @@ void _upb_FieldDef_Resolve(upb_DefBuilder* ctx, const char* prefix,
   resolve_subdef(ctx, prefix, f);
   resolve_default(ctx, f, field_proto);
 
-  if (f->is_extension_) {
+  if (f->is_extension) {
     resolve_extension(ctx, prefix, f, field_proto);
   }
 }

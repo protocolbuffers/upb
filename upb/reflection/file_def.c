@@ -40,6 +40,7 @@ struct upb_FileDef {
   const UPB_DESC(FileOptions) * opts;
   const char* name;
   const char* package;
+  const char* edition;
 
   const upb_FileDef** deps;
   const int32_t* public_deps;
@@ -74,6 +75,10 @@ const char* upb_FileDef_Name(const upb_FileDef* f) { return f->name; }
 
 const char* upb_FileDef_Package(const upb_FileDef* f) {
   return f->package ? f->package : "";
+}
+
+const char* upb_FileDef_Edition(const upb_FileDef* f) {
+  return f->edition ? f->edition : "";
 }
 
 const char* _upb_FileDef_RawPackage(const upb_FileDef* f) { return f->package; }
@@ -223,18 +228,31 @@ void _upb_FileDef_Create(upb_DefBuilder* ctx,
     }
   }
 
-  if (!UPB_DESC(FileDescriptorProto_has_name)(file_proto)) {
-    _upb_DefBuilder_Errf(ctx, "File has no name");
+  upb_StringView name = UPB_DESC(FileDescriptorProto_name)(file_proto);
+  file->name = strviewdup(ctx, name);
+  if (strlen(file->name) != name.size) {
+    _upb_DefBuilder_Errf(ctx, "File name contained embedded NULL");
   }
 
-  file->name = strviewdup(ctx, UPB_DESC(FileDescriptorProto_name)(file_proto));
-
   upb_StringView package = UPB_DESC(FileDescriptorProto_package)(file_proto);
+
   if (package.size) {
     _upb_DefBuilder_CheckIdentFull(ctx, package);
     file->package = strviewdup(ctx, package);
   } else {
     file->package = NULL;
+  }
+
+  upb_StringView edition = UPB_DESC(FileDescriptorProto_edition)(file_proto);
+
+  if (edition.size == 0) {
+    file->edition = NULL;
+  } else {
+    // TODO(b/267770604): How should we validate this?
+    file->edition = strviewdup(ctx, edition);
+    if (strlen(file->edition) != edition.size) {
+      _upb_DefBuilder_Errf(ctx, "Edition name contained embedded NULL");
+    }
   }
 
   if (UPB_DESC(FileDescriptorProto_has_syntax)(file_proto)) {
@@ -305,8 +323,7 @@ void _upb_FileDef_Create(upb_DefBuilder* ctx,
   // Create extensions.
   exts = UPB_DESC(FileDescriptorProto_extension)(file_proto, &n);
   file->top_lvl_ext_count = n;
-  file->top_lvl_exts =
-      _upb_FieldDefs_New(ctx, n, exts, file->package, NULL, NULL);
+  file->top_lvl_exts = _upb_Extensions_New(ctx, n, exts, file->package, NULL);
 
   // Create messages.
   msgs = UPB_DESC(FileDescriptorProto_message_type)(file_proto, &n);
@@ -330,11 +347,19 @@ void _upb_FileDef_Create(upb_DefBuilder* ctx,
     _upb_FieldDef_Resolve(ctx, file->package, f);
   }
 
-  if (!ctx->layout) {
-    for (int i = 0; i < file->top_lvl_msg_count; i++) {
-      upb_MessageDef* m = (upb_MessageDef*)upb_FileDef_TopLevelMessage(file, i);
-      _upb_MessageDef_LinkMiniTable(ctx, m);
-    }
+  for (int i = 0; i < file->top_lvl_msg_count; i++) {
+    upb_MessageDef* m = (upb_MessageDef*)upb_FileDef_TopLevelMessage(file, i);
+    _upb_MessageDef_CreateMiniTable(ctx, (upb_MessageDef*)m);
+  }
+
+  for (int i = 0; i < file->top_lvl_ext_count; i++) {
+    upb_FieldDef* f = (upb_FieldDef*)upb_FileDef_TopLevelExtension(file, i);
+    _upb_FieldDef_BuildMiniTableExtension(ctx, f);
+  }
+
+  for (int i = 0; i < file->top_lvl_msg_count; i++) {
+    upb_MessageDef* m = (upb_MessageDef*)upb_FileDef_TopLevelMessage(file, i);
+    _upb_MessageDef_LinkMiniTable(ctx, m);
   }
 
   if (file->ext_count) {

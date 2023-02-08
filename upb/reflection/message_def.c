@@ -349,6 +349,8 @@ bool upb_MessageDef_IsMessageSet(const upb_MessageDef* m) {
 static upb_MiniTable* _upb_MessageDef_MakeMiniTable(upb_DefBuilder* ctx,
                                                     const upb_MessageDef* m) {
   upb_StringView desc;
+  // Note: this will assign layout_index for fields, so upb_FieldDef_MiniTable()
+  // is safe to call only after this call.
   bool ok = upb_MessageDef_MiniDescriptorEncode(m, ctx->tmp_arena, &desc);
   if (!ok) _upb_DefBuilder_OomErr(ctx);
 
@@ -367,23 +369,6 @@ void _upb_MessageDef_Resolve(upb_DefBuilder* ctx, upb_MessageDef* m) {
     upb_FieldDef* f = (upb_FieldDef*)upb_MessageDef_Field(m, i);
     _upb_FieldDef_Resolve(ctx, m->full_name, f);
   }
-
-  if (!ctx->layout) {
-    m->layout = _upb_MessageDef_MakeMiniTable(ctx, m);
-    if (!m->layout) _upb_DefBuilder_OomErr(ctx);
-  }
-
-#ifndef NDEBUG
-  for (int i = 0; i < m->field_count; i++) {
-    const upb_FieldDef* f = upb_MessageDef_Field(m, i);
-    const int layout_index = _upb_FieldDef_LayoutIndex(f);
-    UPB_ASSERT(layout_index < m->layout->field_count);
-    const upb_MiniTableField* mt_f = &m->layout->fields[layout_index];
-    UPB_ASSERT(upb_FieldDef_Type(f) == upb_MiniTableField_Type(mt_f));
-    UPB_ASSERT(upb_FieldDef_HasPresence(f) ==
-               upb_MiniTableField_HasPresence(mt_f));
-  }
-#endif
 
   m->in_message_set = false;
   for (int i = 0; i < upb_MessageDef_NestedExtensionCount(m); i++) {
@@ -447,8 +432,39 @@ void _upb_MessageDef_InsertField(upb_DefBuilder* ctx, upb_MessageDef* m,
   if (!ok) _upb_DefBuilder_OomErr(ctx);
 }
 
+void _upb_MessageDef_CreateMiniTable(upb_DefBuilder* ctx, upb_MessageDef* m) {
+  if (ctx->layout == NULL) {
+    m->layout = _upb_MessageDef_MakeMiniTable(ctx, m);
+  } else {
+    UPB_ASSERT(ctx->msg_count < ctx->layout->msg_count);
+    m->layout = ctx->layout->msgs[ctx->msg_count++];
+    UPB_ASSERT(m->field_count == m->layout->field_count);
+
+    // We don't need the result of this call, but it will assign layout_index
+    // for all the fields in O(n lg n) time.
+    _upb_FieldDefs_Sorted(m->fields, m->field_count, ctx->tmp_arena);
+  }
+
+  for (int i = 0; i < m->nested_msg_count; i++) {
+    upb_MessageDef* nested =
+        (upb_MessageDef*)upb_MessageDef_NestedMessage(m, i);
+    _upb_MessageDef_CreateMiniTable(ctx, nested);
+  }
+}
+
 void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
                                    const upb_MessageDef* m) {
+  for (int i = 0; i < upb_MessageDef_NestedExtensionCount(m); i++) {
+    const upb_FieldDef* ext = upb_MessageDef_NestedExtension(m, i);
+    _upb_FieldDef_BuildMiniTableExtension(ctx, ext);
+  }
+
+  for (int i = 0; i < m->nested_msg_count; i++) {
+    _upb_MessageDef_LinkMiniTable(ctx, upb_MessageDef_NestedMessage(m, i));
+  }
+
+  if (ctx->layout) return;
+
   for (int i = 0; i < m->field_count; i++) {
     const upb_FieldDef* f = upb_MessageDef_Field(m, i);
     const upb_MessageDef* sub_m = upb_FieldDef_MessageSubDef(f);
@@ -476,9 +492,17 @@ void _upb_MessageDef_LinkMiniTable(upb_DefBuilder* ctx,
     }
   }
 
-  for (int i = 0; i < m->nested_msg_count; i++) {
-    _upb_MessageDef_LinkMiniTable(ctx, upb_MessageDef_NestedMessage(m, i));
+#ifndef NDEBUG
+  for (int i = 0; i < m->field_count; i++) {
+    const upb_FieldDef* f = upb_MessageDef_Field(m, i);
+    const int layout_index = _upb_FieldDef_LayoutIndex(f);
+    UPB_ASSERT(layout_index < m->layout->field_count);
+    const upb_MiniTableField* mt_f = &m->layout->fields[layout_index];
+    UPB_ASSERT(upb_FieldDef_Type(f) == upb_MiniTableField_Type(mt_f));
+    UPB_ASSERT(upb_FieldDef_HasPresence(f) ==
+               upb_MiniTableField_HasPresence(mt_f));
   }
+#endif
 }
 
 static uint64_t _upb_MessageDef_Modifiers(const upb_MessageDef* m) {
@@ -611,7 +635,6 @@ static void create_msgdef(upb_DefBuilder* ctx, const char* prefix,
   m->is_sorted = true;
 
   name = UPB_DESC(DescriptorProto_name)(msg_proto);
-  _upb_DefBuilder_CheckIdentNotFull(ctx, name);
 
   m->full_name = _upb_DefBuilder_MakeFullName(ctx, prefix, name);
   _upb_DefBuilder_Add(ctx, m->full_name, _upb_DefType_Pack(m, UPB_DEFTYPE_MSG));
@@ -629,17 +652,6 @@ static void create_msgdef(upb_DefBuilder* ctx, const char* prefix,
 
   ok = upb_strtable_init(&m->ntof, n_oneof + n_field, ctx->arena);
   if (!ok) _upb_DefBuilder_OomErr(ctx);
-
-  if (ctx->layout) {
-    /* create_fielddef() below depends on this being set. */
-    UPB_ASSERT(ctx->msg_count < ctx->layout->msg_count);
-    m->layout = ctx->layout->msgs[ctx->msg_count++];
-    UPB_ASSERT(n_field == m->layout->field_count);
-  } else {
-    /* Allocate now (to allow cross-linking), populate later. */
-    m->layout = _upb_DefBuilder_Alloc(
-        ctx, sizeof(*m->layout) + sizeof(_upb_FastTable_Entry));
-  }
 
   UPB_DEF_SET_OPTIONS(m->opts, DescriptorProto, MessageOptions, msg_proto);
 
@@ -681,7 +693,7 @@ static void create_msgdef(upb_DefBuilder* ctx, const char* prefix,
   const UPB_DESC(FieldDescriptorProto)* const* exts =
       UPB_DESC(DescriptorProto_extension)(msg_proto, &n_ext);
   m->nested_ext_count = n_ext;
-  m->nested_exts = _upb_FieldDefs_New(ctx, n_ext, exts, m->full_name, m, NULL);
+  m->nested_exts = _upb_Extensions_New(ctx, n_ext, exts, m->full_name, m);
 
   const UPB_DESC(DescriptorProto)* const* msgs =
       UPB_DESC(DescriptorProto_nested_type)(msg_proto, &n_msg);
