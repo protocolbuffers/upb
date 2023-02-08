@@ -86,7 +86,7 @@ err:
 }
 
 bool _upb_DefPool_InsertExt(upb_DefPool* s, const upb_MiniTableExtension* ext,
-                            upb_FieldDef* f) {
+                            const upb_FieldDef* f) {
   return upb_inttable_insert(&s->exts, (uintptr_t)ext, upb_value_constptr(f),
                              s->arena);
 }
@@ -317,12 +317,6 @@ static const upb_FileDef* _upb_DefPool_AddFile(
     upb_DefPool* s, const UPB_DESC(FileDescriptorProto) * file_proto,
     const upb_MiniTableFile* layout, upb_Status* status) {
   const upb_StringView name = UPB_DESC(FileDescriptorProto_name)(file_proto);
-
-  if (name.size == 0) {
-    upb_Status_SetErrorFormat(status,
-                              "missing name in google_protobuf_FileDescriptorProto");
-    return NULL;
-  }
 
   // Determine whether we already know about this file.
   {
