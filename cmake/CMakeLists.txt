@@ -209,6 +209,7 @@ target_link_libraries(collections_internal
   base
   hash
   mem
+  message_internal
   mini_table_internal
   port)
 add_library(textformat
