@@ -31,9 +31,11 @@
 
 #include "upb/collections/array_internal.h"
 #include "upb/collections/map_internal.h"
+#include "upb/mini_table/common.h"
 #include "upb/mini_table/enum_internal.h"
 #include "upb/wire/common_internal.h"
 #include "upb/wire/decode_internal.h"
+#include "upb/wire/encode.h"
 #include "upb/wire/eps_copy_input_stream.h"
 #include "upb/wire/reader.h"
 #include "upb/wire/swap_internal.h"
@@ -580,33 +582,48 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
   upb_Map** map_p = UPB_PTR_AT(msg, field->offset, upb_Map*);
   upb_Map* map = *map_p;
   upb_MapEntry ent;
+  UPB_ASSERT(upb_MiniTableField_Type(field) == kUpb_FieldType_Message);
   const upb_MiniTable* entry = subs[field->submsg_index].submsg;
+
+  UPB_ASSERT(entry->field_count == 2);
+  UPB_ASSERT(!upb_IsRepeatedOrMap(&entry->fields[0]));
+  UPB_ASSERT(!upb_IsRepeatedOrMap(&entry->fields[1]));
 
   if (!map) {
     map = _upb_Decoder_CreateMap(d, entry);
     *map_p = map;
   }
 
-  /* Parse map entry. */
+  // Parse map entry.
   memset(&ent, 0, sizeof(ent));
 
   if (entry->fields[1].descriptortype == kUpb_FieldType_Message ||
       entry->fields[1].descriptortype == kUpb_FieldType_Group) {
-    /* Create proactively to handle the case where it doesn't appear. */
-    ent.data.v.val =
-        upb_value_ptr(_upb_Message_New(entry->subs[0].submsg, &d->arena));
+    const upb_MiniTable* submsg_table = entry->subs[0].submsg;
+    // Any sub-message entry must be linked.  We do not allow dynamic tree
+    // shaking in this case.
+    UPB_ASSERT(submsg_table);
+
+    // Create proactively to handle the case where it doesn't appear. */
+    ent.data.v.val = upb_value_ptr(_upb_Message_New(submsg_table, &d->arena));
   }
 
-  const char* start = ptr;
   ptr =
       _upb_Decoder_DecodeSubMessage(d, ptr, &ent.data, subs, field, val->size);
   // check if ent had any unknown fields
   size_t size;
   upb_Message_GetUnknown(&ent.data, &size);
   if (size != 0) {
+    char* buf;
+    size_t size;
     uint32_t tag = ((uint32_t)field->number << 3) | kUpb_WireType_Delimited;
-    _upb_Decoder_AddUnknownVarints(d, msg, tag, (uint32_t)(ptr - start));
-    if (!_upb_Message_AddUnknown(msg, start, ptr - start, &d->arena)) {
+    upb_EncodeStatus status =
+        upb_Encode(&ent.data, entry, 0, &d->arena, &buf, &size);
+    if (status != kUpb_EncodeStatus_Ok) {
+      _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
+    }
+    _upb_Decoder_AddUnknownVarints(d, msg, tag, size);
+    if (!_upb_Message_AddUnknown(msg, buf, size, &d->arena)) {
       _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
     }
   } else {
