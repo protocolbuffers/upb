@@ -34,6 +34,7 @@ _DEFAULT_CPPOPTS.extend([
     # "-Wshorten-64-to-32",  # not in GCC (and my Kokoro images doesn't have Clang)
     "-Werror",
     "-Wno-unused-parameter",
+    "-Wno-ambiguous-reversed-operator",
     "-Wno-long-long",
 ])
 _DEFAULT_COPTS.extend([
