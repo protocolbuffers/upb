@@ -35,6 +35,7 @@ _DEFAULT_CPPOPTS.extend([
     "-Werror",
     "-Wno-unused-parameter",
     "-Wno-ambiguous-reversed-operator",
+    "-Wno-deprecated-enum-enum-conversion",
     "-Wno-long-long",
 ])
 _DEFAULT_COPTS.extend([
