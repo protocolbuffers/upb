@@ -513,7 +513,7 @@ static const struct luaL_Reg lupb_MessageDef_m[] = {
     {"name", lupb_MessageDef_Name},
     {"oneof_count", lupb_MessageDef_OneofCount},
     {"oneofs", lupb_MessageDef_Oneofs},
-    {"syntax", lupb_MessageDef_Syntax},
+    {"deprecated_syntax", lupb_MessageDef_Syntax},
     {"_map_entry", lupb_MessageDef_IsMapEntry},
     {NULL, NULL}};
 
@@ -692,7 +692,7 @@ static const struct luaL_Reg lupb_FileDef_m[] = {
     {"name", lupb_FileDef_Name},
     {"package", lupb_FileDef_Package},
     {"defpool", lupb_FileDef_Pool},
-    {"syntax", lupb_FileDef_Syntax},
+    {"deprecated_syntax", lupb_FileDef_Syntax},
     {NULL, NULL}};
 
 /* lupb_DefPool
