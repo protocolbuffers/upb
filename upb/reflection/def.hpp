@@ -318,8 +318,14 @@ class MessageDefPtr {
     FieldDefPtr operator*() {
       return FieldDefPtr(upb_MessageDef_Field(m_, i_));
     }
-    bool operator!=(const FieldIter& other) { return i_ != other.i_; }
-    bool operator==(const FieldIter& other) { return i_ == other.i_; }
+
+    friend bool operator==(const FieldIter& lhs, const FieldIter& rhs) {
+      return lhs.i_ == rhs.i_;
+    }
+    
+    friend bool operator!=(const FieldIter& lhs, const FieldIter& rhs) {
+      return !(lhs == rhs);
+    }
 
    private:
     const upb_MessageDef* m_;
