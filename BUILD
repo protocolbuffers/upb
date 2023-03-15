@@ -170,7 +170,10 @@ cc_library(
     ],
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//:__subpackages__"],
-    deps = [":port"],
+    deps = [
+        ":mem",
+        ":port",
+    ],
 )
 
 cc_library(

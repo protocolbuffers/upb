@@ -30,6 +30,8 @@
 
 #include <string.h>
 
+#include "upb/mem/arena.h"
+
 // Must be last.
 #include "upb/port/def.inc"
 
@@ -64,6 +66,15 @@ UPB_INLINE upb_StringView upb_StringView_FromString(const char* data) {
 
 UPB_INLINE bool upb_StringView_IsEqual(upb_StringView a, upb_StringView b) {
   return a.size == b.size && memcmp(a.data, b.data, a.size) == 0;
+}
+
+// Copies the actual backing store into arena memory.
+UPB_INLINE upb_StringView upb_StringView_DeepCopy(upb_StringView s,
+                                                  upb_Arena* a) {
+  if (s.size == 0) return upb_StringView_FromDataAndSize(NULL, 0);
+  void* copied_data = upb_Arena_Malloc(a, s.size);
+  memcpy(copied_data, s.data, s.size);
+  return upb_StringView_FromDataAndSize((char*)copied_data, s.size);
 }
 
 #ifdef __cplusplus

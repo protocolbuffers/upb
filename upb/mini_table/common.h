@@ -103,6 +103,10 @@ UPB_API_INLINE bool upb_MiniTableField_IsExtension(
   return field->mode & kUpb_LabelFlags_IsExtension;
 }
 
+UPB_API_INLINE bool upb_MiniTableField_IsMap(const upb_MiniTableField* field) {
+  return upb_FieldMode_Get(field) == kUpb_FieldMode_Map;
+}
+
 UPB_API_INLINE bool upb_MiniTableField_HasPresence(
     const upb_MiniTableField* field) {
   if (upb_MiniTableField_IsExtension(field)) {

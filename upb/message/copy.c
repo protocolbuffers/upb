@@ -30,26 +30,10 @@
 #include "upb/mem/arena.h"
 #include "upb/message/accessors.h"
 #include "upb/message/message.h"
+#include "upb/mini_table/common.h"
 
 // Must be last.
-#include "upb/mini_table/common.h"
 #include "upb/port/def.inc"
-
-static bool upb_MessageField_IsMap(const upb_MiniTableField* field) {
-  return upb_FieldMode_Get(field) == kUpb_FieldMode_Map;
-}
-
-static upb_StringView upb_Clone_StringView(upb_StringView str,
-                                           upb_Arena* arena) {
-  if (str.size == 0) {
-    return upb_StringView_FromDataAndSize(NULL, 0);
-  }
-  void* cloned_data = upb_Arena_Malloc(arena, str.size);
-  upb_StringView cloned_str =
-      upb_StringView_FromDataAndSize(cloned_data, str.size);
-  memcpy(cloned_data, str.data, str.size);
-  return cloned_str;
-}
 
 static bool upb_Clone_MessageValue(void* value, upb_CType value_type,
                                    const upb_MiniTable* sub, upb_Arena* arena) {
@@ -63,6 +47,7 @@ static bool upb_Clone_MessageValue(void* value, upb_CType value_type,
     case kUpb_CType_Int64:
     case kUpb_CType_UInt64:
       return true;
+
     case kUpb_CType_String:
     case kUpb_CType_Bytes: {
       upb_StringView source = *(upb_StringView*)value;
@@ -76,6 +61,7 @@ static bool upb_Clone_MessageValue(void* value, upb_CType value_type,
       memcpy(cloned_data, source.data, size);
       return true;
     } break;
+
     case kUpb_CType_Message: {
       UPB_ASSERT(sub);
       const upb_Message* source = *(upb_Message**)value;
@@ -85,6 +71,7 @@ static bool upb_Clone_MessageValue(void* value, upb_CType value_type,
       return clone != NULL;
     } break;
   }
+
   UPB_UNREACHABLE();
 }
 
@@ -146,7 +133,7 @@ upb_Array* upb_Array_DeepClone(const upb_Array* array, upb_CType value_type,
   if (!cloned_array) {
     return NULL;
   }
-  for (int i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     upb_MessageValue val = upb_Array_Get(array, i);
     if (!upb_Clone_MessageValue(&val, value_type, sub, arena)) {
       return false;
@@ -219,7 +206,7 @@ upb_Message* upb_Message_DeepClone(const upb_Message* message,
               upb_Message_GetString(message, field, empty_string);
           if (str.size != 0) {
             if (!upb_Message_SetString(
-                    clone, field, upb_Clone_StringView(str, arena), arena)) {
+                    clone, field, upb_StringView_DeepCopy(str, arena), arena)) {
               return NULL;
             }
           }
@@ -229,7 +216,7 @@ upb_Message* upb_Message_DeepClone(const upb_Message* message,
           break;
       }
     } else {
-      if (upb_MessageField_IsMap(field)) {
+      if (upb_MiniTableField_IsMap(field)) {
         const upb_Map* map = upb_Message_GetMap(message, field);
         if (map != NULL) {
           if (!upb_Message_Map_DeepClone(map, mini_table, field, clone,
