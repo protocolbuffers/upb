@@ -62,8 +62,11 @@ const upb_MessageDef* PyUpb_Message_GetMsgdef(PyObject* self);
 // Functions that match the corresponding methods on the message object.
 PyObject* PyUpb_Message_MergeFrom(PyObject* self, PyObject* arg);
 PyObject* PyUpb_Message_MergeFromString(PyObject* self, PyObject* arg);
+PyObject* PyUpb_Message_MergePartialFrom(PyObject* self, PyObject* arg);
 PyObject* PyUpb_Message_SerializeToString(PyObject* self, PyObject* args,
                                           PyObject* kwargs);
+PyObject* PyUpb_Message_SerializePartialToString(PyObject* self, PyObject* args,
+                                                 PyObject* kwargs);
 
 // Sets fields of the message according to the attribuges in `kwargs`.
 int PyUpb_Message_InitAttributes(PyObject* _self, PyObject* args,
