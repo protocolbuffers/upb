@@ -33,6 +33,17 @@ load(
     "upb_proto_reflection_library",
 )
 
+cc_library(
+    name = "parse_text_proto",
+    testonly = 1,
+    hdrs = ["parse_text_proto.h"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_google_googletest//:gtest",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 proto_library(
     name = "empty_proto",
     srcs = ["empty.proto"],
@@ -159,13 +170,32 @@ cc_test(
 
 cc_test(
     name = "test_generated_code",
-    srcs = ["test_generated_code.cc"],
+    srcs = [
+        "test_generated_code.cc",
+    ],
     deps = [
         ":empty_upb_proto_reflection",
         ":test_messages_proto2_upb_proto",
         ":test_messages_proto3_upb_proto",
         ":test_upb_proto",
         "//:upb",
+        "//:port",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "test_mini_table_oneof",
+    srcs = [
+        "test_mini_table_oneof.cc",
+    ],
+    deps = [
+        ":empty_upb_proto_reflection",
+        ":test_messages_proto2_upb_proto",
+        ":test_messages_proto3_upb_proto",
+        ":test_upb_proto",
+        "//:upb",
+        "//:mini_table_internal",
         "//:port",
         "@com_google_googletest//:gtest_main",
     ],

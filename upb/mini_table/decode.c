@@ -665,33 +665,38 @@ static void upb_MtDecoder_AssignOffsets(upb_MtDecoder* d) {
   d->table->size = UPB_ALIGN_UP(d->table->size, 8);
 }
 
+static void upb_MtDecoder_ValidateEntryField(upb_MtDecoder* d,
+                                             const upb_MiniTableField* f,
+                                             int expected_num) {
+  const char* name = expected_num == 1 ? "key" : "val";
+  if (f->number != expected_num) {
+    upb_MtDecoder_ErrorFormat(d,
+                              "map %s did not have expected number (%d vs %d)",
+                              name, expected_num, (int)f->number);
+  }
+
+  if (upb_IsRepeatedOrMap(f)) {
+    upb_MtDecoder_ErrorFormat(
+        d, "map %s cannot be repeated or map, or be in oneof", name);
+  }
+
+  uint32_t not_ok_types;
+  if (expected_num == 1) {
+    not_ok_types = (1 << kUpb_FieldType_Float) | (1 << kUpb_FieldType_Double) |
+                   (1 << kUpb_FieldType_Message) | (1 << kUpb_FieldType_Group) |
+                   (1 << kUpb_FieldType_Bytes) | (1 << kUpb_FieldType_Enum);
+  } else {
+    not_ok_types = 1 << kUpb_FieldType_Group;
+  }
+
+  if ((1 << upb_MiniTableField_Type(f)) & not_ok_types) {
+    upb_MtDecoder_ErrorFormat(d, "map %s cannot have type %d", name,
+                              (int)f->descriptortype);
+  }
+}
+
 static void upb_MtDecoder_ParseMap(upb_MtDecoder* d, const char* data,
                                    size_t len) {
-  if (len < 2) {
-    upb_MtDecoder_ErrorFormat(d, "Invalid map encode length: %zu", len);
-    UPB_UNREACHABLE();
-  }
-  const upb_EncodedType key_type = _upb_FromBase92(data[0]);
-  switch (key_type) {
-    case kUpb_EncodedType_Fixed32:
-    case kUpb_EncodedType_Fixed64:
-    case kUpb_EncodedType_SFixed32:
-    case kUpb_EncodedType_SFixed64:
-    case kUpb_EncodedType_Int32:
-    case kUpb_EncodedType_UInt32:
-    case kUpb_EncodedType_SInt32:
-    case kUpb_EncodedType_Int64:
-    case kUpb_EncodedType_UInt64:
-    case kUpb_EncodedType_SInt64:
-    case kUpb_EncodedType_Bool:
-    case kUpb_EncodedType_String:
-      break;
-
-    default:
-      upb_MtDecoder_ErrorFormat(d, "Invalid map key field type: %d", key_type);
-      UPB_UNREACHABLE();
-  }
-
   upb_MtDecoder_ParseMessage(d, data, len);
   upb_MtDecoder_AssignHasbits(d->table);
 
@@ -700,29 +705,15 @@ static void upb_MtDecoder_ParseMap(upb_MtDecoder* d, const char* data,
     UPB_UNREACHABLE();
   }
 
-  const int num0 = d->table->fields[0].number;
-  if (UPB_UNLIKELY(num0 != 1)) {
-    upb_MtDecoder_ErrorFormat(d, "field %d in map key", num0);
-    UPB_UNREACHABLE();
+  upb_LayoutItem* end = UPB_PTRADD(d->vec.data, d->vec.size);
+  for (upb_LayoutItem* item = d->vec.data; item < end; item++) {
+    if (item->type == kUpb_LayoutItemType_OneofCase) {
+      upb_MtDecoder_ErrorFormat(d, "Map entry cannot have oneof");
+    }
   }
 
-  const int num1 = d->table->fields[1].number;
-  if (UPB_UNLIKELY(num1 != 2)) {
-    upb_MtDecoder_ErrorFormat(d, "field %d in map val", num1);
-    UPB_UNREACHABLE();
-  }
-
-  const int off0 = d->table->fields[0].offset;
-  if (UPB_UNLIKELY(off0 != kNoPresence && off0 != kHasbitPresence)) {
-    upb_MtDecoder_ErrorFormat(d, "bad offset %d in map key", off0);
-    UPB_UNREACHABLE();
-  }
-
-  const int off1 = d->table->fields[1].offset;
-  if (UPB_UNLIKELY(off1 != kNoPresence && off1 != kHasbitPresence)) {
-    upb_MtDecoder_ErrorFormat(d, "bad offset %d in map val", off1);
-    UPB_UNREACHABLE();
-  }
+  upb_MtDecoder_ValidateEntryField(d, &d->table->fields[0], 1);
+  upb_MtDecoder_ValidateEntryField(d, &d->table->fields[1], 2);
 
   // Map entries have a pre-determined layout, regardless of types.
   // NOTE: sync with mini_table/message_internal.h.
@@ -979,14 +970,28 @@ bool upb_MiniTable_SetSubMessage(upb_MiniTable* table,
   UPB_ASSERT((uintptr_t)table->fields <= (uintptr_t)field &&
              (uintptr_t)field <
                  (uintptr_t)(table->fields + table->field_count));
-  // TODO: check these type invariants at runtime and return error to the
-  // caller if they are violated, instead of using an assert.
-  UPB_ASSERT(field->descriptortype == kUpb_FieldType_Message ||
-             field->descriptortype == kUpb_FieldType_Group);
-  if (sub->ext & kUpb_ExtMode_IsMapEntry) {
-    UPB_ASSERT(field->descriptortype == kUpb_FieldType_Message);
-    field->mode = (field->mode & ~kUpb_FieldMode_Mask) | kUpb_FieldMode_Map;
+  UPB_ASSERT(sub);
+
+  const bool sub_is_map = sub->ext & kUpb_ExtMode_IsMapEntry;
+
+  switch (field->descriptortype) {
+    case kUpb_FieldType_Message:
+      if (sub_is_map) {
+        const bool table_is_map = table->ext & kUpb_ExtMode_IsMapEntry;
+        if (UPB_UNLIKELY(table_is_map)) return false;
+
+        field->mode = (field->mode & ~kUpb_FieldMode_Mask) | kUpb_FieldMode_Map;
+      }
+      break;
+
+    case kUpb_FieldType_Group:
+      if (UPB_UNLIKELY(sub_is_map)) return false;
+      break;
+
+    default:
+      return false;
   }
+
   upb_MiniTableSub* table_sub = (void*)&table->subs[field->submsg_index];
   table_sub->submsg = sub;
   return true;
@@ -997,6 +1002,8 @@ bool upb_MiniTable_SetSubEnum(upb_MiniTable* table, upb_MiniTableField* field,
   UPB_ASSERT((uintptr_t)table->fields <= (uintptr_t)field &&
              (uintptr_t)field <
                  (uintptr_t)(table->fields + table->field_count));
+  UPB_ASSERT(sub);
+
   upb_MiniTableSub* table_sub = (void*)&table->subs[field->submsg_index];
   table_sub->subenum = sub;
   return true;

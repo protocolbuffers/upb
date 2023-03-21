@@ -55,20 +55,12 @@ struct upb_EnumDef {
   int res_range_count;
   int res_name_count;
   int32_t defaultval;
+  bool is_closed;
   bool is_sorted;  // Whether all of the values are defined in ascending order.
 };
 
 upb_EnumDef* _upb_EnumDef_At(const upb_EnumDef* e, int i) {
   return (upb_EnumDef*)&e[i];
-}
-
-// TODO: Maybe implement this on top of a ZCOS instead?
-void _upb_EnumDef_Debug(const upb_EnumDef* e) {
-  fprintf(stderr, "enum %s (%p) {\n", e->full_name, e);
-  fprintf(stderr, " value_count: %d\n", e->value_count);
-  fprintf(stderr, " default:     %d\n", e->defaultval);
-  fprintf(stderr, " is_sorted:   %d\n", e->is_sorted);
-  fprintf(stderr, "}\n");
 }
 
 const upb_MiniTableEnum* _upb_EnumDef_MiniTable(const upb_EnumDef* e) {
@@ -166,10 +158,7 @@ const upb_EnumValueDef* upb_EnumDef_Value(const upb_EnumDef* e, int i) {
   return _upb_EnumValueDef_At(e->values, i);
 }
 
-bool upb_EnumDef_IsClosed(const upb_EnumDef* e) {
-  if (UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3) return false;
-  return upb_FileDef_Syntax(e->file) == kUpb_Syntax_Proto2;
-}
+bool upb_EnumDef_IsClosed(const upb_EnumDef* e) { return e->is_closed; }
 
 bool upb_EnumDef_MiniDescriptorEncode(const upb_EnumDef* e, upb_Arena* a,
                                       upb_StringView* out) {
@@ -249,11 +238,13 @@ static void create_enumdef(upb_DefBuilder* ctx, const char* prefix,
   e->file = _upb_DefBuilder_File(ctx);
 
   name = UPB_DESC(EnumDescriptorProto_name)(enum_proto);
-  _upb_DefBuilder_CheckIdentNotFull(ctx, name);
 
   e->full_name = _upb_DefBuilder_MakeFullName(ctx, prefix, name);
   _upb_DefBuilder_Add(ctx, e->full_name,
                       _upb_DefType_Pack(e, UPB_DEFTYPE_ENUM));
+
+  e->is_closed = (!UPB_TREAT_PROTO2_ENUMS_LIKE_PROTO3) &&
+                 (upb_FileDef_Syntax(e->file) == kUpb_Syntax_Proto2);
 
   values = UPB_DESC(EnumDescriptorProto_value)(enum_proto, &n_value);
 
@@ -287,7 +278,7 @@ static void create_enumdef(upb_DefBuilder* ctx, const char* prefix,
 
   upb_inttable_compact(&e->iton, ctx->arena);
 
-  if (upb_FileDef_Syntax(e->file) == kUpb_Syntax_Proto2) {
+  if (e->is_closed) {
     if (ctx->layout) {
       UPB_ASSERT(ctx->enum_count < ctx->layout->enum_count);
       e->layout = ctx->layout->enums[ctx->enum_count++];
