@@ -46,7 +46,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: requirements
-          paths: python/requirements.txt
+          path: python/requirements.txt
 
   test_wheels:
     name: Test Wheels
