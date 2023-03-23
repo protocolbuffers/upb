@@ -46,6 +46,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: requirements
+          # Tests shouldn't have access to the whole upb repo, upload the one file we need
           path: python/requirements.txt
 
   test_wheels:
