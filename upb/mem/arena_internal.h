@@ -54,11 +54,6 @@ struct upb_Arena {
   // All nodes that are fused together are in a singly-linked list.
   UPB_ATOMIC(upb_Arena*) next;  // NULL at end of list.
 
-  // The last element of the linked list.  This is present only as an
-  // optimization, so that we do not have to iterate over all members for every
-  // fuse.  Only significant for an arena root.  In other cases it is ignored.
-  UPB_ATOMIC(upb_Arena*) tail;  // == self when no other list members.
-
   // Linked list of blocks to free/cleanup.  Atomic only for the benefit of
   // upb_Arena_SpaceAllocated().
   UPB_ATOMIC(_upb_MemBlock*) blocks;
