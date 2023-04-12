@@ -498,6 +498,18 @@ absl::StatusOr<absl::string_view> Serialize(Ptr<T> message, upb::Arena& arena,
                                        arena.ptr(), options);
 }
 
+template <typename T>
+void Fuse(const T& message, upb::Arena& arena) {
+  upb_Arena_Fuse(static_cast<upb_Arena*>(message.GetInternalArena()),
+                 arena.ptr());
+}
+
+template <typename T>
+void Fuse(const Ptr<T>& message, upb::Arena& arena) {
+  upb_Arena_Fuse(static_cast<upb_Arena*>(message->GetInternalArena()),
+                 arena.ptr());
+}
+
 }  // namespace protos
 
 #endif  // UPB_PROTOS_PROTOS_H_

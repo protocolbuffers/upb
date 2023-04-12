@@ -318,6 +318,16 @@ TEST(CppGeneratedCode, Messages) {
   EXPECT_EQ(false, test_model.has_child_model_1());
 }
 
+TEST(CppGeneratedCode, Fuse) {
+  ::protos::Arena arena1;
+  ::protos::Arena arena2;
+  ::protos::Arena arena3;
+  auto test_model = ::protos::CreateMessage<TestModel>(arena1);
+  auto child_model = ::protos::CreateMessage<ChildModel1>(arena2);
+  ::protos::Fuse(child_model, arena1);
+  ::protos::Fuse(test_model.mutable_child_model_1(), arena3);
+}
+
 TEST(CppGeneratedCode, NestedMessages) {
   ::protos::Arena arena;
   auto test_model = ::protos::CreateMessage<TestModel>(arena);
