@@ -112,11 +112,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
         unsupported_features = ctx.disabled_features,
     )
 
-    blaze_only_args = {}
-
-    if _is_google3:
-        blaze_only_args["grep_includes"] = ctx.file._grep_includes
-
     (compilation_context, compilation_outputs) = cc_common.compile(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
@@ -126,7 +121,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
         public_hdrs = hdrs,
         user_compile_flags = copts,
         compilation_contexts = compilation_contexts,
-        **blaze_only_args
     )
 
     # buildifier: disable=unused-variable
@@ -137,7 +131,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, dep_ccinfos):
         cc_toolchain = toolchain,
         compilation_outputs = compilation_outputs,
         linking_contexts = linking_contexts,
-        **blaze_only_args
     )
 
     return CcInfo(
@@ -251,17 +244,8 @@ def _upb_cc_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider
 def _upb_cc_proto_library_aspect_impl(target, ctx):
     return _upb_cc_proto_aspect_impl(target, ctx, "upbprotos", _UpbCcWrappedCcInfo, _WrappedCcGeneratedSrcsInfo)
 
-def _maybe_add(d):
-    if _is_google3:
-        d["_grep_includes"] = attr.label(
-            allow_single_file = True,
-            cfg = "exec",
-            default = "@bazel_tools//tools/cpp:grep-includes",
-        )
-    return d
-
 _upb_cc_proto_library_aspect = aspect(
-    attrs = _maybe_add({
+    attrs = {
         "_ccopts": attr.label(
             default = "//protos:upb_cc_proto_library_copts__for_generated_code_only_do_not_use",
         ),
@@ -289,7 +273,7 @@ _upb_cc_proto_library_aspect = aspect(
                 "//protos:repeated_field",
             ],
         ),
-    }),
+    },
     implementation = _upb_cc_proto_library_aspect_impl,
     provides = [
         _UpbCcWrappedCcInfo,

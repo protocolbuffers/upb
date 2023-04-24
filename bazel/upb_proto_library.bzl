@@ -133,11 +133,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
         unsupported_features = ctx.disabled_features,
     )
 
-    blaze_only_args = {}
-
-    if _is_google3:
-        blaze_only_args["grep_includes"] = ctx.file._grep_includes
-
     (compilation_context, compilation_outputs) = cc_common.compile(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
@@ -148,7 +143,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
         public_hdrs = hdrs,
         user_compile_flags = copts,
         compilation_contexts = compilation_contexts,
-        **blaze_only_args
     )
 
     # buildifier: disable=unused-variable
@@ -160,7 +154,6 @@ def _cc_library_func(ctx, name, hdrs, srcs, copts, includes, dep_ccinfos):
         compilation_outputs = compilation_outputs,
         linking_contexts = linking_contexts,
         disallow_dynamic_library = cc_common.is_enabled(feature_configuration = feature_configuration, feature_name = "targets_windows"),
-        **blaze_only_args
     )
 
     return CcInfo(
@@ -351,15 +344,6 @@ def upb_proto_library_aspect_impl(target, ctx):
 def _upb_proto_reflection_library_aspect_impl(target, ctx):
     return _upb_proto_aspect_impl(target, ctx, "upbdefs", _UpbDefsWrappedCcInfo, _WrappedDefsGeneratedSrcsInfo, provide_cc_shared_library_hints = False)
 
-def _maybe_add(d):
-    if _is_google3:
-        d["_grep_includes"] = attr.label(
-            allow_single_file = True,
-            cfg = "exec",
-            default = "@bazel_tools//tools/cpp:grep-includes",
-        )
-    return d
-
 # upb_proto_library() ##########################################################
 
 def _get_upb_proto_library_aspect_provides():
@@ -377,7 +361,7 @@ def _get_upb_proto_library_aspect_provides():
     return provides
 
 upb_proto_library_aspect = aspect(
-    attrs = _maybe_add({
+    attrs = {
         "_copts": attr.label(
             default = "//:upb_proto_library_copts__for_generated_code_only_do_not_use",
         ),
@@ -398,7 +382,7 @@ upb_proto_library_aspect = aspect(
             "//:generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
         ]),
         "_fasttable_enabled": attr.label(default = "//:fasttable_enabled"),
-    }),
+    },
     implementation = upb_proto_library_aspect_impl,
     provides = _get_upb_proto_library_aspect_provides(),
     attr_aspects = ["deps"],
@@ -423,7 +407,7 @@ upb_proto_library = rule(
 # upb_proto_reflection_library() ###############################################
 
 _upb_proto_reflection_library_aspect = aspect(
-    attrs = _maybe_add({
+    attrs = {
         "_copts": attr.label(
             default = "//:upb_proto_library_copts__for_generated_code_only_do_not_use",
         ),
@@ -445,7 +429,7 @@ _upb_proto_reflection_library_aspect = aspect(
                 "//:generated_reflection_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
             ],
         ),
-    }),
+    },
     implementation = _upb_proto_reflection_library_aspect_impl,
     provides = [
         _UpbDefsWrappedCcInfo,
