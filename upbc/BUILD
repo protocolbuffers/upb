@@ -90,13 +90,20 @@ upb_proto_reflection_library(
     deps = ["@com_google_protobuf//:compiler_plugin_proto"],
 )
 
+cc_library(
+    name = "ffi_wrapper",
+    srcs = [":upbc_so"],
+    linkstatic = 1,
+    visibility = ["//visibility:public"],
+)
+
 cc_binary(
     name = "upbc_so",
     srcs = ["upbc_so.c"],
     copts = UPB_DEFAULT_COPTS,
     linkshared = 1,
     linkstatic = 1,
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
     deps = [
         "//:collections",
         "//:mem",
