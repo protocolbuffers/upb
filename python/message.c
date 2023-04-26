@@ -1579,6 +1579,15 @@ static PyObject* PyUpb_Message_WhichOneof(PyObject* _self, PyObject* name) {
   return PyUnicode_FromString(upb_FieldDef_Name(f));
 }
 
+PyObject* PyUpb_Message_RegisterExtension(PyObject* cls,
+                                          PyObject* extension_handle) {
+  const upb_FieldDef* f = PyUpb_FieldDescriptor_GetDef(extension_handle);
+  if (!f) {
+    return NULL;
+  }
+  Py_RETURN_NONE;
+}
+
 void PyUpb_Message_ClearExtensionDict(PyObject* _self) {
   PyUpb_Message* self = (void*)_self;
   assert(self->ext_dict);
@@ -1643,10 +1652,8 @@ static PyMethodDef PyUpb_Message_Methods[] = {
      "Merges a serialized message into the current message."},
     {"ParseFromString", PyUpb_Message_ParseFromString, METH_O,
      "Parses a serialized message into the current message."},
-    // TODO(https://github.com/protocolbuffers/upb/issues/459)
-    //{ "RegisterExtension", (PyCFunction)RegisterExtension, METH_O |
-    // METH_CLASS,
-    //  "Registers an extension with the current message." },
+    {"RegisterExtension", (PyCFunction)PyUpb_Message_RegisterExtension,
+     METH_O | METH_CLASS, "Registers an extension with the current message."},
     {"SerializePartialToString",
      (PyCFunction)PyUpb_Message_SerializePartialToString,
      METH_VARARGS | METH_KEYWORDS,

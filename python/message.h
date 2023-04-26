@@ -83,6 +83,12 @@ void PyUpb_Message_DoClearField(PyObject* _self, const upb_FieldDef* f);
 // ExtensionDict set.
 void PyUpb_Message_ClearExtensionDict(PyObject* _self);
 
+// This method does not do anything. It is added for migration
+// purpose only b/279216973
+// (DEPRECATED and going away soon. Do not use.)
+PyObject* PyUpb_Message_RegisterExtension(PyObject* cls,
+                                          PyObject* extension_handle);
+
 // Implements the equivalent of getattr(msg, field), once `field` has
 // already been resolved to a `upb_FieldDef*`.
 PyObject* PyUpb_Message_GetFieldValue(PyObject* _self,
