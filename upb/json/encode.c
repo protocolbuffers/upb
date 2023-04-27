@@ -706,8 +706,6 @@ static void jsonenc_map(jsonenc* e, const upb_Map* map, const upb_FieldDef* f) {
 
 static void jsonenc_fieldval(jsonenc* e, const upb_FieldDef* f,
                              upb_MessageValue val, bool* first) {
-  const char* name;
-
   jsonenc_putsep(e, ",", first);
 
   if (upb_FieldDef_IsExtension(f)) {
@@ -717,11 +715,11 @@ static void jsonenc_fieldval(jsonenc* e, const upb_FieldDef* f,
     jsonenc_printf(e, "\"[%s]\":", upb_FieldDef_FullName(f));
   } else {
     if (e->options & upb_JsonEncode_UseProtoNames) {
-      name = upb_FieldDef_Name(f);
+      jsonenc_printf(e, "\"%s\":", upb_FieldDef_Name(f));
     } else {
-      name = upb_FieldDef_JsonName(f);
+      jsonenc_string(e, upb_FieldDef_JsonName(f));
+      jsonenc_putstr(e, ":");
     }
-    jsonenc_printf(e, "\"%s\":", name);
   }
 
   if (upb_FieldDef_IsMap(f)) {

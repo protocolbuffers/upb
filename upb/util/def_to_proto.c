@@ -243,7 +243,7 @@ static google_protobuf_FieldDescriptorProto* fielddef_toproto(upb_ToProto_Contex
 
   if (upb_FieldDef_HasJsonName(f)) {
     google_protobuf_FieldDescriptorProto_set_json_name(
-        proto, strviewdup(ctx, upb_FieldDef_JsonName(f)));
+        proto, strviewdup2(ctx, upb_FieldDef_JsonName(f)));
   }
 
   if (upb_FieldDef_IsSubMessage(f)) {

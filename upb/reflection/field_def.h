@@ -67,7 +67,7 @@ bool upb_FieldDef_IsRepeated(const upb_FieldDef* f);
 bool upb_FieldDef_IsRequired(const upb_FieldDef* f);
 bool upb_FieldDef_IsString(const upb_FieldDef* f);
 bool upb_FieldDef_IsSubMessage(const upb_FieldDef* f);
-const char* upb_FieldDef_JsonName(const upb_FieldDef* f);
+upb_StringView upb_FieldDef_JsonName(const upb_FieldDef* f);
 upb_Label upb_FieldDef_Label(const upb_FieldDef* f);
 const upb_MessageDef* upb_FieldDef_MessageSubDef(const upb_FieldDef* f);
 

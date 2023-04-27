@@ -34,11 +34,11 @@
 #include "upb/collections/array_internal.h"
 #include "upb/collections/map_sorter_internal.h"
 #include "upb/message/extension_internal.h"
-#include "upb/mini_table/sub_internal.h"
 #include "upb/wire/common.h"
 #include "upb/wire/common_internal.h"
 #include "upb/wire/swap_internal.h"
 #include "upb/wire/types.h"
+#include "upb/wire/writer.h"
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -141,12 +141,9 @@ static void encode_fixed32(upb_encstate* e, uint32_t val) {
 
 UPB_NOINLINE
 static void encode_longvarint(upb_encstate* e, uint64_t val) {
-  size_t len;
-  char* start;
-
   encode_reserve(e, UPB_PB_VARINT_MAX_LEN);
-  len = encode_varint64(val, e->ptr);
-  start = e->ptr + UPB_PB_VARINT_MAX_LEN - len;
+  size_t len = _upb_WireWriter_WriteLongVarint(e->ptr, val) - e->ptr;
+  char* start = e->ptr + UPB_PB_VARINT_MAX_LEN - len;
   memmove(start, e->ptr, len);
   e->ptr = start;
 }

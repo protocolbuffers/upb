@@ -79,6 +79,13 @@ typedef struct {
   const void* (*lookup)(const void* parent, const char* key);
   // Returns the name associated with this element.
   const char* (*get_elem_name)(const void* elem);
+
+  // Versions of the above that use upb_StringView instead of const char*.
+  // These should be used if the string can contain embedded NULL.  If these are
+  // present (non-NULL), they are preferred over the accessors above.
+  const void* (*lookup_sv)(const void* parent, upb_StringView key);
+  // Returns the name associated with this element.
+  upb_StringView (*get_elem_name_sv)(const void* elem);
 } PyUpb_ByNameMap_Funcs;
 
 // Returns a new ByNameMap.  The vtable `funcs` must outlive this object

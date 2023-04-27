@@ -31,15 +31,15 @@
 #include "upb/mini_table/decode.h"
 #include "upb/reflection/def.h"
 #include "upb/reflection/def_builder_internal.h"
-#include "upb/reflection/def_pool.h"
 #include "upb/reflection/def_type.h"
 #include "upb/reflection/desc_state_internal.h"
 #include "upb/reflection/enum_def_internal.h"
-#include "upb/reflection/enum_value_def_internal.h"
 #include "upb/reflection/field_def_internal.h"
 #include "upb/reflection/file_def_internal.h"
 #include "upb/reflection/message_def_internal.h"
 #include "upb/reflection/oneof_def_internal.h"
+#include "upb/wire/reader.h"
+#include "upb/wire/writer.h"
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -158,8 +158,10 @@ const char* upb_FieldDef_Name(const upb_FieldDef* f) {
   return _upb_DefBuilder_FullToShort(f->full_name);
 }
 
-const char* upb_FieldDef_JsonName(const upb_FieldDef* f) {
-  return f->json_name;
+upb_StringView upb_FieldDef_JsonName(const upb_FieldDef* f) {
+  int size;
+  const char* data = upb_WireReader_ReadSize(f->json_name, &size);
+  return upb_StringView_FromDataAndSize(data, size);
 }
 
 bool upb_FieldDef_HasJsonName(const upb_FieldDef* f) {
@@ -344,21 +346,30 @@ static bool streql2(const char* a, size_t n, const char* b) {
 // Implement the transformation as described in the spec:
 //   1. upper case all letters after an underscore.
 //   2. remove all underscores.
-static char* make_json_name(const char* name, size_t size, upb_Arena* a) {
-  char* out = upb_Arena_Malloc(a, size + 1);  // +1 is to add a trailing '\0'
-  if (out == NULL) return NULL;
+static char* _upb_FieldDef_MakeJsonName(upb_DefBuilder* ctx,
+                                        upb_StringView name) {
+  size_t varint_size_estimate = upb_WireWriter_VarintSize(name.size);
+  char* out = _upb_DefBuilder_Alloc(ctx, name.size + varint_size_estimate);
 
   bool ucase_next = false;
-  char* des = out;
-  for (size_t i = 0; i < size; i++) {
-    if (name[i] == '_') {
+  char* ptr = out;
+  for (size_t i = 0; i < name.size; i++) {
+    if (name.data[i] == '_') {
       ucase_next = true;
     } else {
-      *des++ = ucase_next ? toupper(name[i]) : name[i];
+      *ptr++ = ucase_next ? toupper(name.data[i]) : name.data[i];
       ucase_next = false;
     }
   }
-  *des++ = '\0';
+
+  // The json name can shrink relative to the name, but it cannot grow.
+  size_t json_name_size = ptr - out;
+  size_t varint_size = upb_WireWriter_VarintSize(json_name_size);
+  UPB_ASSERT(varint_size <= varint_size_estimate);
+
+  memmove(out + varint_size, out, json_name_size);
+  upb_WireWriter_WriteVarint(out, json_name_size);
+
   return out;
 }
 
@@ -537,6 +548,21 @@ static void set_default_default(upb_DefBuilder* ctx, upb_FieldDef* f) {
   }
 }
 
+static const char* _upb_FieldDef_MakeVarintPrefixed(upb_DefBuilder* ctx,
+                                                    upb_StringView s) {
+  size_t alloc_size = s.size + upb_WireWriter_VarintSize(s.size);
+  char* data = _upb_DefBuilder_Alloc(ctx, alloc_size);
+  char* ptr = upb_WireWriter_WriteVarint(data, s.size);
+  memcpy(ptr, s.data, s.size);
+  return data;
+}
+
+static upb_StringView _upb_FieldDef_ReadVarintPrefixed(const char* ptr) {
+  int size;
+  const char* data = upb_WireReader_ReadSize(ptr, &size);
+  return upb_StringView_FromDataAndSize(data, size);
+}
+
 static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
                                  const UPB_DESC(FieldDescriptorProto) *
                                      field_proto,
@@ -560,13 +586,11 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
 
   f->has_json_name = UPB_DESC(FieldDescriptorProto_has_json_name)(field_proto);
   if (f->has_json_name) {
-    const upb_StringView sv =
-        UPB_DESC(FieldDescriptorProto_json_name)(field_proto);
-    f->json_name = upb_strdup2(sv.data, sv.size, ctx->arena);
+    f->json_name = _upb_FieldDef_MakeVarintPrefixed(
+        ctx, UPB_DESC(FieldDescriptorProto_json_name)(field_proto));
   } else {
-    f->json_name = make_json_name(name.data, name.size, ctx->arena);
+    f->json_name = _upb_FieldDef_MakeJsonName(ctx, name);
   }
-  if (!f->json_name) _upb_DefBuilder_OomErr(ctx);
 
   const bool has_type = UPB_DESC(FieldDescriptorProto_has_type)(field_proto);
   const bool has_type_name =

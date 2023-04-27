@@ -95,12 +95,8 @@ int upb_MessageDef_FieldCount(const upb_MessageDef* m);
 const upb_FileDef* upb_MessageDef_File(const upb_MessageDef* m);
 
 // Returns a field by either JSON name or regular proto name.
-const upb_FieldDef* upb_MessageDef_FindByJsonNameWithSize(
-    const upb_MessageDef* m, const char* name, size_t size);
-UPB_INLINE const upb_FieldDef* upb_MessageDef_FindByJsonName(
-    const upb_MessageDef* m, const char* name) {
-  return upb_MessageDef_FindByJsonNameWithSize(m, name, strlen(name));
-}
+const upb_FieldDef* upb_MessageDef_FindByJsonName(const upb_MessageDef* m,
+                                                  upb_StringView);
 
 // Lookup of either field or oneof by name. Returns whether either was found.
 // If the return is true, then the found def will be set, and the non-found

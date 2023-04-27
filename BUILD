@@ -690,6 +690,8 @@ bootstrap_cc_library(
         ":mini_table_internal",
         ":port",
         ":upb",
+        ":wire_reader",
+        ":wire_writer",
     ],
 )
 
@@ -973,6 +975,7 @@ cc_library(
         ":port",
         ":wire_reader",
         ":wire_types",
+        ":wire_writer",
         "@utf8_range",
     ],
 )
@@ -1006,6 +1009,18 @@ cc_library(
         ":eps_copy_input_stream",
         ":port",
         ":wire_types",
+    ],
+)
+
+cc_library(
+    name = "wire_writer",
+    srcs = [
+        "upb/wire/writer.c",
+    ],
+    hdrs = ["upb/wire/writer.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":port",
     ],
 )
 

@@ -29,6 +29,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "upb/reflection/def.h"
@@ -78,7 +79,7 @@ class FieldDefPtr {
   CType ctype() const { return upb_FieldDef_CType(ptr_); }
   Label label() const { return upb_FieldDef_Label(ptr_); }
   const char* name() const { return upb_FieldDef_Name(ptr_); }
-  const char* json_name() const { return upb_FieldDef_JsonName(ptr_); }
+  std::string_view json_name() const { return SV(upb_FieldDef_JsonName(ptr_)); }
   uint32_t number() const { return upb_FieldDef_Number(ptr_); }
   bool is_extension() const { return upb_FieldDef_IsExtension(ptr_); }
   bool is_required() const { return upb_FieldDef_IsRequired(ptr_); }
@@ -136,6 +137,9 @@ class FieldDefPtr {
   }
 
  private:
+  static std::string_view SV(upb_StringView sv) {
+    return std::string_view(sv.data, sv.size);
+  }
   const upb_FieldDef* ptr_;
 };
 

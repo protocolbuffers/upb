@@ -44,6 +44,16 @@ err:
   return ret;
 }
 
+static PyObject* _PyUpb_ByNameFuncs_GetElemName(
+    const PyUpb_ByNameMap_Funcs* funcs, const void* elem) {
+  if (funcs->get_elem_name_sv) {
+    upb_StringView sv = funcs->get_elem_name_sv(elem);
+    return PyUnicode_FromStringAndSize(sv.data, sv.size);
+  } else {
+    return PyUnicode_FromString(funcs->get_elem_name(elem));
+  }
+}
+
 // -----------------------------------------------------------------------------
 // ByNameIterator
 // -----------------------------------------------------------------------------
@@ -87,7 +97,7 @@ static PyObject* PyUpb_ByNameIterator_IterNext(PyObject* _self) {
   if (self->index >= size) return NULL;
   const void* elem = self->funcs->base.index(self->parent, self->index);
   self->index++;
-  return PyUnicode_FromString(self->funcs->get_elem_name(elem));
+  return _PyUpb_ByNameFuncs_GetElemName(self->funcs, elem);
 }
 
 static PyType_Slot PyUpb_ByNameIterator_Slots[] = {
@@ -347,6 +357,38 @@ typedef struct {
   PyObject* parent_obj;  // Python object that keeps parent alive, we own a ref.
 } PyUpb_ByNameMap;
 
+static bool _PyUpb_ByNameMap_Lookup(PyUpb_ByNameMap* self, PyObject* key,
+                                    const void** elem) {
+  upb_StringView str;
+  if (PyUnicode_Check(key)) {
+    Py_ssize_t size;
+    str.data = PyUnicode_AsUTF8AndSize(key, &size);
+    str.size = size;
+  } else if (PyBytes_Check(key)) {
+    char* buffer;
+    Py_ssize_t size;
+    int res = PyBytes_AsStringAndSize(key, &buffer, &size);
+    assert(res >= 0);
+    str.data = buffer;
+    str.size = size;
+  } else {
+    if (PyObject_Hash(key) == -1) return false;
+    *elem = NULL;
+    return true;
+  }
+
+  // Must be NULL-terminated.
+  assert(str.data[str.size] == '\0');
+
+  if (self->funcs->lookup_sv) {
+    *elem = self->funcs->lookup_sv(self->parent, str);
+  } else {
+    *elem = self->funcs->lookup(self->parent, str.data);
+  }
+
+  return true;
+}
+
 PyUpb_ByNameMap* PyUpb_ByNameMap_Self(PyObject* obj) {
   assert(Py_TYPE(obj) == PyUpb_ModuleState_Get()->by_name_map_type);
   return (PyUpb_ByNameMap*)obj;
@@ -376,10 +418,9 @@ static Py_ssize_t PyUpb_ByNameMap_Length(PyObject* _self) {
 
 static PyObject* PyUpb_ByNameMap_Subscript(PyObject* _self, PyObject* key) {
   PyUpb_ByNameMap* self = PyUpb_ByNameMap_Self(_self);
-  const char* name = PyUpb_GetStrData(key);
-  const void* elem = name ? self->funcs->lookup(self->parent, name) : NULL;
+  const void* elem;
 
-  if (!name && PyObject_Hash(key) == -1) return NULL;
+  if (!_PyUpb_ByNameMap_Lookup(self, key, &elem)) return NULL;
 
   if (elem) {
     return self->funcs->base.get_elem_wrapper(elem);
@@ -398,9 +439,8 @@ static int PyUpb_ByNameMap_AssignSubscript(PyObject* self, PyObject* key,
 
 static int PyUpb_ByNameMap_Contains(PyObject* _self, PyObject* key) {
   PyUpb_ByNameMap* self = PyUpb_ByNameMap_Self(_self);
-  const char* name = PyUpb_GetStrData(key);
-  const void* elem = name ? self->funcs->lookup(self->parent, name) : NULL;
-  if (!name && PyObject_Hash(key) == -1) return -1;
+  const void* elem;
+  if (!_PyUpb_ByNameMap_Lookup(self, key, &elem)) return -1;
   return elem ? 1 : 0;
 }
 
@@ -412,10 +452,8 @@ static PyObject* PyUpb_ByNameMap_Get(PyObject* _self, PyObject* args) {
     return NULL;
   }
 
-  const char* name = PyUpb_GetStrData(key);
-  const void* elem = name ? self->funcs->lookup(self->parent, name) : NULL;
-
-  if (!name && PyObject_Hash(key) == -1) return NULL;
+  const void* elem;
+  if (!_PyUpb_ByNameMap_Lookup(self, key, &elem)) return NULL;
 
   if (elem) {
     return self->funcs->base.get_elem_wrapper(elem);
@@ -437,7 +475,7 @@ static PyObject* PyUpb_ByNameMap_Keys(PyObject* _self, PyObject* args) {
   if (!ret) return NULL;
   for (int i = 0; i < n; i++) {
     const void* elem = self->funcs->base.index(self->parent, i);
-    PyObject* key = PyUnicode_FromString(self->funcs->get_elem_name(elem));
+    PyObject* key = _PyUpb_ByNameFuncs_GetElemName(self->funcs, elem);
     if (!key) goto error;
     PyList_SetItem(ret, i, key);
   }
@@ -478,8 +516,7 @@ static PyObject* PyUpb_ByNameMap_Items(PyObject* _self, PyObject* args) {
     item = PyTuple_New(2);
     py_elem = self->funcs->base.get_elem_wrapper(elem);
     if (!item || !py_elem) goto error;
-    PyTuple_SetItem(item, 0,
-                    PyUnicode_FromString(self->funcs->get_elem_name(elem)));
+    PyTuple_SetItem(item, 0, _PyUpb_ByNameFuncs_GetElemName(self->funcs, elem));
     PyTuple_SetItem(item, 1, py_elem);
     PyList_SetItem(ret, i, item);
   }

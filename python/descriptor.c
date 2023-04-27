@@ -380,6 +380,8 @@ static PyObject* PyUpb_Descriptor_GetFieldsByCamelCaseName(PyObject* _self,
           (void*)&upb_MessageDef_Field,
           (void*)&PyUpb_FieldDescriptor_Get,
       },
+      NULL,
+      NULL,
       (void*)&upb_MessageDef_FindByJsonName,
       (void*)&upb_FieldDef_JsonName,
   };
@@ -891,15 +893,18 @@ static PyObject* PyUpb_FieldDescriptor_GetName(PyUpb_DescriptorBase* self,
   return PyUnicode_FromString(upb_FieldDef_Name(self->def));
 }
 
-static PyObject* PyUpb_FieldDescriptor_GetCamelCaseName(
-    PyUpb_DescriptorBase* self, void* closure) {
-  // TODO: Ok to use jsonname here?
-  return PyUnicode_FromString(upb_FieldDef_JsonName(self->def));
-}
-
 static PyObject* PyUpb_FieldDescriptor_GetJsonName(PyUpb_DescriptorBase* self,
                                                    void* closure) {
-  return PyUnicode_FromString(upb_FieldDef_JsonName(self->def));
+  upb_StringView name = upb_FieldDef_JsonName(self->def);
+  fprintf(stderr, "json_name: " UPB_STRINGVIEW_FORMAT "\n",
+          UPB_STRINGVIEW_ARGS(name));
+  return PyUnicode_FromStringAndSize(name.data, name.size);
+}
+
+static PyObject* PyUpb_FieldDescriptor_GetCamelCaseName(
+    PyUpb_DescriptorBase* self, void* closure) {
+  // TODO(b/259557581): Deprecate camelcase name.
+  return PyUpb_FieldDescriptor_GetJsonName(self, closure);
 }
 
 static PyObject* PyUpb_FieldDescriptor_GetFile(PyUpb_DescriptorBase* self,

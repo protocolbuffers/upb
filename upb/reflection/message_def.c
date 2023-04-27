@@ -221,12 +221,12 @@ bool upb_MessageDef_FindByNameWithSize(const upb_MessageDef* m,
   return f || o; /* False if this was a JSON name. */
 }
 
-const upb_FieldDef* upb_MessageDef_FindByJsonNameWithSize(
-    const upb_MessageDef* m, const char* name, size_t size) {
+const upb_FieldDef* upb_MessageDef_FindByJsonName(const upb_MessageDef* m,
+                                                  upb_StringView name) {
   upb_value val;
   const upb_FieldDef* f;
 
-  if (!upb_strtable_lookup2(&m->ntof, name, size, &val)) {
+  if (!upb_strtable_lookup2(&m->ntof, name.data, name.size, &val)) {
     return NULL;
   }
 
@@ -397,30 +397,33 @@ void _upb_MessageDef_InsertField(upb_DefBuilder* ctx, upb_MessageDef* m,
     _upb_DefBuilder_Errf(ctx, "invalid field number (%u)", field_number);
   }
 
-  const char* json_name = upb_FieldDef_JsonName(f);
-  const char* shortname = upb_FieldDef_Name(f);
-  const size_t shortnamelen = strlen(shortname);
+  upb_StringView name = upb_StringView_FromString(upb_FieldDef_Name(f));
+  upb_StringView json_name = upb_FieldDef_JsonName(f);
 
   upb_value v = upb_value_constptr(f);
 
   upb_value existing_v;
-  if (upb_strtable_lookup(&m->ntof, shortname, &existing_v)) {
-    _upb_DefBuilder_Errf(ctx, "duplicate field name (%s)", shortname);
+  if (upb_strtable_lookup2(&m->ntof, name.data, name.size, &existing_v)) {
+    _upb_DefBuilder_Errf(ctx,
+                         "duplicate field name (" UPB_STRINGVIEW_FORMAT ")",
+                         UPB_STRINGVIEW_ARGS(name));
   }
 
   const upb_value field_v = _upb_DefType_Pack(f, UPB_DEFTYPE_FIELD);
   bool ok =
-      _upb_MessageDef_Insert(m, shortname, shortnamelen, field_v, ctx->arena);
+      _upb_MessageDef_Insert(m, name.data, name.size, field_v, ctx->arena);
   if (!ok) _upb_DefBuilder_OomErr(ctx);
 
-  if (strcmp(shortname, json_name) != 0) {
-    if (upb_strtable_lookup(&m->ntof, json_name, &v)) {
-      _upb_DefBuilder_Errf(ctx, "duplicate json_name (%s)", json_name);
+  if (!upb_StringView_IsEqual(name, json_name)) {
+    if (upb_strtable_lookup2(&m->ntof, json_name.data, json_name.size, &v)) {
+      _upb_DefBuilder_Errf(ctx,
+                           "duplicate json_name (" UPB_STRINGVIEW_FORMAT ")",
+                           UPB_STRINGVIEW_ARGS(json_name));
     }
 
-    const size_t json_size = strlen(json_name);
     const upb_value json_v = _upb_DefType_Pack(f, UPB_DEFTYPE_FIELD_JSONNAME);
-    ok = _upb_MessageDef_Insert(m, json_name, json_size, json_v, ctx->arena);
+    ok = _upb_MessageDef_Insert(m, json_name.data, json_name.size, json_v,
+                                ctx->arena);
     if (!ok) _upb_DefBuilder_OomErr(ctx);
   }
 

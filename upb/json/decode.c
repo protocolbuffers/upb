@@ -902,7 +902,7 @@ static void jsondec_field(jsondec* d, upb_Message* msg,
           upb_MessageDef_FullName(m));
     }
   } else {
-    f = upb_MessageDef_FindByJsonNameWithSize(m, name.data, name.size);
+    f = upb_MessageDef_FindByJsonName(m, name);
   }
 
   if (!f) {
