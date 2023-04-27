@@ -65,7 +65,7 @@ cc_library(
         "gen_utils.h",
         "output.h",
     ],
-    visibility = ["//visibility:private"],
+    visibility = ["//:friends"],
     deps = [
         "//:message_copy",
         "//upbc:common",
