@@ -162,7 +162,7 @@ upb_cc_proto_library_copts = rule(
     attrs = {"copts": attr.string_list(default = [])},
 )
 
-_UpbCcWrappedCcInfo = provider("Provider for cc_info for protos", fields = ["cc_info"])
+UpbCcWrappedCcInfo = provider("Provider for cc_info for protos", fields = ["cc_info"])
 _WrappedCcGeneratedSrcsInfo = provider("Provider for generated sources", fields = ["srcs"])
 
 def _compile_upb_cc_protos(ctx, generator, proto_info, proto_sources):
@@ -208,13 +208,13 @@ def _upb_cc_proto_rule_impl(ctx):
         fail("proto_library rule must generate _WrappedCcGeneratedSrcsInfo (aspect should have " +
              "handled this).")
 
-    if _UpbCcWrappedCcInfo in dep:
-        cc_info = dep[_UpbCcWrappedCcInfo].cc_info
+    if UpbCcWrappedCcInfo in dep:
+        cc_info = dep[UpbCcWrappedCcInfo].cc_info
     elif UpbWrappedCcInfo in dep:
         cc_info = dep[UpbWrappedCcInfo].cc_info
     else:
         fail("proto_library rule must generate UpbWrappedCcInfo or " +
-             "_UpbCcWrappedCcInfo (aspect should have handled this).")
+             "UpbCcWrappedCcInfo (aspect should have handled this).")
 
     lib = cc_info.linking_context.linker_inputs.to_list()[0].libraries[0]
     files = _filter_none([
@@ -234,7 +234,8 @@ def _upb_cc_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider
     deps = ctx.rule.attr.deps + getattr(ctx.attr, "_" + generator)
     dep_ccinfos = [dep[CcInfo] for dep in deps if CcInfo in dep]
     dep_ccinfos += [dep[UpbWrappedCcInfo].cc_info for dep in deps if UpbWrappedCcInfo in dep]
-    dep_ccinfos += [dep[_UpbCcWrappedCcInfo].cc_info for dep in deps if _UpbCcWrappedCcInfo in dep]
+    dep_ccinfos += [dep[UpbCcWrappedCcInfo].cc_info for dep in deps if UpbCcWrappedCcInfo in dep]
+
     if UpbWrappedCcInfo not in target:
         fail("Target should have UpbWrappedCcInfo provider")
     dep_ccinfos.append(target[UpbWrappedCcInfo].cc_info)
@@ -249,7 +250,7 @@ def _upb_cc_proto_aspect_impl(target, ctx, generator, cc_provider, file_provider
     return [cc_provider(cc_info = cc_info), file_provider(srcs = files)]
 
 def _upb_cc_proto_library_aspect_impl(target, ctx):
-    return _upb_cc_proto_aspect_impl(target, ctx, "upbprotos", _UpbCcWrappedCcInfo, _WrappedCcGeneratedSrcsInfo)
+    return _upb_cc_proto_aspect_impl(target, ctx, "upbprotos", UpbCcWrappedCcInfo, _WrappedCcGeneratedSrcsInfo)
 
 def _maybe_add(d):
     if _is_google3:
@@ -260,7 +261,7 @@ def _maybe_add(d):
         )
     return d
 
-_upb_cc_proto_library_aspect = aspect(
+upb_cc_proto_library_aspect = aspect(
     attrs = _maybe_add({
         "_ccopts": attr.label(
             default = "//protos:upb_cc_proto_library_copts__for_generated_code_only_do_not_use",
@@ -291,7 +292,7 @@ _upb_cc_proto_library_aspect = aspect(
     }),
     implementation = _upb_cc_proto_library_aspect_impl,
     provides = [
-        _UpbCcWrappedCcInfo,
+        UpbCcWrappedCcInfo,
         _WrappedCcGeneratedSrcsInfo,
     ],
     required_aspect_providers = [
@@ -310,7 +311,7 @@ upb_cc_proto_library = rule(
         "deps": attr.label_list(
             aspects = [
                 upb_proto_library_aspect,
-                _upb_cc_proto_library_aspect,
+                upb_cc_proto_library_aspect,
             ],
             allow_rules = ["proto_library"],
             providers = [ProtoInfo],
