@@ -156,6 +156,7 @@ def _compile_upb_cc_protos(ctx, generator, proto_info, proto_sources):
         proto_info = proto_info,
         proto_lang_toolchain_info = _get_lang_toolchain(ctx, generator),
         generated_files = srcs + hdrs,
+        experimental_exec_group = "proto_compiler",
     )
 
     return GeneratedSrcsInfo(srcs = srcs, hdrs = hdrs)
@@ -260,7 +261,9 @@ _upb_cc_proto_library_aspect = aspect(
     attr_aspects = ["deps"],
     fragments = ["cpp"],
     toolchains = use_cpp_toolchain(),
-    incompatible_use_toolchain_transition = True,
+    exec_groups = {
+        "proto_compiler": exec_group(),
+    },
 )
 
 upb_cc_proto_library = rule(

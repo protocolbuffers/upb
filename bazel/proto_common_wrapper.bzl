@@ -50,7 +50,7 @@ def output_dir(ctx, proto_info):
         path = ctx.bin_dir.path
     return path
 
-def proto_common_compile(ctx, proto_info, proto_lang_toolchain_info, generated_files):
+def proto_common_compile(ctx, proto_info, proto_lang_toolchain_info, generated_files, **kwargs):
     """A wrapper around proto_common.compile that automatically calculates the output dir.
 
     Args:
@@ -65,4 +65,5 @@ def proto_common_compile(ctx, proto_info, proto_lang_toolchain_info, generated_f
         proto_lang_toolchain_info = proto_lang_toolchain_info,
         generated_files = generated_files,
         plugin_output = output_dir(ctx, proto_info),
+        **kwargs
     )
