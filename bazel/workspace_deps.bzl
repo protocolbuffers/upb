@@ -15,16 +15,16 @@ def upb_deps():
         _github_archive,
         name = "com_google_absl",
         repo = "https://github.com/abseil/abseil-cpp",
-        commit = "78be63686ba732b25052be15f8d6dee891c05749",  # Abseil LTS 20230125
-        sha256 = "4f356a07b9ec06ef51f943928508566e992f621ed5fa4dd588865d7bed1284cd",
+        commit = "b971ac5250ea8de900eae9f95e06548d14cd95fe",  # Abseil LTS 20230125.2
+        sha256 = "f7c2cb2c5accdcbbbd5c0c59f241a988c0b1da2a3b7134b823c0bd613b1a6880",
     )
 
     maybe(
         _github_archive,
         name = "com_google_protobuf",
         repo = "https://github.com/protocolbuffers/protobuf",
-        commit = "21b4fd581f236c38bd2f00f667b1fade0da266f3",
-        sha256 = "576fc916a982bc6465eefa0645ad5295e93c3958221d965150136710131bf903",
+        commit = "585583316e42a255202d8d567692a6c46d077a57",
+        sha256 = "09138c0cec5a41bf61585c0bd65922119a03d34549649fd806a4c30afe3320ea",
         patches = ["@upb//bazel:protobuf.patch"],
     )
 
