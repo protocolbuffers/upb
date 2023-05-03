@@ -28,7 +28,9 @@
 #ifndef UPB_MESSAGE_PROMOTE_H_
 #define UPB_MESSAGE_PROMOTE_H_
 
+#include "upb/collections/array.h"
 #include "upb/message/extension_internal.h"
+#include "upb/wire/decode.h"
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -91,35 +93,47 @@ typedef struct {
   upb_Message* message;
 } upb_UnknownToMessageRet;
 
-// Promotes unknown data inside message to a upb_Message parsing the unknown.
+// Promotes an "empty" non-repeated message field in `parent` to a message of
+// the correct type.
 //
-// The unknown data is removed from message after field value is set
-// using upb_Message_SetMessage.
+// Preconditions:
 //
-// WARNING!: See b/267655898
-upb_UnknownToMessageRet upb_MiniTable_PromoteUnknownToMessage(
-    upb_Message* msg, const upb_MiniTable* mini_table,
-    const upb_MiniTableField* field, const upb_MiniTable* sub_mini_table,
-    int decode_options, upb_Arena* arena);
+// 1. The message field must currently be in the "empty" state (this must have
+//    been previously verified by the caller by calling
+//    `upb_Message_GetTaggedMessagePtr()` and observing that the message is
+//    indeed empty.
+//
+// 2. This `field` must have previously been linked.
+//
+// If the promotion succeeds, `parent` will have its data for `field` replaced
+// by the promoted message, which is also returned in `*promoted`.  If the
+// return value indicates a error status, `parent` and `promoted` are unchanged.
+upb_DecodeStatus upb_Message_PromoteMessage(upb_Message* parent,
+                                            const upb_MiniTable* mini_table,
+                                            const upb_MiniTableField* field,
+                                            int decode_options,
+                                            upb_Arena* arena,
+                                            upb_Message** promoted);
 
-// Promotes all unknown data that matches field tag id to repeated messages
-// in upb_Array.
+// Promotes any "empty" messages in this array to a message of the correct type
+// `mini_table`.  This function should only be called for arrays of messages.
 //
-// The unknown data is removed from message after upb_Array is populated.
-// Since repeated messages can't be packed we remove each unknown that
-// contains the target tag id.
-upb_UnknownToMessage_Status upb_MiniTable_PromoteUnknownToMessageArray(
-    upb_Message* msg, const upb_MiniTableField* field,
-    const upb_MiniTable* mini_table, int decode_options, upb_Arena* arena);
+// If the return value indicates an error status, some but not all elements may
+// have been promoted, but the array itself will not be corrupted.
+upb_DecodeStatus upb_Array_PromoteMessages(upb_Array* arr,
+                                           const upb_MiniTable* mini_table,
+                                           int decode_options,
+                                           upb_Arena* arena);
 
-// Promotes all unknown data that matches field tag id to upb_Map.
+// Promotes any "empty" entries in this map to a message of the correct type
+// `mini_table`.  This function should only be called for maps that have a
+// message type as the map value.
 //
-// The unknown data is removed from message after upb_Map is populated.
-// Since repeated messages can't be packed we remove each unknown that
-// contains the target tag id.
-upb_UnknownToMessage_Status upb_MiniTable_PromoteUnknownToMap(
-    upb_Message* msg, const upb_MiniTable* mini_table,
-    const upb_MiniTableField* field, int decode_options, upb_Arena* arena);
+// If the return value indicates an error status, some but not all elements may
+// have been promoted, but the map itself will not be corrupted.
+upb_DecodeStatus upb_Map_PromoteMessages(upb_Map* map,
+                                         const upb_MiniTable* mini_table,
+                                         int decode_options, upb_Arena* arena);
 
 #ifdef __cplusplus
 } /* extern "C" */
