@@ -76,6 +76,9 @@ class Ptr final {
     return const_cast<Proxy<T>*>(std::addressof(p_));
   }
 
+  // TODO split this out and add proper comparison semantics
+  bool operator==(std::nullptr_t) { return p_.msg() == nullptr; }
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wclass-conversion"
