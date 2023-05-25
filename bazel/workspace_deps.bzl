@@ -23,8 +23,8 @@ def upb_deps():
         _github_archive,
         name = "com_google_protobuf",
         repo = "https://github.com/protocolbuffers/protobuf",
-        commit = "71fca0ca15ca6f0cfe12c6593e7fc840f7ae0809",
-        sha256 = "0b467b7c0b34515cf88a20c2fe5a550ae18cb55dcc76f8e2e659349c1169d48f",
+        commit = "91e5e6e76d724b8a459d6c87079e76b3f174db32",
+        sha256 = "fc5ce0c1d8b11b655ccc1a5d8c3f4d36b7bb8208ad85a639fb467462b6add65b",
         patches = ["@upb//bazel:protobuf.patch"],
     )
 
