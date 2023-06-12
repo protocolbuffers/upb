@@ -308,7 +308,7 @@ static void txtenc_map(txtenc* e, const upb_Map* map, const upb_FieldDef* f) {
 #define CHK(x)      \
   do {              \
     if (!(x)) {     \
-      return false; \
+      return NULL; \
     }               \
   } while (0)
 
