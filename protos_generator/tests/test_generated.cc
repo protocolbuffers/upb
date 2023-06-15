@@ -718,6 +718,19 @@ TEST(CppGeneratedCode, SerializeUsingArena) {
   EXPECT_EQ("Hello World", parsed_model.str1());
 }
 
+TEST(CppGeneratedCode, SerializeProxyUsingArena) {
+  TestModel model;
+  model.set_str1("Hello World");
+  protos_generator::test::protos::internal::TestModelCProxy model_proxy =
+      ::protos::internal::CreateMessage<TestModel>(model.msg());
+  ::upb::Arena arena;
+  absl::StatusOr<absl::string_view> bytes =
+      ::protos::Serialize(model_proxy, arena);
+  EXPECT_EQ(true, bytes.ok());
+  TestModel parsed_model = ::protos::Parse<TestModel>(bytes.value()).value();
+  EXPECT_EQ("Hello World", parsed_model.str1());
+}
+
 TEST(CppGeneratedCode, SerializeNestedMessageUsingArena) {
   TestModel model;
   model.mutable_recursive_child()->set_str1("Hello World");

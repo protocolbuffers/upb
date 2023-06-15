@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "google/protobuf/descriptor.pb.h"
+#include "absl/strings/str_cat.h"
 #include "google/protobuf/descriptor.h"
 #include "protos_generator/gen_accessors.h"
 #include "protos_generator/gen_enums.h"
@@ -114,6 +115,7 @@ void WriteModelAccessDeclaration(const protobuf::Descriptor* descriptor,
           $0Access(const $1* msg, upb_Arena* arena)
               : msg_(const_cast<$1*>(msg)), arena_(arena) {}  // NOLINT
           void* GetInternalArena() const { return arena_; }
+          static const upb_MiniTable* minitable();
       )cc",
       ClassName(descriptor), MessageName(descriptor));
   WriteFieldAccessorsInHeader(descriptor, output);
@@ -297,6 +299,7 @@ void WriteModelCProxyDeclaration(const protobuf::Descriptor* descriptor,
           $0CProxy() = delete;
           $0CProxy(const $0* m) : internal::$0Access(m->msg_, nullptr) {}
           $0CProxy($0Proxy m);
+          static const upb_MiniTable* minitable() { return $0::minitable(); }
           using $0Access::GetInternalArena;
       )cc",
       ClassName(descriptor), MessageName(descriptor));
