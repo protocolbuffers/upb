@@ -145,7 +145,7 @@ const upb_Message_Extension* _upb_Message_Getext(
    * becomes an issue due to messages with lots of extensions, we can introduce
    * a table of some sort. */
   for (size_t i = 0; i < n; i++) {
-    if (ext[i].ext == e) {
+    if (ext[i].ext->field.number == e->field.number) {
       return &ext[i];
     }
   }
