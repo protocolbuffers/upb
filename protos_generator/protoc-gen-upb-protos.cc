@@ -136,12 +136,10 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
 #include "protos/protos.h"
 #include "protos/protos_internal.h"
 #include "protos/repeated_field.h"
-#include "upb/upb.hpp"
+#include "upb/generated_cpp_support.h"
 
 #include "absl/strings/string_view.h"
 #include "absl/status/statusor.h"
-#include "upb/message/internal.h"
-#include "upb/message/copy.h"
       )cc",
       ToPreproc(file->name()));
 
@@ -202,9 +200,8 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output,
   output(
       R"cc(
 #include <stddef.h>
+#include "upb/generated_cpp_support.h"
 #include "absl/strings/string_view.h"
-#include "upb/message/copy.h"
-#include "upb/message/internal.h"
 #include "protos/protos.h"
 #include "$0"
       )cc",

@@ -486,35 +486,16 @@ cc_library(
 # Common support code for C++ generated code.
 cc_library(
     name = "generated_cpp_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
-    hdrs = [
-        "upb/message/copy.h",
-        "upb/message/extension_internal.h",
-        "upb/message/internal.h",
-        "upb/message/message.h",
-        "upb/mini_table/common.h",
-        "upb/mini_table/enum_internal.h",
-        "upb/mini_table/extension_internal.h",
-        "upb/mini_table/field_internal.h",
-        "upb/mini_table/file_internal.h",
-        "upb/mini_table/message_internal.h",
-        "upb/mini_table/sub_internal.h",
-        "upb/mini_table/types.h",
+    hdrs = ["upb/generated_cpp_support.h"],
+    copts = UPB_DEFAULT_COPTS,
+    textual_hdrs = [
         "upb/port/def.inc",
         "upb/port/undef.inc",
-        "upb/upb.hpp",
-        "upb/wire/decode.h",
-        "upb/wire/decode_fast.h",
-        "upb/wire/encode.h",
     ],
-    copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
-        ":base",
         ":collections_internal",
-        ":hash",
-        ":message_copy",
-        ":mini_table",
-        ":upb",
+        ":message_accessors",
     ],
 )
 
