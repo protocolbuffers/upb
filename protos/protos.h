@@ -28,11 +28,13 @@
 #ifndef UPB_PROTOS_PROTOS_H_
 #define UPB_PROTOS_PROTOS_H_
 
+#include <cstddef>
 #include <type_traits>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "upb/mem/arena.h"
 #include "upb/message/copy.h"
 #include "upb/message/extension_internal.h"
@@ -239,6 +241,21 @@ void* GetInternalMsg(const T* message) {
 template <typename T>
 void* GetInternalMsg(Ptr<T> message) {
   return message->msg();
+}
+
+template <typename T>
+absl::string_view GetUnknown(const T* message) {
+  size_t length;
+  const char* unknown_data = message->upb_Message_GetUnknown(message, &length);
+  return absl::string_view(unknown_data, length);
+}
+
+template <typename T>
+absl::string_view GetUnknown(Ptr<T> message) {
+  size_t length;
+  const char* unknown_data =
+      message->upb_Message_GetUnknown(message->msg(), &length);
+  return absl::string_view(unknown_data, length);
 }
 
 template <typename T>
