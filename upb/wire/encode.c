@@ -581,13 +581,18 @@ static void encode_message(upb_encstate* e, const upb_Message* msg,
   }
 
   if (m->field_count) {
-    const upb_MiniTableField* f = &m->fields[m->field_count];
-    const upb_MiniTableField* first = &m->fields[0];
-    while (f != first) {
-      f--;
-      if (encode_shouldencode(e, msg, m->subs, f)) {
-        encode_field(e, msg, m->subs, f);
+    const uint32_t* ptr = msg;
+    uint32_t bits = *ptr;
+    uint32_t base = 0;
+    while (true) {
+      while (bits == 0) {
+        if (base > m->field_count) break;
+        base += 32;
+        bits = *ptr++;
       }
+      int n = __builtin_ctz(bits);
+      const upb_MiniTableField* f = &m->fields[n];
+      encode_field(e, msg, m->subs, f);
     }
   }
 

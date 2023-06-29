@@ -38,7 +38,12 @@
 struct upb_MiniTableField {
   uint32_t number;
   uint16_t offset;
-  int16_t presence;       // If >0, hasbit_index.  If <0, ~oneof_index
+
+  // 00xxxxxx_xxxxxxxx: hasbit index with explicit presence.
+  // 01xxxxxx_xxxxxxxx: hasbit index with implicit presence.
+  // 10xxxxxx_xxxxxxxx: oneof case offset
+  // 11xxxxxx_xxxxxxxx: invalid (except while building, see below)
+  uint16_t presence;
 
   // Indexes into `upb_MiniTable.subs`
   // Will be set to `kUpb_NoSub` if `descriptortype` != MESSAGE/GROUP/ENUM
@@ -49,6 +54,13 @@ struct upb_MiniTableField {
   // upb_FieldMode | upb_LabelFlags | (upb_FieldRep << kUpb_FieldRep_Shift)
   uint8_t mode;
 };
+
+typedef enum {
+  kUpb_PresenceFlags_IsOneof = 0x8000,
+  kUpb_PresenceFlags_ExplicitPresence = 0x0000,
+  kUpb_PresenceFlags_ImplicitPresence = 0x4000,
+  kUpb_PresenceFlags_RequiredPresence = 0xc000,
+} upb_PresenceFlags;
 
 #define kUpb_NoSub ((uint16_t)-1)
 
