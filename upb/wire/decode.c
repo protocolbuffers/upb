@@ -196,26 +196,37 @@ static void _upb_Decoder_MungeInt32(wireval* val) {
   }
 }
 
-static void _upb_Decoder_Munge(int type, wireval* val) {
+static bool _upb_Decoder_Munge(int type, wireval* val, const upb_MiniTable* mt,
+                               const upb_MiniTableField* f) {
   switch (type) {
     case kUpb_FieldType_Bool:
       val->bool_val = val->uint64_val != 0;
-      break;
+      return true;
     case kUpb_FieldType_SInt32: {
       uint32_t n = val->uint64_val;
       val->uint32_val = (n >> 1) ^ -(int32_t)(n & 1);
-      break;
+      return true;
     }
     case kUpb_FieldType_SInt64: {
       uint64_t n = val->uint64_val;
       val->uint64_val = (n >> 1) ^ -(int64_t)(n & 1);
-      break;
+      return true;
+    }
+    case kUpb_FieldType_Enum: {
+      uint32_t v = val->uint32_val;
+      _upb_Decoder_MungeInt32(val);
+      const upb_MiniTableEnum* e =
+          f->mode & kUpb_LabelFlags_IsExtension
+              ? ((const upb_MiniTableExtension*)f)->sub.subenum
+              : mt->subs[f->UPB_PRIVATE(submsg_index)].subenum;
+      return upb_MiniTableEnum_CheckValue(e, v);
     }
     case kUpb_FieldType_Int32:
     case kUpb_FieldType_UInt32:
-    case kUpb_FieldType_Enum:
       _upb_Decoder_MungeInt32(val);
-      break;
+      return true;
+    default:
+      return true;
   }
 }
 
@@ -447,7 +458,7 @@ static const char* _upb_Decoder_DecodeVarintPacked(
   while (!_upb_Decoder_IsDone(d, &ptr)) {
     wireval elem;
     ptr = _upb_Decoder_DecodeVarint(d, ptr, &elem.uint64_val);
-    _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), &elem);
+    _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), &elem, NULL, NULL);
     if (_upb_Decoder_Reserve(d, arr, 1)) {
       out = UPB_PTR_AT(_upb_array_ptr(arr), arr->size << lg2, void);
     }
@@ -683,13 +694,6 @@ static const char* _upb_Decoder_DecodeToSubMessage(
     int op) {
   void* mem = UPB_PTR_AT(msg, field->offset, void);
   int type = field->UPB_PRIVATE(descriptortype);
-
-  if (UPB_UNLIKELY(op == kUpb_DecodeOp_Enum) &&
-      !_upb_Decoder_CheckEnum(d, ptr, msg,
-                              subs[field->UPB_PRIVATE(submsg_index)].subenum,
-                              field, val)) {
-    return ptr;
-  }
 
   /* Set presence if necessary. */
   if (field->presence > 0) {
@@ -1102,7 +1106,10 @@ static const char* _upb_Decoder_DecodeWireValue(upb_Decoder* d, const char* ptr,
     case kUpb_WireType_Varint:
       ptr = _upb_Decoder_DecodeVarint(d, ptr, &val->uint64_val);
       *op = _upb_Decoder_GetVarintOp(field);
-      _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), val);
+      if (!_upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), val, mt,
+                              field)) {
+        *op = kUpb_DecodeOp_UnknownField;
+      }
       return ptr;
     case kUpb_WireType_32Bit:
       *op = kUpb_DecodeOp_Scalar4Byte;
