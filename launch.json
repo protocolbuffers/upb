@@ -1,0 +1,30 @@
+// {
+//     "name": "C++ Launch",
+//     "type": "cppdbg",
+//     "request": "launch",
+//     "program": "${workspaceFolder}/a.out",
+//     "stopAtEntry": false,
+//     "customLaunchSetupCommands": [
+//       { "text": "target-run", "description": "run target", "ignoreFailures": false }
+//     ],
+//     // "launchCompleteCommand": "exec-run",
+//     // "linux": {
+//     //   "MIMode": "gdb",
+//     //   "miDebuggerPath": "/usr/bin/gdb"
+//     // },
+//     // "osx": {
+//     //   "MIMode": "lldb"
+//     // },
+//     // "windows": {
+//     //   "MIMode": "gdb",
+//     //   "miDebuggerPath": "C:\\MinGw\\bin\\gdb.exe"
+//     // }
+// }
+  
+{
+    "name": "C++ Launch",
+    "type": "cppdbg",
+    "request": "launch",
+    "program": "${workspaceFolder}/bazel-bin/upbc/protoc-gen-upb_stage0",
+    "cwd": "${workspaceFolder}"
+}
