@@ -189,7 +189,7 @@ UPB_INLINE size_t upb_table_size(const upb_table* t) {
 
 UPB_INLINE bool upb_tabent_isempty(const upb_tabent* e) { return e->key == 0; }
 
-UPB_API_INLINE uint32_t _upb_Hash(const void* p, size_t n, uint64_t seed);
+UPB_API uint32_t _upb_Hash(const void* p, size_t n, uint64_t seed);
 
 #ifdef __cplusplus
 } /* extern "C" */
