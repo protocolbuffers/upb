@@ -449,7 +449,7 @@ TEST(CppGeneratedCode, RepeatedScalarIterator) {
   EXPECT_EQ(sum, 5 + 16 + 27);
   // Access by const reference.
   sum = 0;
-  for (const int& i : *test_model.mutable_value_array()) {
+  for (const int32_t& i : *test_model.mutable_value_array()) {
     sum += i;
   }
   EXPECT_EQ(sum, 5 + 16 + 27);
