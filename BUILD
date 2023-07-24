@@ -23,6 +23,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+load("//third_party/bazel_rules/rules_python/python:py_binary.bzl", "py_binary")
 load(
     "//bazel:build_defs.bzl",
     "UPB_DEFAULT_COPTS",
