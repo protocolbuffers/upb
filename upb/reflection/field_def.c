@@ -592,14 +592,6 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
               f->full_name, (int)f->type_);
         }
     }
-  } else if (has_type_name) {
-    f->type_ =
-        UPB_FIELD_TYPE_UNSPECIFIED;  // We'll assign this in resolve_fielddef()
-  }
-
-  if (f->type_ < kUpb_FieldType_Double || f->type_ > kUpb_FieldType_SInt64) {
-    _upb_DefBuilder_Errf(ctx, "invalid type for field %s (%d)", f->full_name,
-                         f->type_);
   }
 
   if (f->label_ < kUpb_Label_Optional || f->label_ > kUpb_Label_Repeated) {
@@ -657,6 +649,16 @@ static void _upb_FieldDef_Create(upb_DefBuilder* ctx, const char* prefix,
       (!upb_FieldDef_IsRepeated(f)) &&
       (upb_FieldDef_IsSubMessage(f) || upb_FieldDef_ContainingOneof(f) ||
        (upb_FileDef_Syntax(f->file) == kUpb_Syntax_Proto2));
+
+  if (!has_type && has_type_name) {
+    f->type_ =
+        UPB_FIELD_TYPE_UNSPECIFIED;  // We'll assign this in resolve_subdef()
+  } else {
+    if (f->type_ < kUpb_FieldType_Double || f->type_ > kUpb_FieldType_SInt64) {
+      _upb_DefBuilder_Errf(ctx, "invalid type for field %s (%d)", f->full_name,
+                           f->type_);
+    }
+  }
 }
 
 static void _upb_FieldDef_CreateExt(upb_DefBuilder* ctx, const char* prefix,
@@ -773,6 +775,7 @@ static void resolve_subdef(upb_DefBuilder* ctx, const char* prefix,
           _upb_DefBuilder_Errf(ctx, "Couldn't resolve type name for field %s",
                                f->full_name);
       }
+      break;
     }
     case kUpb_FieldType_Message:
     case kUpb_FieldType_Group:
