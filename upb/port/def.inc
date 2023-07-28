@@ -273,7 +273,17 @@
  * expected behavior.
  */
 
-#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
+#if defined(__has_feature)
+# if __has_feature(address_sanitizer)
+#define CLANG_ASAN 1
+# else
+#define CLANG_ASAN 0
+#endif
+#else
+#define CLANG_ASAN 0
+#endif
+
+#if defined(__SANITIZE_ADDRESS__) || CLANG_ASAN
 #define UPB_ASAN 1
 #ifdef __cplusplus
 extern "C" {
