@@ -273,7 +273,7 @@
  * expected behavior.
  */
 
-#if defined(__SANITIZE_ADDRESS__)
+#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
 #define UPB_ASAN 1
 #ifdef __cplusplus
 extern "C" {
