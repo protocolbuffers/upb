@@ -9,7 +9,7 @@
 #ifndef GOOGLE_PROTOBUF_DESCRIPTOR_PROTO_UPB_H_
 #define GOOGLE_PROTOBUF_DESCRIPTOR_PROTO_UPB_H_
 
-#include "upb/generated_code_support.h"
+#include "upb/gencode/support.h"
 
 // Must be last. 
 #include "upb/port/def.inc"

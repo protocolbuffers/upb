@@ -1,5 +1,5 @@
 #include <stddef.h>
-#include "upb/generated_code_support.h"
+#include "upb/gencode/support.h"
 #include "google/protobuf/descriptor.upb.h"
 
 static upb_Arena* upb_BootstrapArena() {

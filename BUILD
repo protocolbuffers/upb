@@ -401,7 +401,7 @@ cc_library(
 # give up any backward compatibility guarantees.
 cc_library(
     name = "generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
-    hdrs = ["upb/generated_code_support.h"],
+    hdrs = ["upb/gencode/support.h"],
     copts = UPB_DEFAULT_COPTS,
     textual_hdrs = [
         "upb/port/def.inc",
@@ -427,15 +427,14 @@ cc_library(
 cc_library(
     name = "generated_cpp_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
     hdrs = [
-        "upb/message/message.h",
-        "upb/port/def.inc",
-        "upb/port/undef.inc",
+        "upb/gencode/support.hpp",
         "upb/upb.hpp",
-        "upb/wire/decode.h",
-        "upb/wire/decode_fast.h",
-        "upb/wire/encode.h",
     ],
     copts = UPB_DEFAULT_COPTS,
+    textual_hdrs = [
+        "upb/port/def.inc",
+        "upb/port/undef.inc",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -445,6 +444,7 @@ cc_library(
         ":message_copy",
         ":mini_table",
         ":upb",
+        ":wire_internal",
     ],
 )
 

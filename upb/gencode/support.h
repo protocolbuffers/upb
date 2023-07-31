@@ -25,8 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UPB_GENERATED_CODE_SUPPORT_H_
-#define UPB_GENERATED_CODE_SUPPORT_H_
+// Common support headers for generated C code.
+
+#ifndef UPB_GENCODE_SUPPORT_H_
+#define UPB_GENCODE_SUPPORT_H_
 
 // IWYU pragma: begin_exports
 #include "upb/collections/array.h"
@@ -51,4 +53,4 @@
 #include "upb/wire/encode.h"
 // IWYU pragma: end_exports
 
-#endif  // UPB_GENERATED_CODE_SUPPORT_H_
+#endif  // UPB_GENCODE_SUPPORT_H_
