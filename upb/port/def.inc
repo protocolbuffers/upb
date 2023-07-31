@@ -285,6 +285,7 @@
 
 #if defined(__SANITIZE_ADDRESS__) || UPB_CLANG_ASAN
 #define UPB_ASAN 1
+#define UPB_ASAN_GUARD_SIZE 32
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -299,6 +300,7 @@ void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
   __asan_unpoison_memory_region((addr), (size))
 #else
 #define UPB_ASAN 0
+#define UPB_ASAN_GUARD_SIZE 0
 #define UPB_POISON_MEMORY_REGION(addr, size) \
   ((void)(addr), (void)(size))
 #define UPB_UNPOISON_MEMORY_REGION(addr, size) \

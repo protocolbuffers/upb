@@ -76,18 +76,10 @@ UPB_INLINE size_t _upb_ArenaHas(upb_Arena* a) {
 
 UPB_API_INLINE void* upb_Arena_Malloc(upb_Arena* a, size_t size) {
   size = UPB_ALIGN_MALLOC(size);
-#if UPB_ASAN
-  {
-    size_t guard_size = 32;
-    if (UPB_UNLIKELY(_upb_ArenaHas(a) < (size+guard_size))) {
-#else
-  if (UPB_UNLIKELY(_upb_ArenaHas(a) < size)) {
-#endif
+  size_t span = size + UPB_ASAN_GUARD_SIZE;
+  if (UPB_UNLIKELY(_upb_ArenaHas(a) < span)) {
     return _upb_Arena_SlowMalloc(a, size);
   }
-#if UPB_ASAN
-  }
-#endif
 
   // We have enough space to do a fast malloc.
   _upb_ArenaHead* h = (_upb_ArenaHead*)a;
@@ -96,15 +88,7 @@ UPB_API_INLINE void* upb_Arena_Malloc(upb_Arena* a, size_t size) {
   UPB_ASSERT(UPB_ALIGN_MALLOC(size) == size);
   UPB_UNPOISON_MEMORY_REGION(ret, size);
 
-  h->ptr += size;
-
-#if UPB_ASAN
-  {
-    size_t guard_size = 32;
-    UPB_ASSERT(_upb_ArenaHas(a) >= guard_size);
-    h->ptr += guard_size;
-  }
-#endif
+  h->ptr += span;
 
   return ret;
 }
@@ -118,14 +102,8 @@ UPB_API_INLINE void upb_Arena_ShrinkLast(upb_Arena* a, void* ptr,
   _upb_ArenaHead* h = (_upb_ArenaHead*)a;
   oldsize = UPB_ALIGN_MALLOC(oldsize);
   size = UPB_ALIGN_MALLOC(size);
-#if UPB_ASAN
-  {
-    size_t guard_size = 32;
-    UPB_ASSERT((char*)ptr + oldsize == (h->ptr-guard_size));  // Must be the last alloc.
-  }
-#else
-  UPB_ASSERT((char*)ptr + oldsize == h->ptr);  // Must be the last alloc.
-#endif
+  // Must be the last alloc.
+  UPB_ASSERT((char*)ptr + oldsize == h->ptr - UPB_ASAN_GUARD_SIZE);
   UPB_ASSERT(size <= oldsize);
   h->ptr = (char*)ptr + size;
 }
