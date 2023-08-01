@@ -278,9 +278,9 @@
  * See https://gcc.gnu.org/onlinedocs/cpp/_005f_005fhas_005fattribute.html.
  */
 #if defined(__has_feature)
-# if __has_feature(address_sanitizer)
+#if __has_feature(address_sanitizer)
 #define UPB_CLANG_ASAN 1
-# else
+#else
 #define UPB_CLANG_ASAN 0
 #endif
 #else
