@@ -273,6 +273,10 @@
  * expected behavior.
  */
 
+/* Due to preprocessor limitations, the conditional logic for setting
+ * UPN_CLANG_ASAN below cannot be consolidated into a portable one-liner.
+ * See https://gcc.gnu.org/onlinedocs/cpp/_005f_005fhas_005fattribute.html.
+ */
 #if defined(__has_feature)
 # if __has_feature(address_sanitizer)
 #define UPB_CLANG_ASAN 1
