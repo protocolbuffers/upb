@@ -25,6 +25,10 @@
 
 load("//bazel:build_defs.bzl", "UPB_DEFAULT_COPTS")
 
+# begin:github_only
+load("@rules_pkg//:mappings.bzl", "pkg_files", "strip_prefix")
+# end:github_only
+
 cc_library(
     name = "base",
     srcs = [
@@ -64,7 +68,15 @@ filegroup(
     ),
     visibility = [
         "//cmake:__pkg__",
-        "//python/dist:__pkg__",
     ]
+)
+
+pkg_files(
+    name = "source_pkg_files",
+    srcs = [":source_files"],
+    visibility = [
+        "//python/dist:__pkg__",
+    ],
+    strip_prefix = strip_prefix.from_root("")
 )
 # end:github_only

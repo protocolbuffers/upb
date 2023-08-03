@@ -54,6 +54,7 @@ load(
     "//bazel:amalgamation.bzl",
     "upb_amalgamation",
 )
+load("@rules_pkg//:mappings.bzl", "pkg_files", "strip_prefix")
 # end:github_only
 
 # begin:google_only
@@ -1135,8 +1136,14 @@ filegroup(
     ),
     visibility = [
         "//cmake:__pkg__",
-        "//python/dist:__pkg__",
     ]
+)
+
+pkg_files(
+   name = "source_pkg_files",
+   srcs = [":source_files"],
+   visibility = ["//python/dist:__pkg__"],
+   strip_prefix = ""
 )
 # end:github_only
 

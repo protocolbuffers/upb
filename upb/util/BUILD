@@ -4,6 +4,10 @@ load(
     "upb_proto_reflection_library",
 )
 
+# begin:github_only
+load("@rules_pkg//:mappings.bzl", "pkg_files", "strip_prefix")
+# end:github_only
+
 # begin:google_only
 # package(default_applicable_licenses = ["//:license"])
 # end:google_only
@@ -171,6 +175,13 @@ filegroup(
         "required_fields.c",
         "required_fields.h",
     ],
+)
+
+pkg_files(
+    name = "source_pkg_files",
+    srcs = [":source_files"],
+    prefix = "upb/util",
     visibility = ["//python/dist:__pkg__"],
+    strip_prefix = strip_prefix.from_root("")
 )
 # end:github_only

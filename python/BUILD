@@ -32,7 +32,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("//bazel:build_defs.bzl", "UPB_DEFAULT_COPTS")
 
 # begin:github_only
-load("@rules_pkg//:mappings.bzl", "pkg_files")
+load("@rules_pkg//:mappings.bzl", "pkg_files", "strip_prefix")
 # end:github_only
 
 licenses(["notice"])
@@ -187,6 +187,12 @@ _message_target_compatible_with = {
    "//conditions:default": [],
 }
 
+pkg_files(
+   name = "message_pkg_files",
+   srcs = [":message_srcs"],
+   prefix = "python/",
+   strip_prefix = strip_prefix.from_root("")
+)
 # end:github_only
 # begin:google_only
 # _message_target_compatible_with = {
