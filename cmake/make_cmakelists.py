@@ -306,6 +306,9 @@ class WorkspaceFileFunctions(object):
   def googletest_deps(self):
     pass
 
+  def Label(self, arg):
+    pass
+
 
 class Converter(object):
   def __init__(self):

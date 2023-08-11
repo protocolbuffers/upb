@@ -128,31 +128,21 @@ cc_library(
     name = "upb",
     hdrs = [
         "upb/collections/array.h",
-        "upb/decode.h",
-        "upb/encode.h",
         "upb/message/extension_internal.h",
         "upb/message/message.h",
         "upb/msg.h",
         "upb/upb.h",
         "upb/upb.hpp",
-        "upb/wire/common.h",
-        "upb/wire/decode.h",
-        "upb/wire/encode.h",
     ],
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
         ":base",
-        ":base_internal",
         ":collections_internal",
-        ":fastdecode",
-        ":hash",
-        ":lex",
         ":mem",
         ":message_internal",
         ":mini_table",
         ":port",
-        ":wire",
     ],
 )
 
@@ -240,6 +230,7 @@ cc_library(
         ":port",
         ":upb",
         ":wire",
+        ":wire_internal",
         ":wire_reader",
         "//upb/mini_table:internal",
     ],
@@ -264,6 +255,7 @@ cc_library(
         ":port",
         ":upb",
         ":wire",
+        ":wire_internal",
         ":wire_reader",
         "//upb/mini_table",
     ],
@@ -280,10 +272,13 @@ cc_library(
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
+        ":base",
         ":collections_internal",
         ":mem",
         ":message_accessors",
         ":message_internal",
+        ":message_typedef",
+        ":mini_table_internal",
         ":port",
         ":upb",
         "//upb/mini_table",
@@ -322,6 +317,8 @@ cc_test(
         ":message_accessors",
         ":port",
         ":upb",
+        ":wire",
+        ":wire_internal",
         "//upb/mini_descriptor",
         "//upb/mini_descriptor:encode_internal",
         "//upb/mini_descriptor:internal",
@@ -346,6 +343,8 @@ cc_test(
         ":message_promote",
         ":port",
         ":upb",
+        ":wire",
+        ":wire_internal",
         "//upb/mini_descriptor:encode_internal",
         "//upb/mini_descriptor:internal",
         "//upb/mini_table",
@@ -367,8 +366,10 @@ cc_test(
         ":mem",
         ":message_accessors",
         ":message_copy",
+        ":message_internal",
         ":mini_table",
         ":upb",
+        ":wire",
         "//upb/test:test_messages_proto2_upb_proto",
         "//upb/test:test_messages_proto3_upb_proto",
         "//upb/test:test_upb_proto",
@@ -439,6 +440,7 @@ cc_library(
         ":hash",
         ":mem",
         ":message_copy",
+        ":message_typedef",
         ":mini_table",
         ":upb",
     ],
@@ -503,6 +505,7 @@ cc_library(
         "upb/message/internal/map_entry.h",
     ],
     copts = UPB_DEFAULT_COPTS,
+    visibility = ["//:__subpackages__"],
     deps = [
         ":base",
         ":hash",
@@ -714,6 +717,36 @@ alias(
     visibility = ["//:friends"],
 )
 
+alias(
+    name = "wire",
+    actual = "//upb/wire",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "wire_internal",
+    actual = "//upb/wire:internal",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "wire_reader",
+    actual = "//upb/wire:reader",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "wire_types",
+    actual = "//upb/wire:types",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "eps_copy_input_stream",
+    actual = "//upb/wire:eps_copy_input_stream",
+    visibility = ["//visibility:public"],
+)
+
 # Tests ########################################################################
 
 cc_test(
@@ -756,6 +789,7 @@ cc_test(
         ":message_test_upb_proto_reflection",
         ":reflection",
         ":upb",
+        ":wire",
         "//upb/json",
         "//upb/test:fuzz_util",
         "//upb/test:test_messages_proto3_upb_proto",
@@ -806,99 +840,6 @@ cc_test(
 )
 
 # Internal C/C++ libraries #####################################################
-
-cc_library(
-    name = "wire",
-    hdrs = [
-        "upb/wire/decode.h",
-        "upb/wire/encode.h",
-    ],
-    copts = UPB_DEFAULT_COPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        ":mem",
-        ":message_internal",
-        ":mini_table",
-        ":port",
-        ":wire_internal",
-    ],
-)
-
-cc_library(
-    name = "wire_internal",
-    srcs = [
-        "upb/wire/decode.c",
-        "upb/wire/decode_fast.c",
-        "upb/wire/encode.c",
-    ],
-    hdrs = [
-        "upb/wire/common.h",
-        "upb/wire/decode.h",
-        "upb/wire/decode_fast.h",
-        "upb/wire/encode.h",
-        "upb/wire/internal/common.h",
-        "upb/wire/internal/decode.h",
-        "upb/wire/internal/swap.h",
-    ],
-    copts = UPB_DEFAULT_COPTS,
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":base",
-        ":collections_internal",
-        ":eps_copy_input_stream",
-        ":mem_internal",
-        ":message_accessors_internal",
-        ":message_internal",
-        ":message_rep_internal",
-        ":mini_table",
-        ":port",
-        ":wire_reader",
-        ":wire_types",
-        "@utf8_range",
-    ],
-)
-
-cc_library(
-    name = "wire_types",
-    hdrs = ["upb/wire/types.h"],
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "eps_copy_input_stream",
-    srcs = ["upb/wire/eps_copy_input_stream.c"],
-    hdrs = ["upb/wire/eps_copy_input_stream.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":mem",
-        ":port",
-    ],
-)
-
-cc_library(
-    name = "wire_reader",
-    srcs = [
-        "upb/wire/internal/swap.h",
-        "upb/wire/reader.c",
-    ],
-    hdrs = ["upb/wire/reader.h"],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":eps_copy_input_stream",
-        ":port",
-        ":wire_types",
-    ],
-)
-
-cc_test(
-    name = "eps_copy_input_stream_test",
-    srcs = ["upb/wire/eps_copy_input_stream_test.cc"],
-    deps = [
-        ":eps_copy_input_stream",
-        ":upb",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
 
 cc_library(
     name = "hash",
@@ -1160,7 +1101,19 @@ filegroup(
 #     ]),
 #     kotlin_package = "upb",
 #     no_string_conversion = ["_upb_MiniTable_Build"],
-#     strict_enums = ["upb_FieldType"],
+#     strict_enums = [
+#         "upb_CType",
+#         "upb_DecodeStatus",
+#         "upb_EncodeStatus",
+#         "upb_FieldType",
+#         "upb_FindUnknown_Status",
+#         "upb_GetExtension_Status",
+#         "upb_GetExtensionAsBytes_Status",
+#         "upb_Label",
+#         "upb_MapInsertStatus",
+#         "upb_UnknownToMessage_Status",
+#         "upb_WireType",
+#     ],
 #     visibility = ["//:__subpackages__"],
 # )
 #

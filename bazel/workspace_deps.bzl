@@ -64,6 +64,36 @@ def upb_deps():
         sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
     )
 
+    maybe(
+        http_archive,
+        name = "lua",
+        build_file = Label("//bazel:lua.BUILD"),
+        sha256 = "b9e2e4aad6789b3b63a056d442f7b39f0ecfca3ae0f1fc0ae4e9614401b69f4b",
+        strip_prefix = "lua-5.2.4",
+        urls = [
+            "https://mirror.bazel.build/www.lua.org/ftp/lua-5.2.4.tar.gz",
+            "https://www.lua.org/ftp/lua-5.2.4.tar.gz",
+        ],
+    )
+
+    maybe(
+        _github_archive,
+        name = "com_github_google_benchmark",
+        repo = "https://github.com/google/benchmark",
+        commit = "0baacde3618ca617da95375e0af13ce1baadea47",
+        sha256 = "62e2f2e6d8a744d67e4bbc212fcfd06647080de4253c97ad5c6749e09faf2cb0",
+    )
+
+    maybe(
+        _github_archive,
+        name = "com_google_googleapis",
+        repo = "https://github.com/googleapis/googleapis",
+        commit = "30ed2662a85403cbdeb9ea38df1e414a2a276b83",
+        sha256 = "4dfc28101127d22abd6f0f6308d915d490c4594c0cfcf7643769c446d6763a46",
+        build_file = Label("//benchmarks:BUILD.googleapis"),
+        patch_cmds = ["find google -type f -name BUILD.bazel -delete"],
+    )
+
     #Python Downloads
 
     python_source_archive(
