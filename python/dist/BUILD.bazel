@@ -259,6 +259,7 @@ pkg_files(
         "//upb/mini_descriptor:source_files",
         "//upb/mini_table:source_files",
         "//upb/util:source_files",
+        "//upb/wire:source_files",
     ],
     strip_prefix = strip_prefix.from_root(""),
 )

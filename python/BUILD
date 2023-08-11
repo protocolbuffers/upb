@@ -245,6 +245,7 @@ py_extension(
         "//:textformat",
         "//:upb",
         "//:wire",
+        "//:wire_internal",
         "//:wire_reader",
         "//:wire_types",
         "//upb/util:compare",
