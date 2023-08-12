@@ -32,8 +32,8 @@
 
 #include "google/protobuf/struct.upb.h"
 #include "gtest/gtest.h"
-#include "upb/json/test.upb.h"
-#include "upb/json/test.upbdefs.h"
+#include "upb/json/test/test.upb.h"
+#include "upb/json/test/test.upbdefs.h"
 #include "upb/reflection/def.hpp"
 #include "upb/upb.hpp"
 
@@ -55,29 +55,29 @@ struct FloatTest {
   float f;
 };
 
-static const std::vector<FloatTest> FloatTestsPass = {
-    {R"({"f": 0})", 0},
-    {R"({"f": 1})", 1},
-    {R"({"f": 1.000000})", 1},
-    {R"({"f": 1.5e1})", 15},
-    {R"({"f": 15e-1})", 1.5},
-    {R"({"f": -3.5})", -3.5},
-    {R"({"f": 3.402823e38})", 3.402823e38},
-    {R"({"f": -3.402823e38})", -3.402823e38},
-    {R"({"f": 340282346638528859811704183484516925440.0})",
-     340282346638528859811704183484516925440.0},
-    {R"({"f": -340282346638528859811704183484516925440.0})",
-     -340282346638528859811704183484516925440.0},
-};
-
-static const std::vector<FloatTest> FloatTestsFail = {
-    {R"({"f": 1z})", 0},
-    {R"({"f": 3.4028236e+38})", 0},
-    {R"({"f": -3.4028236e+38})", 0},
-};
-
 // Decode some floats.
 TEST(JsonTest, DecodeFloats) {
+  const std::vector<FloatTest> FloatTestsPass = {
+      {R"({"f": 0})", 0},
+      {R"({"f": 1})", 1},
+      {R"({"f": 1.000000})", 1},
+      {R"({"f": 1.5e1})", 15},
+      {R"({"f": 15e-1})", 1.5},
+      {R"({"f": -3.5})", -3.5},
+      {R"({"f": 3.402823e38})", 3.402823e38},
+      {R"({"f": -3.402823e38})", -3.402823e38},
+      {R"({"f": 340282346638528859811704183484516925440.0})",
+       340282346638528859811704183484516925440.0},
+      {R"({"f": -340282346638528859811704183484516925440.0})",
+       -340282346638528859811704183484516925440.0},
+  };
+
+  const std::vector<FloatTest> FloatTestsFail = {
+      {R"({"f": 1z})", 0},
+      {R"({"f": 3.4028236e+38})", 0},
+      {R"({"f": -3.4028236e+38})", 0},
+  };
+
   upb::Arena a;
 
   for (const auto& test : FloatTestsPass) {
