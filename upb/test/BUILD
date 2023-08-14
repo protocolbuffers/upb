@@ -139,10 +139,10 @@ cc_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//:upb",
+        "//:mini_descriptor",
         "//:mini_table",
         "//:mini_table_internal",
         "//:port",
-        "//upb/mini_descriptor",
     ],
 )
 
@@ -171,7 +171,6 @@ cc_test(
         "//:json",
         "//:port",
         "//:reflection",
-        "//upb/json",
         "@com_google_googletest//:gtest_main",
     ],
 )
