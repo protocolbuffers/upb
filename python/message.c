@@ -1658,8 +1658,11 @@ static PyMethodDef PyUpb_Message_Methods[] = {
     {"ClearExtension", PyUpb_Message_ClearExtension, METH_O,
      "Clears a message field."},
     {"ClearField", PyUpb_Message_ClearField, METH_O, "Clears a message field."},
+#ifndef PROTO2_OPENSOURCE
+    // TODO(b/296078718): add the CopyFrom back when we are able to repo
     {"CopyFrom", PyUpb_Message_CopyFrom, METH_O,
      "Copies a protocol message into the current message."},
+#endif  // !PROTO2_OPENSOURCE
     {"DiscardUnknownFields", (PyCFunction)PyUpb_Message_DiscardUnknownFields,
      METH_NOARGS, "Discards the unknown fields."},
     {"FindInitializationErrors", PyUpb_Message_FindInitializationErrors,
