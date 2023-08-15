@@ -117,7 +117,7 @@ cc_library(
         "upb/port/def.inc",
         "upb/port/undef.inc",
     ],
-    visibility = ["//:__subpackages__"],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -391,8 +391,7 @@ cc_library(
     ],
 )
 
-# Common support routines used by generated code.  This library has no
-# implementation, but depends on :upb and exposes a few more hdrs.
+# Common support code for C generated code.
 #
 # This is public only because we have no way of visibility-limiting it to
 # upb_proto_library() only.  This interface is not stable and by using it you
@@ -401,10 +400,6 @@ cc_library(
     name = "generated_code_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
     hdrs = ["upb/generated_code_support.h"],
     copts = UPB_DEFAULT_COPTS,
-    textual_hdrs = [
-        "upb/port/def.inc",
-        "upb/port/undef.inc",
-    ],
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -415,7 +410,6 @@ cc_library(
         ":message_internal",
         ":mini_descriptor",
         ":mini_table",
-        ":upb",
         ":wire_internal",
     ],
 )
@@ -425,8 +419,6 @@ cc_library(
     name = "generated_cpp_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
     hdrs = [
         "upb/message/message.h",
-        "upb/port/def.inc",
-        "upb/port/undef.inc",
         "upb/upb.hpp",
     ],
     copts = UPB_DEFAULT_COPTS,
@@ -439,6 +431,7 @@ cc_library(
         ":message_copy",
         ":message_typedef",
         ":mini_table",
+        ":port",
         ":upb",
     ],
 )
@@ -446,8 +439,6 @@ cc_library(
 cc_library(
     name = "generated_reflection_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
     hdrs = [
-        "upb/port/def.inc",
-        "upb/port/undef.inc",
         "upb/reflection/def.h",
         "upb/reflection/internal/def_pool.h",
     ],
@@ -456,6 +447,7 @@ cc_library(
     deps = [
         ":mem",
         ":mini_descriptor",
+        ":port",
         ":reflection_internal",
     ],
 )

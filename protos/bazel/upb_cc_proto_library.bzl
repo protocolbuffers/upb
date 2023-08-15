@@ -267,6 +267,7 @@ _upb_cc_proto_library_aspect = aspect(
                 # TODO: Add dependencies for cc runtime (absl/string etc..)
                 "//:generated_cpp_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
                 "//protos:generated_protos_support__only_for_generated_code_do_not_use__i_give_permission_to_break_me",
+                "//:port",
                 "@com_google_absl//absl/strings",
                 "@com_google_absl//absl/status:statusor",
                 "//protos",
