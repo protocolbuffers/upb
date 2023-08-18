@@ -74,9 +74,7 @@ cc_library(
     deps = [
         ":protos_extension_lock",
         "//:mem",
-        "//:message",
         "//:message_copy",
-        "//:message_internal",
         "//:message_promote",
         "//:message_typedef",
         "//:mini_table",
