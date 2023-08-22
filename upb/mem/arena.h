@@ -45,7 +45,9 @@
 
 #include <string.h>
 
+// IWYU pragma: begin_exports
 #include "upb/mem/alloc.h"
+// IWYU pragma: end_exports
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -145,6 +147,8 @@ UPB_API_INLINE upb_Arena* upb_Arena_New(void) {
 } /* extern "C" */
 #endif
 
+// IWYU pragma: begin_exports
 #include "upb/port/undef.inc"
+// IWYU pragma: end_exports
 
 #endif /* UPB_MEM_ARENA_H_ */

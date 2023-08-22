@@ -288,8 +288,6 @@ cc_test(
         "//:mini_table",
         "//:port",
         "//:wire",
-        "//upb/test:test_messages_proto2_upb_proto",
-        "//upb/test:test_messages_proto3_upb_proto",
         "//upb/test:test_upb_proto",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_googletest//:gtest_main",

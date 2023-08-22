@@ -35,9 +35,11 @@
 #ifndef UPB_MESSAGE_MESSAGE_H_
 #define UPB_MESSAGE_MESSAGE_H_
 
+// IWYU pragma: begin_exports
 #include "upb/mem/arena.h"
 #include "upb/message/types.h"
 #include "upb/mini_table/message.h"
+// IWYU pragma: end_exports
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -68,6 +70,8 @@ size_t upb_Message_ExtensionCount(const upb_Message* msg);
 } /* extern "C" */
 #endif
 
+// IWYU pragma: begin_exports
 #include "upb/port/undef.inc"
+// IWYU pragma: end_exports
 
 #endif /* UPB_MESSAGE_MESSAGE_H_ */

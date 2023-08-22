@@ -65,12 +65,14 @@
 #define UPB_GNUC_MIN(x, y) 0
 #endif
 
+// IWYU pragma: begin_exports
 #include <assert.h>
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+// IWYU pragma: end_exports
 
 #if UINTPTR_MAX == 0xffffffff
 #define UPB_SIZE(size32, size64) size32

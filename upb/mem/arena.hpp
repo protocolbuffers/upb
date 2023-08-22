@@ -31,9 +31,12 @@
 #ifndef UPB_MEM_ARENA_HPP_
 #define UPB_MEM_ARENA_HPP_
 
+#include <cstddef>
 #include <memory>
 
+// IWYU pragma: begin_exports
 #include "upb/mem/arena.h"
+// IWYU pragma: end_exports
 
 namespace upb {
 

@@ -31,9 +31,11 @@
 #ifndef UPBC_UPBDEV_H_
 #define UPBC_UPBDEV_H_
 
+// IWYU pragma: begin_exports
 #include "upb/base/status.h"
 #include "upb/base/string_view.h"
 #include "upb/mem/arena.h"
+// IWYU pragma: end_exports
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -59,13 +61,15 @@ UPB_API void upbdev_ProcessStdout(const char* buf, size_t size,
 
 // The following wrappers allow the protoc plugins to call the above functions
 // without pulling in the entire pb_runtime library.
-UPB_API upb_Arena* upbdev_Arena_New();
+UPB_API upb_Arena* upbdev_Arena_New(void);
 UPB_API void upbdev_Status_Clear(upb_Status* status);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
+// IWYU pragma: begin_exports
 #include "upb/port/undef.inc"
+// IWYU pragma: end_exports
 
 #endif  // UPBC_UPBDEV_H_

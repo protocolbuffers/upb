@@ -31,7 +31,9 @@
 #ifndef UPB_BASE_STATUS_HPP_
 #define UPB_BASE_STATUS_HPP_
 
+// IWYU pragma: begin_exports
 #include "upb/base/status.h"
+// IWYU pragma: end_exports
 
 namespace upb {
 
