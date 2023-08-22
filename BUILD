@@ -379,14 +379,14 @@ alias(
 )
 
 alias(
-    name = "message_promote",
-    actual = "//upb/message:promote",
+    name = "message_internal_types",
+    actual = "//upb/message:internal_types",
     visibility = ["//visibility:public"],
 )
 
 alias(
-    name = "message_rep_internal",
-    actual = "//upb/message:rep_internal",
+    name = "message_promote",
+    actual = "//upb/message:promote",
     visibility = ["//visibility:public"],
 )
 
@@ -551,7 +551,7 @@ upb_amalgamation(
         ":message",
         ":message_accessors",
         ":message_internal",
-        ":message_rep_internal",
+        ":message_internal_types",
         ":message_tagged_ptr",
         ":message_types",
         ":mini_descriptor",
@@ -599,7 +599,7 @@ upb_amalgamation(
         ":message",
         ":message_accessors",
         ":message_internal",
-        ":message_rep_internal",
+        ":message_internal_types",
         ":message_tagged_ptr",
         ":message_types",
         ":mini_descriptor",
@@ -648,7 +648,7 @@ upb_amalgamation(
         ":message",
         ":message_accessors",
         ":message_internal",
-        ":message_rep_internal",
+        ":message_internal_types",
         ":message_tagged_ptr",
         ":message_types",
         ":mini_descriptor",
