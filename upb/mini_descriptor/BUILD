@@ -16,6 +16,7 @@ cc_library(
         "decode.h",
         "link.h",
     ],
+    aspect_hints = ["//:upb_kotlin_native_hint"],
     copts = UPB_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
