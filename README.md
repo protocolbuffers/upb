@@ -1,3 +1,6 @@
+**As of August 25, 2023, μpb has moved into the
+[protobuf](https://github.com/protocolbuffers/protobuf) repo. All further
+development is happening there, and this repo is no longer being updated.**
 
 # μpb: small, fast C protos
 
