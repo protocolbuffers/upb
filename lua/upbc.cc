@@ -84,7 +84,7 @@ static void PrintString(int max_cols, absl::string_view* str,
     } else if (ch == '\'') {
       printer->PrintRaw("\\'");
       max_cols--;
-    } else if (isprint(ch)) {
+    } else if (isprint(static_cast<int>(static_cast<unsigned char>(ch)))) {
       printer->WriteRaw(&ch, 1);
       max_cols--;
     } else {
