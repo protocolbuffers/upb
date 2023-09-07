@@ -28,15 +28,46 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This header is deprecated, use the individual #includes below as needed.
-// IWYU pragma: private, include "upb/base/status.h"
+#ifndef UPB_BASE_STATUS_HPP_
+#define UPB_BASE_STATUS_HPP_
 
-#ifndef UPB_H_
-#define UPB_H_
-
-#include "upb/base/descriptor_constants.h"
 #include "upb/base/status.h"
-#include "upb/base/string_view.h"
-#include "upb/mem/arena.h"
 
-#endif /* UPB_H_ */
+namespace upb {
+
+class Status {
+ public:
+  Status() { upb_Status_Clear(&status_); }
+
+  upb_Status* ptr() { return &status_; }
+
+  // Returns true if there is no error.
+  bool ok() const { return upb_Status_IsOk(&status_); }
+
+  // Guaranteed to be NULL-terminated.
+  const char* error_message() const {
+    return upb_Status_ErrorMessage(&status_);
+  }
+
+  // The error message will be truncated if it is longer than
+  // _kUpb_Status_MaxMessage-4.
+  void SetErrorMessage(const char* msg) {
+    upb_Status_SetErrorMessage(&status_, msg);
+  }
+  void SetFormattedErrorMessage(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    upb_Status_VSetErrorFormat(&status_, fmt, args);
+    va_end(args);
+  }
+
+  // Resets the status to a successful state with no message.
+  void Clear() { upb_Status_Clear(&status_); }
+
+ private:
+  upb_Status status_;
+};
+
+}  // namespace upb
+
+#endif  // UPB_BASE_STATUS_HPP_

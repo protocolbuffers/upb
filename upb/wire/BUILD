@@ -27,6 +27,8 @@ load("//bazel:build_defs.bzl", "UPB_DEFAULT_COPTS")
 
 cc_library(
     name = "wire",
+    srcs = [
+    ],
     hdrs = [
         "decode.h",
         "encode.h",
@@ -35,8 +37,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":internal",
+        ":types",
         "//:mem",
-        "//:message_internal",
+        "//:message",
         "//:mini_table",
         "//:port",
     ],
@@ -46,14 +49,13 @@ cc_library(
     name = "internal",
     srcs = [
         "decode.c",
+        "decode.h",
         "decode_fast.c",
         "encode.c",
+        "encode.h",
     ],
     hdrs = [
-        "common.h",
-        "decode.h",
         "decode_fast.h",
-        "encode.h",
         "internal/common.h",
         "internal/decode.h",
         "internal/swap.h",
@@ -66,7 +68,9 @@ cc_library(
         ":types",
         "//:base",
         "//:collections_internal",
+        "//:mem",
         "//:mem_internal",
+        "//:message",
         "//:message_accessors_internal",
         "//:message_internal",
         "//:message_rep_internal",
@@ -113,7 +117,7 @@ cc_test(
     srcs = ["eps_copy_input_stream_test.cc"],
     deps = [
         ":eps_copy_input_stream",
-        "//:upb",
+        "//:mem",
         "@com_google_googletest//:gtest_main",
     ],
 )

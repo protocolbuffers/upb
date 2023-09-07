@@ -40,7 +40,6 @@
 #include "upb/reflection/message.h"
 #include "upb/text/encode.h"
 #include "upb/util/required_fields.h"
-#include "upb/wire/common.h"
 
 static const upb_MessageDef* PyUpb_MessageMeta_GetMsgdef(PyObject* cls);
 static PyObject* PyUpb_MessageMeta_GetAttr(PyObject* self, PyObject* name);
@@ -773,6 +772,10 @@ static PyObject* PyUpb_Message_RichCompare(PyObject* _self, PyObject* other,
     Py_INCREF(Py_NotImplemented);
     return Py_NotImplemented;
   }
+  if (!PyObject_TypeCheck(other, Py_TYPE(self))) {
+    Py_INCREF(Py_NotImplemented);
+    return Py_NotImplemented;
+  }
   bool ret = PyUpb_Message_IsEqual(self, other);
   if (opid == Py_NE) ret = !ret;
   return PyBool_FromLong(ret);
@@ -1104,7 +1107,7 @@ static PyObject* PyUpb_Message_CheckCalledFromGeneratedFile(
     PyObject* unused, PyObject* unused_arg) {
   PyErr_SetString(
       PyExc_TypeError,
-      "Descriptors cannot not be created directly.\n"
+      "Descriptors cannot be created directly.\n"
       "If this call came from a _pb2.py file, your generated code is out of "
       "date and must be regenerated with protoc >= 3.19.0.\n"
       "If you cannot immediately regenerate your protos, some other possible "
@@ -1234,12 +1237,15 @@ static PyObject* PyUpb_Message_CopyFrom(PyObject* _self, PyObject* arg) {
   PyUpb_Message* other = (void*)arg;
   PyUpb_Message_EnsureReified(self);
 
-  PyObject* tmp = PyUpb_Message_Clear(self);
-  Py_DECREF(tmp);
-
-  upb_Message_DeepCopy(self->ptr.msg, other->ptr.msg,
-                       upb_MessageDef_MiniTable((const upb_MessageDef*)other->def),
-                       PyUpb_Arena_Get(self->arena));
+  const upb_Message* other_msg = PyUpb_Message_GetIfReified((PyObject*)other);
+  if (other_msg) {
+    upb_Message_DeepCopy(self->ptr.msg, other_msg,
+                         upb_MessageDef_MiniTable((const upb_MessageDef*)other->def),
+                         PyUpb_Arena_Get(self->arena));
+  } else {
+    PyObject* tmp = PyUpb_Message_Clear(self);
+    Py_DECREF(tmp);
+  }
   PyUpb_Message_SyncSubobjs(self);
 
   Py_RETURN_NONE;

@@ -28,9 +28,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
 #include "upb/collections/array.h"
-#include "upb/upb.hpp"
+
+#include "gtest/gtest.h"
+#include "upb/base/status.hpp"
+#include "upb/mem/arena.hpp"
 
 TEST(ArrayTest, Resize) {
   upb::Arena arena;

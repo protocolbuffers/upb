@@ -28,44 +28,50 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef UPBC_UPBDEV_H_
-#define UPBC_UPBDEV_H_
+#ifndef UPB_MEM_ARENA_HPP_
+#define UPB_MEM_ARENA_HPP_
 
-#include "upb/base/status.h"
-#include "upb/base/string_view.h"
+#include <memory>
+
 #include "upb/mem/arena.h"
 
-// Must be last.
-#include "upb/port/def.inc"
+namespace upb {
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+class Arena {
+ public:
+  // A simple arena with no initial memory block and the default allocator.
+  Arena() : ptr_(upb_Arena_New(), upb_Arena_Free) {}
+  Arena(char* initial_block, size_t size)
+      : ptr_(upb_Arena_Init(initial_block, size, &upb_alloc_global),
+             upb_Arena_Free) {}
 
-// Consume |buf|, deserialize it to a Code_Generator_Request proto, construct a
-// upbc_Code_Generator_Request, and return it as a JSON-encoded string.
-UPB_API upb_StringView upbdev_ProcessInput(const char* buf, size_t size,
-                                           upb_Arena* arena,
-                                           upb_Status* status);
+  upb_Arena* ptr() const { return ptr_.get(); }
 
-// Decode |buf| from JSON, serialize to wire format, and return it.
-UPB_API upb_StringView upbdev_ProcessOutput(const char* buf, size_t size,
-                                            upb_Arena* arena,
-                                            upb_Status* status);
+  void Fuse(Arena& other) { upb_Arena_Fuse(ptr(), other.ptr()); }
 
-// Decode |buf| from JSON, serialize to wire format, and write it to stdout.
-UPB_API void upbdev_ProcessStdout(const char* buf, size_t size,
-                                  upb_Arena* arena, upb_Status* status);
+ protected:
+  std::unique_ptr<upb_Arena, decltype(&upb_Arena_Free)> ptr_;
+};
 
-// The following wrappers allow the protoc plugins to call the above functions
-// without pulling in the entire pb_runtime library.
-UPB_API upb_Arena* upbdev_Arena_New(void);
-UPB_API void upbdev_Status_Clear(upb_Status* status);
+// InlinedArena seeds the arenas with a predefined amount of memory.  No
+// heap memory will be allocated until the initial block is exceeded.
+template <int N>
+class InlinedArena : public Arena {
+ public:
+  InlinedArena() : Arena(initial_block_, N) {}
+  ~InlinedArena() {
+    // Explicitly destroy the arena now so that it does not outlive
+    // initial_block_.
+    ptr_.reset();
+  }
 
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
+ private:
+  InlinedArena(const InlinedArena*) = delete;
+  InlinedArena& operator=(const InlinedArena*) = delete;
 
-#include "upb/port/undef.inc"
+  char initial_block_[N];
+};
 
-#endif  // UPBC_UPBDEV_H_
+}  // namespace upb
+
+#endif  // UPB_MEM_ARENA_HPP_
