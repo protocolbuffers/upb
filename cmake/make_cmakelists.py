@@ -1,29 +1,34 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2009-2021, Google LLC
-# All rights reserved.
+# Protocol Buffers - Google's data interchange format
+# Copyright 2023 Google LLC.  All rights reserved.
+# https://developers.google.com/protocol-buffers/
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#     * Redistributions of source code must retain the above copyright
-#       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#     * Neither the name of Google LLC nor the
-#       names of its contributors may be used to endorse or promote products
-#       derived from this software without specific prior written permission.
+# modification, are permitted provided that the following conditions are
+# met:
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#     * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with the
+# distribution.
+#     * Neither the name of Google LLC nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """A tool to convert {WORKSPACE, BUILD} -> CMakeLists.txt.
 
@@ -45,6 +50,19 @@ def StripFirstChar(deps):
 def IsSourceFile(name):
   return name.endswith(".c") or name.endswith(".cc")
 
+
+ADD_LIBRARY_FORMAT = """
+add_library(%(name)s %(type)s
+    %(sources)s
+)
+target_include_directories(%(name)s %(keyword)s
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../cmake>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINRARY_DIR}>
+)
+"""
+
+
 class BuildFileFunctions(object):
   def __init__(self, converter):
     self.converter = converter
@@ -60,7 +78,7 @@ class BuildFileFunctions(object):
 
   def load(self, *args):
     pass
-
+  
   def cc_library(self, **kwargs):
     if kwargs["name"].endswith("amalgamation"):
       return
@@ -83,18 +101,23 @@ class BuildFileFunctions(object):
 
     if list(filter(IsSourceFile, files)):
       # Has sources, make this a normal library.
-      self.converter.toplevel += "add_library(%s\n  %s)\n" % (
-          kwargs["name"],
-          "\n  ".join(found_files)
-      )
+      self.converter.toplevel += ADD_LIBRARY_FORMAT % {
+          "name": kwargs["name"],
+          "type": "",
+          "keyword": "PUBLIC",
+          "sources": "\n  ".join(found_files),
+      }
       self._add_deps(kwargs)
     else:
       # Header-only library, have to do a couple things differently.
       # For some info, see:
       #  http://mariobadr.com/creating-a-header-only-library-with-cmake.html
-      self.converter.toplevel += "add_library(%s INTERFACE)\n" % (
-          kwargs["name"]
-      )
+      self.converter.toplevel += ADD_LIBRARY_FORMAT % {
+          "name": kwargs["name"],
+          "type": "INTERFACE",
+          "keyword": "INTERFACE",
+          "sources": "",
+      }
       self._add_deps(kwargs, " INTERFACE")
 
   def cc_binary(self, **kwargs):
@@ -209,6 +232,9 @@ class BuildFileFunctions(object):
   def bootstrap_cc_library(self, **kwargs):
     pass
 
+  def alias(self, **kwargs):
+    pass
+
 
 class WorkspaceFileFunctions(object):
   def __init__(self, converter):
@@ -277,6 +303,9 @@ class WorkspaceFileFunctions(object):
   def fuzzing_py_install_deps(self):
     pass
 
+  def googletest_deps(self):
+    pass
+
 
 class Converter(object):
   def __init__(self):
@@ -295,16 +324,7 @@ class Converter(object):
   template = textwrap.dedent("""\
     # This file was generated from BUILD using tools/make_cmakelists.py.
 
-    cmake_minimum_required(VERSION 3.1)
-
-    if(${CMAKE_VERSION} VERSION_LESS 3.12)
-        cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-    else()
-        cmake_policy(VERSION 3.12)
-    endif()
-
-    cmake_minimum_required (VERSION 3.0)
-    cmake_policy(SET CMP0048 NEW)
+    cmake_minimum_required(VERSION 3.10...3.24)
 
     %(prelude)s
 
@@ -342,24 +362,24 @@ class Converter(object):
       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
     endif()
 
-    include_directories(..)
-    include_directories(../cmake)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-    if(EXISTS ../external/utf8_range)
-      # utf8_range is already installed
-      include_directories(../external/utf8_range)
-    else()
-      include(FetchContent)
-      FetchContent_Declare(
-        utf8_range
-        GIT_REPOSITORY "https://github.com/protocolbuffers/utf8_range.git"
-        GIT_TAG "%(utf8_range_commit)s"
-      )
-      FetchContent_GetProperties(utf8_range)
-      if(NOT utf8_range_POPULATED)
-        FetchContent_Populate(utf8_range)
-        include_directories(${utf8_range_SOURCE_DIR})
+    if(NOT TARGET utf8_range)
+      if(EXISTS ../external/utf8_range)
+        # utf8_range is already installed
+        include_directories(../external/utf8_range)
+      elseif(EXISTS ../../utf8_range)
+        include_directories(../../utf8_range)
+      else()
+        include(FetchContent)
+        FetchContent_Declare(
+          utf8_range
+          GIT_REPOSITORY "https://github.com/protocolbuffers/utf8_range.git"
+          GIT_TAG "%(utf8_range_commit)s"
+        )
+        FetchContent_GetProperties(utf8_range)
+        if(NOT utf8_range_POPULATED)
+          FetchContent_Populate(utf8_range)
+          include_directories(${utf8_range_SOURCE_DIR})
+        endif()
       endif()
     endif()
 
@@ -390,9 +410,11 @@ def GetDict(obj):
 globs = GetDict(converter)
 
 workspace_dict = GetDict(WorkspaceFileFunctions(converter))
-exec(open("bazel/workspace_deps.bzl").read(), workspace_dict)
-exec(open("WORKSPACE").read(), workspace_dict)
-exec(open("BUILD").read(), GetDict(BuildFileFunctions(converter)))
+# We take all file paths as command-line arguments to ensure that we can find
+# each file regardless of how exactly Bazel was invoked.
+exec(open(sys.argv[1]).read(), workspace_dict)  # workspace_deps.bzl
+exec(open(sys.argv[2]).read(), workspace_dict)  # WORKSPACE
+exec(open(sys.argv[3]).read(), GetDict(BuildFileFunctions(converter)))  # BUILD
 
-with open(sys.argv[1], "w") as f:
+with open(sys.argv[4], "w") as f:
   f.write(converter.convert())

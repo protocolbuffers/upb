@@ -23,7 +23,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+load("@rules_python//python:defs.bzl", "py_binary")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
 
 licenses(["notice"])
 

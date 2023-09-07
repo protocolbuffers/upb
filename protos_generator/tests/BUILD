@@ -40,6 +40,10 @@ load(
     "cc_proto_library",
 )
 
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
+
 licenses(["notice"])
 
 proto_library(
@@ -56,6 +60,13 @@ proto_library(
     name = "no_package_proto",
     srcs = [
         "no_package.proto",
+    ],
+)
+
+proto_library(
+    name = "naming_conflict_proto",
+    srcs = [
+        "naming_conflict.proto",
     ],
 )
 
@@ -79,6 +90,14 @@ upb_cc_proto_library(
     name = "test_model_upb_cc_proto",
     visibility = ["//protos:__pkg__"],
     deps = [":test_model_proto"],
+)
+
+upb_cc_proto_library(
+    name = "naming_conflict_upb_cc_proto",
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
+    deps = [":naming_conflict_proto"],
 )
 
 upb_cc_proto_library(
@@ -128,8 +147,11 @@ cc_test(
         ":no_package_upb_cc_proto",
         ":test_model_upb_cc_proto",
         ":test_model_upb_proto",
+        ":naming_conflict_upb_cc_proto",
         "@com_google_googletest//:gtest_main",
-        "//:upb",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "//protos",
+        "//protos:repeated_field",
     ],
 )

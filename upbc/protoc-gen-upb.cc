@@ -1,27 +1,32 @@
-// Copyright (c) 2009-2021, Google LLC
-// All rights reserved.
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google LLC.  All rights reserved.
+// https://developers.google.com/protocol-buffers/
 //
 // Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of Google LLC nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
+// modification, are permitted provided that the following conditions are
+// met:
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
 #include <cmath>
@@ -45,9 +50,6 @@
 #include "absl/strings/substitute.h"
 #include "upb/base/descriptor_constants.h"
 #include "upb/base/string_view.h"
-#include "upb/mem/arena.h"
-#include "upb/mini_table/enum_internal.h"
-#include "upb/mini_table/extension_internal.h"
 #include "upb/reflection/def.hpp"
 #include "upb/wire/types.h"
 #include "upbc/common.h"
@@ -206,7 +208,19 @@ std::string FieldDefault(upb::FieldDefPtr field) {
     case kUpb_CType_Int32:
       return absl::Substitute("(int32_t)$0", field.default_value().int32_val);
     case kUpb_CType_Int64:
-      return absl::Substitute("(int64_t)$0ll", field.default_value().int64_val);
+      if (field.default_value().int64_val == INT64_MIN) {
+        // Special-case to avoid:
+        //   integer literal is too large to be represented in a signed integer
+        //   type, interpreting as unsigned
+        //   [-Werror,-Wimplicitly-unsigned-literal]
+        //   int64_t default_val = (int64_t)-9223372036854775808ll;
+        //
+        // More info here: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52661
+        return "INT64_MIN";
+      } else {
+        return absl::Substitute("(int64_t)$0ll",
+                                field.default_value().int64_val);
+      }
     case kUpb_CType_UInt32:
       return absl::Substitute("(uint32_t)$0u",
                               field.default_value().uint32_val);
@@ -510,6 +524,10 @@ void GenerateRepeatedGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
                              absl::string_view msg_name,
                              const NameToFieldDefMap& field_names,
                              const Options& options, Output& output) {
+  // Generate getter returning first item and size.
+  //
+  // Example:
+  //   UPB_INLINE const struct Bar* const* name(const Foo* msg, size_t* size)
   output(
       R"cc(
         UPB_INLINE $0 const* $1_$2(const $1* msg, size_t* size) {
@@ -524,8 +542,44 @@ void GenerateRepeatedGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
           }
         }
       )cc",
-      CTypeConst(field), msg_name, ResolveFieldName(field, field_names),
-      FieldInitializer(pools, field, options));
+      CTypeConst(field),                       // $0
+      msg_name,                                // $1
+      ResolveFieldName(field, field_names),    // $2
+      FieldInitializer(pools, field, options)  // #3
+  );
+  // Generate private getter returning array or NULL for immutable and upb_Array
+  // for mutable.
+  //
+  // Example:
+  //   UPB_INLINE const upb_Array* _name_upbarray(size_t* size)
+  //   UPB_INLINE upb_Array* _name_mutable_upbarray(size_t* size)
+  output(
+      R"cc(
+        UPB_INLINE const upb_Array* _$1_$2_$4(const $1* msg, size_t* size) {
+          const upb_MiniTableField field = $3;
+          const upb_Array* arr = upb_Message_GetArray(msg, &field);
+          if (size) {
+            *size = arr ? arr->size : 0;
+          }
+          return arr;
+        }
+        UPB_INLINE upb_Array* _$1_$2_$5(const $1* msg, size_t* size, upb_Arena* arena) {
+          const upb_MiniTableField field = $3;
+          upb_Array* arr = upb_Message_GetOrCreateMutableArray(
+              (upb_Message*)msg, &field, arena);
+          if (size) {
+            *size = arr ? arr->size : 0;
+          }
+          return arr;
+        }
+      )cc",
+      CTypeConst(field),                        // $0
+      msg_name,                                 // $1
+      ResolveFieldName(field, field_names),     // $2
+      FieldInitializer(pools, field, options),  // $3
+      kRepeatedFieldArrayGetterPostfix,         // $4
+      kRepeatedFieldMutableArrayGetterPostfix   // $5
+  );
 }
 
 void GenerateScalarGetters(upb::FieldDefPtr field, const DefPoolPair& pools,
@@ -640,7 +694,7 @@ void GenerateRepeatedSetters(upb::FieldDefPtr field, const DefPoolPair& pools,
       R"cc(
         UPB_INLINE $0* $1_resize_$2($1* msg, size_t size, upb_Arena* arena) {
           upb_MiniTableField field = $3;
-          return ($0*)upb_Message_ResizeArray(msg, &field, size, arena);
+          return ($0*)upb_Message_ResizeArrayUninitialized(msg, &field, size, arena);
         }
       )cc",
       CType(field), msg_name, resolved_name,
@@ -792,14 +846,7 @@ void WriteHeader(const DefPoolPair& pools, upb::FileDefPtr file,
   output(
       "#ifndef $0_UPB_H_\n"
       "#define $0_UPB_H_\n\n"
-      "#include \"upb/collections/array_internal.h\"\n"
-      "#include \"upb/collections/map_gencode_util.h\"\n"
-      "#include \"upb/message/accessors.h\"\n"
-      "#include \"upb/message/internal.h\"\n"
-      "#include \"upb/mini_table/enum_internal.h\"\n"
-      "#include \"upb/wire/decode.h\"\n"
-      "#include \"upb/wire/decode_fast.h\"\n"
-      "#include \"upb/wire/encode.h\"\n\n",
+      "#include \"upb/generated_code_support.h\"\n",
       ToPreproc(file.name()));
 
   for (int i = 0; i < file.public_dependency_count(); i++) {
@@ -1012,13 +1059,16 @@ bool TryFillTableEntry(const DefPoolPair& pools, upb::FieldDefPtr field,
       upb_MiniTable_FindFieldByNumber(mt, field.number());
   std::string type = "";
   std::string cardinality = "";
-  switch (mt_f->descriptortype) {
+  switch (upb_MiniTableField_Type(mt_f)) {
     case kUpb_FieldType_Bool:
       type = "b1";
       break;
     case kUpb_FieldType_Enum:
-      // We don't have the means to test proto2 enum fields for valid values.
-      return false;
+      if (upb_MiniTableField_IsClosedEnum(mt_f)) {
+        // We don't have the means to test proto2 enum fields for valid values.
+        return false;
+      }
+      [[fallthrough]];
     case kUpb_FieldType_Int32:
     case kUpb_FieldType_UInt32:
       type = "v4";
@@ -1106,7 +1156,7 @@ bool TryFillTableEntry(const DefPoolPair& pools, upb::FieldDefPtr field,
   }
 
   if (field.ctype() == kUpb_CType_Message) {
-    uint64_t idx = mt_f->submsg_index;
+    uint64_t idx = mt_f->UPB_PRIVATE(submsg_index);
     if (idx > 255) return false;
     data |= idx << 16;
 
@@ -1211,31 +1261,31 @@ std::string GetModeInit(const upb_MiniTableField* field32,
   uint8_t mode32 = field32->mode;
   switch (mode32 & kUpb_FieldMode_Mask) {
     case kUpb_FieldMode_Map:
-      ret = "kUpb_FieldMode_Map";
+      ret = "(int)kUpb_FieldMode_Map";
       break;
     case kUpb_FieldMode_Array:
-      ret = "kUpb_FieldMode_Array";
+      ret = "(int)kUpb_FieldMode_Array";
       break;
     case kUpb_FieldMode_Scalar:
-      ret = "kUpb_FieldMode_Scalar";
+      ret = "(int)kUpb_FieldMode_Scalar";
       break;
     default:
       break;
   }
 
   if (mode32 & kUpb_LabelFlags_IsPacked) {
-    absl::StrAppend(&ret, " | kUpb_LabelFlags_IsPacked");
+    absl::StrAppend(&ret, " | (int)kUpb_LabelFlags_IsPacked");
   }
 
   if (mode32 & kUpb_LabelFlags_IsExtension) {
-    absl::StrAppend(&ret, " | kUpb_LabelFlags_IsExtension");
+    absl::StrAppend(&ret, " | (int)kUpb_LabelFlags_IsExtension");
   }
 
   if (mode32 & kUpb_LabelFlags_IsAlternate) {
-    absl::StrAppend(&ret, " | kUpb_LabelFlags_IsAlternate");
+    absl::StrAppend(&ret, " | (int)kUpb_LabelFlags_IsAlternate");
   }
 
-  absl::StrAppend(&ret, " | (", GetFieldRep(field32, field64),
+  absl::StrAppend(&ret, " | ((int)", GetFieldRep(field32, field64),
                   " << kUpb_FieldRep_Shift)");
   return ret;
 }
@@ -1254,10 +1304,10 @@ std::string FieldInitializer(upb::FieldDefPtr field,
         "{$0, $1, $2, $3, $4, $5}", field64->number,
         ArchDependentSize(field32->offset, field64->offset),
         ArchDependentSize(field32->presence, field64->presence),
-        field64->submsg_index == kUpb_NoSub
+        field64->UPB_PRIVATE(submsg_index) == kUpb_NoSub
             ? "kUpb_NoSub"
-            : absl::StrCat(field64->submsg_index).c_str(),
-        field64->descriptortype, GetModeInit(field32, field64));
+            : absl::StrCat(field64->UPB_PRIVATE(submsg_index)).c_str(),
+        field64->UPB_PRIVATE(descriptortype), GetModeInit(field32, field64));
   }
 }
 
@@ -1298,12 +1348,15 @@ void WriteMessage(upb::MessageDefPtr message, const DefPoolPair& pools,
   std::string subenums_array_ref = "NULL";
   const upb_MiniTable* mt_32 = pools.GetMiniTable32(message);
   const upb_MiniTable* mt_64 = pools.GetMiniTable64(message);
-  std::vector<std::string> subs;
+  std::map<int, std::string> subs;
 
   for (int i = 0; i < mt_64->field_count; i++) {
     const upb_MiniTableField* f = &mt_64->fields[i];
-    if (f->submsg_index != kUpb_NoSub) {
-      subs.push_back(GetSub(message.FindFieldByNumber(f->number)));
+    uint32_t index = f->UPB_PRIVATE(submsg_index);
+    if (index != kUpb_NoSub) {
+      auto pair =
+          subs.emplace(index, GetSub(message.FindFieldByNumber(f->number)));
+      ABSL_CHECK(pair.second);
     }
   }
 
@@ -1313,8 +1366,10 @@ void WriteMessage(upb::MessageDefPtr message, const DefPoolPair& pools,
     output("static const upb_MiniTableSub $0[$1] = {\n", submsgs_array_name,
            subs.size());
 
-    for (const auto& sub : subs) {
-      output("  $0,\n", sub);
+    int i = 0;
+    for (const auto& pair : subs) {
+      ABSL_CHECK(pair.first == i++);
+      output("  $0,\n", pair.second);
     }
 
     output("};\n\n");
@@ -1487,9 +1542,7 @@ void WriteMiniTableSource(const DefPoolPair& pools, upb::FileDefPtr file,
 
   output(
       "#include <stddef.h>\n"
-      "#include \"upb/collections/array_internal.h\"\n"
-      "#include \"upb/message/internal.h\"\n"
-      "#include \"upb/mini_table/enum_internal.h\"\n"
+      "#include \"upb/generated_code_support.h\"\n"
       "#include \"$0\"\n",
       HeaderFilename(file));
 
@@ -1581,10 +1634,7 @@ void WriteMiniDescriptorSource(const DefPoolPair& pools, upb::FileDefPtr file,
                                const Options& options, Output& output) {
   output(
       "#include <stddef.h>\n"
-      "#include \"upb/collections/array_internal.h\"\n"
-      "#include \"upb/message/internal.h\"\n"
-      "#include \"upb/mini_table/decode.h\"\n"
-      "#include \"upb/mini_table/enum_internal.h\"\n"
+      "#include \"upb/generated_code_support.h\"\n"
       "#include \"$0\"\n\n",
       HeaderFilename(file));
 

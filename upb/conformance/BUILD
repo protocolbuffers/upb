@@ -34,6 +34,10 @@ load(
     "upb_proto_reflection_library",
 )
 
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
+
 licenses(["notice"])
 
 config_setting(
@@ -57,14 +61,18 @@ upb_proto_reflection_library(
 upb_proto_reflection_library(
     name = "test_messages_proto2_upbdefs",
     testonly = 1,
-    visibility = ["//:__subpackages__"],
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
     deps = ["@com_google_protobuf//src/google/protobuf:test_messages_proto2_proto"],
 )
 
 upb_proto_reflection_library(
     name = "test_messages_proto3_upbdefs",
     testonly = 1,
-    visibility = ["//:__subpackages__"],
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
     deps = ["@com_google_protobuf//src/google/protobuf:test_messages_proto3_proto"],
 )
 
@@ -75,7 +83,7 @@ cc_binary(
     copts = UPB_DEFAULT_COPTS,
     data = ["conformance_upb_failures.txt"],
     target_compatible_with = select({
-        "@platforms//os:windows": ["//third_party/bazel_platforms:incompatible"],
+        "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
     deps = [
@@ -86,7 +94,7 @@ cc_binary(
         "//:json",
         "//:port",
         "//:reflection",
-        "//:textformat",
+        "//:text",
         "//:wire",
     ],
 )
@@ -94,22 +102,24 @@ cc_binary(
 make_shell_script(
     name = "gen_test_conformance_upb",
     out = "test_conformance_upb.sh",
-    contents = "external/com_google_protobuf/conformance/conformance_test_runner" +
-               " --enforce_recommended" +
-               " --failure_list upb/conformance/conformance_upb_failures.txt" +
-               " upb/conformance/conformance_upb",
+    contents = "$1 --enforce_recommended --failure_list $2 $3",
 )
 
 sh_test(
     name = "test_conformance_upb",
     srcs = ["test_conformance_upb.sh"],
+    args = [
+        "$(location @com_google_protobuf//conformance:conformance_test_runner)",
+        "$(location :conformance_upb_failures.txt)",
+        "$(location :conformance_upb)",
+    ],
     data = [
         "conformance_upb_failures.txt",
         ":conformance_upb",
         "@com_google_protobuf//conformance:conformance_test_runner",
     ],
     target_compatible_with = select({
-        "@platforms//os:windows": ["//third_party/bazel_platforms:incompatible"],
+        "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
     deps = ["@bazel_tools//tools/bash/runfiles"],
@@ -124,7 +134,7 @@ cc_binary(
     ],
     data = ["conformance_upb_failures.txt"],
     target_compatible_with = select({
-        "@platforms//os:windows": ["//third_party/bazel_platforms:incompatible"],
+        "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
     }),
     deps = [
@@ -135,7 +145,7 @@ cc_binary(
         "//:json",
         "//:port",
         "//:reflection",
-        "//:textformat",
+        "//:text",
         "//:wire",
     ],
 )
@@ -143,15 +153,17 @@ cc_binary(
 make_shell_script(
     name = "gen_test_conformance_upb_dynamic_minitable",
     out = "test_conformance_upb_dynamic_minitable.sh",
-    contents = "external/com_google_protobuf/conformance/conformance_test_runner" +
-               " --enforce_recommended" +
-               " --failure_list upb/conformance/conformance_upb_failures.txt" +
-               " upb/conformance/conformance_upb_dynamic_minitable",
+    contents = "$1 --enforce_recommended --failure_list $2 $3",
 )
 
 sh_test(
     name = "test_conformance_upb_dynamic_minitable",
     srcs = ["test_conformance_upb_dynamic_minitable.sh"],
+    args = [
+        "$(location @com_google_protobuf//conformance:conformance_test_runner)",
+        "$(location :conformance_upb_failures.txt)",
+        "$(location :conformance_upb_dynamic_minitable)",
+    ],
     data = [
         "conformance_upb_failures.txt",
         ":conformance_upb_dynamic_minitable",

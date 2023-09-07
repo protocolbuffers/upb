@@ -1,29 +1,32 @@
-/*
- * Copyright (c) 2009-2021, Google LLC
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of Google LLC nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google LLC.  All rights reserved.
+// https://developers.google.com/protocol-buffers/
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "python/message.h"
 
@@ -32,6 +35,7 @@
 #include "python/extension_dict.h"
 #include "python/map.h"
 #include "python/repeated.h"
+#include "upb/message/copy.h"
 #include "upb/reflection/def.h"
 #include "upb/reflection/message.h"
 #include "upb/text/encode.h"
@@ -324,12 +328,7 @@ static bool PyUpb_Message_LookupName(PyUpb_Message* self, PyObject* py_name,
 static bool PyUpb_Message_InitMessageMapEntry(PyObject* dst, PyObject* src) {
   if (!src || !dst) return false;
 
-  // TODO(haberman): Currently we are doing Clear()+MergeFrom().  Replace with
-  // CopyFrom() once that is implemented.
-  PyObject* ok = PyObject_CallMethod(dst, "Clear", NULL);
-  if (!ok) return false;
-  Py_DECREF(ok);
-  ok = PyObject_CallMethod(dst, "MergeFrom", "O", src);
+  PyObject* ok = PyObject_CallMethod(dst, "CopyFrom", "O", src);
   if (!ok) return false;
   Py_DECREF(ok);
 
@@ -447,6 +446,8 @@ err:
   return ok;
 }
 
+static PyObject* PyUpb_Message_MergePartialFrom(PyObject*, PyObject*);
+
 static bool PyUpb_Message_InitMessageAttribute(PyObject* _self, PyObject* name,
                                                PyObject* value) {
   PyObject* submsg = PyUpb_Message_GetAttr(_self, name);
@@ -454,9 +455,9 @@ static bool PyUpb_Message_InitMessageAttribute(PyObject* _self, PyObject* name,
   assert(!PyErr_Occurred());
   bool ok;
   if (PyUpb_Message_TryCheck(value)) {
-    PyObject* tmp = PyUpb_Message_MergeFrom(submsg, value);
+    PyObject* tmp = PyUpb_Message_MergePartialFrom(submsg, value);
     ok = tmp != NULL;
-    Py_DECREF(tmp);
+    Py_XDECREF(tmp);
   } else if (PyDict_Check(value)) {
     assert(!PyErr_Occurred());
     ok = PyUpb_Message_InitAttributes(submsg, NULL, value) >= 0;
@@ -768,6 +769,10 @@ static PyObject* PyUpb_Message_RichCompare(PyObject* _self, PyObject* other,
                                            int opid) {
   PyUpb_Message* self = (void*)_self;
   if (opid != Py_EQ && opid != Py_NE) {
+    Py_INCREF(Py_NotImplemented);
+    return Py_NotImplemented;
+  }
+  if (!PyObject_TypeCheck(other, Py_TYPE(self))) {
     Py_INCREF(Py_NotImplemented);
     return Py_NotImplemented;
   }
@@ -1102,7 +1107,7 @@ static PyObject* PyUpb_Message_CheckCalledFromGeneratedFile(
     PyObject* unused, PyObject* unused_arg) {
   PyErr_SetString(
       PyExc_TypeError,
-      "Descriptors cannot not be created directly.\n"
+      "Descriptors cannot be created directly.\n"
       "If this call came from a _pb2.py file, your generated code is out of "
       "date and must be regenerated with protoc >= 3.19.0.\n"
       "If you cannot immediately regenerate your protos, some other possible "
@@ -1184,7 +1189,8 @@ err:
   return NULL;
 }
 
-PyObject* PyUpb_Message_MergeFrom(PyObject* self, PyObject* arg) {
+static PyObject* PyUpb_Message_MergeInternal(PyObject* self, PyObject* arg,
+                                             bool check_required) {
   if (self->ob_type != arg->ob_type) {
     PyErr_Format(PyExc_TypeError,
                  "Parameter to MergeFrom() must be instance of same class: "
@@ -1194,12 +1200,54 @@ PyObject* PyUpb_Message_MergeFrom(PyObject* self, PyObject* arg) {
   }
   // OPT: exit if src is empty.
   PyObject* subargs = PyTuple_New(0);
-  PyObject* serialized = PyUpb_Message_SerializeToString(arg, subargs, NULL);
+  PyObject* serialized =
+      check_required
+          ? PyUpb_Message_SerializeToString(arg, subargs, NULL)
+          : PyUpb_Message_SerializePartialToString(arg, subargs, NULL);
   Py_DECREF(subargs);
   if (!serialized) return NULL;
   PyObject* ret = PyUpb_Message_MergeFromString(self, serialized);
   Py_DECREF(serialized);
-  Py_DECREF(ret);
+  Py_XDECREF(ret);
+  Py_RETURN_NONE;
+}
+
+PyObject* PyUpb_Message_MergeFrom(PyObject* self, PyObject* arg) {
+  return PyUpb_Message_MergeInternal(self, arg, true);
+}
+
+static PyObject* PyUpb_Message_MergePartialFrom(PyObject* self, PyObject* arg) {
+  return PyUpb_Message_MergeInternal(self, arg, false);
+}
+
+static PyObject* PyUpb_Message_Clear(PyUpb_Message* self);
+
+static PyObject* PyUpb_Message_CopyFrom(PyObject* _self, PyObject* arg) {
+  if (_self->ob_type != arg->ob_type) {
+    PyErr_Format(PyExc_TypeError,
+                 "Parameter to CopyFrom() must be instance of same class: "
+                 "expected %S got %S.",
+                 Py_TYPE(_self), Py_TYPE(arg));
+    return NULL;
+  }
+  if (_self == arg) {
+    Py_RETURN_NONE;
+  }
+  PyUpb_Message* self = (void*)_self;
+  PyUpb_Message* other = (void*)arg;
+  PyUpb_Message_EnsureReified(self);
+
+  const upb_Message* other_msg = PyUpb_Message_GetIfReified((PyObject*)other);
+  if (other_msg) {
+    upb_Message_DeepCopy(self->ptr.msg, other_msg,
+                         upb_MessageDef_MiniTable((const upb_MessageDef*)other->def),
+                         PyUpb_Arena_Get(self->arena));
+  } else {
+    PyObject* tmp = PyUpb_Message_Clear(self);
+    Py_DECREF(tmp);
+  }
+  PyUpb_Message_SyncSubobjs(self);
+
   Py_RETURN_NONE;
 }
 
@@ -1240,8 +1288,9 @@ PyObject* PyUpb_Message_MergeFromString(PyObject* _self, PyObject* arg) {
   const upb_MiniTable* layout = upb_MessageDef_MiniTable(msgdef);
   upb_Arena* arena = PyUpb_Arena_Get(self->arena);
   PyUpb_ModuleState* state = PyUpb_ModuleState_Get();
-  int options =
-      UPB_DECODE_MAXDEPTH(state->allow_oversize_protos ? UINT32_MAX : 100);
+  int options = upb_DecodeOptions_MaxDepth(
+      state->allow_oversize_protos ? UINT16_MAX
+                                   : kUpb_WireFormat_DefaultDepthLimit);
   upb_DecodeStatus status =
       upb_Decode(buf, size, self->ptr.msg, layout, extreg, options, arena);
   Py_XDECREF(bytes);
@@ -1253,10 +1302,8 @@ PyObject* PyUpb_Message_MergeFromString(PyObject* _self, PyObject* arg) {
   return PyLong_FromSsize_t(size);
 }
 
-static PyObject* PyUpb_Message_Clear(PyUpb_Message* self, PyObject* args);
-
 static PyObject* PyUpb_Message_ParseFromString(PyObject* self, PyObject* arg) {
-  PyObject* tmp = PyUpb_Message_Clear((PyUpb_Message*)self, NULL);
+  PyObject* tmp = PyUpb_Message_Clear((PyUpb_Message*)self);
   Py_DECREF(tmp);
   return PyUpb_Message_MergeFromString(self, arg);
 }
@@ -1274,7 +1321,7 @@ static PyObject* PyUpb_Message_ByteSize(PyObject* self, PyObject* args) {
   return PyLong_FromSize_t(size);
 }
 
-static PyObject* PyUpb_Message_Clear(PyUpb_Message* self, PyObject* args) {
+static PyObject* PyUpb_Message_Clear(PyUpb_Message* self) {
   PyUpb_Message_EnsureReified(self);
   const upb_MessageDef* msgdef = _PyUpb_Message_GetMsgdef(self);
   PyUpb_WeakMap* subobj_map = self->unset_subobj_map;
@@ -1512,7 +1559,7 @@ PyObject* PyUpb_Message_SerializeInternal(PyObject* _self, PyObject* args,
   const upb_MiniTable* layout = upb_MessageDef_MiniTable(msgdef);
   size_t size = 0;
   // Python does not currently have any effective limit on serialization depth.
-  int options = UPB_ENCODE_MAXDEPTH(UINT32_MAX);
+  int options = upb_EncodeOptions_MaxDepth(UINT16_MAX);
   if (check_required) options |= kUpb_EncodeOption_CheckRequired;
   if (deterministic) options |= kUpb_EncodeOption_Deterministic;
   char* pb;
@@ -1563,6 +1610,19 @@ static PyObject* PyUpb_Message_WhichOneof(PyObject* _self, PyObject* name) {
   return PyUnicode_FromString(upb_FieldDef_Name(f));
 }
 
+PyObject* DeepCopy(PyObject* _self, PyObject* arg) {
+  PyUpb_Message* self = (void*)_self;
+
+  PyObject* arena = PyUpb_Arena_New();
+  upb_Message* clone =
+      upb_Message_DeepClone(self->ptr.msg, upb_MessageDef_MiniTable((const upb_MessageDef*)self->def),
+                            PyUpb_Arena_Get(arena));
+  PyObject* ret = PyUpb_Message_Get(clone, (const upb_MessageDef*)self->def, arena);
+  Py_DECREF(arena);
+
+  return ret;
+}
+
 void PyUpb_Message_ClearExtensionDict(PyObject* _self) {
   PyUpb_Message* self = (void*)_self;
   assert(self->ext_dict);
@@ -1592,9 +1652,9 @@ static PyGetSetDef PyUpb_Message_Getters[] = {
     {NULL}};
 
 static PyMethodDef PyUpb_Message_Methods[] = {
+    {"__deepcopy__", (PyCFunction)DeepCopy, METH_VARARGS,
+     "Makes a deep copy of the class."},
     // TODO(https://github.com/protocolbuffers/upb/issues/459)
-    //{ "__deepcopy__", (PyCFunction)DeepCopy, METH_VARARGS,
-    //  "Makes a deep copy of the class." },
     //{ "__unicode__", (PyCFunction)ToUnicode, METH_NOARGS,
     //  "Outputs a unicode representation of the message." },
     {"ByteSize", (PyCFunction)PyUpb_Message_ByteSize, METH_NOARGS,
@@ -1604,9 +1664,8 @@ static PyMethodDef PyUpb_Message_Methods[] = {
     {"ClearExtension", PyUpb_Message_ClearExtension, METH_O,
      "Clears a message field."},
     {"ClearField", PyUpb_Message_ClearField, METH_O, "Clears a message field."},
-    // TODO(https://github.com/protocolbuffers/upb/issues/459)
-    //{ "CopyFrom", (PyCFunction)CopyFrom, METH_O,
-    //  "Copies a protocol message into the current message." },
+    {"CopyFrom", PyUpb_Message_CopyFrom, METH_O,
+     "Copies a protocol message into the current message."},
     {"DiscardUnknownFields", (PyCFunction)PyUpb_Message_DiscardUnknownFields,
      METH_NOARGS, "Discards the unknown fields."},
     {"FindInitializationErrors", PyUpb_Message_FindInitializationErrors,
@@ -1627,10 +1686,6 @@ static PyMethodDef PyUpb_Message_Methods[] = {
      "Merges a serialized message into the current message."},
     {"ParseFromString", PyUpb_Message_ParseFromString, METH_O,
      "Parses a serialized message into the current message."},
-    // TODO(https://github.com/protocolbuffers/upb/issues/459)
-    //{ "RegisterExtension", (PyCFunction)RegisterExtension, METH_O |
-    // METH_CLASS,
-    //  "Registers an extension with the current message." },
     {"SerializePartialToString",
      (PyCFunction)PyUpb_Message_SerializePartialToString,
      METH_VARARGS | METH_KEYWORDS,

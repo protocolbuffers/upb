@@ -4,9 +4,9 @@ load(
     "upb_proto_reflection_library",
 )
 
-# begin:github_only
-load("@rules_pkg//:mappings.bzl", "pkg_files")
-# end:github_only
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
 
 licenses(["notice"])
 
@@ -49,9 +49,10 @@ cc_library(
     hdrs = ["def_to_proto_test.h"],
     deps = [
         ":def_to_proto",
+        "//:base",
         "//:descriptor_upb_proto",
+        "//:mem",
         "//:reflection_internal",
-        "//:upb",
         "@com_google_googletest//:gtest",
         "@com_google_protobuf//:protobuf",
     ],
@@ -66,8 +67,8 @@ cc_test(
         ":def_to_proto_test_upb_proto",
         ":def_to_proto_test_upb_proto_reflection",
         "//:descriptor_upb_proto_reflection",
+        "//:mem",
         "//:reflection",
-        "//:upb",
         "//upb/test:parse_text_proto",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
@@ -124,9 +125,10 @@ cc_test(
         ":required_fields",
         ":required_fields_test_upb_proto",
         ":required_fields_test_upb_proto_reflection",
+        "//:base",
         "//:json",
+        "//:mem",
         "//:reflection",
-        "//:upb",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
@@ -140,9 +142,9 @@ cc_library(
     hdrs = ["compare.h"],
     visibility = ["//visibility:public"],
     deps = [
+        "//:base",
         "//:eps_copy_input_stream",
         "//:port",
-        "//:upb",
         "//:wire_reader",
         "//:wire_types",
     ],
@@ -151,11 +153,6 @@ cc_library(
 cc_test(
     name = "compare_test",
     srcs = ["compare_test.cc"],
-    # TODO(b/259158757): fix this test on Windows.
-    target_compatible_with = select({
-        "@platforms//os:windows": ["//third_party/bazel_platforms:incompatible"],
-        "//conditions:default": [],
-    }),
     deps = [
         ":compare",
         "//:wire_internal",
@@ -166,8 +163,8 @@ cc_test(
 )
 
 # begin:github_only
-pkg_files(
-    name = "util_source_files",
+filegroup(
+    name = "source_files",
     srcs = [
         "compare.c",
         "compare.h",
@@ -176,7 +173,6 @@ pkg_files(
         "required_fields.c",
         "required_fields.h",
     ],
-    prefix = "upb/util",
     visibility = ["//python/dist:__pkg__"],
 )
 # end:github_only

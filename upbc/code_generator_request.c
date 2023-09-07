@@ -1,35 +1,39 @@
-/*
- * Copyright (c) 2009-2022, Google LLC
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of Google LLC nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google LLC.  All rights reserved.
+// https://developers.google.com/protocol-buffers/
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "upbc/code_generator_request.h"
 
 #include <inttypes.h>
 
 #include "google/protobuf/compiler/plugin.upb.h"
+#include "upb/mini_descriptor/decode.h"
 #include "upb/reflection/def.h"
 
 // Must be last.
@@ -68,11 +72,22 @@ static void upbc_State_Init(upbc_State* s) {
   if (!s->out) upbc_Error(s, __func__, "could not allocate request");
 }
 
-static void upbc_State_Emit(upbc_State* s, const char* name,
-                            upb_StringView encoding) {
+static upb_StringView upbc_State_StrDup(upbc_State* s, const char* str) {
+  upb_StringView from = upb_StringView_FromString(str);
+  char* to = upb_Arena_Malloc(s->arena, from.size);
+  if (!to) upbc_Error(s, __func__, "Out of memory");
+  memcpy(to, from.data, from.size);
+  return upb_StringView_FromDataAndSize(to, from.size);
+}
+
+static void upbc_State_AddMiniDescriptor(upbc_State* s, const char* name,
+                                         upb_StringView encoding) {
   const upb_StringView key = upb_StringView_FromString(name);
-  bool ok = upbc_CodeGeneratorRequest_mini_descriptors_set(s->out, key,
-                                                           encoding, s->arena);
+  upbc_CodeGeneratorRequest_UpbInfo* info =
+      upbc_CodeGeneratorRequest_UpbInfo_new(s->arena);
+  if (!info) upbc_Error(s, __func__, "Out of memory");
+  upbc_CodeGeneratorRequest_UpbInfo_set_mini_descriptor(info, encoding);
+  bool ok = upbc_CodeGeneratorRequest_upb_info_set(s->out, key, info, s->arena);
   if (!ok) upbc_Error(s, __func__, "could not set mini descriptor in map");
 }
 
@@ -86,7 +101,7 @@ static void upbc_Scrape_Enum(upbc_State* s, const upb_EnumDef* e) {
   bool ok = upb_EnumDef_MiniDescriptorEncode(e, s->arena, &desc);
   if (!ok) upbc_Error(s, __func__, "could not encode enum");
 
-  upbc_State_Emit(s, upb_EnumDef_FullName(e), desc);
+  upbc_State_AddMiniDescriptor(s, upb_EnumDef_FullName(e), desc);
 }
 
 static void upbc_Scrape_Extension(upbc_State* s, const upb_FieldDef* f) {
@@ -94,7 +109,7 @@ static void upbc_Scrape_Extension(upbc_State* s, const upb_FieldDef* f) {
   bool ok = upb_FieldDef_MiniDescriptorEncode(f, s->arena, &desc);
   if (!ok) upbc_Error(s, __func__, "could not encode extension");
 
-  upbc_State_Emit(s, upb_FieldDef_FullName(f), desc);
+  upbc_State_AddMiniDescriptor(s, upb_FieldDef_FullName(f), desc);
 }
 
 static void upbc_Scrape_FileEnums(upbc_State* s, const upb_FileDef* f) {
@@ -168,12 +183,54 @@ static void upbc_Scrape_NestedMessages(upbc_State* s, const upb_MessageDef* m) {
   }
 }
 
+static void upbc_Scrape_MessageSubs(upbc_State* s,
+                                    upbc_CodeGeneratorRequest_UpbInfo* info,
+                                    const upb_MessageDef* m) {
+  const upb_MiniTableField** fields =
+      malloc(upb_MessageDef_FieldCount(m) * sizeof(*fields));
+  const upb_MiniTable* mt = upb_MessageDef_MiniTable(m);
+  uint32_t counts = upb_MiniTable_GetSubList(mt, fields);
+  uint32_t msg_count = counts >> 16;
+  uint32_t enum_count = counts & 0xffff;
+
+  for (uint32_t i = 0; i < msg_count; i++) {
+    const upb_FieldDef* f =
+        upb_MessageDef_FindFieldByNumber(m, fields[i]->number);
+    if (!f) upbc_Error(s, __func__, "Missing f");
+    const upb_MessageDef* sub = upb_FieldDef_MessageSubDef(f);
+    if (!sub) upbc_Error(s, __func__, "Missing sub");
+    upb_StringView name = upbc_State_StrDup(s, upb_MessageDef_FullName(sub));
+    upbc_CodeGeneratorRequest_UpbInfo_add_sub_message(info, name, s->arena);
+  }
+
+  for (uint32_t i = 0; i < enum_count; i++) {
+    const upb_FieldDef* f =
+        upb_MessageDef_FindFieldByNumber(m, fields[msg_count + i]->number);
+    if (!f) upbc_Error(s, __func__, "Missing f (2)");
+    const upb_EnumDef* sub = upb_FieldDef_EnumSubDef(f);
+    if (!sub) upbc_Error(s, __func__, "Missing sub (2)");
+    upb_StringView name = upbc_State_StrDup(s, upb_EnumDef_FullName(sub));
+    upbc_CodeGeneratorRequest_UpbInfo_add_sub_enum(info, name, s->arena);
+  }
+
+  free(fields);
+}
+
 static void upbc_Scrape_Message(upbc_State* s, const upb_MessageDef* m) {
   upb_StringView desc;
   bool ok = upb_MessageDef_MiniDescriptorEncode(m, s->arena, &desc);
   if (!ok) upbc_Error(s, __func__, "could not encode message");
 
-  upbc_State_Emit(s, upb_MessageDef_FullName(m), desc);
+  upbc_CodeGeneratorRequest_UpbInfo* info =
+      upbc_CodeGeneratorRequest_UpbInfo_new(s->arena);
+  if (!info) upbc_Error(s, __func__, "Out of memory");
+  upbc_CodeGeneratorRequest_UpbInfo_set_mini_descriptor(info, desc);
+
+  upbc_Scrape_MessageSubs(s, info, m);
+
+  const upb_StringView key = upbc_State_StrDup(s, upb_MessageDef_FullName(m));
+  ok = upbc_CodeGeneratorRequest_upb_info_set(s->out, key, info, s->arena);
+  if (!ok) upbc_Error(s, __func__, "could not set mini descriptor in map");
 
   upbc_Scrape_NestedEnums(s, m);
   upbc_Scrape_NestedExtensions(s, m);

@@ -97,7 +97,7 @@ load("@bazel_tools//tools/python:toolchain.bzl", "py_runtime_pair")
 
 cc_library(
    name = "python_headers",
-   hdrs = glob(["python/**/*.h"]),
+   hdrs = glob(["python/**/*.h"], allow_empty = True),
    includes = ["python"],
    visibility = ["//visibility:public"],
 )
@@ -205,7 +205,7 @@ def _populate_package(ctx, path, python3, python_version):
         support = "Supported" if supported else "Unsupported",
     )
 
-    ctx.file("interpreter", "exec {} \"$@\"".format(python3))
+    ctx.file("interpreter", "#!/bin/sh\nexec {} \"$@\"".format(python3))
     ctx.file("BUILD.bazel", build_file)
     ctx.file("version.bzl", "SYSTEM_PYTHON_VERSION = '{}{}'".format(python_version[0], python_version[1]))
     ctx.file("register.bzl", _register.format(ctx.attr.name))

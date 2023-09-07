@@ -1,27 +1,32 @@
-// Copyright (c) 2009-2021, Google LLC
-// All rights reserved.
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google LLC.  All rights reserved.
+// https://developers.google.com/protocol-buffers/
 //
 // Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of Google LLC nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
+// modification, are permitted provided that the following conditions are
+// met:
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <memory>
 
@@ -33,6 +38,7 @@
 #include "protos_generator/gen_extensions.h"
 #include "protos_generator/gen_messages.h"
 #include "protos_generator/gen_utils.h"
+#include "protos_generator/names.h"
 #include "protos_generator/output.h"
 #include "upbc/file_layout.h"
 
@@ -56,8 +62,6 @@ void WriteTypedefForwardingHeader(
     Output& output);
 void WriteHeaderMessageForwardDecls(
     const protobuf::FileDescriptor* file,
-    const std::vector<const protobuf::Descriptor*>& file_messages,
-    const std::vector<const protobuf::FieldDescriptor*>& file_exts,
     Output& output);
 
 class Generator : public protoc::CodeGenerator {
@@ -114,6 +118,13 @@ void WriteForwardingHeader(const protobuf::FileDescriptor* file,
       )cc",
       ToPreproc(file->name()));
   output("\n");
+  for (int i = 0; i < file->public_dependency_count(); ++i) {
+    output("#include \"$0\"\n",
+           ForwardingHeaderFilename(file->public_dependency(i)));
+  }
+  if (file->public_dependency_count() > 0) {
+    output("\n");
+  }
   const std::vector<const protobuf::Descriptor*> this_file_messages =
       SortedMessages(file);
   WriteTypedefForwardingHeader(file, this_file_messages, output);
@@ -129,11 +140,10 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
 
 #include "protos/protos.h"
 #include "protos/protos_internal.h"
-#include "upb/upb.hpp"
+#include "protos/repeated_field.h"
 
 #include "absl/strings/string_view.h"
 #include "absl/status/statusor.h"
-#include "upb/message/internal.h"
       )cc",
       ToPreproc(file->name()));
 
@@ -159,8 +169,7 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
     output("\n");
   }
 
-  WriteHeaderMessageForwardDecls(file, this_file_messages, this_file_exts,
-                                 output);
+  WriteHeaderMessageForwardDecls(file, output);
   WriteStartNamespace(file, output);
 
   std::vector<const protobuf::EnumDescriptor*> this_file_enums =
@@ -171,7 +180,8 @@ void WriteHeader(const protobuf::FileDescriptor* file, Output& output) {
   output("\n");
 
   for (auto message : this_file_messages) {
-    WriteMessageClassDeclarations(message, this_file_exts, output);
+    WriteMessageClassDeclarations(message, this_file_exts, this_file_enums,
+                                  output);
   }
   output("\n");
 
@@ -195,7 +205,6 @@ void WriteSource(const protobuf::FileDescriptor* file, Output& output,
       R"cc(
 #include <stddef.h>
 #include "absl/strings/string_view.h"
-#include "upb/message/internal.h"
 #include "protos/protos.h"
 #include "$0"
       )cc",
@@ -253,43 +262,13 @@ void WriteTypedefForwardingHeader(
 /// Writes includes for upb C minitables and fwd.h for transitive typedefs.
 void WriteHeaderMessageForwardDecls(
     const protobuf::FileDescriptor* file,
-    const std::vector<const protobuf::Descriptor*>& file_messages,
-    const std::vector<const protobuf::FieldDescriptor*>& file_exts,
     Output& output) {
   // Import forward-declaration of types defined in this file.
   output("#include \"$0\"\n", UpbCFilename(file));
   output("#include \"$0\"\n", ForwardingHeaderFilename(file));
-  // Forward-declare types not in this file, but used as submessages.
-  // Order by full name for consistent ordering.
-  std::map<std::string, const protobuf::Descriptor*> forward_messages;
-
-  for (auto* message : file_messages) {
-    for (int i = 0; i < message->field_count(); i++) {
-      const protobuf::FieldDescriptor* field = message->field(i);
-      if (field->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
-          field->file() != field->message_type()->file()) {
-        forward_messages[field->message_type()->full_name()] =
-            field->message_type();
-      }
-    }
-  }
-  for (auto* ext : file_exts) {
-    if (ext->file() != ext->containing_type()->file()) {
-      forward_messages[ext->containing_type()->full_name()] =
-          ext->containing_type();
-      if (ext->cpp_type() == protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
-        forward_messages[ext->message_type()->full_name()] =
-            ext->message_type();
-      }
-    }
-  }
-  std::map<std::string, const protobuf::FileDescriptor*> files_to_import;
-  for (const auto& pair : forward_messages) {
-    files_to_import[ForwardingHeaderFilename(pair.second->file())] = file;
-  }
-  for (const auto& pair : files_to_import) {
-    output("#include \"$0\"\n", UpbCFilename(pair.second));
-    output("#include \"$0\"\n", pair.first);
+  // Import forward-declaration of types in dependencies.
+  for (int i = 0; i < file->dependency_count(); ++i) {
+    output("#include \"$0\"\n", ForwardingHeaderFilename(file->dependency(i)));
   }
   output("\n");
 }

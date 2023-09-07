@@ -23,6 +23,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+load("@rules_python//python:defs.bzl", "py_binary")
+
 # begin:google_only
 # load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 # end:google_only
@@ -39,6 +41,10 @@ load(
     "proto_library",
     "tmpl_cc_binary",
 )
+
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
 
 licenses(["notice"])
 
@@ -87,7 +93,10 @@ cc_test(
         ":benchmark_descriptor_sv_cc_proto",
         ":benchmark_descriptor_upb_proto",
         ":benchmark_descriptor_upb_proto_reflection",
+        "//:base",
+        "//:base_internal",
         "//:descriptor_upb_proto",
+        "//:mem",
         "//:reflection",
         "@com_github_google_benchmark//:benchmark_main",
         "@com_google_absl//absl/container:flat_hash_set",

@@ -1,45 +1,51 @@
-/*
- * Copyright (c) 2009-2021, Google LLC
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of Google LLC nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google LLC.  All rights reserved.
+// https://developers.google.com/protocol-buffers/
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google LLC nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "upb/wire/decode.h"
 
 #include <string.h>
 
-#include "upb/collections/array_internal.h"
-#include "upb/collections/map_internal.h"
-#include "upb/mini_table/common.h"
-#include "upb/mini_table/enum_internal.h"
-#include "upb/wire/common_internal.h"
-#include "upb/wire/decode_internal.h"
+#include "upb/base/descriptor_constants.h"
+#include "upb/collections/internal/array.h"
+#include "upb/collections/internal/map.h"
+#include "upb/mem/internal/arena.h"
+#include "upb/message/internal/accessors.h"
+#include "upb/message/internal/map_entry.h"
+#include "upb/mini_table/sub.h"
+#include "upb/port/atomic.h"
 #include "upb/wire/encode.h"
 #include "upb/wire/eps_copy_input_stream.h"
+#include "upb/wire/internal/common.h"
+#include "upb/wire/internal/decode.h"
+#include "upb/wire/internal/swap.h"
 #include "upb/wire/reader.h"
-#include "upb/wire/swap_internal.h"
-#include "upb/wire/types.h"
 
 // Must be last.
 #include "upb/port/def.inc"
@@ -214,14 +220,51 @@ static void _upb_Decoder_Munge(int type, wireval* val) {
   }
 }
 
-static upb_Message* _upb_Decoder_NewSubMessage(
-    upb_Decoder* d, const upb_MiniTableSub* subs,
-    const upb_MiniTableField* field) {
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+static upb_Message* _upb_Decoder_NewSubMessage(upb_Decoder* d,
+                                               const upb_MiniTableSub* subs,
+                                               const upb_MiniTableField* field,
+                                               upb_TaggedMessagePtr* target) {
+  const upb_MiniTable* subl = subs[field->UPB_PRIVATE(submsg_index)].submsg;
   UPB_ASSERT(subl);
   upb_Message* msg = _upb_Message_New(subl, &d->arena);
   if (!msg) _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
+
+  // Extensions should not be unlinked.  A message extension should not be
+  // registered until its sub-message type is available to be linked.
+  bool is_empty = subl == &_kUpb_MiniTable_Empty;
+  bool is_extension = field->mode & kUpb_LabelFlags_IsExtension;
+  UPB_ASSERT(!(is_empty && is_extension));
+
+  if (is_empty && !(d->options & kUpb_DecodeOption_ExperimentalAllowUnlinked)) {
+    _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_UnlinkedSubMessage);
+  }
+
+  upb_TaggedMessagePtr tagged = _upb_TaggedMessagePtr_Pack(msg, is_empty);
+  memcpy(target, &tagged, sizeof(tagged));
   return msg;
+}
+
+static upb_Message* _upb_Decoder_ReuseSubMessage(
+    upb_Decoder* d, const upb_MiniTableSub* subs,
+    const upb_MiniTableField* field, upb_TaggedMessagePtr* target) {
+  upb_TaggedMessagePtr tagged = *target;
+  const upb_MiniTable* subl = subs[field->UPB_PRIVATE(submsg_index)].submsg;
+  UPB_ASSERT(subl);
+  if (!upb_TaggedMessagePtr_IsEmpty(tagged) || subl == &_kUpb_MiniTable_Empty) {
+    return _upb_TaggedMessagePtr_GetMessage(tagged);
+  }
+
+  // We found an empty message from a previous parse that was performed before
+  // this field was linked.  But it is linked now, so we want to allocate a new
+  // message of the correct type and promote data into it before continuing.
+  upb_Message* existing = _upb_TaggedMessagePtr_GetEmptyMessage(tagged);
+  upb_Message* promoted = _upb_Decoder_NewSubMessage(d, subs, field, target);
+  size_t size;
+  const char* unknown = upb_Message_GetUnknown(existing, &size);
+  upb_DecodeStatus status = upb_Decode(unknown, size, promoted, subl, d->extreg,
+                                       d->options, &d->arena);
+  if (status != kUpb_DecodeStatus_Ok) _upb_Decoder_ErrorJmp(d, status);
+  return promoted;
 }
 
 static const char* _upb_Decoder_ReadString(upb_Decoder* d, const char* ptr,
@@ -256,7 +299,7 @@ static const char* _upb_Decoder_DecodeSubMessage(
     upb_Decoder* d, const char* ptr, upb_Message* submsg,
     const upb_MiniTableSub* subs, const upb_MiniTableField* field, int size) {
   int saved_delta = upb_EpsCopyInputStream_PushLimit(&d->input, ptr, size);
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+  const upb_MiniTable* subl = subs[field->UPB_PRIVATE(submsg_index)].submsg;
   UPB_ASSERT(subl);
   ptr = _upb_Decoder_RecurseSubMessage(d, ptr, submsg, subl, DECODE_NOGROUP);
   upb_EpsCopyInputStream_PopLimit(&d->input, ptr, saved_delta);
@@ -287,7 +330,7 @@ UPB_FORCEINLINE
 static const char* _upb_Decoder_DecodeKnownGroup(
     upb_Decoder* d, const char* ptr, upb_Message* submsg,
     const upb_MiniTableSub* subs, const upb_MiniTableField* field) {
-  const upb_MiniTable* subl = subs[field->submsg_index].submsg;
+  const upb_MiniTable* subl = subs[field->UPB_PRIVATE(submsg_index)].submsg;
   UPB_ASSERT(subl);
   return _upb_Decoder_DecodeGroup(d, ptr, submsg, subl, field->number);
 }
@@ -351,7 +394,7 @@ static const char* _upb_Decoder_DecodeEnumArray(upb_Decoder* d, const char* ptr,
                                                 const upb_MiniTableSub* subs,
                                                 const upb_MiniTableField* field,
                                                 wireval* val) {
-  const upb_MiniTableEnum* e = subs[field->submsg_index].subenum;
+  const upb_MiniTableEnum* e = subs[field->UPB_PRIVATE(submsg_index)].subenum;
   if (!_upb_Decoder_CheckEnum(d, ptr, msg, e, field, val)) return ptr;
   void* mem = UPB_PTR_AT(_upb_array_ptr(arr), arr->size * 4, void);
   arr->size++;
@@ -405,7 +448,7 @@ static const char* _upb_Decoder_DecodeVarintPacked(
   while (!_upb_Decoder_IsDone(d, &ptr)) {
     wireval elem;
     ptr = _upb_Decoder_DecodeVarint(d, ptr, &elem.uint64_val);
-    _upb_Decoder_Munge(field->descriptortype, &elem);
+    _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), &elem);
     if (_upb_Decoder_Reserve(d, arr, 1)) {
       out = UPB_PTR_AT(_upb_array_ptr(arr), arr->size << lg2, void);
     }
@@ -422,7 +465,7 @@ static const char* _upb_Decoder_DecodeEnumPacked(
     upb_Decoder* d, const char* ptr, upb_Message* msg, upb_Array* arr,
     const upb_MiniTableSub* subs, const upb_MiniTableField* field,
     wireval* val) {
-  const upb_MiniTableEnum* e = subs[field->submsg_index].subenum;
+  const upb_MiniTableEnum* e = subs[field->UPB_PRIVATE(submsg_index)].subenum;
   int saved_limit = upb_EpsCopyInputStream_PushLimit(&d->input, ptr, val->size);
   char* out = UPB_PTR_AT(_upb_array_ptr(arr), arr->size * 4, void);
   while (!_upb_Decoder_IsDone(d, &ptr)) {
@@ -468,7 +511,7 @@ upb_Array* _upb_Decoder_CreateArray(upb_Decoder* d,
       [kUpb_FieldType_SInt64] = 3,
   };
 
-  size_t lg2 = kElemSizeLg2[field->descriptortype];
+  size_t lg2 = kElemSizeLg2[field->UPB_PRIVATE(descriptortype)];
   upb_Array* ret = _upb_Array_New(&d->arena, 4, lg2);
   if (!ret) _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
   return ret;
@@ -510,11 +553,12 @@ static const char* _upb_Decoder_DecodeToArray(upb_Decoder* d, const char* ptr,
     }
     case kUpb_DecodeOp_SubMessage: {
       /* Append submessage / group. */
-      upb_Message* submsg = _upb_Decoder_NewSubMessage(d, subs, field);
-      *UPB_PTR_AT(_upb_array_ptr(arr), arr->size * sizeof(void*),
-                  upb_Message*) = submsg;
+      upb_TaggedMessagePtr* target = UPB_PTR_AT(
+          _upb_array_ptr(arr), arr->size * sizeof(void*), upb_TaggedMessagePtr);
+      upb_Message* submsg = _upb_Decoder_NewSubMessage(d, subs, field, target);
       arr->size++;
-      if (UPB_UNLIKELY(field->descriptortype == kUpb_FieldType_Group)) {
+      if (UPB_UNLIKELY(field->UPB_PRIVATE(descriptortype) ==
+                       kUpb_FieldType_Group)) {
         return _upb_Decoder_DecodeKnownGroup(d, ptr, submsg, subs, field);
       } else {
         return _upb_Decoder_DecodeSubMessage(d, ptr, submsg, subs, field,
@@ -565,8 +609,8 @@ upb_Map* _upb_Decoder_CreateMap(upb_Decoder* d, const upb_MiniTable* entry) {
 
   const upb_MiniTableField* key_field = &entry->fields[0];
   const upb_MiniTableField* val_field = &entry->fields[1];
-  char key_size = kSizeInMap[key_field->descriptortype];
-  char val_size = kSizeInMap[val_field->descriptortype];
+  char key_size = kSizeInMap[key_field->UPB_PRIVATE(descriptortype)];
+  char val_size = kSizeInMap[val_field->UPB_PRIVATE(descriptortype)];
   UPB_ASSERT(key_field->offset == offsetof(upb_MapEntryData, k));
   UPB_ASSERT(val_field->offset == offsetof(upb_MapEntryData, v));
   upb_Map* ret = _upb_Map_New(&d->arena, key_size, val_size);
@@ -583,8 +627,9 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
   upb_Map* map = *map_p;
   upb_MapEntry ent;
   UPB_ASSERT(upb_MiniTableField_Type(field) == kUpb_FieldType_Message);
-  const upb_MiniTable* entry = subs[field->submsg_index].submsg;
+  const upb_MiniTable* entry = subs[field->UPB_PRIVATE(submsg_index)].submsg;
 
+  UPB_ASSERT(entry);
   UPB_ASSERT(entry->field_count == 2);
   UPB_ASSERT(!upb_IsRepeatedOrMap(&entry->fields[0]));
   UPB_ASSERT(!upb_IsRepeatedOrMap(&entry->fields[1]));
@@ -597,15 +642,12 @@ static const char* _upb_Decoder_DecodeToMap(upb_Decoder* d, const char* ptr,
   // Parse map entry.
   memset(&ent, 0, sizeof(ent));
 
-  if (entry->fields[1].descriptortype == kUpb_FieldType_Message ||
-      entry->fields[1].descriptortype == kUpb_FieldType_Group) {
-    const upb_MiniTable* submsg_table = entry->subs[0].submsg;
-    // Any sub-message entry must be linked.  We do not allow dynamic tree
-    // shaking in this case.
-    UPB_ASSERT(submsg_table);
-
-    // Create proactively to handle the case where it doesn't appear. */
-    ent.data.v.val = upb_value_ptr(_upb_Message_New(submsg_table, &d->arena));
+  if (entry->fields[1].UPB_PRIVATE(descriptortype) == kUpb_FieldType_Message ||
+      entry->fields[1].UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
+    // Create proactively to handle the case where it doesn't appear.
+    upb_TaggedMessagePtr msg;
+    _upb_Decoder_NewSubMessage(d, entry->subs, &entry->fields[1], &msg);
+    ent.data.v.val = upb_value_uintptr(msg);
   }
 
   ptr =
@@ -641,10 +683,11 @@ static const char* _upb_Decoder_DecodeToSubMessage(
     const upb_MiniTableSub* subs, const upb_MiniTableField* field, wireval* val,
     int op) {
   void* mem = UPB_PTR_AT(msg, field->offset, void);
-  int type = field->descriptortype;
+  int type = field->UPB_PRIVATE(descriptortype);
 
   if (UPB_UNLIKELY(op == kUpb_DecodeOp_Enum) &&
-      !_upb_Decoder_CheckEnum(d, ptr, msg, subs[field->submsg_index].subenum,
+      !_upb_Decoder_CheckEnum(d, ptr, msg,
+                              subs[field->UPB_PRIVATE(submsg_index)].subenum,
                               field, val)) {
     return ptr;
   }
@@ -664,11 +707,12 @@ static const char* _upb_Decoder_DecodeToSubMessage(
   /* Store into message. */
   switch (op) {
     case kUpb_DecodeOp_SubMessage: {
-      upb_Message** submsgp = mem;
-      upb_Message* submsg = *submsgp;
-      if (!submsg) {
-        submsg = _upb_Decoder_NewSubMessage(d, subs, field);
-        *submsgp = submsg;
+      upb_TaggedMessagePtr* submsgp = mem;
+      upb_Message* submsg;
+      if (*submsgp) {
+        submsg = _upb_Decoder_ReuseSubMessage(d, subs, field, submsgp);
+      } else {
+        submsg = _upb_Decoder_NewSubMessage(d, subs, field, submsgp);
       }
       if (UPB_UNLIKELY(type == kUpb_FieldType_Group)) {
         ptr = _upb_Decoder_DecodeKnownGroup(d, ptr, submsg, subs, field);
@@ -772,11 +816,10 @@ static void upb_Decoder_AddKnownMessageSetItem(
   if (UPB_UNLIKELY(!ext)) {
     _upb_Decoder_ErrorJmp(d, kUpb_DecodeStatus_OutOfMemory);
   }
-  upb_Message* submsg =
-      _upb_Decoder_NewSubMessage(d, &ext->ext->sub, &ext->ext->field);
+  upb_Message* submsg = _upb_Decoder_NewSubMessage(
+      d, &ext->ext->sub, &ext->ext->field, (upb_TaggedMessagePtr*)&ext->data);
   upb_DecodeStatus status = upb_Decode(data, size, submsg, item_mt->sub.submsg,
                                        d->extreg, d->options, &d->arena);
-  memcpy(&ext->data, &submsg, sizeof(submsg));
   if (status != kUpb_DecodeStatus_Ok) _upb_Decoder_ErrorJmp(d, status);
 }
 
@@ -887,7 +930,7 @@ static const upb_MiniTableField* _upb_Decoder_FindField(upb_Decoder* d,
   if (t->dense_below < t->field_count) {
     /* Linear search non-dense fields. Resume scanning from last_field_index
      * since fields are usually in order. */
-    int last = *last_field_index;
+    size_t last = *last_field_index;
     for (idx = last; idx < t->field_count; idx++) {
       if (t->fields[idx].number == field_number) {
         goto found;
@@ -951,20 +994,37 @@ int _upb_Decoder_GetVarintOp(const upb_MiniTableField* field) {
       [kUpb_FakeFieldType_MessageSetItem] = kUpb_DecodeOp_UnknownField,
   };
 
-  return kVarintOps[field->descriptortype];
+  return kVarintOps[field->UPB_PRIVATE(descriptortype)];
 }
 
 UPB_FORCEINLINE
-static void _upb_Decoder_CheckUnlinked(const upb_MiniTable* mt,
+static void _upb_Decoder_CheckUnlinked(upb_Decoder* d, const upb_MiniTable* mt,
                                        const upb_MiniTableField* field,
                                        int* op) {
   // If sub-message is not linked, treat as unknown.
   if (field->mode & kUpb_LabelFlags_IsExtension) return;
-  const upb_MiniTableSub* sub = &mt->subs[field->submsg_index];
-  if (!sub->submsg) *op = kUpb_DecodeOp_UnknownField;
+  const upb_MiniTableSub* sub = &mt->subs[field->UPB_PRIVATE(submsg_index)];
+  if ((d->options & kUpb_DecodeOption_ExperimentalAllowUnlinked) ||
+      sub->submsg != &_kUpb_MiniTable_Empty) {
+    return;
+  }
+#ifndef NDEBUG
+  const upb_MiniTableField* oneof = upb_MiniTable_GetOneof(mt, field);
+  if (oneof) {
+    // All other members of the oneof must be message fields that are also
+    // unlinked.
+    do {
+      assert(upb_MiniTableField_CType(oneof) == kUpb_CType_Message);
+      const upb_MiniTableSub* oneof_sub =
+          &mt->subs[oneof->UPB_PRIVATE(submsg_index)];
+      assert(!oneof_sub);
+    } while (upb_MiniTable_NextOneofField(mt, &oneof));
+  }
+#endif  // NDEBUG
+  *op = kUpb_DecodeOp_UnknownField;
 }
 
-int _upb_Decoder_GetDelimitedOp(const upb_MiniTable* mt,
+int _upb_Decoder_GetDelimitedOp(upb_Decoder* d, const upb_MiniTable* mt,
                                 const upb_MiniTableField* field) {
   enum { kRepeatedBase = 19 };
 
@@ -1014,12 +1074,12 @@ int _upb_Decoder_GetDelimitedOp(const upb_MiniTable* mt,
       // repeated msgset type
   };
 
-  int ndx = field->descriptortype;
+  int ndx = field->UPB_PRIVATE(descriptortype);
   if (upb_FieldMode_Get(field) == kUpb_FieldMode_Array) ndx += kRepeatedBase;
   int op = kDelimitedOps[ndx];
 
   if (op == kUpb_DecodeOp_SubMessage) {
-    _upb_Decoder_CheckUnlinked(mt, field, &op);
+    _upb_Decoder_CheckUnlinked(d, mt, field, &op);
   }
 
   return op;
@@ -1043,30 +1103,31 @@ static const char* _upb_Decoder_DecodeWireValue(upb_Decoder* d, const char* ptr,
     case kUpb_WireType_Varint:
       ptr = _upb_Decoder_DecodeVarint(d, ptr, &val->uint64_val);
       *op = _upb_Decoder_GetVarintOp(field);
-      _upb_Decoder_Munge(field->descriptortype, val);
+      _upb_Decoder_Munge(field->UPB_PRIVATE(descriptortype), val);
       return ptr;
     case kUpb_WireType_32Bit:
       *op = kUpb_DecodeOp_Scalar4Byte;
-      if (((1 << field->descriptortype) & kFixed32OkMask) == 0) {
+      if (((1 << field->UPB_PRIVATE(descriptortype)) & kFixed32OkMask) == 0) {
         *op = kUpb_DecodeOp_UnknownField;
       }
       return upb_WireReader_ReadFixed32(ptr, &val->uint32_val);
     case kUpb_WireType_64Bit:
       *op = kUpb_DecodeOp_Scalar8Byte;
-      if (((1 << field->descriptortype) & kFixed64OkMask) == 0) {
+      if (((1 << field->UPB_PRIVATE(descriptortype)) & kFixed64OkMask) == 0) {
         *op = kUpb_DecodeOp_UnknownField;
       }
       return upb_WireReader_ReadFixed64(ptr, &val->uint64_val);
     case kUpb_WireType_Delimited:
       ptr = upb_Decoder_DecodeSize(d, ptr, &val->size);
-      *op = _upb_Decoder_GetDelimitedOp(mt, field);
+      *op = _upb_Decoder_GetDelimitedOp(d, mt, field);
       return ptr;
     case kUpb_WireType_StartGroup:
       val->uint32_val = field->number;
-      if (field->descriptortype == kUpb_FieldType_Group) {
+      if (field->UPB_PRIVATE(descriptortype) == kUpb_FieldType_Group) {
         *op = kUpb_DecodeOp_SubMessage;
-        _upb_Decoder_CheckUnlinked(mt, field, op);
-      } else if (field->descriptortype == kUpb_FakeFieldType_MessageSetItem) {
+        _upb_Decoder_CheckUnlinked(d, mt, field, op);
+      } else if (field->UPB_PRIVATE(descriptortype) ==
+                 kUpb_FakeFieldType_MessageSetItem) {
         *op = kUpb_DecodeOp_MessageSetItem;
       } else {
         *op = kUpb_DecodeOp_UnknownField;
@@ -1280,9 +1341,10 @@ static upb_DecodeStatus upb_Decoder_Decode(upb_Decoder* const decoder,
     UPB_ASSERT(decoder->status != kUpb_DecodeStatus_Ok);
   }
 
-  arena->head.ptr = decoder->arena.head.ptr;
-  arena->head.end = decoder->arena.head.end;
-  arena->cleanup_metadata = decoder->arena.cleanup_metadata;
+  _upb_MemBlock* blocks =
+      upb_Atomic_Load(&decoder->arena.blocks, memory_order_relaxed);
+  arena->head = decoder->arena.head;
+  upb_Atomic_Store(&arena->blocks, blocks, memory_order_relaxed);
   return decoder->status;
 }
 
@@ -1290,25 +1352,31 @@ upb_DecodeStatus upb_Decode(const char* buf, size_t size, void* msg,
                             const upb_MiniTable* l,
                             const upb_ExtensionRegistry* extreg, int options,
                             upb_Arena* arena) {
-  upb_Decoder state;
+  upb_Decoder decoder;
   unsigned depth = (unsigned)options >> 16;
 
-  upb_EpsCopyInputStream_Init(&state.input, &buf, size,
+  upb_EpsCopyInputStream_Init(&decoder.input, &buf, size,
                               options & kUpb_DecodeOption_AliasString);
 
-  state.extreg = extreg;
-  state.unknown = NULL;
-  state.depth = depth ? depth : 64;
-  state.end_group = DECODE_NOGROUP;
-  state.options = (uint16_t)options;
-  state.missing_required = false;
-  state.arena.head = arena->head;
-  state.arena.last_size = arena->last_size;
-  state.arena.cleanup_metadata = arena->cleanup_metadata;
-  state.arena.parent = arena;
-  state.status = kUpb_DecodeStatus_Ok;
+  decoder.extreg = extreg;
+  decoder.unknown = NULL;
+  decoder.depth = depth ? depth : kUpb_WireFormat_DefaultDepthLimit;
+  decoder.end_group = DECODE_NOGROUP;
+  decoder.options = (uint16_t)options;
+  decoder.missing_required = false;
+  decoder.status = kUpb_DecodeStatus_Ok;
 
-  return upb_Decoder_Decode(&state, buf, msg, l, arena);
+  // Violating the encapsulation of the arena for performance reasons.
+  // This is a temporary arena that we swap into and swap out of when we are
+  // done.  The temporary arena only needs to be able to handle allocation,
+  // not fuse or free, so it does not need many of the members to be initialized
+  // (particularly parent_or_count).
+  _upb_MemBlock* blocks = upb_Atomic_Load(&arena->blocks, memory_order_relaxed);
+  decoder.arena.head = arena->head;
+  decoder.arena.block_alloc = arena->block_alloc;
+  upb_Atomic_Init(&decoder.arena.blocks, blocks);
+
+  return upb_Decoder_Decode(&decoder, buf, msg, l, arena);
 }
 
 #undef OP_FIXPCK_LG2

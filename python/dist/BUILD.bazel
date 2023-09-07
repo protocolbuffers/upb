@@ -27,7 +27,7 @@ load("//bazel:py_proto_library.bzl", "py_proto_library")
 load(":dist.bzl", "py_dist", "py_dist_module")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@com_google_protobuf//:protobuf_version.bzl", "PROTOBUF_PYTHON_VERSION")
-load("@rules_pkg//:mappings.bzl", "pkg_files")
+load("@rules_pkg//:mappings.bzl", "pkg_files", "strip_prefix")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
 load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@system_python//:version.bzl", "SYSTEM_PYTHON_VERSION")
@@ -64,6 +64,9 @@ py_proto_library(
 
 config_setting(
     name = "linux_aarch64_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "linux-aarch_64"},
 )
 
@@ -73,10 +76,16 @@ config_setting(
         "@platforms//os:linux",
         "@platforms//cpu:aarch64",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 config_setting(
     name = "linux_x86_64_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "linux-x86_64"},
 )
 
@@ -86,10 +95,16 @@ config_setting(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 config_setting(
     name = "osx_x86_64_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "osx-x86_64"},
 )
 
@@ -99,6 +114,9 @@ config_setting(
         "@platforms//os:osx",
         "@platforms//cpu:x86_64",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 selects.config_setting_group(
@@ -111,6 +129,9 @@ selects.config_setting_group(
 
 config_setting(
     name = "osx_aarch64_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "osx-aarch_64"},
 )
 
@@ -120,6 +141,9 @@ config_setting(
         "@platforms//os:osx",
         "@platforms//cpu:aarch64",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 selects.config_setting_group(
@@ -137,6 +161,9 @@ config_setting(
 
 config_setting(
     name = "windows_x86_32_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "win32"},
 )
 
@@ -146,6 +173,9 @@ config_setting(
         "@platforms//os:windows",
         "@platforms//cpu:x86_32",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 selects.config_setting_group(
@@ -158,6 +188,9 @@ selects.config_setting_group(
 
 config_setting(
     name = "windows_x86_64_release",
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "True",
+    },
     values = {"cpu": "win64"},
 )
 
@@ -167,6 +200,9 @@ config_setting(
         "@platforms//os:windows",
         "@platforms//cpu:x86_64",
     ],
+    flag_values = {
+        "@com_google_protobuf//toolchain:release": "False",
+    },
 )
 
 selects.config_setting_group(
@@ -201,25 +237,59 @@ pkg_files(
     prefix = "utf8_range",
 )
 
+pkg_files(
+    name = "dist_source_files",
+    srcs = [
+        "MANIFEST.in",
+        "setup.py",
+    ],
+)
+
+# Passing filegroups to pkg_tar directly results in incorrect
+# `protobuf/external/upb/` directory structure when built from the protobuf
+# repo. This can be removed once repositories are merged.
+pkg_files(
+    name = "filegroup_source_files",
+    srcs = [
+        "//:LICENSE",
+        "//:source_files",
+        "//python:message_srcs",
+        "//upb/base:source_files",
+        "//upb/collections:source_files",
+        "//upb/hash:source_files",
+        "//upb/lex:source_files",
+        "//upb/mem:source_files",
+        "//upb/message:source_files",
+        "//upb/mini_descriptor:source_files",
+        "//upb/mini_table:source_files",
+        "//upb/port:source_files",
+        "//upb/text:source_files",
+        "//upb/util:source_files",
+        "//upb/wire:source_files",
+    ],
+    strip_prefix = strip_prefix.from_root(""),
+)
+
 # NOTE: This package currently only works for macos and ubuntu, MSVC users
 # should use a binary wheel.
 pkg_tar(
     name = "source_tarball",
     srcs = [
-        "MANIFEST.in",
-        "setup.py",
+        ":dist_source_files",
+        ":filegroup_source_files",
         ":generated_wkt",
         ":generated_wkt_compiler",
         ":utf8_range_source_files",
-        "//:LICENSE",
-        "//:upb_source_files",
-        "//python:message_extension",
-        "//upb/util:util_source_files",
         "@com_google_protobuf//python:python_source_files",
     ],
     extension = "tar.gz",
     package_dir = "protobuf",
     package_file_name = "protobuf.tar.gz",
+    strip_prefix = ".",
+    target_compatible_with = select({
+        "@system_python//:none": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 genrule(
@@ -234,6 +304,10 @@ genrule(
         cd ..
         mv protobuf/dist/*.tar.gz $@
     """,
+    target_compatible_with = select({
+        "@system_python//:none": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 py_wheel(

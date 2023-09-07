@@ -38,6 +38,9 @@ load("@rules_pkg//:mappings.bzl", "pkg_files")
 licenses(["notice"])
 
 package(
+    # begin:google_only
+#     default_applicable_licenses = ["//:license"],
+    # end:google_only
     default_visibility = ["//python/dist:__pkg__"],
 )
 
@@ -184,15 +187,10 @@ _message_target_compatible_with = {
    "//conditions:default": [],
 }
 
-pkg_files(
-   name = "message_extension",
-   srcs = [":message_srcs"],
-   prefix = "python/",
-)
 # end:github_only
 # begin:google_only
 # _message_target_compatible_with = {
-#     "@platforms//os:windows": ["//third_party/bazel_platforms:incompatible"],
+#     "@platforms//os:windows": ["@platforms//:incompatible"],
 #     "//conditions:default": [],
 # }
 # end:google_only
@@ -241,11 +239,10 @@ py_extension(
         "//:descriptor_upb_proto_reflection",
         "//:eps_copy_input_stream",
         "//:hash",
+        "//:message_copy",
         "//:port",
         "//:reflection",
-        "//:textformat",
-        "//:upb",
-        "//:wire",
+        "//:text",
         "//:wire_reader",
         "//:wire_types",
         "//upb/util:compare",

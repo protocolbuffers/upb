@@ -1,3 +1,7 @@
+# begin:google_only
+# package(default_applicable_licenses = ["//:license"])
+# end:google_only
+
 cc_library(
     name = "string",
     hdrs = ["string.h"],
@@ -49,7 +53,7 @@ cc_library(
     ],
     deps = [
         ":zero_copy_stream",
-        "//:upb",
+        "//:mem",
         "//:port",
     ],
 )
@@ -60,7 +64,7 @@ cc_test(
     srcs = ["string_test.cc"],
     deps = [
         ":string",
-        "//:upb",
+        "//:mem",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -76,8 +80,8 @@ cc_test(
         ":zero_copy_stream",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "//:upb",
         "//:lex",
+        "//:mem",
         "//:port",
         "@com_google_googletest//:gtest_main",
     ],
@@ -92,7 +96,8 @@ cc_test(
     deps = [
         ":chunked_stream",
         ":zero_copy_stream",
-        "//:upb",
+        "//:base",
+        "//:mem",
         "@com_google_googletest//:gtest_main",
     ],
 )
